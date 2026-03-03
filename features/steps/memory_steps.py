@@ -21,6 +21,12 @@ def _answer_from_memory(query: str) -> str:
     return f"{hit['answer']} (doc_id: {hit['doc_id']}, ts: {hit['ts']})"
 
 
+@given("a deterministic in-memory recall harness")
+def step_given_deterministic_harness(context) -> None:
+    """BDD default path intentionally avoids live HA/Ollama integrations."""
+    context.live_dependencies = {"home_assistant": False, "ollama": False}
+
+
 @given("deterministic memory fixtures are loaded")
 def step_given_fixtures(context) -> None:
     context.fixtures = FIXTURES
