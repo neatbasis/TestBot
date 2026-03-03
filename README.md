@@ -206,14 +206,50 @@ The script prints JSON metrics:
 
 Feature-scope rule: do not expand v0 behavior until this eval is run and these metrics are reviewed.
 
-## Testing retrieval without Ollama
+## Testing strategy
 
-For retrieval unit tests, avoid live embedding models so test outcomes stay deterministic and fast:
+Keep the **default test suite deterministic and fast**. Anything that needs real Ollama/Home Assistant should be opt-in and excluded from quick local runs and default CI.
 
-1. Use `langchain_core.embeddings.fake.DeterministicFakeEmbedding` in tests instead of `OllamaEmbeddings`.
-2. Build `InMemoryVectorStore` with the fake embedding to keep similarity behavior repeatable.
-3. Keep fixtures small and explicit (about 3–8 memory cards) with a known expected top-k ordering.
-4. Validate rerank logic separately from embedding realism; optimize tests for deterministic ordering and time-weight effects.
+### Layer 1: Pure unit tests (no LangChain model calls)
+
+These are the fastest and should form the core of day-to-day feedback:
+
+1. `_parse_target_time`
+2. `adaptive_sigma_fractional`
+3. `time_weight`
+4. rerank scoring behavior
+
+Guidance:
+
+- Use fixed `now` timestamps in fixtures.
+- Assert exact/near-exact expected values and ordering.
+- Keep these tests free of network, model, and Home Assistant dependencies.
+
+### Layer 2: LangChain graph/component tests with fakes
+
+Validate wiring and component interactions while still staying deterministic:
+
+1. Query rewrite → retrieval → answer flow with fake/stubbed model outputs.
+2. Vector search behavior using `DeterministicFakeEmbedding`.
+
+Guidance:
+
+- Stub rewrite/answer model calls with fixed outputs.
+- Build `InMemoryVectorStore` with `DeterministicFakeEmbedding` (not `OllamaEmbeddings`).
+- Keep fixtures small and explicit (about 3–8 memory cards) with known expected top-k ordering.
+
+### Layer 3: Optional live integration smoke tests
+
+Run separately when you want environment-level confidence:
+
+- Real Ollama + Home Assistant environment.
+- Mark these tests separately (for example with a `live` marker) and exclude by default.
+- Use them as smoke checks, not as required gates for quick local iteration.
+
+Recommended policy:
+
+- Default local + CI run: Layer 1 + Layer 2 only.
+- Opt-in command/profile for Layer 3 when local services are available.
 
 Example pattern:
 
