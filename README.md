@@ -244,6 +244,35 @@ This gives you a crude but effective “temporal attention mechanism” over mem
 
 ---
 
+## Session logging (v0 loop)
+
+`sat_chatbot_memory_v2` writes structured JSONL logs to:
+
+```text
+./logs/session.jsonl
+```
+
+Each line is one JSON object with a small schema shared across events:
+
+* `ts`: log timestamp (UTC ISO8601)
+* `event`: v0 loop event name
+* event-specific keys
+
+Current events:
+
+* `user_utterance_ingest`
+  * `channel`, `utterance`
+* `query_rewrite_output`
+  * `utterance`, `query`
+* `retrieval_candidates`
+  * `query`, `candidate_count`, `top_candidates` (`[{doc_id, score}, ...]`)
+* `time_target_parse`
+  * `utterance`, `now_ts`, `target_ts`, `sigma_seconds`
+* `final_answer_mode`
+  * `mode` (`memory-grounded` or `dont-know`), `query`, `retrieved_docs`
+
+---
+
 ## Commands / Interaction patterns (planned)
 
 This repo is early. A few useful “routes” you can add next:
