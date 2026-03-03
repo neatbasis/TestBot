@@ -183,6 +183,29 @@ Say “stop” to exit.
 - [ ] If memory is insufficient, assistant uses: **"I don't know from memory."**
 - [ ] End-to-end loop remains responsive for local use (target ~5s typical turn).
 
+## Retrieval/rerank evaluation gate
+
+Before expanding feature scope, run the offline memory-recall eval and review its metrics.
+
+### Files
+
+- `eval/cases.jsonl`: real/synthetic utterance cases with expected memory intent and target `doc_id`.
+- `scripts/eval_recall.py`: offline replay runner for retrieval/rerank logic (no Home Assistant runtime dependency).
+
+### Run
+
+```bash
+python scripts/eval_recall.py --cases eval/cases.jsonl --top-k 4
+```
+
+The script prints JSON metrics:
+
+- `hit_at_k`
+- `average_rank_expected_memory`
+- `dont_know_from_memory_decisions`
+
+Feature-scope rule: do not expand v0 behavior until this eval is run and these metrics are reviewed.
+
 ---
 
 ## Memory cards
