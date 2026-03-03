@@ -1,0 +1,77 @@
+# Directive Change Policy
+
+This policy defines how directive artifacts are versioned and changed. It applies to all updates under `docs/directives/`.
+
+## Canonical references
+
+The following directive documents are canonical references and must be treated as the source of truth when processing directive changes:
+
+- `docs/directives/source-map.md`
+- `docs/directives/terms.md`
+- `docs/directives/invariants.md`
+- `docs/directives/traceability-matrix.md`
+
+If a change conflicts with these references, either:
+
+1. update the relevant canonical reference in the same pull request, or
+2. block the directive change until canonical references are aligned.
+
+## Semantic versioning policy for terms and invariants
+
+Directive changes affecting terms or invariants must use semantic versioning labels in the pull request description and commit message footer.
+
+Version impact rules:
+
+- **PATCH**: non-behavioral editorial fixes (spelling, formatting, clarification with no meaning change).
+- **MINOR**: backward-compatible additions (new term, new invariant, new traceability row, added rationale) that do not invalidate existing behavior.
+- **MAJOR**: breaking changes (term meaning change, invariant removal, invariant tightening/loosening that changes expected behavior, or fallback/contract interpretation changes).
+
+Required notation:
+
+- Include `Directive-SemVer: PATCH|MINOR|MAJOR` in the PR body.
+- Include a matching commit footer line: `Directive-SemVer: PATCH|MINOR|MAJOR`.
+
+If multiple directive changes exist in one PR, use the highest required bump.
+
+## Required PR justification fields for directive changes
+
+Any pull request that changes directive docs must include all fields below:
+
+- `Directive-SemVer`: `PATCH`, `MINOR`, or `MAJOR`.
+- `Change-Type`: one of `term`, `invariant`, `traceability`, `bdd`, `editorial` (comma-separated if multiple).
+- `Canonical-Refs-Updated`: `yes` or `no`.
+- `Justification`: why this change is needed now.
+- `Behavior-Impact`: explicit statement of runtime/acceptance impact.
+- `Migration-Notes`: required follow-up actions for contributors/operators.
+- `Validation-Evidence`: commands or checks run to validate consistency.
+
+Missing fields are a merge blocker.
+
+## Mandatory traceability and BDD updates
+
+When a directive changes, the same PR must update linked artifacts to preserve end-to-end traceability.
+
+- If a **term** changes in meaning or scope, update:
+  - `docs/directives/terms.md`, and
+  - any impacted rows in `docs/directives/source-map.md` and `docs/directives/traceability-matrix.md`.
+- If an **invariant** is added/changed/removed, update:
+  - `docs/directives/invariants.md`,
+  - impacted directive mappings in `docs/directives/traceability-matrix.md`, and
+  - relevant BDD scenarios under `features/*.feature`.
+- If runtime behavior contract changes, update:
+  - BDD scenario IDs and/or scenarios to reflect new expected behavior,
+  - step assertions in `features/steps/*.py` when applicable,
+  - traceability links so each changed directive still maps to enforcement, tests, and evidence.
+
+A directive change is incomplete unless traceability matrix entries and BDD scenarios remain synchronized.
+
+## Review and merge gate
+
+Before merge, reviewers must confirm:
+
+1. semantic version label matches the highest-impact directive change,
+2. all required PR justification fields are present,
+3. canonical references are aligned,
+4. traceability matrix and BDD scenarios were updated where required.
+
+If any check fails, the PR should be returned for revision.
