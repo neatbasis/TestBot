@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sys
 import uuid
 from collections import deque
@@ -108,7 +109,8 @@ ANSWER_PROMPT = ChatPromptTemplate.from_messages(
             "You are a careful assistant.\n"
             "Use ONLY the provided memory context and recent chat.\n"
             "If the memory does not contain the answer, say: \"I don't know from memory.\"\n"
-            "When you use memory, cite doc_id and ts.\n\n"
+            "For any factual claim, include at least one cited memory with both doc_id and ts.\n"
+            "If confidence in memory context is low or context is insufficient, respond EXACTLY: \"I don't know from memory.\"\n\n"
             "Recent chat:\n{chat_history}\n\n"
             "Memory context:\n{context}\n",
         ),
@@ -137,6 +139,35 @@ def render_context(docs: list[Document], *, limit_chars: int = 5000) -> str:
         chunks.append(add)
         total += len(add)
     return "".join(chunks).strip()
+
+
+def has_sufficient_context_confidence(
+    docs_and_scores: list[tuple[Document, float]], *, min_similarity: float = 0.35, min_hits: int = 1
+) -> bool:
+    if len(docs_and_scores) < min_hits:
+        return False
+    return max(float(score) for _, score in docs_and_scores) >= min_similarity
+
+
+def response_contains_claims(text: str) -> bool:
+    normalized = (text or "").strip()
+    if not normalized:
+        return False
+    if normalized == "I don't know from memory.":
+        return False
+    # A simple heuristic: if there is sentence-like prose, treat it as factual/semantic claims.
+    return bool(re.search(r"[A-Za-z0-9].{8,}", normalized))
+
+
+def has_required_memory_citation(text: str) -> bool:
+    citation_pattern = re.compile(r"doc_id\s*[:=]\s*[^,\]\)\n]+.*?ts\s*[:=]\s*[^,\]\)\n]+", re.IGNORECASE)
+    return bool(citation_pattern.search(text or ""))
+
+
+def validate_answer_contract(text: str) -> bool:
+    if not response_contains_claims(text):
+        return True
+    return has_required_memory_citation(text)
 
 
 def main() -> None:
@@ -304,6 +335,7 @@ def main() -> None:
                 exclude_source_ids={u_id},
                 top_k=4,
             )
+            context_is_confident = has_sufficient_context_confidence(docs_and_scores)
 
             # -----------------------
             # 3) Answer using ONLY memory + recent chat
@@ -316,13 +348,23 @@ def main() -> None:
                 chat_history=history_str,
                 context=context_str,
             )
-            reply = (llm.invoke(msgs).content or "").strip() or "I don't know from memory."
+            if not context_is_confident:
+                reply = "I don't know from memory."
+            else:
+                draft_reply = (llm.invoke(msgs).content or "").strip()
+                if not draft_reply:
+                    reply = "I don't know from memory."
+                elif validate_answer_contract(draft_reply):
+                    reply = draft_reply
+                else:
+                    reply = "I don't know from memory."
             answer_mode = "dont-know" if reply == "I don't know from memory." else "memory-grounded"
             append_session_log(
                 "final_answer_mode",
                 {
                     "mode": answer_mode,
                     "query": query,
+                    "context_confident": context_is_confident,
                     "retrieved_docs": [
                         (d.id or d.metadata.get("doc_id") or "")
                         for d in hits
