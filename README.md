@@ -206,6 +206,40 @@ The script prints JSON metrics:
 
 Feature-scope rule: do not expand v0 behavior until this eval is run and these metrics are reviewed.
 
+## Testing retrieval without Ollama
+
+For retrieval unit tests, avoid live embedding models so test outcomes stay deterministic and fast:
+
+1. Use `langchain_core.embeddings.fake.DeterministicFakeEmbedding` in tests instead of `OllamaEmbeddings`.
+2. Build `InMemoryVectorStore` with the fake embedding to keep similarity behavior repeatable.
+3. Keep fixtures small and explicit (about 3–8 memory cards) with a known expected top-k ordering.
+4. Validate rerank logic separately from embedding realism; optimize tests for deterministic ordering and time-weight effects.
+
+Example pattern:
+
+```python
+from langchain_core.documents import Document
+from langchain_core.embeddings.fake import DeterministicFakeEmbedding
+from langchain_core.vectorstores import InMemoryVectorStore
+
+
+def test_retrieval_order_is_stable():
+    embedding = DeterministicFakeEmbedding(size=32)
+    store = InMemoryVectorStore(embedding=embedding)
+
+    docs = [
+        Document(page_content="type: user_utterance\ntext: I left keys in the garage", metadata={"doc_id": "m1"}),
+        Document(page_content="type: user_utterance\ntext: Dentist appointment is Friday", metadata={"doc_id": "m2"}),
+        Document(page_content="type: reflection\ntext: User often stores tools near garage shelf", metadata={"doc_id": "m3"}),
+    ]
+    store.add_documents(docs)
+
+    results = store.similarity_search_with_score("where are my keys", k=2)
+
+    top_ids = [doc.metadata["doc_id"] for doc, _score in results]
+    assert top_ids == ["m1", "m3"]
+```
+
 ---
 
 ## Memory cards
