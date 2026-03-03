@@ -309,9 +309,15 @@ This repo is early. A few useful “routes” you can add next:
 
 ## Safety & behavior constraints
 
+**Non-negotiable v0 invariant (answer-generation contract):**
+
+* Any factual answer must be grounded by at least one explicit memory citation containing both `doc_id` and `ts`.
+* If retrieval/context confidence is insufficient, the assistant must return this exact string: `I don't know from memory.`
+* Post-processing validates generated answers: when claims are present but required memory citation fields are missing, the output is forced to `I don't know from memory.`
+
 * The assistant must be able to say:
 
-  * **“I don’t know from memory.”**
+  * **"I don't know from memory."**
 * The assistant must not hallucinate facts that are not in memory context.
 * Any reflection is explicitly labeled as inference (not ground truth).
 
