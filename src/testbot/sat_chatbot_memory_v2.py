@@ -11,7 +11,7 @@ from typing import Optional
 import arrow
 from homeassistant_api import Client
 
-from config import Config
+from testbot.config import Config
 from ha_ask import AskSpec, ask_question
 from ha_ask.config import normalize_rest_api_url
 

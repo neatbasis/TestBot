@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "testbot"
+version = "0.1.0"
+description = "A Home Assistant Assist Satellite chatbot with local Ollama RAG memory and metacognitive reflection cards."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "arrow",
+  "homeassistant-api",
+  "ha-ask",
+  "langchain-core",
+  "langchain-ollama",
+  "python-dotenv",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8",
+  "ruff>=0.6",
+  "mypy>=1.10",
+]
+
+[project.scripts]
+testbot = "testbot.sat_chatbot_memory_v2:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.mypy]
+python_version = "3.11"
+mypy_path = "src"
