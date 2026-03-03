@@ -11,7 +11,7 @@ requires-python = ">=3.11"
 dependencies = [
   "arrow",
   "homeassistant-api",
-  "ha-ask",
+  "ha-ask @ git+https://github.com/neatbasis/Ask.git",
   "langchain-core",
   "langchain-ollama",
   "python-dotenv",
