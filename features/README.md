@@ -277,3 +277,20 @@ The key rule is to keep the Gherkin phrase stakeholder-readable while preserving
 - [ ] Rule/role/priority tags are applied where relevant.
 - [ ] `behave` passes with no undefined steps.
 - [ ] Exact fallback contract is preserved: `I don't know from memory.`
+- [ ] Every new docs section answers all of the following:
+  - [ ] Who is this for?
+  - [ ] What action/decision does it support?
+  - [ ] When should this be used?
+  - [ ] Where in repo/runtime does it apply?
+  - [ ] Why does it matter?
+- [ ] Docs drift checks pass:
+  - [ ] Repository layout examples match the actual files.
+  - [ ] Commands are runnable as written.
+  - [ ] Cross-links to docs/features resolve.
+- [ ] Docs review cadence is acknowledged (at least once per milestone/release).
+- [ ] If docs rely on implicit domain knowledge, the change makes assumptions explicit (quality, risk, governance, architecture).
+- [ ] For high-impact docs changes, include an `Assumptions and invariants` subsection.
+- [ ] When scope warrants, capture maturity add-ons:
+  - [ ] Risk mapping note (failure/drift modes and detection points).
+  - [ ] Traceability map (contract -> tests/features -> ops checks).
+  - [ ] Invariant registry for non-negotiable truths.
