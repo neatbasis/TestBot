@@ -4,6 +4,8 @@ import re
 
 from behave import given, then, when
 
+from testbot.eval_fixtures import cases_by_id
+
 
 CITATION_PATTERN = re.compile(r"doc_id\s*[:=]\s*[^,\]\)\n]+.*?ts\s*[:=]\s*[^,\]\)\n]+", re.IGNORECASE)
 
@@ -23,9 +25,11 @@ def _validate_answer_contract(text: str) -> bool:
     return bool(CITATION_PATTERN.search(text or ""))
 
 
-@given('an uncited factual candidate answer "{candidate}"')
-def step_given_uncited_candidate(context, candidate: str) -> None:
-    context.candidate = candidate
+@given('an uncited factual candidate from eval case "{case_id}"')
+def step_given_uncited_candidate_from_eval_case(context, case_id: str) -> None:
+    case = cases_by_id()[case_id]
+    top_candidate = max(case.candidates, key=lambda candidate: candidate["sim_score"])
+    context.candidate = top_candidate["text"]
 
 
 @when("the answer contract validator checks the candidate")
