@@ -462,12 +462,20 @@ def main() -> None:
     rest = normalize_rest_api_url(api_url)
 
     with Client(rest, token) as client:
-        sat_say(client, entity_id, "Satellite memory chatbot v2 online. Say 'stop' to exit.")
+        sat_say(
+            client,
+            entity_id,
+            "v0 memory loop online. Ask one memory-based question. Say 'stop' to exit.",
+        )
 
         while True:
             res = ask_question(
                 channel="satellite",
-                spec=AskSpec(question="Tell me something.", answers=None, timeout_s=60.0),
+                spec=AskSpec(
+                    question="Ask one memory-grounded question.",
+                    answers=None,
+                    timeout_s=60.0,
+                ),
                 api_url=api_url,
                 token=token,
                 satellite_entity_id=entity_id,
