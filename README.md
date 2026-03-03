@@ -238,6 +238,80 @@ Guidance:
 - Build `InMemoryVectorStore` with `DeterministicFakeEmbedding` (not `OllamaEmbeddings`).
 - Keep fixtures small and explicit (about 3–8 memory cards) with known expected top-k ordering.
 
+### Deterministic tests for LLM-dependent paths (port/adapter-aligned)
+
+For `sat_chatbot_memory_v2.py`, the objective is **deterministic, contract-verified testing of reasoning pipelines**
+and guardrails — **not** evaluation of model creativity, intelligence, or benchmark-style output quality.
+
+#### 1) Wrap LLM calls behind small seams
+
+Mirror the project's port/adapter style (same spirit as `AskPort`): keep a small protocol surface in core logic,
+then bind it to a thin runtime adapter.
+
+- Formalize tiny LLM seam functions around existing prompt-driven calls in `sat_chatbot_memory_v2.py`:
+  - query rewrite (`QUERY_REWRITE_PROMPT`)
+  - reflection generation (`generate_reflection_yaml(...)`)
+  - final answer generation (`ANSWER_PROMPT`)
+- Core decision logic should call those seam functions/protocol methods, not `ChatOllama` directly.
+- Optional shape:
+
+```python
+class LLMPort(Protocol):
+    def rewrite_query(self, utterance: str) -> str: ...
+    def generate_reflection(self, *, speaker: str, text: str) -> str: ...
+    def generate_answer(self, *, user_input: str, chat_history: str, context: str) -> str: ...
+```
+
+#### 2) In unit tests, stub seams (or inject a fake adapter)
+
+- Unit tests must run fully offline.
+- Never invoke Ollama, `ChatOllama`, or network-backed model APIs in unit tests.
+- Replace seam outputs with scripted deterministic values that intentionally cover:
+  - valid cited answers,
+  - uncited answers,
+  - empty model responses,
+  - malformed outputs,
+  - insufficient context scenarios.
+
+#### 3) Assert behavior contracts, not raw model wording
+
+Tests should assert the existing enforcement behavior already encoded in the system:
+
+- factual responses require memory citations validated by `validate_answer_contract(...)` and
+  `has_required_memory_citation(...)`.
+- the exact fallback string `"I don't know from memory."` is required when:
+  - context confidence is insufficient,
+  - the generated draft is empty,
+  - citation rules are violated.
+- final responses must not ship uncited factual claims: if `response_contains_claims(...)` is true,
+  citation validation must pass; otherwise fallback must be returned.
+
+#### 4) Keep “golden prompt” checks lightweight
+
+Do not snapshot full prompt text. Prefer structural assertions that survive minor wording/format changes.
+
+- `ANSWER_PROMPT` includes a clause equivalent to “Use ONLY the provided memory context…”.
+- citation requirements explicitly mention both `doc_id` and `ts`.
+- fallback behavior explicitly instructs `"I don't know from memory."`.
+- `QUERY_REWRITE_PROMPT` explicitly instructs returning only rewritten query text.
+
+#### 5) Architectural consistency across IO seams
+
+LLM seams should follow the same deterministic testing philosophy as other external IO seams:
+
+- small protocol/port in core logic,
+- thin adapter that calls the external dependency,
+- deterministic fake in tests.
+
+Keep core flow pure and dependency-injected, with no direct `ha_ask` use outside adapters and the same
+offline-test expectation across LLM, AskPort, and vector-search seams.
+
+#### 6) Non-goals of deterministic unit tests
+
+- Not for ranking model intelligence, creativity, or open-ended answer quality.
+- Not a replacement for integration/manual runs with real Ollama + Home Assistant.
+- Specifically for validating control flow, guardrails, and contract enforcement deterministically.
+
 ### Layer 3: Optional live integration smoke tests
 
 Run separately when you want environment-level confidence:
