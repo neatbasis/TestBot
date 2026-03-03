@@ -10,11 +10,7 @@ This repo is a “small-but-serious” starting point for building a context-awa
 - re-rank memories with a **time-aware probability distribution** around a target time inferred from phrases like “ago / in / from now”,
 - answer strictly from retrieved memory + recent conversation window.
 
-The goal is not “a chat demo”, but an **evolvable substrate** you can later harden into:
-- an Elasticsearch-backed long-term store,
-- better schema’d memory (Pydantic contracts),
-- quality gates (invariants, trace logs),
-- and richer agent behaviors.
+The immediate packaging scope is intentionally narrow: ship one externally valuable loop first (`sat_chatbot_memory_v2`) and defer extra governance/tooling complexity until real usage friction appears.
 
 ---
 
@@ -46,7 +42,7 @@ The goal is not “a chat demo”, but an **evolvable substrate** you can later 
 
 ---
 
-## Repository layout (proposed)
+## Repository layout
 
 ```
 TestBot/
@@ -68,7 +64,7 @@ TestBot/
 
 ````
 
-You can keep it as a single script initially, then extract modules as it stabilizes.
+Current packaging keeps `sat_chatbot_memory_v2` as the primary executable entrypoint.
 
 ---
 
@@ -143,11 +139,19 @@ HA_API_SECRET=YOUR_LONG_LIVED_TOKEN
 HA_SATELLITE_ENTITY_ID=assist_satellite.your_satellite_entity
 
 # Ollama
-OLLAMA_HOST=http://localhost:11434
+OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_MODEL=llama3.1:latest
 ```
 
+`OLLAMA_BASE_URL` is the canonical setting. `OLLAMA_HOST` is still accepted as a legacy fallback.
+
 ### 5) Run the bot
+
+```bash
+testbot
+```
+
+Direct module execution still works:
 
 ```bash
 python src/testbot/sat_chatbot_memory_v2.py
@@ -285,7 +289,7 @@ Verify:
 
 Verify:
 
-* `OLLAMA_HOST` points to your Ollama service
+* `OLLAMA_BASE_URL` points to your Ollama service
 * model exists (`ollama list`)
 * embeddings model exists (`nomic-embed-text`)
 
