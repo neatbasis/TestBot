@@ -12,6 +12,20 @@ This repo is a “small-but-serious” starting point for building a context-awa
 
 The immediate packaging scope is intentionally narrow: ship one externally valuable loop first (`sat_chatbot_memory_v2`) and defer extra governance/tooling complexity until real usage friction appears.
 
+## v0 product contract
+
+**Target user story (v0):** As a Home Assistant satellite user, I can ask a single memory-grounded question and get a relevant answer sourced from what I previously said in this bot loop.
+
+**Success criteria (explicit):**
+- **Relevance:** the answer is grounded in retrieved memory cards and does not invent facts outside memory context.
+- **Latency:** typical end-to-end turn (input → retrieval → answer) should complete in about **5 seconds** on a healthy local HA + Ollama setup.
+- **Citation behavior:** when memory is used, responses include the referenced `doc_id` and `ts`; when memory is insufficient, the assistant replies **"I don't know from memory."**
+
+**Non-goals for v0 (deferred to v1+):**
+- Multi-path command routing beyond start/stop of the core loop.
+- User-facing memory editing controls (e.g., forget/delete flows).
+- Advanced retrieval controls, policy/governance layers, and tuning dashboards.
+
 ---
 
 ## What we’re building
@@ -158,6 +172,16 @@ python src/testbot/sat_chatbot_memory_v2.py
 ```
 
 Say “stop” to exit.
+
+---
+
+## Done definition (one-loop v0)
+
+- [ ] One primary loop is intact: **input → retrieval (+ rerank) → answer**.
+- [ ] No additional user command routes are required to complete the v0 story (besides stop/exit).
+- [ ] Replies are memory-grounded and include `doc_id` + `ts` when citing retrieved context.
+- [ ] If memory is insufficient, assistant uses: **"I don't know from memory."**
+- [ ] End-to-end loop remains responsive for local use (target ~5s typical turn).
 
 ---
 
