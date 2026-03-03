@@ -88,7 +88,8 @@ python src/testbot/sat_chatbot_memory_v2.py
 
 ## Validate
 - Run behavior scenarios: `behave`
-- Run unit/component tests: `pytest`
+- Run deterministic unit/component tests: `pytest -m "not live_smoke"`
+- Run optional live smoke profile: `pytest -m live_smoke`
 - Optional docs path validation: `python scripts/validate_markdown_paths.py`
 
 See [docs/testing.md](docs/testing.md) for test-layer policy and acceptance criteria.
