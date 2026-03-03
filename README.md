@@ -11,6 +11,13 @@ TestBot is a Home Assistant Assist Satellite chatbot that keeps local memory car
 - Documentation style guide: [docs/style-guide.md](docs/style-guide.md)
 - Canonical directive terms: [docs/directives/terms.md](docs/directives/terms.md)
 
+
+## Evaluation script notes
+
+- `scripts/eval_recall.py` intentionally reuses `testbot.time_parse.parse_target_time` and `testbot.rerank` scoring primitives so offline metrics track runtime behavior.
+- The script keeps a thin dict-based adapter for candidate scoring because eval fixtures store plain JSON candidates rather than LangChain `Document` objects.
+- This adapter is intentionally simplified: it mirrors the production score formula but does not instantiate full runtime document types.
+
 ## BDD-first policy
 
 This repository is BDD-first for stakeholder-visible behavior. New capabilities should begin as plain-language `.feature` scenarios, then be implemented to satisfy those scenarios with deterministic checks. If behavior is not expressed in executable BDD scenarios (and supported by deterministic lower-level tests), it is not considered complete.

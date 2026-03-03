@@ -3,67 +3,27 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
-import re
-from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from statistics import mean
 
+import arrow
 
-_DURATION_RE = re.compile(r"\b(?P<num>\d+)\s*(?P<unit>hour|hours|day|days|week|weeks|minute|minutes)\b")
-
-
-def parse_iso(ts: str) -> datetime:
-    return datetime.fromisoformat(ts).astimezone(UTC)
+from testbot.rerank import adaptive_sigma_fractional, time_weight
+from testbot.time_parse import parse_target_time as parse_target_time_shared
 
 
-def parse_target_time(text: str, *, now: datetime) -> datetime:
-    low = text.lower()
-
-    if "last night" in low:
-        return now - timedelta(hours=12)
-    if "earlier this week" in low:
-        return now - timedelta(days=3)
-
-    m = _DURATION_RE.search(low)
-    if m:
-        qty = int(m.group("num"))
-        unit = m.group("unit")
-        if unit.startswith("minute"):
-            delta = timedelta(minutes=qty)
-        elif unit.startswith("hour"):
-            delta = timedelta(hours=qty)
-        elif unit.startswith("day"):
-            delta = timedelta(days=qty)
-        else:
-            delta = timedelta(weeks=qty)
-
-        if "ago" in low or "earlier" in low:
-            return now - delta
-        if "from now" in low or "in " in low:
-            return now + delta
-
-    return now
+def parse_target_time(text: str, *, now: arrow.Arrow) -> arrow.Arrow:
+    """Thin adapter to keep eval parsing aligned with runtime parser."""
+    return parse_target_time_shared(text, now=now)
 
 
-def adaptive_sigma_fractional(*, now: datetime, target: datetime, frac: float = 0.25) -> float:
-    sigma_min = 10 * 60
-    sigma_max = 30 * 24 * 3600
-    d = abs((target - now).total_seconds())
-    sigma = frac * d
-    return max(sigma_min, min(sigma, sigma_max))
+def candidate_score(candidate: dict, *, target: arrow.Arrow, sigma_seconds: float) -> float:
+    """
+    Thin adapter over runtime rerank scoring primitives.
 
-
-def time_weight(doc_ts_iso: str, target: datetime, sigma_seconds: float) -> float:
-    try:
-        ts = parse_iso(doc_ts_iso)
-        dt = (ts - target).total_seconds()
-        return math.exp(-(dt * dt) / (2.0 * sigma_seconds * sigma_seconds))
-    except Exception:
-        return 0.0
-
-
-def combined_score(candidate: dict, *, target: datetime, sigma_seconds: float) -> float:
+    Intentionally simplified behavior: eval candidates are dicts with `sim_score` instead of
+    LangChain `Document` objects, so this adapter mirrors the runtime score formula directly.
+    """
     type_prior = 0.7 if candidate.get("type") == "reflection" else 1.0
     sim = float(candidate["sim_score"])
     tw = time_weight(candidate.get("ts", ""), target, sigma_seconds)
@@ -75,7 +35,7 @@ def load_cases(path: Path) -> list[dict]:
         return [json.loads(line) for line in f if line.strip()]
 
 
-def evaluate(cases: list[dict], *, top_k: int, idk_threshold: float, now: datetime) -> dict:
+def evaluate(cases: list[dict], *, top_k: int, idk_threshold: float, now: arrow.Arrow) -> dict:
     hit_count = 0
     memory_cases = 0
     ranks: list[int] = []
@@ -86,11 +46,11 @@ def evaluate(cases: list[dict], *, top_k: int, idk_threshold: float, now: dateti
         sigma = adaptive_sigma_fractional(now=now, target=target)
         ranked = sorted(
             case.get("candidates", []),
-            key=lambda c: combined_score(c, target=target, sigma_seconds=sigma),
+            key=lambda c: candidate_score(c, target=target, sigma_seconds=sigma),
             reverse=True,
         )
 
-        top_score = combined_score(ranked[0], target=target, sigma_seconds=sigma) if ranked else 0.0
+        top_score = candidate_score(ranked[0], target=target, sigma_seconds=sigma) if ranked else 0.0
         if top_score < idk_threshold:
             idk_count += 1
 
@@ -123,11 +83,12 @@ def main() -> None:
     parser.add_argument("--now", default="2026-03-10T11:00:00+00:00")
     args = parser.parse_args()
 
+    fixed_now = arrow.get(args.now)
     metrics = evaluate(
         load_cases(args.cases),
         top_k=args.top_k,
         idk_threshold=args.idk_threshold,
-        now=parse_iso(args.now),
+        now=fixed_now,
     )
     print(json.dumps(metrics, indent=2))
 
