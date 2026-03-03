@@ -17,6 +17,36 @@ This repository is BDD-first for stakeholder-visible behavior. New capabilities 
 
 The core response contract is memory-grounded output with citation evidence; guardrail checks enforce fallback behavior when confidence is insufficient.
 
+## Scope and roadmap contract
+
+### v0 (current, in contract)
+
+The v0 release contract is intentionally narrow:
+
+- Memory-grounded responses from local memory cards.
+- Citation evidence in factual answers.
+- Deterministic fallback behavior when confidence is insufficient.
+- BDD scenarios plus deterministic checks covering stakeholder-visible behavior.
+
+### v1+ (planned, out of v0 contract)
+
+The following are roadmap items and are **not** part of v0 acceptance:
+
+- Commands / Interaction patterns (planned).
+- Any expanded orchestration or UX features not explicitly listed in the v0 contract above.
+
+Treat v1+ items as experimental/planned until promoted into the explicit contract.
+
+## Done definition
+
+A change is "done" for v0 when:
+
+- It preserves the v0 contract above.
+- It is covered by executable BDD scenarios and deterministic checks.
+- It does not require v1+ planned features to pass acceptance.
+
+**Acceptance rule:** Anything outside the v0 contract must not be required for acceptance.
+
 ## Start here by role
 
 - **Stakeholder reviewer**
