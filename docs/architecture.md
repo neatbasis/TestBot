@@ -1,6 +1,19 @@
 # Architecture
 
-This document summarizes the v0 pipeline, memory-card model, and time-aware reranking strategy.
+## Who
+Engineers, maintainers, and technical reviewers who need to reason about pipeline behavior and change impact.
+
+## What
+The v0 memory-grounded pipeline (observe → encode → retrieve → rerank → answer), memory-card structures, and answer guardrails.
+
+## When
+Use this document when proposing pipeline changes, reviewing design tradeoffs, or debugging behavior that spans multiple stages.
+
+## Where
+Applies to the runtime flow implemented in `src/testbot/` and the behavior contract captured by `features/` scenarios.
+
+## Why
+These design decisions prioritize deterministic memory-grounded answers with explicit citation/fallback guardrails over broader but less reliable conversational behavior.
 
 ## Pipeline overview
 

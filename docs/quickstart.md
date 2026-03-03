@@ -1,6 +1,22 @@
 # Quickstart
 
-Use this guide to set up TestBot locally and run the v0 memory-grounded loop.
+## Who
+Operators responsible for running TestBot in a local or lab Home Assistant environment.
+
+## What
+Set up dependencies, configure environment variables, and start the v0 memory-grounded bot loop.
+
+## When
+Run this before first launch, after dependency upgrades, or when provisioning a new machine.
+
+## Where
+From the repository root (`/workspace/TestBot`) with access to:
+- Home Assistant REST API
+- an Assist Satellite entity
+- an Ollama endpoint
+
+## Why
+A consistent startup path reduces configuration drift and prevents runtime failures caused by missing models, missing environment variables, or incorrect entry commands.
 
 ## Prerequisites
 

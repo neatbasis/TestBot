@@ -1,6 +1,21 @@
 # Testing
 
-TestBot uses BDD as the primary contract for stakeholder-visible behavior and deterministic tests for fast, reliable feedback.
+## Who
+Developers and QA contributors validating behavior, scoring logic, and integration wiring.
+
+## What
+A layered test strategy: BDD for stakeholder-visible behavior, deterministic unit/component tests for logic, and optional live smoke checks for environment confidence.
+
+## When
+- **BDD (`behave`)**: before/with any user-visible behavior change and before merge.
+- **Unit/component (`pytest`)**: during implementation and in default local/CI runs.
+- **Live smoke**: after infra or deployment-relevant changes, run separately from default fast suites.
+
+## Where
+From the repository root with project dependencies installed. Prefer offline deterministic runs by default; only live smoke tests should require Home Assistant/Ollama connectivity.
+
+## Why
+This split keeps acceptance behavior explicit, speeds feedback loops, and avoids flaky default suites while still providing optional end-to-end confidence.
 
 ## BDD-first policy
 
@@ -27,7 +42,7 @@ features/
    └─ answer_contract_steps.py
 ```
 
-### 2) Pure unit tests
+### 2) Pure unit tests (`pytest`)
 
 Validate deterministic core logic with no model/network dependencies:
 
@@ -35,7 +50,7 @@ Validate deterministic core logic with no model/network dependencies:
 - Sigma adaptation and Gaussian weight computation
 - Rerank score composition and ordering
 
-### 3) Component tests with fakes
+### 3) Component tests with fakes (`pytest`)
 
 Test retrieval/answer pipeline wiring with deterministic stubs:
 
