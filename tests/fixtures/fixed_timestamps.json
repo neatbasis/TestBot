@@ -1,0 +1,4 @@
+{
+  "reference_now_utc": "2026-03-10T10:00:00+00:00",
+  "notes": "Used by deterministic BDD and pytest checks when temporal interpretation is needed."
+}

@@ -92,6 +92,28 @@ Run optional live smoke profile:
 pytest -m live_smoke
 ```
 
+
+## Deterministic fixture catalog
+
+Fixture files live in `eval/` (source eval patterns) and `tests/fixtures/` (test-owned snapshots):
+
+- `eval/cases.jsonl`: canonical scenario patterns (`case_id`, utterance, expected intent/doc, candidate sets).
+- `tests/fixtures/fixed_timestamps.json`: fixed reference clock for deterministic temporal checks.
+- `tests/fixtures/candidate_sets.jsonl`: selected candidate-set snapshots linked back to `source_case_id` in `eval/cases.jsonl`.
+
+### Naming convention
+
+- Use `kebab-case` ids with semantic prefixes:
+  - Eval cases: `case_id` such as `sleep-followup`, `no-memory-match`.
+  - Fixture snapshots: `fixture_id` such as `candidate-set-sleep-followup`.
+- Include `source_case_id` in fixture snapshots whenever data originates from `eval/cases.jsonl`.
+
+### Update policy (who / when / why)
+
+- **Who**: the code owner of retrieval/rerank behavior (or designated QA maintainer) updates fixtures in the same PR as behavior changes.
+- **When**: update fixtures when expected retrieval intent/doc changes, candidate composition changes materially, or a new stakeholder-visible memory scenario is added.
+- **Why**: keep BDD and unit checks deterministic, traceable to the same canonical patterns, and resistant to drift/flakiness.
+
 ## Acceptance criteria checklist
 
 - [ ] Stakeholder-visible behavior is covered by BDD scenarios.

@@ -2,23 +2,19 @@ from __future__ import annotations
 
 from behave import given, then, when
 
+from testbot.eval_fixtures import best_candidate_doc_id, cases_by_id
+
 FALLBACK = "I don't know from memory."
 
 
-FIXTURES = {
-    "when is garbage pickup?": {
-        "answer": "Garbage pickup is every Tuesday at 7:00 AM.",
-        "doc_id": "mem-garbage-001",
-        "ts": "2024-10-01T09:00:00Z",
-    }
-}
-
-
-def _answer_from_memory(query: str) -> str:
-    hit = FIXTURES.get(query.strip().lower())
-    if not hit:
+def _answer_from_case(case_id: str, loaded_cases) -> str:
+    case = loaded_cases[case_id]
+    chosen_doc_id = best_candidate_doc_id(case)
+    if not chosen_doc_id:
         return FALLBACK
-    return f"{hit['answer']} (doc_id: {hit['doc_id']}, ts: {hit['ts']})"
+
+    chosen = next(candidate for candidate in case.candidates if candidate["doc_id"] == chosen_doc_id)
+    return f"{chosen['text']} (doc_id: {chosen['doc_id']}, ts: {chosen['ts']})"
 
 
 @given("a deterministic in-memory recall harness")
@@ -27,15 +23,16 @@ def step_given_deterministic_harness(context) -> None:
     context.live_dependencies = {"home_assistant": False, "ollama": False}
 
 
-@given("deterministic memory fixtures are loaded")
-def step_given_fixtures(context) -> None:
-    context.fixtures = FIXTURES
+@given('eval cases are loaded from "{cases_path}"')
+def step_given_cases_loaded(context, cases_path: str) -> None:
+    del cases_path  # path is fixed via shared loader until alternate case files are needed.
+    context.eval_cases = cases_by_id()
 
 
-@when('the user asks "{question}"')
-def step_when_user_asks(context, question: str) -> None:
-    context.question = question
-    context.answer = _answer_from_memory(question)
+@when('the user asks about eval case "{case_id}"')
+def step_when_user_asks_eval_case(context, case_id: str) -> None:
+    context.case_id = case_id
+    context.answer = _answer_from_case(case_id, context.eval_cases)
 
 
 @then("the assistant returns a memory-grounded answer")
