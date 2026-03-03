@@ -434,7 +434,7 @@ def render_context(docs: list[Document], *, limit_chars: int = 5000) -> str:
     return "".join(chunks).strip()
 
 
-def main() -> int:
+def main() -> None:
     cfg = Config.from_env()
 
     api_url = cfg.HA_API_URL
@@ -443,14 +443,13 @@ def main() -> int:
 
     if not api_url or not token:
         print("Missing HA_API_URL or HA_API_SECRET in .env", file=sys.stderr)
-        return 2
+        return
     if not entity_id:
         print("Missing HA_SATELLITE_ENTITY_ID in .env", file=sys.stderr)
-        return 2
+        return
 
-    # Ollama config: adjust to your Config fields if named differently
-    ollama_host = getattr(cfg, "OLLAMA_HOST", None) or getattr(cfg, "OLLAMA_BASE_URL", None) or "http://localhost:11434"
-    ollama_model = getattr(cfg, "OLLAMA_MODEL", None) or "llama3.1:latest"
+    ollama_host = cfg.OLLAMA_BASE_URL
+    ollama_model = cfg.OLLAMA_MODEL
 
     llm = ChatOllama(model=ollama_model, base_url=ollama_host, temperature=0.0)
     embeddings = OllamaEmbeddings(model="nomic-embed-text", base_url=ollama_host)
@@ -628,8 +627,8 @@ def main() -> int:
                 },
             )
 
-    return 0
+    return
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    main()
