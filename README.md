@@ -8,6 +8,7 @@ TestBot is a Home Assistant Assist Satellite chatbot that keeps local memory car
 - Architecture overview: [docs/architecture.md](docs/architecture.md)
 - Testing approach: [docs/testing.md](docs/testing.md)
 - Operations notes: [docs/ops.md](docs/ops.md)
+- Documentation style guide: [docs/style-guide.md](docs/style-guide.md)
 
 ## BDD-first policy
 
@@ -34,3 +35,4 @@ This repository is BDD-first for stakeholder-visible behavior. New capabilities 
 | Core pipeline and retrieval design | `docs/architecture.md` | Observe→encode→retrieve→rerank→answer flow, memory cards, rerank overview |
 | BDD and deterministic testing strategy | `docs/testing.md` | Behavior contracts, test layers, acceptance criteria/checklists |
 | Logs and operational troubleshooting | `docs/ops.md` | Session log schema, common failures, environment notes |
+| Documentation writing standards | `docs/style-guide.md` | Clarity/concision/consistency rules, required section questions, docs drift checks, review cadence |
