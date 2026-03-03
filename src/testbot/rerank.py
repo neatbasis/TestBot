@@ -28,6 +28,22 @@ def time_weight(doc_ts_iso: str, target: arrow.Arrow, sigma_seconds: float) -> f
         return 0.0
 
 
+def similarity_with_time_and_type_score(
+    *,
+    sim_score: float,
+    doc_type: str,
+    doc_ts_iso: str,
+    target: arrow.Arrow,
+    sigma_seconds: float,
+) -> float:
+    type_prior = 0.7 if doc_type == "reflection" else 1.0
+    tw = time_weight(doc_ts_iso, target, sigma_seconds)
+
+    # combine: similarity * time * type
+    # keep some similarity even if time weight is weak
+    return type_prior * float(sim_score) * (0.25 + 0.75 * tw)
+
+
 def rerank_docs_with_time_and_type(
     docs_and_scores: list[tuple[Document, float]],
     *,
@@ -50,14 +66,13 @@ def rerank_docs_with_time_and_type(
         if doc.metadata.get("source_doc_id") in exclude_source_ids:
             continue
 
-        t = doc.metadata.get("type", "")
-        type_prior = 0.7 if t == "reflection" else 1.0
-
-        tw = time_weight(doc.metadata.get("ts", ""), target, sigma_seconds)
-
-        # combine: similarity * time * type
-        # keep some similarity even if time weight is weak
-        score = type_prior * float(sim) * (0.25 + 0.75 * tw)
+        score = similarity_with_time_and_type_score(
+            sim_score=sim,
+            doc_type=doc.metadata.get("type", ""),
+            doc_ts_iso=doc.metadata.get("ts", ""),
+            target=target,
+            sigma_seconds=sigma_seconds,
+        )
         scored.append((score, doc))
 
     scored.sort(key=lambda x: x[0], reverse=True)

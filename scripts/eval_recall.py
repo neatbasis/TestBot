@@ -8,7 +8,7 @@ from statistics import mean
 
 import arrow
 
-from testbot.rerank import adaptive_sigma_fractional, time_weight
+from testbot.rerank import adaptive_sigma_fractional, similarity_with_time_and_type_score
 from testbot.time_parse import parse_target_time as parse_target_time_shared
 
 
@@ -21,13 +21,17 @@ def candidate_score(candidate: dict, *, target: arrow.Arrow, sigma_seconds: floa
     """
     Thin adapter over runtime rerank scoring primitives.
 
-    Intentionally simplified behavior: eval candidates are dicts with `sim_score` instead of
-    LangChain `Document` objects, so this adapter mirrors the runtime score formula directly.
+    Intentionally simplified behavior: eval candidates are dicts from JSON fixtures instead
+    of LangChain `Document` objects. This adapter only maps fixture field names to the runtime
+    scoring function.
     """
-    type_prior = 0.7 if candidate.get("type") == "reflection" else 1.0
-    sim = float(candidate["sim_score"])
-    tw = time_weight(candidate.get("ts", ""), target, sigma_seconds)
-    return type_prior * sim * (0.25 + 0.75 * tw)
+    return similarity_with_time_and_type_score(
+        sim_score=float(candidate["sim_score"]),
+        doc_type=candidate.get("type", ""),
+        doc_ts_iso=candidate.get("ts", ""),
+        target=target,
+        sigma_seconds=sigma_seconds,
+    )
 
 
 def load_cases(path: Path) -> list[dict]:

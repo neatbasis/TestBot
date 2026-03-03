@@ -14,7 +14,7 @@ TestBot is a Home Assistant Assist Satellite chatbot that keeps local memory car
 
 ## Evaluation script notes
 
-- `scripts/eval_recall.py` intentionally reuses `testbot.time_parse.parse_target_time` and `testbot.rerank` scoring primitives so offline metrics track runtime behavior.
+- `scripts/eval_recall.py` intentionally reuses `testbot.time_parse.parse_target_time` and `testbot.rerank` scoring primitives (including the shared similarity/time/type score function) so offline metrics track runtime behavior.
 - The script keeps a thin dict-based adapter for candidate scoring because eval fixtures store plain JSON candidates rather than LangChain `Document` objects.
 - This adapter is intentionally simplified: it mirrors the production score formula but does not instantiate full runtime document types.
 
