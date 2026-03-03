@@ -2,10 +2,12 @@
 from __future__ import annotations
 
 import math
+import json
 import re
 import sys
 import uuid
 from collections import deque
+from pathlib import Path
 from typing import Optional
 
 import arrow
@@ -86,6 +88,17 @@ def store_doc(store: InMemoryVectorStore, *, doc_id: str, content: str, metadata
     """
     doc = Document(id=doc_id, page_content=content, metadata=metadata)
     store.add_documents([doc])
+
+
+def append_session_log(event: str, payload: dict, *, log_path: Path = Path("./logs/session.jsonl")) -> None:
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    row = {
+        "ts": utc_now_iso(),
+        "event": event,
+        **payload,
+    }
+    with log_path.open("a", encoding="utf-8") as f:
+        f.write(json.dumps(row, ensure_ascii=False) + "\n")
 
 
 # ---------------------------
@@ -490,6 +503,14 @@ def main() -> None:
                 sat_say(client, entity_id, "I heard silence. Try again.")
                 continue
 
+            append_session_log(
+                "user_utterance_ingest",
+                {
+                    "channel": "satellite",
+                    "utterance": utterance,
+                },
+            )
+
             low = utterance.lower()
             if low in {"stop", "quit", "exit"}:
                 sat_say(client, entity_id, "Stopping. Bye.")
@@ -550,13 +571,37 @@ def main() -> None:
             # 2) Retrieve + time-aware rerank (FIXED: handle tuples)
             # -----------------------
             query = llm.invoke(QUERY_REWRITE_PROMPT.format_messages(input=utterance)).content.strip() or utterance
+            append_session_log("query_rewrite_output", {"utterance": utterance, "query": query})
 
             # IMPORTANT: returns List[Tuple[Document, float]]
             docs_and_scores = store.similarity_search_with_score(query, k=12)
+            append_session_log(
+                "retrieval_candidates",
+                {
+                    "query": query,
+                    "candidate_count": len(docs_and_scores),
+                    "top_candidates": [
+                        {
+                            "doc_id": (doc.id or doc.metadata.get("doc_id") or ""),
+                            "score": float(score),
+                        }
+                        for doc, score in docs_and_scores[:4]
+                    ],
+                },
+            )
 
             now = arrow.utcnow()
             target = parse_target_time(utterance, now=now)
             sigma = adaptive_sigma_fractional(now=now, target=target, frac=0.25)
+            append_session_log(
+                "time_target_parse",
+                {
+                    "utterance": utterance,
+                    "now_ts": now.isoformat(),
+                    "target_ts": target.isoformat(),
+                    "sigma_seconds": sigma,
+                },
+            )
 
             hits = rerank_docs_with_time_and_type(
                 docs_and_scores,
@@ -580,6 +625,18 @@ def main() -> None:
                 context=context_str,
             )
             reply = (llm.invoke(msgs).content or "").strip() or "I don't know from memory."
+            answer_mode = "dont-know" if reply == "I don't know from memory." else "memory-grounded"
+            append_session_log(
+                "final_answer_mode",
+                {
+                    "mode": answer_mode,
+                    "query": query,
+                    "retrieved_docs": [
+                        (d.id or d.metadata.get("doc_id") or "")
+                        for d in hits
+                    ],
+                },
+            )
 
             sat_say(client, entity_id, reply)
 
