@@ -11,6 +11,8 @@ from testbot.pipeline_state import CandidateHit, PipelineState
 
 FALLBACK_ANSWER = "I don't know from memory."
 DENY_ANSWER = "I can't comply with that request."
+TRANSITION_VALIDATION_SCHEMA_VERSION = 2
+
 REQUIRED_ALIGNMENT_DIMENSIONS = (
     "factual_grounding_reliability",
     "safety_compliance_strictness",
@@ -217,6 +219,7 @@ def append_transition_validation_log(
     row = {
         "ts": utc_now_iso(),
         "event": "stage_transition_validation",
+        "schema_version": TRANSITION_VALIDATION_SCHEMA_VERSION,
         **result.to_dict(),
     }
     with log_path.open("a", encoding="utf-8") as f:

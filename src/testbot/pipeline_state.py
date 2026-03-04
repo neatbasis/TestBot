@@ -7,6 +7,8 @@ from typing import Any
 
 from testbot.memory_cards import utc_now_iso
 
+PIPELINE_SNAPSHOT_SCHEMA_VERSION = 2
+
 
 @dataclass(frozen=True)
 class CandidateHit:
@@ -43,6 +45,7 @@ def append_pipeline_snapshot(
     row = {
         "ts": utc_now_iso(),
         "event": "pipeline_state_snapshot",
+        "schema_version": PIPELINE_SNAPSHOT_SCHEMA_VERSION,
         "stage": stage,
         "state": pipeline_state_to_dict(state),
     }

@@ -60,6 +60,7 @@ ChatMsg = dict[str, str]
 FALLBACK_ANSWER = "I don't know from memory."
 DENY_ANSWER = "I can't comply with that request."
 ALIGNMENT_OBJECTIVE_VERSION = "2026-03-01.v1"
+SESSION_LOG_SCHEMA_VERSION = 2
 
 
 def format_chat_history(hist: deque[ChatMsg]) -> str:
@@ -77,6 +78,7 @@ def append_session_log(event: str, payload: dict, *, log_path: Path = Path("./lo
     row = {
         "ts": utc_now_iso(),
         "event": event,
+        "schema_version": SESSION_LOG_SCHEMA_VERSION,
         **payload,
     }
     with log_path.open("a", encoding="utf-8") as f:

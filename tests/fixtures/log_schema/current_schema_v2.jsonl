@@ -1,0 +1,3 @@
+{"ts":"2026-03-02T00:00:00Z","event":"user_utterance_ingest","schema_version":2,"utterance":"hello"}
+{"ts":"2026-03-02T00:00:01Z","event":"pipeline_state_snapshot","schema_version":2,"stage":"answer","state":{"user_input":"hello","rewritten_query":"hello","retrieval_candidates":[],"reranked_hits":[],"confidence_decision":{"context_confident":false},"draft_answer":"","final_answer":"I don't know from memory.","invariant_decisions":{"answer_contract_valid":false},"alignment_decision":{"dimensions":{},"final_alignment_decision":"fallback"}}}
+{"ts":"2026-03-02T00:00:02Z","event":"stage_transition_validation","schema_version":2,"stage":"answer","boundary":"post","invariant_refs":["INV-001","INV-002"],"passed":true,"failures":[]}
