@@ -14,3 +14,14 @@
 - `BDD-AC-01` → `features/answer_contract.feature` → `Scenario: rejection of uncited factual response from eval pattern`
 - `BDD-MR-01` → `features/memory_recall.feature` → `Scenario: cited memory-grounded answer path`
 - `BDD-MR-02` → `features/memory_recall.feature` → `Scenario: exact fallback path`
+
+
+## Stage transition contracts
+
+| Stage | Preconditions | Postconditions | Invariant linkage |
+|---|---|---|---|
+| `observe` | `user_input` is present and non-empty before processing begins. | Canonical state remains initialized with the same non-empty `user_input`. | `INV-002` (fallback flow is only meaningful for non-empty user turns). |
+| `encode` | `user_input` is present. | `rewritten_query` is present and non-empty. | `INV-002` (downstream confidence/fallback logic relies on a query entering retrieval). |
+| `retrieve` | `rewritten_query` is present. | `retrieval_candidates` is a scored candidate list (`doc_id`, `score`, `ts`, `card_type`) shape. | `INV-002` (insufficient context is measured from retrieval outputs). |
+| `rerank` | `retrieval_candidates` already matches scored candidate shape. | `reranked_hits` keeps scored candidate shape and `confidence_decision.context_confident` is explicitly boolean. | `INV-002` (exact fallback path is keyed by confidence decision). |
+| `answer` | `confidence_decision.context_confident` is explicitly boolean. | `invariant_decisions` is recorded, `INV-001` citation contract is enforced, and `INV-002` exact fallback behavior is enforced whenever confidence is insufficient, draft is empty, or citation checks fail. | `INV-001`, `INV-002`. |

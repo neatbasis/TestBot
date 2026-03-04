@@ -1,10 +1,27 @@
 from __future__ import annotations
 
+import re
+
 from behave import given, then, when
 
 from testbot.eval_fixtures import best_candidate_doc_id, cases_by_id
+from testbot.pipeline_state import CandidateHit, PipelineState
+from testbot.stage_transitions import (
+    validate_answer_post,
+    validate_answer_pre,
+    validate_retrieve_post,
+    validate_retrieve_pre,
+)
 
 FALLBACK = "I don't know from memory."
+CITATION_PATTERN = re.compile(r"doc_id\s*[:=]\s*[^,\]\)\n]+.*?ts\s*[:=]\s*[^,\]\)\n]+", re.IGNORECASE)
+
+
+def _validate_answer_contract(text: str) -> bool:
+    normalized = (text or "").strip()
+    if not normalized or normalized == FALLBACK:
+        return True
+    return bool(CITATION_PATTERN.search(text or ""))
 
 
 def _answer_from_case(case_id: str, loaded_cases) -> str:
@@ -15,6 +32,28 @@ def _answer_from_case(case_id: str, loaded_cases) -> str:
 
     chosen = next(candidate for candidate in case.candidates if candidate["doc_id"] == chosen_doc_id)
     return f"{chosen['text']} (doc_id: {chosen['doc_id']}, ts: {chosen['ts']})"
+
+
+def _build_stage_state(case_id: str, loaded_cases, answer: str) -> PipelineState:
+    case = loaded_cases[case_id]
+    candidates = [
+        CandidateHit(doc_id=candidate["doc_id"], score=float(candidate["sim_score"]), ts=str(candidate["ts"]), card_type="memory")
+        for candidate in case.candidates
+    ]
+    context_confident = bool(candidates)
+    draft_answer = "" if answer == FALLBACK else answer
+    return PipelineState(
+        user_input=case.utterance,
+        rewritten_query=case.utterance,
+        retrieval_candidates=candidates,
+        reranked_hits=candidates[:4],
+        confidence_decision={"context_confident": context_confident},
+        draft_answer=draft_answer,
+        final_answer=answer,
+        invariant_decisions={
+            "answer_contract_valid": _validate_answer_contract(draft_answer),
+        },
+    )
 
 
 @given("a deterministic in-memory recall harness")
@@ -33,6 +72,17 @@ def step_given_cases_loaded(context, cases_path: str) -> None:
 def step_when_user_asks_eval_case(context, case_id: str) -> None:
     context.case_id = case_id
     context.answer = _answer_from_case(case_id, context.eval_cases)
+    context.pipeline_state = _build_stage_state(case_id, context.eval_cases, context.answer)
+
+    context.retrieve_pre_check = validate_retrieve_pre(context.pipeline_state)
+    context.retrieve_post_check = validate_retrieve_post(context.pipeline_state)
+    context.answer_pre_check = validate_answer_pre(context.pipeline_state)
+    context.answer_post_check = validate_answer_post(context.pipeline_state)
+
+    assert context.retrieve_pre_check.passed, f"retrieve.pre failed: {context.retrieve_pre_check.failures}"
+    assert context.retrieve_post_check.passed, f"retrieve.post failed: {context.retrieve_post_check.failures}"
+    assert context.answer_pre_check.passed, f"answer.pre failed: {context.answer_pre_check.failures}"
+    assert context.answer_post_check.passed, f"answer.post failed: {context.answer_post_check.failures}"
 
 
 @then("the assistant returns a memory-grounded answer")
