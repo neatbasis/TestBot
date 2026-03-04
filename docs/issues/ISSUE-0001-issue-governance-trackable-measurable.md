@@ -4,7 +4,7 @@
 - **Title:** Establish measurable and trackable in-repo issue governance
 - **Status:** open
 - **Severity:** red
-- **Owner:** testbot-maintainers
+- **Owner:** Sebastian Mäki (@NeatBasis, Engineering Manager & Docs Governance Lead)
 - **Created:** 2026-03-04
 - **Target Sprint:** Sprint 1
 - **Principle Alignment:** contract-first, invariant-driven, traceable, ci-enforced
@@ -33,6 +33,14 @@ The project lacks a canonical, measurable, and auditable issue workflow inside t
 4. Issue lifecycle and severity policy are explicit and reviewable in-repo.
 
 ## Work Plan
+
+### Sprint milestones
+
+- **Sprint 1 (Governance baseline):** Sebastian Mäki (@NeatBasis, Engineering Manager & Docs Governance Lead) publishes `docs/issues.md` with canonical fields and lifecycle definitions.
+- **Sprint 1 (Escalation visibility):** Sebastian Mäki (@NeatBasis, Release Manager) establishes and maintains `docs/issues/RED_TAG.md` with all active red issues linked by ID.
+- **Sprint 2 (Quality and audit hardening):** Sebastian Mäki (@NeatBasis, Quality Lead) validates issue templates include measurable acceptance criteria and adds verification examples for reproducible checks.
+
+### Execution tasks
 
 - Create workflow policy file.
 - Create red-tag index file.

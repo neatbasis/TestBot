@@ -71,7 +71,7 @@ Acceptance criteria must be binary/verifiable (pass/fail) and reference concrete
 
 1. **Capture** issue in `docs/issues/` with canonical fields.
 2. **Classify** severity + principle alignment.
-3. **Prioritize** in sprint planning.
+3. **Prioritize** in sprint planning, including a **red-tag review checkpoint** with evidence captured in `docs/issues/evidence/sprint-<NN>-red-tag-review.md`.
 4. **Execute** with linked commits.
 5. **Verify** against acceptance criteria.
 6. **Close** with evidence and residual risk note.

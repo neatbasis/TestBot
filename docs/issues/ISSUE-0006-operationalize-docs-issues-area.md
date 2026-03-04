@@ -4,7 +4,7 @@
 - **Title:** Operationalize `docs/issues/` and `docs/issues.md` as governed project infrastructure
 - **Status:** open
 - **Severity:** red
-- **Owner:** testbot-maintainers
+- **Owner:** Sebastian Mäki (@NeatBasis, Release Manager & Process Adoption Lead)
 - **Created:** 2026-03-04
 - **Target Sprint:** Sprint 1
 - **Principle Alignment:** contract-first, traceable, ci-enforced
@@ -31,6 +31,14 @@ A new in-repo issue system was introduced and must be formalized to avoid becomi
 4. First sprint includes explicit triage of seeded issues.
 
 ## Work Plan
+
+### Sprint milestones
+
+- **Sprint 1 (Process adoption kickoff):** Sebastian Mäki (@NeatBasis, Release Manager & Process Adoption Lead) updates contributor-facing docs to reference `docs/issues.md` as the canonical workflow.
+- **Sprint 1 (PR enforcement):** Sebastian Mäki (@NeatBasis, Engineering Manager & Docs Governance Lead) adds explicit issue-linking expectations in PR guidance and review checklists.
+- **Sprint 2 (Operational cadence):** Sebastian Mäki (@NeatBasis, Quality Lead) runs recurring sprint triage for `severity: red` items and publishes evidence artifacts under `docs/issues/evidence/`.
+
+### Execution tasks
 
 - Add discoverability links from README.
 - Integrate issue-link expectation into contribution guidance.
