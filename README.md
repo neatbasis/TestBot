@@ -118,6 +118,15 @@ python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main
 - Required governance validation: `python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main`
 - Optional docs path validation: `python scripts/validate_markdown_paths.py`
 
+### Quick contributor validation
+
+For non-live code changes, use this offline/deterministic validation sequence in exact order:
+
+1. `pip install -e .[dev]`
+2. `behave`
+3. `pytest -m "not live_smoke"`
+4. `python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main`
+
 See [docs/testing.md](docs/testing.md) for test-layer policy and acceptance criteria.
 
 ## Contribute

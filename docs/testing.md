@@ -66,6 +66,15 @@ Run separately against real Home Assistant + Ollama for environment confidence. 
 
 Use the following canonical commands from repository root.
 
+### Quick contributor validation
+
+For non-live changes, this is the expected offline/deterministic contributor sequence in exact order:
+
+1. `pip install -e .[dev]`
+2. `behave`
+3. `pytest -m "not live_smoke"`
+4. `python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main`
+
 | Test layer | Canonical command | Runtime dependency | CI gate level | Expected runtime | Pass criteria |
 | --- | --- | --- | --- | --- | --- |
 | BDD acceptance (`behave`) | `behave` _(requires `pip install -e .[dev]` first)_ | Python dev extras (`behave`) and local deterministic fixtures | **Required (merge gate)** | ~10-60s for current feature set | Exit code `0`; no failed/undefined steps; acceptance scenarios for changed behavior pass. |
