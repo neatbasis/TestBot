@@ -137,5 +137,7 @@ For non-live code changes, use this offline/deterministic validation sequence in
 
 See [docs/testing.md](docs/testing.md) for test-layer policy and acceptance criteria.
 
+The canonical definition of **"all systems green"** is the stakeholder obligations matrix in [docs/directives/stakeholder-obligations.md](docs/directives/stakeholder-obligations.md).
+
 ## Contribute
 Please follow [CONTRIBUTING.md](CONTRIBUTING.md) and use [docs/style-guide.md](docs/style-guide.md) for documentation style.

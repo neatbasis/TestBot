@@ -116,6 +116,12 @@ python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main
 ```
 
 
+## All-systems-green definition
+
+The canonical merge-readiness definition of **"all systems green"** is the stakeholder obligations matrix in [docs/directives/stakeholder-obligations.md](directives/stakeholder-obligations.md).
+
+Use the matrix as the authoritative map from stakeholder obligations to required deterministic evidence.
+
 ## Rerank objective under test (canonical)
 
 Named objective: `semantic_temporal_type_v1`.
