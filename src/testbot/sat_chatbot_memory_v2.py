@@ -57,6 +57,10 @@ def sat_say(client: Client, entity_id: str, text: str) -> None:
 # ---------------------------
 ChatMsg = dict[str, str]
 
+FALLBACK_ANSWER = "I don't know from memory."
+DENY_ANSWER = "I can't comply with that request."
+ALIGNMENT_OBJECTIVE_VERSION = "2026-03-01.v1"
+
 
 def format_chat_history(hist: deque[ChatMsg]) -> str:
     lines: list[str] = []
@@ -149,25 +153,41 @@ def stage_answer(llm: ChatOllama, state: PipelineState, *, chat_history: deque[C
     history_str = format_chat_history(chat_history)
     msgs = ANSWER_PROMPT.format_messages(input=state.user_input, chat_history=history_str, context=context_str)
 
-    if not state.confidence_decision.get("context_confident", False):
+    if is_unsafe_user_request(state.user_input):
         draft_answer = ""
-        final_answer = "I don't know from memory."
+        final_answer = DENY_ANSWER
+    elif not state.confidence_decision.get("context_confident", False):
+        draft_answer = ""
+        final_answer = FALLBACK_ANSWER
     else:
         draft_answer = (llm.invoke(msgs).content or "").strip()
         if not draft_answer:
-            final_answer = "I don't know from memory."
+            final_answer = FALLBACK_ANSWER
         elif validate_answer_contract(draft_answer):
             final_answer = draft_answer
         else:
-            final_answer = "I don't know from memory."
+            final_answer = FALLBACK_ANSWER
+
+    alignment_decision = evaluate_alignment_decision(
+        user_input=state.user_input,
+        draft_answer=draft_answer,
+        final_answer=final_answer,
+        confidence_decision=state.confidence_decision,
+    )
 
     invariant_decisions = {
         "response_contains_claims": response_contains_claims(draft_answer),
         "has_required_memory_citation": has_required_memory_citation(draft_answer),
         "answer_contract_valid": validate_answer_contract(draft_answer),
-        "answer_mode": "dont-know" if final_answer == "I don't know from memory." else "memory-grounded",
+        "answer_mode": "deny" if final_answer == DENY_ANSWER else ("dont-know" if final_answer == FALLBACK_ANSWER else "memory-grounded"),
     }
-    return replace(state, draft_answer=draft_answer, final_answer=final_answer, invariant_decisions=invariant_decisions)
+    return replace(
+        state,
+        draft_answer=draft_answer,
+        final_answer=final_answer,
+        invariant_decisions=invariant_decisions,
+        alignment_decision=alignment_decision,
+    )
 
 
 def _validate_and_log_transition(result) -> None:
@@ -281,6 +301,49 @@ def validate_answer_contract(text: str) -> bool:
     if not response_contains_claims(text):
         return True
     return has_required_memory_citation(text)
+
+
+def is_unsafe_user_request(text: str) -> bool:
+    lowered = (text or "").lower()
+    return bool(re.search(r"\b(bypass|exploit|weapon|harm|poison|malware)\b", lowered))
+
+
+def evaluate_alignment_decision(
+    *,
+    user_input: str,
+    draft_answer: str,
+    final_answer: str,
+    confidence_decision: dict[str, object],
+) -> dict[str, object]:
+    has_claims = response_contains_claims(draft_answer)
+    has_citation = has_required_memory_citation(draft_answer)
+    context_confident = bool(confidence_decision.get("context_confident", False))
+    unsafe_request = is_unsafe_user_request(user_input)
+
+    factual_grounding_reliability = 1.0 if (not has_claims or (has_citation and context_confident)) else 0.0
+    safety_compliance_strictness = 0.0 if (unsafe_request and final_answer != DENY_ANSWER) else 1.0
+    response_utility = 1.0 if final_answer not in {"", FALLBACK_ANSWER, DENY_ANSWER} else 0.4
+    cost_latency_budget = 1.0
+
+    if safety_compliance_strictness < 1.0:
+        final_alignment_decision = "deny"
+    elif factual_grounding_reliability < 1.0:
+        final_alignment_decision = "fallback"
+    elif response_utility < 0.5:
+        final_alignment_decision = "fallback"
+    else:
+        final_alignment_decision = "allow"
+
+    return {
+        "objective_version": ALIGNMENT_OBJECTIVE_VERSION,
+        "dimensions": {
+            "factual_grounding_reliability": factual_grounding_reliability,
+            "safety_compliance_strictness": safety_compliance_strictness,
+            "response_utility": response_utility,
+            "cost_latency_budget": cost_latency_budget,
+        },
+        "final_alignment_decision": final_alignment_decision,
+    }
 
 
 def main() -> None:

@@ -10,6 +10,13 @@ from testbot.pipeline_state import CandidateHit, PipelineState
 
 
 FALLBACK_ANSWER = "I don't know from memory."
+DENY_ANSWER = "I can't comply with that request."
+REQUIRED_ALIGNMENT_DIMENSIONS = (
+    "factual_grounding_reliability",
+    "safety_compliance_strictness",
+    "response_utility",
+    "cost_latency_budget",
+)
 
 
 @dataclass(frozen=True)
@@ -160,18 +167,41 @@ def validate_answer_post(state: PipelineState) -> TransitionCheckResult:
         checks=[
             ("invariant_decisions_recorded", lambda s: isinstance(s.invariant_decisions, dict) and bool(s.invariant_decisions)),
             (
+                "alignment_decision_recorded",
+                lambda s: isinstance(s.alignment_decision, dict)
+                and isinstance(s.alignment_decision.get("dimensions"), dict)
+                and isinstance(s.alignment_decision.get("final_alignment_decision"), str),
+            ),
+            (
+                "alignment_dimensions_present",
+                lambda s: all(
+                    isinstance(s.alignment_decision.get("dimensions", {}).get(dim), float)
+                    for dim in REQUIRED_ALIGNMENT_DIMENSIONS
+                ),
+            ),
+            (
                 "inv_001_contract_enforced",
                 lambda s: bool(s.invariant_decisions.get("answer_contract_valid", False)) or s.final_answer == FALLBACK_ANSWER,
             ),
             (
                 "inv_002_exact_fallback_enforced",
-                lambda s: s.final_answer == FALLBACK_ANSWER
+                lambda s: s.final_answer in {FALLBACK_ANSWER, DENY_ANSWER}
                 if (
                     not s.confidence_decision.get("context_confident", False)
                     or not (s.draft_answer or "").strip()
                     or not s.invariant_decisions.get("answer_contract_valid", False)
                 )
                 else True,
+            ),
+            (
+                "alignment_decision_consistent",
+                lambda s: s.alignment_decision.get("final_alignment_decision") == "deny"
+                if s.final_answer == DENY_ANSWER
+                else (
+                    s.alignment_decision.get("final_alignment_decision") == "fallback"
+                    if s.final_answer == FALLBACK_ANSWER
+                    else s.alignment_decision.get("final_alignment_decision") == "allow"
+                ),
             ),
         ],
         state=state,
