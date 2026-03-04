@@ -4,7 +4,7 @@
 Engineers, maintainers, and technical reviewers who need to reason about pipeline behavior and change impact.
 
 ## What
-The v0 memory-grounded pipeline (observe → encode → retrieve → rerank → answer), memory-card structures, and answer guardrails.
+The v0 memory-grounded pipeline (observe → intent → encode → retrieve → rerank → answer), memory-card structures, and answer guardrails.
 
 ## When
 Use this document when proposing pipeline changes, reviewing design tradeoffs, or debugging behavior that spans multiple stages.
@@ -19,19 +19,31 @@ These design decisions prioritize deterministic memory-grounded answers with exp
 
 TestBot follows a single loop designed for memory-grounded answers:
 
+```mermaid
+flowchart LR
+    observe[Observe] --> intent[Intent]
+    intent --> encode[Encode memory]
+    encode --> retrieve[Retrieve]
+    retrieve --> rerank[Rerank]
+    rerank --> answer[Answer]
+```
+
 1. **Observe**
    - Receive user utterance from Home Assistant satellite.
    - Capture assistant response for history.
-2. **Encode memory**
+2. **Intent**
+   - Classify utterance into `IntentType` using deterministic rules.
+   - Route memory-recall, meta-conversation, control, and knowledge requests predictably.
+3. **Encode memory**
    - Persist user/assistant utterances as structured cards.
    - Generate and store reflection cards linked to source utterances.
-3. **Retrieve**
+4. **Retrieve**
    - Rewrite user input into a retrieval-oriented query.
    - Fetch top-k memory candidates from vector search.
-4. **Rerank**
+5. **Rerank**
    - Infer target time from natural language cues.
    - Apply Gaussian time weighting centered on inferred target time.
-5. **Answer**
+6. **Answer**
    - Provide recent chat window + memory context to the answer stage.
    - Enforce memory-only answering and citation contract.
 
@@ -125,7 +137,7 @@ Each candidate exposes `semantic_score`, `temporal_gaussian_weight`, `temporal_b
 
 ## Architecture acceptance criteria
 
-- [ ] Observe→encode→retrieve→rerank→answer flow remains intact.
+- [ ] Observe→intent→encode→retrieve→rerank→answer flow remains intact.
 - [ ] Reflection cards always include `source_doc_id` linkage.
 - [ ] Time-aware rerank is applied when target time can be inferred.
 - [ ] Citation contract is enforced before final output is returned.
