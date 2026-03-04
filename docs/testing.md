@@ -68,15 +68,23 @@ Use the following canonical commands from repository root.
 
 ### Quick contributor validation
 
-For non-live changes, this is the expected offline/deterministic contributor sequence in exact order:
+For non-live changes, this is the expected offline/deterministic contributor gate:
 
 1. `pip install -e .[dev]`
-2. `behave`
-3. `pytest -m "not live_smoke"`
+2. `python scripts/release_gate.py`
+
+`scripts/release_gate.py` runs required checks in order:
+
+1. `behave`
+2. `pytest -m "not live_smoke"`
+3. `pytest tests/test_eval_runtime_parity.py`
 4. `python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main`
+
+Default behavior is fail-closed (stop on first failure). Use `--continue-on-failure` to run every check and still exit non-zero if any check fails.
 
 | Test layer | Canonical command | Runtime dependency | CI gate level | Expected runtime | Pass criteria |
 | --- | --- | --- | --- | --- | --- |
+| Single merge/release gate | `python scripts/release_gate.py` | Python dev extras (`behave`, `pytest`) plus local git metadata/docs issues files | **Required (canonical gate)** | ~20-90s depending on test volume | Exit code `0`; all required deterministic checks pass in sequence (`behave`, `pytest -m "not live_smoke"`, parity test, issue-link validation). |
 | BDD acceptance (`behave`) | `behave` _(requires `pip install -e .[dev]` first)_ | Python dev extras (`behave`) and local deterministic fixtures | **Required (merge gate)** | ~10-60s for current feature set | Exit code `0`; no failed/undefined steps; acceptance scenarios for changed behavior pass. |
 | Deterministic unit/component (`pytest`) | `pytest -m "not live_smoke"` | Python dev extras (`pytest`); no network or external services | **Required (merge gate)** | ~5-30s for fast deterministic scope | Exit code `0`; no flaky network-bound failures; logic and wiring tests for changed code pass. |
 | Eval/runtime parity check (`pytest`) | `pytest tests/test_eval_runtime_parity.py` | Python dev extras (`pytest`) and fixed fixtures (`eval/cases.jsonl`, `tests/fixtures/candidate_sets.jsonl`) | **Required (merge gate, deterministic)** | ~1-5s | Exit code `0`; runtime path scoring and eval adapter path stay aligned for ordering, top-1, and fallback intent decisions. |
@@ -85,7 +93,19 @@ For non-live changes, this is the expected offline/deterministic contributor seq
 
 ### Canonical command snippets
 
-Run BDD scenarios (requires `pip install -e .[dev]` first):
+Run canonical merge/release gate:
+
+```bash
+python scripts/release_gate.py
+```
+
+Run gate in run-all mode (returns non-zero if any check failed):
+
+```bash
+python scripts/release_gate.py --continue-on-failure
+```
+
+Run BDD scenarios directly (requires `pip install -e .[dev]` first):
 
 ```bash
 behave

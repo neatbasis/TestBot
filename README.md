@@ -53,6 +53,7 @@ The tree below distinguishes files that exist today from placeholders planned fo
 ├── pyproject.toml
 ├── scripts/
 │   ├── eval_recall.py
+│   ├── release_gate.py
 │   ├── validate_issue_links.py
 │   └── validate_markdown_paths.py
 └── src/
@@ -116,24 +117,21 @@ python src/testbot/sat_chatbot_memory_v2.py
 Run this governance gate locally before requesting review or merge:
 
 ```bash
-python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main
+python scripts/release_gate.py
 ```
 
 ## Validate
-- Run behavior scenarios: `behave` _(requires `pip install -e .[dev]` first)_
-- Run deterministic unit/component tests: `pytest -m "not live_smoke"`
+- Canonical merge/release gate: `python scripts/release_gate.py`
+- Optional run-all mode (collect every failure before exiting non-zero): `python scripts/release_gate.py --continue-on-failure`
 - Run optional live smoke profile: `pytest -m live_smoke`
-- Required governance validation: `python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main`
 - Optional docs path validation: `python scripts/validate_markdown_paths.py`
 
 ### Quick contributor validation
 
-For non-live code changes, use this offline/deterministic validation sequence in exact order:
+For non-live code changes, use this offline/deterministic gate:
 
 1. `pip install -e .[dev]`
-2. `behave`
-3. `pytest -m "not live_smoke"`
-4. `python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main`
+2. `python scripts/release_gate.py`
 
 See [docs/testing.md](docs/testing.md) for test-layer policy and acceptance criteria.
 
