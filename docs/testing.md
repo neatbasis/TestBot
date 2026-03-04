@@ -70,6 +70,7 @@ Use the following canonical commands from repository root.
 | --- | --- | --- | --- | --- | --- |
 | BDD acceptance (`behave`) | `behave` | Python dev extras (`behave`) and local deterministic fixtures | **Required (merge gate)** | ~10-60s for current feature set | Exit code `0`; no failed/undefined steps; acceptance scenarios for changed behavior pass. |
 | Deterministic unit/component (`pytest`) | `pytest -m "not live_smoke"` | Python dev extras (`pytest`); no network or external services | **Required (merge gate)** | ~5-30s for fast deterministic scope | Exit code `0`; no flaky network-bound failures; logic and wiring tests for changed code pass. |
+| Governance / issue linkage checks | `python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main` | Local git metadata + docs/issues files | **Required (merge gate)** | ~1-5s | Exit code `0`; non-trivial PR/commit metadata include `ISSUE-XXXX`; red-severity ownership/sprint/status and canonical issue schema checks pass. |
 | Optional live smoke profile | `pytest -m live_smoke` | Reachable Home Assistant + Ollama endpoints and any required env vars/secrets | **Optional (post-merge/manual gate)** | ~1-5 min depending on services | Exit code `0`; no infra/auth/connectivity errors; end-to-end smoke assertions pass. |
 
 ### Canonical command snippets
@@ -90,6 +91,12 @@ Run optional live smoke profile:
 
 ```bash
 pytest -m live_smoke
+```
+
+Run governance and issue-linkage checks:
+
+```bash
+python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main
 ```
 
 

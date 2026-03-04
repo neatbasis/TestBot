@@ -4,7 +4,7 @@
 - **Title:** Operationalize `docs/issues/` and `docs/issues.md` as governed project infrastructure
 - **Status:** open
 - **Severity:** red
-- **Owner:** unassigned
+- **Owner:** testbot-maintainers
 - **Created:** 2026-03-04
 - **Target Sprint:** Sprint 1
 - **Principle Alignment:** contract-first, traceable, ci-enforced

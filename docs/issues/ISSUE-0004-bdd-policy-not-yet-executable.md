@@ -4,7 +4,7 @@
 - **Title:** BDD policy declared but not executable in repository
 - **Status:** resolved
 - **Severity:** red
-- **Owner:** unassigned
+- **Owner:** testbot-maintainers
 - **Created:** 2026-03-04
 - **Target Sprint:** Sprint 2
 - **Principle Alignment:** contract-first, ci-enforced, traceable

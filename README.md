@@ -16,7 +16,7 @@ Project issue tracking is now standardized in-repo and remains the default workf
 - Issue records: `docs/issues/`
 - Red-tag escalation index: `docs/issues/RED_TAG.md`
 
-Use issue IDs (for example `ISSUE-0002`) in PR descriptions for any non-trivial change.
+Use issue IDs (for example `ISSUE-0002`) in PR descriptions and non-trivial commit messages for any non-trivial change.
 
 ---
 
@@ -53,6 +53,7 @@ The tree below distinguishes files that exist today from placeholders planned fo
 ├── pyproject.toml
 ├── scripts/
 │   ├── eval_recall.py
+│   ├── validate_issue_links.py
 │   └── validate_markdown_paths.py
 └── src/
     └── testbot/
@@ -103,6 +104,7 @@ python src/testbot/sat_chatbot_memory_v2.py
 - Run behavior scenarios: `behave`
 - Run deterministic unit/component tests: `pytest -m "not live_smoke"`
 - Run optional live smoke profile: `pytest -m live_smoke`
+- Required governance validation: `python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main`
 - Optional docs path validation: `python scripts/validate_markdown_paths.py`
 
 See [docs/testing.md](docs/testing.md) for test-layer policy and acceptance criteria.

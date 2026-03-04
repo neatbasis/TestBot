@@ -20,8 +20,23 @@ Issue workflow validation (CI-friendly):
 
 ```bash
 # Validate PR body metadata and newly added docs/issues files.
-python scripts/validate_issues.py --pr-body-file .github/PULL_REQUEST_BODY.md --base-ref origin/main
+python scripts/validate_issue_links.py --pr-body-file .github/PULL_REQUEST_BODY.md --base-ref origin/main
 
 # Validate all existing issue files locally.
-python scripts/validate_issues.py --all-issue-files
+python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main
 ```
+
+## Issue linkage requirements (mandatory)
+
+For any **non-trivial behavior change** or **architecture-impacting change**:
+
+- PR metadata must include at least one issue reference in the form `ISSUE-XXXX`.
+- Non-trivial commit metadata must include at least one issue reference in the form `ISSUE-XXXX`.
+- If an issue has `Severity: red`, it must have a concrete `Owner`, concrete `Target Sprint`, and status-consistent placement in `docs/issues/RED_TAG.md` (`Active` for `open/in_progress/blocked`, `Resolved` for `resolved/closed`).
+- New/updated issue files in `docs/issues/` must conform to the canonical schema declared in `docs/issues.md`.
+
+Failure mode when missing linkage or schema consistency:
+
+- `python scripts/validate_issue_links.py` exits non-zero.
+- CI merge gate must fail until issue linkage and issue governance data are corrected.
+
