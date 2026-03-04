@@ -8,6 +8,19 @@ TestBot is a memory-grounded chatbot loop for Home Assistant Assist Satellite.
 - **Developer / QA**: read [docs/testing.md](docs/testing.md).
 - **Designer / reviewer**: read [docs/architecture.md](docs/architecture.md).
 
+## Issue tracking (canonical, in-repo)
+
+Project issue tracking is now standardized in-repo and remains the default workflow **until reviewed**.
+
+- Canonical workflow: `docs/issues.md`
+- Issue records: `docs/issues/`
+- Red-tag escalation index: `docs/issues/RED_TAG.md`
+
+Use issue IDs (for example `ISSUE-0002`) in PR descriptions for any non-trivial change.
+
+---
+
+
 ### Current vs Planned
 The tree below distinguishes files that exist today from placeholders planned for future work.
 
