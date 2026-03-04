@@ -35,6 +35,22 @@ TestBot follows a single loop designed for memory-grounded answers:
    - Provide recent chat window + memory context to the answer stage.
    - Enforce memory-only answering and citation contract.
 
+## Canonical per-turn state
+
+The canonical unit of reasoning/review is a typed `PipelineState` object (`src/testbot/pipeline_state.py`).
+Each runtime stage receives a `PipelineState` and returns an updated `PipelineState` with normalized fields:
+
+- `user_input`
+- `rewritten_query`
+- `retrieval_candidates`
+- `reranked_hits`
+- `confidence_decision`
+- `draft_answer`
+- `final_answer`
+- `invariant_decisions`
+
+Design rule: turn-level runtime logging must serialize this same structure (JSONL snapshots), so runtime evidence and in-memory reasoning artifacts stay structurally identical.
+
 ## Memory cards
 
 Memory is represented as text cards with stable field labels.

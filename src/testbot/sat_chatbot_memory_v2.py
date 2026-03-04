@@ -6,6 +6,7 @@ import re
 import sys
 import uuid
 from collections import deque
+from dataclasses import replace
 from pathlib import Path
 
 import arrow
@@ -13,6 +14,7 @@ from homeassistant_api import Client
 
 from testbot.config import Config
 from testbot.memory_cards import make_reflection_card, make_utterance_card, store_doc, utc_now_iso
+from testbot.pipeline_state import CandidateHit, PipelineState, append_pipeline_snapshot
 from testbot.rerank import adaptive_sigma_fractional, rerank_docs_with_time_and_type
 from testbot.time_parse import parse_target_time
 from ha_ask import AskSpec, ask_question
@@ -62,6 +64,82 @@ def append_session_log(event: str, payload: dict, *, log_path: Path = Path("./lo
     }
     with log_path.open("a", encoding="utf-8") as f:
         f.write(json.dumps(row, ensure_ascii=False) + "\n")
+
+
+def doc_to_candidate_hit(doc: Document, score: float) -> CandidateHit:
+    return CandidateHit(
+        doc_id=str(doc.id or doc.metadata.get("doc_id") or ""),
+        score=float(score),
+        ts=str(doc.metadata.get("ts") or ""),
+        card_type=str(doc.metadata.get("type") or ""),
+    )
+
+
+def stage_rewrite_query(llm: ChatOllama, state: PipelineState) -> PipelineState:
+    rewritten_query = llm.invoke(QUERY_REWRITE_PROMPT.format_messages(input=state.user_input)).content.strip() or state.user_input
+    return replace(state, rewritten_query=rewritten_query)
+
+
+def stage_retrieve(store: InMemoryVectorStore, state: PipelineState) -> tuple[PipelineState, list[tuple[Document, float]]]:
+    docs_and_scores = store.similarity_search_with_score(state.rewritten_query, k=12)
+    retrieval_candidates = [doc_to_candidate_hit(doc, score) for doc, score in docs_and_scores]
+    return replace(state, retrieval_candidates=retrieval_candidates), docs_and_scores
+
+
+def stage_rerank(
+    state: PipelineState,
+    docs_and_scores: list[tuple[Document, float]],
+    *,
+    utterance: str,
+    user_doc_id: str,
+    user_reflection_doc_id: str,
+) -> tuple[PipelineState, list[Document]]:
+    now = arrow.utcnow()
+    target = parse_target_time(utterance, now=now)
+    sigma = adaptive_sigma_fractional(now=now, target=target, frac=0.25)
+    hits = rerank_docs_with_time_and_type(
+        docs_and_scores,
+        now=now,
+        target=target,
+        sigma_seconds=sigma,
+        exclude_doc_ids={user_doc_id, user_reflection_doc_id},
+        exclude_source_ids={user_doc_id},
+        top_k=4,
+    )
+    reranked_hits = [doc_to_candidate_hit(doc, score=0.0) for doc in hits]
+    confidence_decision = {
+        "context_confident": has_sufficient_context_confidence(docs_and_scores),
+        "now_ts": now.isoformat(),
+        "target_ts": target.isoformat(),
+        "sigma_seconds": sigma,
+    }
+    return replace(state, reranked_hits=reranked_hits, confidence_decision=confidence_decision), hits
+
+
+def stage_answer(llm: ChatOllama, state: PipelineState, *, chat_history: deque[ChatMsg], hits: list[Document]) -> PipelineState:
+    context_str = render_context(hits)
+    history_str = format_chat_history(chat_history)
+    msgs = ANSWER_PROMPT.format_messages(input=state.user_input, chat_history=history_str, context=context_str)
+
+    if not state.confidence_decision.get("context_confident", False):
+        draft_answer = ""
+        final_answer = "I don't know from memory."
+    else:
+        draft_answer = (llm.invoke(msgs).content or "").strip()
+        if not draft_answer:
+            final_answer = "I don't know from memory."
+        elif validate_answer_contract(draft_answer):
+            final_answer = draft_answer
+        else:
+            final_answer = "I don't know from memory."
+
+    invariant_decisions = {
+        "response_contains_claims": response_contains_claims(draft_answer),
+        "has_required_memory_citation": has_required_memory_citation(draft_answer),
+        "answer_contract_valid": validate_answer_contract(draft_answer),
+        "answer_mode": "dont-know" if final_answer == "I don't know from memory." else "memory-grounded",
+    }
+    return replace(state, draft_answer=draft_answer, final_answer=final_answer, invariant_decisions=invariant_decisions)
 
 
 # ---------------------------
@@ -239,6 +317,9 @@ def main() -> None:
                 sat_say(client, entity_id, "Stopping. Bye.")
                 break
 
+            state = PipelineState(user_input=utterance)
+            append_pipeline_snapshot("ingest", state)
+
             # -----------------------
             # 1) Store user utterance card + reflection card
             # -----------------------
@@ -293,15 +374,17 @@ def main() -> None:
             # -----------------------
             # 2) Retrieve + time-aware rerank (FIXED: handle tuples)
             # -----------------------
-            query = llm.invoke(QUERY_REWRITE_PROMPT.format_messages(input=utterance)).content.strip() or utterance
-            append_session_log("query_rewrite_output", {"utterance": utterance, "query": query})
+            state = stage_rewrite_query(llm, state)
+            append_pipeline_snapshot("rewrite", state)
+            append_session_log("query_rewrite_output", {"utterance": utterance, "query": state.rewritten_query})
 
             # IMPORTANT: returns List[Tuple[Document, float]]
-            docs_and_scores = store.similarity_search_with_score(query, k=12)
+            state, docs_and_scores = stage_retrieve(store, state)
+            append_pipeline_snapshot("retrieve", state)
             append_session_log(
                 "retrieval_candidates",
                 {
-                    "query": query,
+                    "query": state.rewritten_query,
                     "candidate_count": len(docs_and_scores),
                     "top_candidates": [
                         {
@@ -313,58 +396,35 @@ def main() -> None:
                 },
             )
 
-            now = arrow.utcnow()
-            target = parse_target_time(utterance, now=now)
-            sigma = adaptive_sigma_fractional(now=now, target=target, frac=0.25)
+            state, hits = stage_rerank(
+                state,
+                docs_and_scores,
+                utterance=utterance,
+                user_doc_id=u_id,
+                user_reflection_doc_id=u_ref_id,
+            )
+            append_pipeline_snapshot("rerank", state)
             append_session_log(
                 "time_target_parse",
                 {
                     "utterance": utterance,
-                    "now_ts": now.isoformat(),
-                    "target_ts": target.isoformat(),
-                    "sigma_seconds": sigma,
+                    "now_ts": state.confidence_decision.get("now_ts", ""),
+                    "target_ts": state.confidence_decision.get("target_ts", ""),
+                    "sigma_seconds": state.confidence_decision.get("sigma_seconds", 0.0),
                 },
             )
-
-            hits = rerank_docs_with_time_and_type(
-                docs_and_scores,
-                now=now,
-                target=target,
-                sigma_seconds=sigma,
-                exclude_doc_ids={u_id, u_ref_id},
-                exclude_source_ids={u_id},
-                top_k=4,
-            )
-            context_is_confident = has_sufficient_context_confidence(docs_and_scores)
 
             # -----------------------
             # 3) Answer using ONLY memory + recent chat
             # -----------------------
-            context_str = render_context(hits)
-            history_str = format_chat_history(chat_history)
-
-            msgs = ANSWER_PROMPT.format_messages(
-                input=utterance,
-                chat_history=history_str,
-                context=context_str,
-            )
-            if not context_is_confident:
-                reply = "I don't know from memory."
-            else:
-                draft_reply = (llm.invoke(msgs).content or "").strip()
-                if not draft_reply:
-                    reply = "I don't know from memory."
-                elif validate_answer_contract(draft_reply):
-                    reply = draft_reply
-                else:
-                    reply = "I don't know from memory."
-            answer_mode = "dont-know" if reply == "I don't know from memory." else "memory-grounded"
+            state = stage_answer(llm, state, chat_history=chat_history, hits=hits)
+            append_pipeline_snapshot("answer", state)
             append_session_log(
                 "final_answer_mode",
                 {
-                    "mode": answer_mode,
-                    "query": query,
-                    "context_confident": context_is_confident,
+                    "mode": state.invariant_decisions.get("answer_mode", "dont-know"),
+                    "query": state.rewritten_query,
+                    "context_confident": state.confidence_decision.get("context_confident", False),
                     "retrieved_docs": [
                         (d.id or d.metadata.get("doc_id") or "")
                         for d in hits
@@ -372,20 +432,20 @@ def main() -> None:
                 },
             )
 
-            sat_say(client, entity_id, reply)
+            sat_say(client, entity_id, state.final_answer)
 
             # -----------------------
             # 4) Store assistant utterance card + reflection card
             # -----------------------
             chat_history.append({"role": "user", "content": utterance})
-            chat_history.append({"role": "assistant", "content": reply})
+            chat_history.append({"role": "assistant", "content": state.final_answer})
 
             a_ts = utc_now_iso()
             a_id = str(uuid.uuid4())
             a_card = make_utterance_card(
                 ts_iso=a_ts,
                 speaker="assistant",
-                text=reply,
+                text=state.final_answer,
                 doc_id=a_id,
                 channel="satellite",
             )
@@ -399,11 +459,11 @@ def main() -> None:
                     "speaker": "assistant",
                     "channel": "satellite",
                     "doc_id": a_id,
-                    "raw": reply,
+                    "raw": state.final_answer,
                 },
             )
 
-            a_ref_yaml = generate_reflection_yaml(llm, speaker="assistant", text=reply)
+            a_ref_yaml = generate_reflection_yaml(llm, speaker="assistant", text=state.final_answer)
             a_ref_ts = utc_now_iso()
             a_ref_id = str(uuid.uuid4())
             a_ref_card = make_reflection_card(
