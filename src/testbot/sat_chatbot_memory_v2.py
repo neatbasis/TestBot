@@ -115,9 +115,11 @@ def _print_startup_status(*, selected_mode: str, daemon_mode: bool, runtime: dic
     print(f"Ollama endpoint: {runtime['ollama_base_url']} model={runtime['ollama_model']}")
     if ha_error:
         print(f"Home Assistant: unavailable ({ha_error})")
+        print(f"Install warning [YELLOW]: Home Assistant capability is degraded; configure HA_API_SECRET and HA_SATELLITE_ENTITY_ID to enable satellite mode.")
         print("Developer note: satellite interface disabled; CLI fallback will be used unless --daemon is set.")
     else:
         print(f"Home Assistant: available ({runtime['ha_api_url']}, entity={runtime['ha_satellite_entity_id']})")
+        print("Install warning [GREEN]: Home Assistant capability is active; keep Home Assistant credentials configured when reinstalling or reprovisioning.")
         print("Developer note: satellite ask/speak loop is enabled.")
     print("Continuity: memory cards are shared across interfaces in-process via one vector store.")
     print("==============================")
