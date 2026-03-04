@@ -151,3 +151,14 @@ def step_then_relevance_summary(context) -> None:
 def step_then_relevance_basis(context) -> None:
     assert "Relevance summary basis:" in context.pipeline_state.basis_statement
     assert "chat history" in context.pipeline_state.basis_statement.lower()
+
+
+@then('the response should include "{expected_substring}"')
+def step_then_response_includes_substring(context, expected_substring: str) -> None:
+    assert expected_substring in context.pipeline_state.final_answer
+
+
+@then('the provenance and basis should include "{provenance_name}" and "{basis_text}"')
+def step_then_provenance_and_basis_include(context, provenance_name: str, basis_text: str) -> None:
+    assert any(provenance.name == provenance_name for provenance in context.pipeline_state.provenance_types)
+    assert basis_text.lower() in context.pipeline_state.basis_statement.lower()
