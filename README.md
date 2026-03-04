@@ -206,11 +206,64 @@ The script prints JSON metrics:
 
 Feature-scope rule: do not expand v0 behavior until this eval is run and these metrics are reviewed.
 
+## Issue tracking (canonical, in-repo)
+
+Project issue tracking is now standardized in-repo and remains the default workflow **until reviewed**.
+
+- Canonical workflow: `docs/issues.md`
+- Issue records: `docs/issues/`
+- Red-tag escalation index: `docs/issues/RED_TAG.md`
+
+Use issue IDs (for example `ISSUE-0002`) in PR descriptions for any non-trivial change.
+
+---
+
 ## Testing strategy
 
 Keep the **default test suite deterministic and fast**. Anything that needs real Ollama/Home Assistant should be opt-in and excluded from quick local runs and default CI.
 
-### Layer 1: Pure unit tests (no LangChain model calls)
+### BDD is required for stakeholder-facing behavior contracts
+
+This project uses **Behavior-Driven Development with `behave`** as the primary way to express and validate externally visible behavior.
+
+- Stakeholder requirements should be captured first as `.feature` scenarios in plain language.
+- Step definitions should map those scenarios to deterministic checks over retrieval, rerank, and answer-contract behavior.
+- New capability work should start from behavior scenarios, then implement code to satisfy them.
+
+Suggested structure:
+
+```text
+features/
+├─ memory_recall.feature
+├─ answer_contract.feature
+└─ steps/
+   ├─ memory_steps.py
+   └─ answer_contract_steps.py
+```
+
+Run BDD scenarios with:
+
+```bash
+behave
+```
+
+BDD scenarios should stay focused on user-visible outcomes (what stakeholders care about), while lower-level checks remain in deterministic unit/component tests.
+
+### Layer 1: BDD scenarios with `behave` (stakeholder-visible behavior)
+
+Use `.feature` files + step definitions to specify the v0 loop contract in plain language:
+
+1. Memory-grounded recall returns cited answers (`doc_id`, `ts`) when context is sufficient.
+2. Assistant returns exact fallback `"I don't know from memory."` when context is insufficient.
+3. Time-aware retrieval behavior matches expected outcomes for representative utterances.
+
+Guidance:
+
+- Keep scenarios concrete and business-readable.
+- Reuse deterministic fixtures (fixed `now`, fixed candidate sets).
+- Keep model/HA dependencies out of default BDD runs by stubbing seams.
+
+### Layer 2: Pure unit tests (no LangChain model calls)
 
 These are the fastest and should form the core of day-to-day feedback:
 
@@ -225,7 +278,7 @@ Guidance:
 - Assert exact/near-exact expected values and ordering.
 - Keep these tests free of network, model, and Home Assistant dependencies.
 
-### Layer 2: LangChain graph/component tests with fakes
+### Layer 3: LangChain graph/component tests with fakes
 
 Validate wiring and component interactions while still staying deterministic:
 
@@ -312,7 +365,7 @@ offline-test expectation across LLM, AskPort, and vector-search seams.
 - Not a replacement for integration/manual runs with real Ollama + Home Assistant.
 - Specifically for validating control flow, guardrails, and contract enforcement deterministically.
 
-### Layer 3: Optional live integration smoke tests
+### Layer 4: Optional live integration smoke tests
 
 Run separately when you want environment-level confidence:
 
@@ -322,8 +375,8 @@ Run separately when you want environment-level confidence:
 
 Recommended policy:
 
-- Default local + CI run: Layer 1 + Layer 2 only.
-- Opt-in command/profile for Layer 3 when local services are available.
+- Default local + CI run: Layer 1 + Layer 2 + Layer 3 (all deterministic/offline).
+- Opt-in command/profile for Layer 4 when local services are available.
 
 Example pattern:
 
