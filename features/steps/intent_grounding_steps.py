@@ -1,0 +1,153 @@
+from __future__ import annotations
+
+from dataclasses import replace
+
+from behave import given, then, when
+
+from testbot.intent_router import IntentType, classify_intent
+from testbot.pipeline_state import CandidateHit, PipelineState, ProvenanceType
+from testbot.sat_chatbot_memory_v2 import validate_general_knowledge_contract
+from testbot.stage_transitions import validate_answer_post, validate_answer_pre
+
+GENERAL_MARKER = "General definition (not from your memory):"
+
+
+@given("an intent response harness")
+def step_given_intent_response_harness(context) -> None:
+    context.candidates = []
+
+
+def _build_base_state(*, user_input: str, final_answer: str, draft_answer: str, confidence_decision: dict[str, object]) -> PipelineState:
+    state = PipelineState(
+        user_input=user_input,
+        rewritten_query=user_input,
+        retrieval_candidates=[CandidateHit(doc_id="", score=0.0, ts="", card_type="memory")],
+        reranked_hits=[],
+        confidence_decision=confidence_decision,
+        draft_answer=draft_answer,
+        final_answer=final_answer,
+        claims=[f"INFERENCE: {final_answer}"],
+        invariant_decisions={"answer_contract_valid": True, "general_knowledge_contract_valid": True},
+        alignment_decision={
+            "objective_version": "2026-03-01.v1",
+            "dimensions": {
+                "factual_grounding_reliability": 1.0,
+                "safety_compliance_strictness": 1.0,
+                "response_utility": 1.0,
+                "cost_latency_budget": 1.0,
+            },
+            "final_alignment_decision": "allow",
+        },
+    )
+    return state
+
+
+def _run_contract_checks(context) -> None:
+    context.answer_pre_check = validate_answer_pre(context.pipeline_state)
+    context.answer_post_check = validate_answer_post(context.pipeline_state)
+    assert context.answer_pre_check.passed, f"answer.pre failed: {context.answer_pre_check.failures}"
+    assert context.answer_post_check.passed, f"answer.post failed: {context.answer_post_check.failures}"
+
+
+@when("a knowledge question misses memory context")
+def step_when_knowledge_memory_miss(context) -> None:
+    answer = (
+        "General definition (not from your memory): Ontology is a formal representation of concepts and their "
+        "relationships. Can you clarify which domain you want this applied to?"
+    )
+    context.pipeline_state = _build_base_state(
+        user_input="What is ontology?",
+        final_answer=answer,
+        draft_answer=answer,
+        confidence_decision={
+            "context_confident": False,
+            "general_knowledge_confidence": 0.95,
+            "general_knowledge_support": 3,
+        },
+    )
+    context.pipeline_state = replace(
+        context.pipeline_state,
+        provenance_types=[ProvenanceType.GENERAL_KNOWLEDGE, ProvenanceType.INFERENCE],
+        basis_statement="General-knowledge basis: no supporting memory references were retrieved.",
+    )
+    context.gk_contract_passed = validate_general_knowledge_contract(
+        context.pipeline_state.final_answer,
+        provenance_types=context.pipeline_state.provenance_types,
+        confidence_decision=context.pipeline_state.confidence_decision,
+    )
+    context.pipeline_state.invariant_decisions["general_knowledge_contract_valid"] = context.gk_contract_passed
+    _run_contract_checks(context)
+
+
+@when('the user asks "what did I ask?"')
+def step_when_meta_what_did_i_ask(context) -> None:
+    context.intent = classify_intent("what did I ask?")
+    answer = "You asked about ontology earlier in this chat."
+    context.pipeline_state = _build_base_state(
+        user_input="what did I ask?",
+        final_answer=answer,
+        draft_answer=answer,
+        confidence_decision={"context_confident": True},
+    )
+    context.pipeline_state = replace(
+        context.pipeline_state,
+        provenance_types=[ProvenanceType.CHAT_HISTORY, ProvenanceType.INFERENCE],
+        basis_statement="Answer synthesized from recent chat history.",
+    )
+    _run_contract_checks(context)
+
+
+@when("the user asks a relevance question")
+def step_when_relevance_question(context) -> None:
+    prompt = "what's relevant to our conversation?"
+    context.intent = classify_intent(prompt)
+    answer = "Relevant summary: we focused on ontology definitions and next-step clarifications for this chat."
+    context.pipeline_state = _build_base_state(
+        user_input=prompt,
+        final_answer=answer,
+        draft_answer=answer,
+        confidence_decision={"context_confident": True},
+    )
+    context.pipeline_state = replace(
+        context.pipeline_state,
+        provenance_types=[ProvenanceType.CHAT_HISTORY, ProvenanceType.INFERENCE],
+        basis_statement="Relevance summary basis: synthesized from recent chat history signals.",
+    )
+    _run_contract_checks(context)
+
+
+@then("the assistant returns a labeled general answer with clarification")
+def step_then_labeled_general_answer(context) -> None:
+    assert context.pipeline_state.final_answer.startswith(GENERAL_MARKER)
+    assert "Can you clarify" in context.pipeline_state.final_answer
+
+
+@then("the response records general-knowledge provenance and basis")
+def step_then_general_knowledge_provenance(context) -> None:
+    assert context.gk_contract_passed is True
+    assert ProvenanceType.GENERAL_KNOWLEDGE in context.pipeline_state.provenance_types
+    assert "General-knowledge basis" in context.pipeline_state.basis_statement
+
+
+@then("the assistant replies from chat history")
+def step_then_chat_history_reply(context) -> None:
+    assert context.intent is IntentType.MEMORY_RECALL
+    assert "asked about ontology" in context.pipeline_state.final_answer
+
+
+@then("the response records chat-history provenance and basis")
+def step_then_chat_history_provenance(context) -> None:
+    assert ProvenanceType.CHAT_HISTORY in context.pipeline_state.provenance_types
+    assert "chat history" in context.pipeline_state.basis_statement.lower()
+
+
+@then("the assistant returns a summarized relevance answer")
+def step_then_relevance_summary(context) -> None:
+    assert context.intent is IntentType.META_CONVERSATION
+    assert context.pipeline_state.final_answer.startswith("Relevant summary:")
+
+
+@then("the response includes a relevance basis assertion")
+def step_then_relevance_basis(context) -> None:
+    assert "Relevance summary basis:" in context.pipeline_state.basis_statement
+    assert "chat history" in context.pipeline_state.basis_statement.lower()
