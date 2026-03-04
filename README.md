@@ -79,11 +79,13 @@ pip install -U pip
 pip install -e .
 ```
 
-Optional development extras:
+Development extras (required to run `behave` and other dev checks):
 
 ```bash
 pip install -e .[dev]
 ```
+
+`behave` is installed via the `dev` extra, so install this before running behavior scenarios.
 
 For full environment prerequisites and `.env` variables, use [docs/quickstart.md](docs/quickstart.md).
 
