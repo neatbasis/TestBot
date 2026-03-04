@@ -65,6 +65,9 @@ FALLBACK_ANSWER = "I don't know from memory."
 DENY_ANSWER = "I can't comply with that request."
 CLARIFY_ANSWER = "Can you clarify which memory and time window you mean?"
 ROUTE_TO_ASK_ANSWER = "I can disambiguate this with a quick follow-up question."
+GENERAL_KNOWLEDGE_MARKER_PREFIX = "General definition (not from your memory):"
+GENERAL_KNOWLEDGE_CONFIDENCE_MIN = 0.85
+GENERAL_KNOWLEDGE_SUPPORT_MIN = 2
 ALIGNMENT_OBJECTIVE_VERSION = "2026-03-01.v1"
 SESSION_LOG_SCHEMA_VERSION = 2
 
@@ -255,13 +258,6 @@ def stage_answer(
         else:
             final_answer = FALLBACK_ANSWER
 
-    alignment_decision = evaluate_alignment_decision(
-        user_input=state.user_input,
-        draft_answer=draft_answer,
-        final_answer=final_answer,
-        confidence_decision=state.confidence_decision,
-    )
-
     provenance_types, claims, basis_statement, used_memory_refs = build_provenance_metadata(
         final_answer=final_answer,
         hits=hits,
@@ -269,10 +265,34 @@ def stage_answer(
         packed_history=packed_history,
     )
 
+    general_knowledge_contract_valid = validate_general_knowledge_contract(
+        final_answer,
+        provenance_types=provenance_types,
+        confidence_decision=state.confidence_decision,
+    )
+    if final_answer != FALLBACK_ANSWER and not general_knowledge_contract_valid:
+        final_answer = FALLBACK_ANSWER
+        provenance_types, claims, basis_statement, used_memory_refs = build_provenance_metadata(
+            final_answer=final_answer,
+            hits=hits,
+            chat_history=chat_history,
+            packed_history=packed_history,
+        )
+
+    alignment_decision = evaluate_alignment_decision(
+        user_input=state.user_input,
+        draft_answer=draft_answer,
+        final_answer=final_answer,
+        confidence_decision=state.confidence_decision,
+    )
+
     invariant_decisions = {
         "response_contains_claims": response_contains_claims(draft_answer),
         "has_required_memory_citation": has_required_memory_citation(draft_answer),
         "answer_contract_valid": validate_answer_contract(draft_answer),
+        "general_knowledge_contract_valid": general_knowledge_contract_valid,
+        "has_general_knowledge_marker": has_general_knowledge_marker(final_answer),
+        "general_knowledge_confidence_gate_passed": passes_general_knowledge_confidence_gate(state.confidence_decision),
         "answer_mode": (
             "deny"
             if final_answer == DENY_ANSWER
@@ -446,13 +466,18 @@ def build_provenance_metadata(
     provenance_types: list[ProvenanceType] = [ProvenanceType.INFERENCE]
     if used_memory_refs:
         provenance_types.append(ProvenanceType.MEMORY)
+    else:
+        provenance_types.append(ProvenanceType.GENERAL_KNOWLEDGE)
     if chat_history:
         provenance_types.append(ProvenanceType.CHAT_HISTORY)
 
-    basis_statement = (
-        "Answer synthesized from reranked memory context"
-        + (" and recent chat history." if chat_history else ".")
-    )
+    if used_memory_refs:
+        basis_statement = (
+            "Answer synthesized from reranked memory context"
+            + (" and recent chat history." if chat_history else ".")
+        )
+    else:
+        basis_statement = "General-knowledge basis: no supporting memory references were retrieved."
     return list(dict.fromkeys(provenance_types)), claims, basis_statement, used_memory_refs
 
 def response_contains_claims(text: str) -> bool:
@@ -474,6 +499,30 @@ def validate_answer_contract(text: str) -> bool:
     if not response_contains_claims(text):
         return True
     return has_required_memory_citation(text)
+
+
+def has_general_knowledge_marker(text: str) -> bool:
+    normalized = (text or "").strip().lower()
+    return normalized.startswith(GENERAL_KNOWLEDGE_MARKER_PREFIX.lower())
+
+
+def passes_general_knowledge_confidence_gate(confidence_decision: dict[str, object]) -> bool:
+    confidence = float(confidence_decision.get("general_knowledge_confidence", 0.0) or 0.0)
+    support_count = int(confidence_decision.get("general_knowledge_support", 0) or 0)
+    return confidence >= GENERAL_KNOWLEDGE_CONFIDENCE_MIN and support_count >= GENERAL_KNOWLEDGE_SUPPORT_MIN
+
+
+def validate_general_knowledge_contract(
+    text: str,
+    *,
+    provenance_types: list[ProvenanceType],
+    confidence_decision: dict[str, object],
+) -> bool:
+    if not response_contains_claims(text):
+        return True
+    if ProvenanceType.GENERAL_KNOWLEDGE not in provenance_types:
+        return True
+    return has_general_knowledge_marker(text) and passes_general_knowledge_confidence_gate(confidence_decision)
 
 
 def is_unsafe_user_request(text: str) -> bool:

@@ -14,6 +14,7 @@ Use this note under each red-tag issue entry whenever status changes or during s
 
 ## Active
 
+- ISSUE-0007 — **Behave gate not enforced in PR validation**: Mandatory BDD gate execution can be skipped when dev dependencies are missing, allowing invariant regressions to pass review until later validation.
 - ISSUE-0001 — **Establish measurable and trackable in-repo issue governance**: Governance remains non-canonical and weakly auditable, risking inconsistent issue quality and unresolved blockers.
 - ISSUE-0006 — **Operationalize `docs/issues/` and `docs/issues.md` as governed project infrastructure**: Adoption is not yet enforced, risking fragmented tracking and non-measurable governance behavior.
 
