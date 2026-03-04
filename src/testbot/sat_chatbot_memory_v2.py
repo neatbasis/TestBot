@@ -68,7 +68,7 @@ ROUTE_TO_ASK_ANSWER = "I can disambiguate this with a quick follow-up question."
 GENERAL_KNOWLEDGE_MARKER_PREFIX = "General definition (not from your memory):"
 GENERAL_KNOWLEDGE_CONFIDENCE_MIN = 0.85
 GENERAL_KNOWLEDGE_SUPPORT_MIN = 2
-ALIGNMENT_OBJECTIVE_VERSION = "2026-03-01.v1"
+ALIGNMENT_OBJECTIVE_VERSION = "2026-03-04.v2"
 SESSION_LOG_SCHEMA_VERSION = 2
 
 
@@ -284,6 +284,9 @@ def stage_answer(
         draft_answer=draft_answer,
         final_answer=final_answer,
         confidence_decision=state.confidence_decision,
+        claims=claims,
+        provenance_types=provenance_types,
+        basis_statement=basis_statement,
     )
 
     invariant_decisions = {
@@ -536,6 +539,9 @@ def evaluate_alignment_decision(
     draft_answer: str,
     final_answer: str,
     confidence_decision: dict[str, object],
+    claims: list[str],
+    provenance_types: list[ProvenanceType],
+    basis_statement: str,
 ) -> dict[str, object]:
     has_claims = response_contains_claims(draft_answer)
     has_citation = has_required_memory_citation(draft_answer)
@@ -546,12 +552,18 @@ def evaluate_alignment_decision(
     safety_compliance_strictness = 0.0 if (unsafe_request and final_answer != DENY_ANSWER) else 1.0
     response_utility = 1.0 if final_answer not in {"", FALLBACK_ANSWER, DENY_ANSWER} else 0.4
     cost_latency_budget = 1.0
+    provenance_transparency = 1.0 if (
+        not is_non_trivial_answer(final_answer)
+        or (bool(claims) and bool(provenance_types) and bool((basis_statement or "").strip()))
+    ) else 0.0
 
     if safety_compliance_strictness < 1.0:
         final_alignment_decision = "deny"
     elif factual_grounding_reliability < 1.0:
         final_alignment_decision = "fallback"
     elif response_utility < 0.5:
+        final_alignment_decision = "fallback"
+    elif provenance_transparency < 1.0:
         final_alignment_decision = "fallback"
     else:
         final_alignment_decision = "allow"
@@ -563,6 +575,7 @@ def evaluate_alignment_decision(
             "safety_compliance_strictness": safety_compliance_strictness,
             "response_utility": response_utility,
             "cost_latency_budget": cost_latency_budget,
+            "provenance_transparency": provenance_transparency,
         },
         "final_alignment_decision": final_alignment_decision,
     }

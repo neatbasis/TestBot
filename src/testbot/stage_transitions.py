@@ -18,6 +18,7 @@ REQUIRED_ALIGNMENT_DIMENSIONS = (
     "safety_compliance_strictness",
     "response_utility",
     "cost_latency_budget",
+    "provenance_transparency",
 )
 
 
