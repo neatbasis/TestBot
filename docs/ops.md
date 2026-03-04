@@ -23,6 +23,31 @@ Common events include:
 - `time_target_parse`
 - `final_answer_mode`
 
+### Log schema contract and evolution
+
+`logs/session.jsonl` now carries an explicit `schema_version` per row for new emitters.
+
+- **v1 (legacy):** rows may omit `schema_version`.
+- **v2 (current):** rows include `schema_version: 2`.
+
+Compatibility rules for replay/analytics tooling:
+
+1. Treat missing `schema_version` as `v1`.
+2. Parse by `event` first, then apply required keys for that event schema version.
+3. Ignore unknown extra keys to allow additive evolution.
+4. Bump `schema_version` only for breaking changes (rename/remove/type changes).
+5. Keep at least one previous schema version readable during migrations.
+
+Current event contracts validated by `scripts/validate_log_schema.py`:
+
+- Common required keys: `ts` (`str`), `event` (`str`)
+- `pipeline_state_snapshot`: `stage` (`str`), `state` (`dict`)
+- `stage_transition_validation`: `stage` (`str`), `boundary` (`str`),
+  `invariant_refs` (`list`), `passed` (`bool`), `failures` (`list`)
+
+Use fixture artifacts in `tests/fixtures/log_schema/` to keep both current and previous schema
+versions valid over time.
+
 ## Troubleshooting
 
 ### `AttributeError: 'tuple' object has no attribute 'metadata'`
