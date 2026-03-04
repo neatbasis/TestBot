@@ -60,7 +60,7 @@ def step_when_knowledge_memory_miss(context) -> None:
         final_answer=answer,
         draft_answer=answer,
         confidence_decision={
-            "context_confident": False,
+            "context_confident": True,
             "general_knowledge_confidence": 0.95,
             "general_knowledge_support": 3,
         },
