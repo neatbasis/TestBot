@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Callable
 
 from testbot.memory_cards import utc_now_iso
-from testbot.pipeline_state import CandidateHit, PipelineState
+from testbot.pipeline_state import CandidateHit, PipelineState, ProvenanceType
 
 
 FALLBACK_ANSWER = "I don't know from memory."
@@ -47,6 +47,17 @@ def _is_scored_candidate_list(candidates: list[CandidateHit]) -> bool:
         for c in candidates
     )
 
+
+
+
+def _is_non_trivial_answer(answer: str) -> bool:
+    normalized = (answer or "").strip()
+    return normalized not in {"", FALLBACK_ANSWER, DENY_ANSWER, "Can you clarify which memory and time window you mean?", "I can disambiguate this with a quick follow-up question."}
+
+
+def _has_allowed_provenance_types(state: PipelineState) -> bool:
+    allowed = {p.value for p in ProvenanceType}
+    return all(isinstance(p, ProvenanceType) and p.value in allowed for p in state.provenance_types)
 
 def _run_checks(
     *,
@@ -203,6 +214,19 @@ def validate_answer_post(state: PipelineState) -> TransitionCheckResult:
                     s.alignment_decision.get("final_alignment_decision") == "fallback"
                     if s.final_answer == FALLBACK_ANSWER
                     else s.alignment_decision.get("final_alignment_decision") == "allow"
+                ),
+            ),
+            (
+                "provenance_enum_values_valid",
+                lambda s: _has_allowed_provenance_types(s),
+            ),
+            (
+                "provenance_present_for_non_trivial_answers",
+                lambda s: (not _is_non_trivial_answer(s.final_answer))
+                or (
+                    bool(s.claims)
+                    and bool(s.provenance_types)
+                    and bool((s.basis_statement or "").strip())
                 ),
             ),
         ],

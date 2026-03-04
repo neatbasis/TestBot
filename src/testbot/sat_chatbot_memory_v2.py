@@ -15,7 +15,7 @@ import arrow
 from homeassistant_api import Client
 
 from testbot.memory_cards import make_reflection_card, make_utterance_card, store_doc, utc_now_iso
-from testbot.pipeline_state import CandidateHit, PipelineState, append_pipeline_snapshot
+from testbot.pipeline_state import CandidateHit, PipelineState, ProvenanceType, append_pipeline_snapshot
 from testbot.reflection_policy import CapabilityStatus, decide_fallback_action
 from testbot.rerank import adaptive_sigma_fractional, rerank_docs_with_time_and_type_outcome
 from testbot.stage_transitions import (
@@ -270,6 +270,12 @@ def stage_answer(
         confidence_decision=state.confidence_decision,
     )
 
+    provenance_types, claims, basis_statement, used_memory_refs = build_provenance_metadata(
+        final_answer=final_answer,
+        hits=hits,
+        chat_history=chat_history,
+    )
+
     invariant_decisions = {
         "response_contains_claims": response_contains_claims(draft_answer),
         "has_required_memory_citation": has_required_memory_citation(draft_answer),
@@ -288,11 +294,16 @@ def stage_answer(
             )
         ),
         "fallback_action": fallback_action,
+        "provenance_recorded": bool(not is_non_trivial_answer(final_answer) or provenance_types),
     }
     return replace(
         state,
         draft_answer=draft_answer,
         final_answer=final_answer,
+        claims=claims,
+        provenance_types=provenance_types,
+        used_memory_refs=used_memory_refs,
+        basis_statement=basis_statement,
         invariant_decisions=invariant_decisions,
         alignment_decision=alignment_decision,
     )
@@ -389,6 +400,64 @@ def has_sufficient_context_confidence(
         return False
     return max(float(score) for _, score in docs_and_scores) >= min_similarity
 
+
+
+
+def is_non_trivial_answer(text: str) -> bool:
+    normalized = (text or "").strip()
+    return bool(normalized) and normalized not in {
+        FALLBACK_ANSWER,
+        DENY_ANSWER,
+        CLARIFY_ANSWER,
+        ROUTE_TO_ASK_ANSWER,
+    }
+
+
+def extract_claims(text: str) -> list[str]:
+    if not is_non_trivial_answer(text):
+        return []
+    parts = [s.strip() for s in re.split(r"(?<=[.!?])\s+", text.strip()) if s.strip()]
+    return parts[:4]
+
+
+def collect_used_memory_refs(hits: list[Document]) -> list[str]:
+    refs: list[str] = []
+    for d in hits:
+        doc_id = str(d.id or d.metadata.get("doc_id") or "").strip()
+        if not doc_id:
+            continue
+        ts = str(d.metadata.get("ts") or "").strip()
+        refs.append(f"{doc_id}@{ts}" if ts else doc_id)
+    return list(dict.fromkeys(refs))
+
+
+def build_provenance_metadata(
+    *,
+    final_answer: str,
+    hits: list[Document],
+    chat_history: deque[ChatMsg],
+) -> tuple[list[ProvenanceType], list[str], str, list[str]]:
+    if not is_non_trivial_answer(final_answer):
+        return (
+            [ProvenanceType.UNKNOWN],
+            [],
+            "Trivial fallback/deny/clarification response with no substantive claim.",
+            [],
+        )
+
+    used_memory_refs = collect_used_memory_refs(hits)
+    claims = extract_claims(final_answer)
+    provenance_types: list[ProvenanceType] = [ProvenanceType.INFERENCE]
+    if used_memory_refs:
+        provenance_types.append(ProvenanceType.MEMORY)
+    if chat_history:
+        provenance_types.append(ProvenanceType.CHAT_HISTORY)
+
+    basis_statement = (
+        "Answer synthesized from reranked memory context"
+        + (" and recent chat history." if chat_history else ".")
+    )
+    return list(dict.fromkeys(provenance_types)), claims, basis_statement, used_memory_refs
 
 def response_contains_claims(text: str) -> bool:
     normalized = (text or "").strip()
@@ -624,6 +693,10 @@ def _run_chat_loop(
                 "query": state.rewritten_query,
                 "context_confident": state.confidence_decision.get("context_confident", False),
                 "retrieved_docs": [(d.id or d.metadata.get("doc_id") or "") for d in hits],
+                "claims": state.claims,
+                "provenance_types": [p.value for p in state.provenance_types],
+                "used_memory_refs": state.used_memory_refs,
+                "basis_statement": state.basis_statement,
             },
         )
 
