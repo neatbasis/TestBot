@@ -16,6 +16,19 @@ from testbot.config import Config
 from testbot.memory_cards import make_reflection_card, make_utterance_card, store_doc, utc_now_iso
 from testbot.pipeline_state import CandidateHit, PipelineState, append_pipeline_snapshot
 from testbot.rerank import adaptive_sigma_fractional, rerank_docs_with_time_and_type
+from testbot.stage_transitions import (
+    append_transition_validation_log,
+    validate_answer_post,
+    validate_answer_pre,
+    validate_encode_post,
+    validate_encode_pre,
+    validate_observe_post,
+    validate_observe_pre,
+    validate_rerank_post,
+    validate_rerank_pre,
+    validate_retrieve_post,
+    validate_retrieve_pre,
+)
 from testbot.time_parse import parse_target_time
 from ha_ask import AskSpec, ask_question
 from ha_ask.config import normalize_rest_api_url
@@ -80,6 +93,14 @@ def stage_rewrite_query(llm: ChatOllama, state: PipelineState) -> PipelineState:
     return replace(state, rewritten_query=rewritten_query)
 
 
+def observe_stage(state: PipelineState) -> PipelineState:
+    return state
+
+
+def encode_stage(llm: ChatOllama, state: PipelineState) -> PipelineState:
+    return stage_rewrite_query(llm, state)
+
+
 def stage_retrieve(store: InMemoryVectorStore, state: PipelineState) -> tuple[PipelineState, list[tuple[Document, float]]]:
     docs_and_scores = store.similarity_search_with_score(state.rewritten_query, k=12)
     retrieval_candidates = [doc_to_candidate_hit(doc, score) for doc, score in docs_and_scores]
@@ -140,6 +161,13 @@ def stage_answer(llm: ChatOllama, state: PipelineState, *, chat_history: deque[C
         "answer_mode": "dont-know" if final_answer == "I don't know from memory." else "memory-grounded",
     }
     return replace(state, draft_answer=draft_answer, final_answer=final_answer, invariant_decisions=invariant_decisions)
+
+
+def _validate_and_log_transition(result) -> None:
+    append_transition_validation_log(result)
+    if not result.passed:
+        failures = ", ".join(result.failures)
+        raise AssertionError(f"Stage transition validation failed at {result.stage}.{result.boundary}: {failures}")
 
 
 # ---------------------------
@@ -320,6 +348,11 @@ def main() -> None:
             state = PipelineState(user_input=utterance)
             append_pipeline_snapshot("ingest", state)
 
+            _validate_and_log_transition(validate_observe_pre(state))
+            state = observe_stage(state)
+            _validate_and_log_transition(validate_observe_post(state))
+            append_pipeline_snapshot("observe", state)
+
             # -----------------------
             # 1) Store user utterance card + reflection card
             # -----------------------
@@ -374,12 +407,16 @@ def main() -> None:
             # -----------------------
             # 2) Retrieve + time-aware rerank (FIXED: handle tuples)
             # -----------------------
-            state = stage_rewrite_query(llm, state)
+            _validate_and_log_transition(validate_encode_pre(state))
+            state = encode_stage(llm, state)
+            _validate_and_log_transition(validate_encode_post(state))
             append_pipeline_snapshot("rewrite", state)
             append_session_log("query_rewrite_output", {"utterance": utterance, "query": state.rewritten_query})
 
             # IMPORTANT: returns List[Tuple[Document, float]]
+            _validate_and_log_transition(validate_retrieve_pre(state))
             state, docs_and_scores = stage_retrieve(store, state)
+            _validate_and_log_transition(validate_retrieve_post(state))
             append_pipeline_snapshot("retrieve", state)
             append_session_log(
                 "retrieval_candidates",
@@ -396,6 +433,7 @@ def main() -> None:
                 },
             )
 
+            _validate_and_log_transition(validate_rerank_pre(state))
             state, hits = stage_rerank(
                 state,
                 docs_and_scores,
@@ -403,6 +441,7 @@ def main() -> None:
                 user_doc_id=u_id,
                 user_reflection_doc_id=u_ref_id,
             )
+            _validate_and_log_transition(validate_rerank_post(state))
             append_pipeline_snapshot("rerank", state)
             append_session_log(
                 "time_target_parse",
@@ -417,7 +456,9 @@ def main() -> None:
             # -----------------------
             # 3) Answer using ONLY memory + recent chat
             # -----------------------
+            _validate_and_log_transition(validate_answer_pre(state))
             state = stage_answer(llm, state, chat_history=chat_history, hits=hits)
+            _validate_and_log_transition(validate_answer_post(state))
             append_pipeline_snapshot("answer", state)
             append_session_log(
                 "final_answer_mode",
