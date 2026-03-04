@@ -117,9 +117,37 @@ def _resolve_mode(requested_mode: str, ha_error: str | None) -> str:
     return requested_mode
 
 
-def _print_startup_status(*, selected_mode: str, daemon_mode: bool, runtime: dict[str, object], ha_error: str | None) -> None:
+def _resolve_effective_mode(
+    *,
+    requested_mode: str,
+    daemon_mode: bool,
+    ha_error: str | None,
+) -> tuple[str | None, str | None, str | None]:
+    if requested_mode == "auto" and ha_error is not None and daemon_mode:
+        return None, None, f"Home Assistant is unavailable: {ha_error}"
+
+    selected_mode = _resolve_mode(requested_mode, ha_error)
+    if selected_mode == "satellite" and ha_error is not None:
+        if daemon_mode:
+            return None, None, f"Home Assistant is unavailable: {ha_error}"
+        return "cli", "satellite connection is unavailable", None
+    return selected_mode, None, None
+
+
+def _print_startup_status(
+    *,
+    requested_mode: str,
+    effective_mode: str,
+    daemon_mode: bool,
+    runtime: dict[str, object],
+    ha_error: str | None,
+    fallback_reason: str | None = None,
+) -> None:
     print("=== TestBot startup status ===")
-    print(f"Selected mode: {selected_mode} (daemon={daemon_mode})")
+    if fallback_reason:
+        print(f"Selected mode: {effective_mode} (requested={requested_mode}, fallback reason={fallback_reason}, daemon={daemon_mode})")
+    else:
+        print(f"Selected mode: {effective_mode} (requested={requested_mode}, daemon={daemon_mode})")
     print(f"Ollama endpoint: {runtime['ollama_base_url']} model={runtime['ollama_model']}")
     if ha_error:
         print(f"Home Assistant: unavailable ({ha_error})")
@@ -968,32 +996,52 @@ def main(argv: list[str] | None = None) -> None:
         str(runtime["ha_satellite_entity_id"]),
     )
 
-    if args.mode == "auto" and ha_error is not None and args.daemon:
-        print(f"Daemon mode requested in auto mode and Home Assistant is unavailable: {ha_error}", file=sys.stderr)
+    effective_mode, fallback_reason, exit_reason = _resolve_effective_mode(
+        requested_mode=args.mode,
+        daemon_mode=args.daemon,
+        ha_error=ha_error,
+    )
+
+    append_session_log(
+        "startup_mode_resolution",
+        {
+            "requested_mode": args.mode,
+            "effective_mode": effective_mode,
+            "daemon_mode": args.daemon,
+            "ha_available": ha_error is None,
+            "ha_error": ha_error,
+            "fallback_reason": fallback_reason,
+            "exit_reason": exit_reason,
+        },
+    )
+
+    if effective_mode is None:
+        if args.mode == "auto":
+            print(f"Daemon mode requested in auto mode and {exit_reason}", file=sys.stderr)
+        else:
+            print(f"Daemon mode requested and {exit_reason}", file=sys.stderr)
         return
 
-    selected_mode = _resolve_mode(args.mode, ha_error)
+    _print_startup_status(
+        requested_mode=args.mode,
+        effective_mode=effective_mode,
+        daemon_mode=args.daemon,
+        runtime=runtime,
+        ha_error=ha_error,
+        fallback_reason=fallback_reason,
+    )
 
-    _print_startup_status(selected_mode=selected_mode, daemon_mode=args.daemon, runtime=runtime, ha_error=ha_error)
-
-    if selected_mode == "satellite":
-        if ha_error is not None:
-            if args.daemon:
-                print(f"Daemon mode requested and Home Assistant is unavailable: {ha_error}", file=sys.stderr)
-                return
-            print("Falling back to CLI mode because satellite connection is unavailable.")
-            selected_mode = "cli"
-        else:
-            _run_satellite_mode(
-                llm=llm,
-                store=store,
-                chat_history=chat_history,
-                near_tie_delta=float(runtime["memory_near_tie_delta"]),
-                api_url=str(runtime["ha_api_url"]),
-                token=str(runtime["ha_api_secret"]),
-                entity_id=str(runtime["ha_satellite_entity_id"]),
-            )
-            return
+    if effective_mode == "satellite":
+        _run_satellite_mode(
+            llm=llm,
+            store=store,
+            chat_history=chat_history,
+            near_tie_delta=float(runtime["memory_near_tie_delta"]),
+            api_url=str(runtime["ha_api_url"]),
+            token=str(runtime["ha_api_secret"]),
+            entity_id=str(runtime["ha_satellite_entity_id"]),
+        )
+        return
 
     _run_cli_mode(
         llm=llm,
