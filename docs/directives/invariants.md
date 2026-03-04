@@ -1,10 +1,16 @@
-# Invariant Registry
+# Invariant Registry (Directive View)
 
-This registry is for contributors, reviewers, and operators validating contract-level behavior. It supports release/blocker decisions whenever answer-contract logic or memory-grounded fallback behavior changes. Use it during implementation, code review, and incident triage for anything in the answer generation pipeline (`src/testbot/sat_chatbot_memory_v2.py`) and acceptance tests (`features/*`). It matters because these are non-negotiable product truths: violating either invariant breaks user trust and acceptance criteria.
+`docs/invariants.md` is the canonical invariant registry with stable IDs and traceability. This directive view mirrors the same invariants for readers navigating the `docs/directives/` tree.
 
 ## Assumptions and invariants
 
-| Invariant | Definition | Rationale | Enforcement location(s) | Test coverage location(s) | Failure mode |
+| Invariant ID | Invariant | Definition | Enforcement location(s) | Test/BDD coverage location(s) | Failure mode |
 |---|---|---|---|---|---|
-| Citation requirement for factual answers | Any answer containing factual claims must include memory citation fields `doc_id` and `ts`; otherwise it is not contract-compliant. | Prevents unsupported claims and preserves traceability from answer text back to memory evidence. | `response_contains_claims()`, `has_required_memory_citation()`, and `validate_answer_contract()` in `src/testbot/sat_chatbot_memory_v2.py`; prompt contract in `ANSWER_PROMPT`. | `features/answer_contract.feature`; citation assertions in `features/memory_recall.feature` and `features/steps/memory_steps.py`. | Answer is replaced by the exact memory-grounded fallback (`I don't know from memory.`) when citation checks fail. |
-| Exact memory-grounded fallback behavior | When context is insufficient, low-confidence, empty, or contract-invalid, output must be exactly `I don't know from memory.` | Ensures deterministic safe behavior under uncertainty and prevents speculative or partially compliant responses. | Confidence gating (`context_is_confident`) and explicit fallback branches in `src/testbot/sat_chatbot_memory_v2.py`; prompt contract in `ANSWER_PROMPT`. | `features/memory_recall.feature` fallback scenario; fallback step assertion in `features/steps/memory_steps.py`; contract coverage in `features/answer_contract.feature`. | Any deviation from the exact fallback string is a contract violation and should fail acceptance checks. |
+| INV-001 | Citation requirement for factual answers | Any answer containing factual claims must include memory citation fields `doc_id` and `ts`; otherwise it is not contract-compliant. | `response_contains_claims()`, `has_required_memory_citation()`, and `validate_answer_contract()` plus `ANSWER_PROMPT` in `src/testbot/sat_chatbot_memory_v2.py`. | `Scenario: rejection of uncited factual response from eval pattern` in `features/answer_contract.feature` with assertions in `features/steps/answer_contract_steps.py`; `Scenario: cited memory-grounded answer path` in `features/memory_recall.feature` with assertions in `features/steps/memory_steps.py`. | Answer is replaced by exact fallback (`I don't know from memory.`) when citation checks fail. |
+| INV-002 | Exact memory-grounded fallback behavior | When context is insufficient, low-confidence, empty, or contract-invalid, output must be exactly `I don't know from memory.` | Confidence gate (`has_sufficient_context_confidence`) and explicit fallback branches in `main` plus `ANSWER_PROMPT` in `src/testbot/sat_chatbot_memory_v2.py`. | `Scenario: exact fallback path` in `features/memory_recall.feature` with exact assertion in `features/steps/memory_steps.py`; contract-invalid path enforced by scenario in `features/answer_contract.feature`. | Any deviation from the exact fallback string is a contract violation and should fail acceptance checks. |
+
+## Scenario ID mapping
+
+- `BDD-AC-01` → `features/answer_contract.feature` → `Scenario: rejection of uncited factual response from eval pattern`
+- `BDD-MR-01` → `features/memory_recall.feature` → `Scenario: cited memory-grounded answer path`
+- `BDD-MR-02` → `features/memory_recall.feature` → `Scenario: exact fallback path`
