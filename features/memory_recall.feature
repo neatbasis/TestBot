@@ -16,3 +16,8 @@ Feature: Memory recall behavior
     And eval cases are loaded from "eval/cases.jsonl"
     When the user asks about eval case "no-memory-match"
     Then the assistant responds exactly "I don't know from memory."
+
+  Scenario: equivalent candidates remain ambiguous after tie-break
+    Given a deterministic in-memory recall harness
+    When equivalent top candidates remain after tie-break
+    Then the assistant responds exactly "I don't know from memory."
