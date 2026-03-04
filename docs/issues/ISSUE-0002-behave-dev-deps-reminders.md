@@ -2,7 +2,7 @@
 
 - **ID:** ISSUE-0002
 - **Title:** Repeated reminders to install `behave` and dev dependencies
-- **Status:** open
+- **Status:** closed
 - **Severity:** amber
 - **Owner:** unassigned
 - **Created:** 2026-03-04
@@ -15,9 +15,10 @@ README now includes the `.[dev]` install command, but it is still framed as opti
 
 ## Evidence
 
-- README Setup includes `pip install -e .[dev]` under "Optional development extras."
-- README Validate includes `behave` as a canonical validation command.
-- `pyproject.toml` keeps `behave` in `[project.optional-dependencies].dev`, so docs wording must clarify workflow requirements.
+- README Setup includes `pip install -e .[dev]` and notes that `behave` is installed via the `dev` extra.
+- README Validate now annotates the `behave` command with an inline prerequisite: requires `pip install -e .[dev]` first.
+- `docs/testing.md` mirrors the same prerequisite callout in both the canonical commands table and the BDD command snippet.
+- `pyproject.toml` keeps `behave` in `[project.optional-dependencies].dev`, and docs now align setup plus point-of-use guidance.
 
 ## Impact
 
@@ -47,5 +48,7 @@ README now includes the `.[dev]` install command, but it is still framed as opti
 
 ## Closure Notes
 
-- 2026-03-04: Partially mitigated; dev install command is now documented and `behave` runs after dev extras installation.
-- Residual risk: docs still mark dev extras as optional while advertising `behave` as a standard validation command.
+- 2026-03-04: Closed by adding explicit point-of-use prerequisites where `behave` appears as a canonical validation command.
+- README Validate now annotates `behave` with the inline prerequisite text: requires `pip install -e .[dev]` first.
+- `docs/testing.md` mirrors the same prerequisite near canonical `behave` command snippets, reducing split guidance between setup and execution docs.
+- Residual risk reduced: contributors can now infer the required install command from both setup and command invocation contexts.

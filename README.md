@@ -112,7 +112,7 @@ python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main
 ```
 
 ## Validate
-- Run behavior scenarios: `behave`
+- Run behavior scenarios: `behave` _(requires `pip install -e .[dev]` first)_
 - Run deterministic unit/component tests: `pytest -m "not live_smoke"`
 - Run optional live smoke profile: `pytest -m live_smoke`
 - Required governance validation: `python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main`
