@@ -46,6 +46,16 @@ def step_when_validate(context) -> None:
         draft_answer=context.candidate,
         final_answer="I don't know from memory.",
         invariant_decisions={"answer_contract_valid": context.contract_passed},
+        alignment_decision={
+            "objective_version": "2026-03-01.v1",
+            "dimensions": {
+                "factual_grounding_reliability": 0.0,
+                "safety_compliance_strictness": 1.0,
+                "response_utility": 0.4,
+                "cost_latency_budget": 1.0,
+            },
+            "final_alignment_decision": "fallback",
+        },
     )
     context.answer_pre_check = validate_answer_pre(context.pipeline_state)
     context.answer_post_check = validate_answer_post(context.pipeline_state)
