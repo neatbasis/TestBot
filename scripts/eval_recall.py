@@ -15,7 +15,7 @@ from testbot.eval_fixtures import EvalCase, load_eval_cases
 from testbot.rerank import (
     adaptive_sigma_fractional,
     rerank_docs_with_time_and_type,
-    similarity_with_time_and_type_score,
+    rerank_objective_score_components,
 )
 from testbot.time_parse import parse_target_time as parse_target_time_shared
 
@@ -71,8 +71,13 @@ def rank_candidates(
     return [candidates_by_doc_id.get((doc.id or ""), {"doc_id": (doc.id or "")}) for doc in ranked_docs]
 
 
-def candidate_score(candidate: dict[str, Any], *, target: arrow.Arrow, sigma_seconds: float) -> float:
-    return similarity_with_time_and_type_score(
+def candidate_objective_components(
+    candidate: dict[str, Any],
+    *,
+    target: arrow.Arrow,
+    sigma_seconds: float,
+) -> dict[str, float | str]:
+    return rerank_objective_score_components(
         sim_score=float(candidate.get("sim_score", 0.0)),
         doc_type=str(candidate.get("type", "")),
         doc_ts_iso=str(candidate.get("ts", "")),
@@ -87,6 +92,15 @@ def evaluate(cases: list[EvalCase], *, top_k: int, idk_threshold: float, now: ar
     memory_cases = 0
     ranks: list[int] = []
     idk_count = 0
+    component_totals = {
+        "semantic_score": 0.0,
+        "temporal_gaussian_weight": 0.0,
+        "temporal_blend": 0.0,
+        "type_prior": 0.0,
+        "final_score": 0.0,
+    }
+    attribution_count = 0
+    case_attribution: list[dict[str, Any]] = []
 
     for case in cases:
         target = parse_target_time(case.utterance, now=now_arrow)
@@ -98,9 +112,41 @@ def evaluate(cases: list[EvalCase], *, top_k: int, idk_threshold: float, now: ar
             sigma_seconds=sigma,
         )
 
-        top_score = candidate_score(ranked[0], target=target, sigma_seconds=sigma) if ranked else 0.0
+        top_components = (
+            candidate_objective_components(ranked[0], target=target, sigma_seconds=sigma)
+            if ranked
+            else {
+                "semantic_score": 0.0,
+                "temporal_gaussian_weight": 0.0,
+                "temporal_blend": 0.0,
+                "type_prior": 0.0,
+                "final_score": 0.0,
+            }
+        )
+        top_score = float(top_components["final_score"])
         if top_score < idk_threshold:
             idk_count += 1
+
+        attribution_count += 1
+        for key in component_totals:
+            component_totals[key] += float(top_components.get(key, 0.0))
+
+        expected_components: dict[str, float | str] | None = None
+        if case.expected_doc_id:
+            expected_candidate = next((c for c in ranked if c.get("doc_id") == case.expected_doc_id), None)
+            if expected_candidate is not None:
+                expected_components = candidate_objective_components(expected_candidate, target=target, sigma_seconds=sigma)
+
+        case_attribution.append(
+            {
+                "case_id": case.case_id,
+                "utterance": case.utterance,
+                "top_doc_id": ranked[0].get("doc_id", "") if ranked else "",
+                "expected_doc_id": case.expected_doc_id,
+                "top_objective": top_components,
+                "expected_objective": expected_components,
+            }
+        )
 
         if case.expected_intent == "memory_lookup" and case.expected_doc_id:
             memory_cases += 1
@@ -111,6 +157,10 @@ def evaluate(cases: list[EvalCase], *, top_k: int, idk_threshold: float, now: ar
             if rank <= top_k:
                 hit_count += 1
 
+    avg_attribution = {
+        key: (value / attribution_count) if attribution_count else 0.0 for key, value in component_totals.items()
+    }
+
     return {
         "cases_total": len(cases),
         "memory_lookup_cases": memory_cases,
@@ -120,6 +170,10 @@ def evaluate(cases: list[EvalCase], *, top_k: int, idk_threshold: float, now: ar
         "top_k": top_k,
         "idk_threshold": idk_threshold,
         "fixed_now": now_arrow.isoformat(),
+        "objective_component_attribution": {
+            "average_top_candidate_components": avg_attribution,
+            "per_case": case_attribution,
+        },
     }
 
 

@@ -96,6 +96,27 @@ Time-aware reranking biases retrieval toward memories near an inferred target ti
 
 This rerank pass is combined with semantic retrieval scores to improve temporal relevance.
 
+## Rerank objective (canonical)
+
+Named objective: `semantic_temporal_type_v1`.
+
+Formula:
+
+```text
+final_score = semantic_score * type_prior * (base_temporal_blend + gaussian_temporal_blend * temporal_gaussian_weight)
+```
+
+Canonical parameters:
+
+| Parameter | Default | Rationale |
+| --- | --- | --- |
+| `base_temporal_blend` | `0.25` | Preserves baseline semantic influence even when temporal evidence is weak/noisy. |
+| `gaussian_temporal_blend` | `0.75` | Gives temporal alignment dominant but bounded influence when timestamp proximity is strong. |
+| `reflection_type_prior` | `0.7` | Slightly down-weights reflection cards versus direct utterance/memory cards to reduce speculative wins. |
+| `default_type_prior` | `1.0` | Keeps non-reflection card types unpenalized by default. |
+
+Each candidate exposes `semantic_score`, `temporal_gaussian_weight`, `temporal_blend`, `type_prior`, and `final_score` in session logs for ranking audits.
+
 ## Answer contract
 
 - Responses with factual claims must include memory citation fields `doc_id` and `ts`.
