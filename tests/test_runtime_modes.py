@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 from testbot.sat_chatbot_memory_v2 import _parse_args, _resolve_mode
+from testbot import sat_chatbot_memory_v2 as runtime
 
 
 def test_parse_args_defaults() -> None:
@@ -22,3 +25,46 @@ def test_resolve_mode_prefers_satellite_when_ha_available() -> None:
 def test_resolve_mode_falls_back_to_cli_when_ha_unavailable() -> None:
     assert _resolve_mode("auto", "auth failed") == "cli"
     assert _resolve_mode("cli", "auth failed") == "cli"
+
+
+def _patch_main_dependencies(monkeypatch, *, args, ha_error: str | None, calls: dict[str, int]) -> None:
+    runtime_env = {
+        "ha_api_url": "http://localhost:8123",
+        "ha_api_secret": "token",
+        "ha_satellite_entity_id": "assist_satellite.kitchen",
+        "ollama_base_url": "http://localhost:11434",
+        "ollama_model": "llama3.1:latest",
+        "memory_near_tie_delta": 0.02,
+    }
+
+    monkeypatch.setattr(runtime, "_parse_args", lambda _argv=None: args)
+    monkeypatch.setattr(runtime, "_read_runtime_env", lambda: runtime_env)
+    monkeypatch.setattr(runtime, "_ha_connection_error", lambda *_args, **_kwargs: ha_error)
+    monkeypatch.setattr(runtime, "_print_startup_status", lambda **_kwargs: None)
+    monkeypatch.setattr(runtime, "ChatOllama", lambda *a, **k: object())
+    monkeypatch.setattr(runtime, "OllamaEmbeddings", lambda *a, **k: object())
+    monkeypatch.setattr(runtime, "InMemoryVectorStore", lambda *_args, **_kwargs: object())
+    monkeypatch.setattr(runtime, "_run_cli_mode", lambda **_kwargs: calls.__setitem__("cli", calls["cli"] + 1))
+    monkeypatch.setattr(runtime, "_run_satellite_mode", lambda **_kwargs: calls.__setitem__("satellite", calls["satellite"] + 1))
+
+
+def test_main_auto_daemon_ha_unavailable_exits_without_cli_fallback(monkeypatch, capsys) -> None:
+    calls = {"cli": 0, "satellite": 0}
+    args = SimpleNamespace(mode="auto", daemon=True)
+    _patch_main_dependencies(monkeypatch, args=args, ha_error="auth failed", calls=calls)
+
+    runtime.main([])
+
+    captured = capsys.readouterr()
+    assert "Daemon mode requested in auto mode and Home Assistant is unavailable" in captured.err
+    assert calls == {"cli": 0, "satellite": 0}
+
+
+def test_main_auto_daemon_ha_available_uses_satellite(monkeypatch) -> None:
+    calls = {"cli": 0, "satellite": 0}
+    args = SimpleNamespace(mode="auto", daemon=True)
+    _patch_main_dependencies(monkeypatch, args=args, ha_error=None, calls=calls)
+
+    runtime.main([])
+
+    assert calls == {"cli": 0, "satellite": 1}
