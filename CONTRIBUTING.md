@@ -15,3 +15,13 @@ Optional validation for markdown links/paths:
 ```bash
 python scripts/validate_markdown_paths.py
 ```
+
+Issue workflow validation (CI-friendly):
+
+```bash
+# Validate PR body metadata and newly added docs/issues files.
+python scripts/validate_issues.py --pr-body-file .github/PULL_REQUEST_BODY.md --base-ref origin/main
+
+# Validate all existing issue files locally.
+python scripts/validate_issues.py --all-issue-files
+```
