@@ -27,7 +27,7 @@ def test_resolve_mode_falls_back_to_cli_when_ha_unavailable() -> None:
     assert _resolve_mode("cli", "auth failed") == "cli"
 
 
-def _patch_main_dependencies(monkeypatch, *, args, ha_error: str | None, calls: dict[str, int]) -> None:
+def _patch_main_dependencies(monkeypatch, *, args, ha_error: str | None, calls: dict[str, int], startup: dict | None = None) -> None:
     runtime_env = {
         "ha_api_url": "http://localhost:8123",
         "ha_api_secret": "token",
@@ -40,10 +40,14 @@ def _patch_main_dependencies(monkeypatch, *, args, ha_error: str | None, calls: 
     monkeypatch.setattr(runtime, "_parse_args", lambda _argv=None: args)
     monkeypatch.setattr(runtime, "_read_runtime_env", lambda: runtime_env)
     monkeypatch.setattr(runtime, "_ha_connection_error", lambda *_args, **_kwargs: ha_error)
-    monkeypatch.setattr(runtime, "_print_startup_status", lambda **_kwargs: None)
+    if startup is not None:
+        monkeypatch.setattr(runtime, "_print_startup_status", lambda **kwargs: startup.update(kwargs))
+    else:
+        monkeypatch.setattr(runtime, "_print_startup_status", lambda **_kwargs: None)
     monkeypatch.setattr(runtime, "ChatOllama", lambda *a, **k: object())
     monkeypatch.setattr(runtime, "OllamaEmbeddings", lambda *a, **k: object())
     monkeypatch.setattr(runtime, "InMemoryVectorStore", lambda *_args, **_kwargs: object())
+    monkeypatch.setattr(runtime, "append_session_log", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(runtime, "_run_cli_mode", lambda **_kwargs: calls.__setitem__("cli", calls["cli"] + 1))
     monkeypatch.setattr(runtime, "_run_satellite_mode", lambda **_kwargs: calls.__setitem__("satellite", calls["satellite"] + 1))
 
@@ -68,3 +72,17 @@ def test_main_auto_daemon_ha_available_uses_satellite(monkeypatch) -> None:
     runtime.main([])
 
     assert calls == {"cli": 0, "satellite": 1}
+
+
+def test_main_satellite_mode_reports_cli_as_effective_mode_when_fallback_applies(monkeypatch) -> None:
+    calls = {"cli": 0, "satellite": 0}
+    startup: dict[str, object] = {}
+    args = SimpleNamespace(mode="satellite", daemon=False)
+    _patch_main_dependencies(monkeypatch, args=args, ha_error="auth failed", calls=calls, startup=startup)
+
+    runtime.main([])
+
+    assert calls == {"cli": 1, "satellite": 0}
+    assert startup["requested_mode"] == "satellite"
+    assert startup["effective_mode"] == "cli"
+    assert startup["fallback_reason"] == "satellite connection is unavailable"
