@@ -2,6 +2,16 @@
 
 This file indexes all `severity: red` issues requiring escalated visibility.
 
+## Recurring triage note template
+
+Use this note under each red-tag issue entry whenever status changes or during scheduled triage:
+
+```
+- Last reviewed: YYYY-MM-DD
+- Next review due: YYYY-MM-DD
+- Decision notes: <decision, rationale, and any escalation/rollback updates>
+```
+
 ## Active
 
 - ISSUE-0001 — **Establish measurable and trackable in-repo issue governance**: Governance remains non-canonical and weakly auditable, risking inconsistent issue quality and unresolved blockers.
