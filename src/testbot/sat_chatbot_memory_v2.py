@@ -16,6 +16,7 @@ from homeassistant_api import Client
 
 from testbot.memory_cards import make_reflection_card, make_utterance_card, store_doc, utc_now_iso
 from testbot.pipeline_state import CandidateHit, PipelineState, append_pipeline_snapshot
+from testbot.reflection_policy import CapabilityStatus, decide_fallback_action
 from testbot.rerank import adaptive_sigma_fractional, rerank_docs_with_time_and_type_outcome
 from testbot.stage_transitions import (
     append_transition_validation_log,
@@ -31,6 +32,7 @@ from testbot.stage_transitions import (
     validate_retrieve_pre,
 )
 from testbot.time_parse import parse_target_time
+from testbot.intent_router import IntentType, classify_intent
 from ha_ask import AskSpec, ask_question
 from ha_ask.config import normalize_rest_api_url
 
@@ -60,6 +62,8 @@ ChatMsg = dict[str, str]
 
 FALLBACK_ANSWER = "I don't know from memory."
 DENY_ANSWER = "I can't comply with that request."
+CLARIFY_ANSWER = "Can you clarify which memory and time window you mean?"
+ROUTE_TO_ASK_ANSWER = "I can disambiguate this with a quick follow-up question."
 ALIGNMENT_OBJECTIVE_VERSION = "2026-03-01.v1"
 SESSION_LOG_SCHEMA_VERSION = 2
 
@@ -212,15 +216,42 @@ def stage_rerank(
     return replace(state, reranked_hits=reranked_hits, confidence_decision=confidence_decision), hits
 
 
-def stage_answer(llm: ChatOllama, state: PipelineState, *, chat_history: deque[ChatMsg], hits: list[Document]) -> PipelineState:
+def _intent_class_for_policy(user_input: str) -> str:
+    intent = classify_intent(user_input)
+    if intent == IntentType.MEMORY_RECALL:
+        return "memory_recall"
+    return "non_memory"
+
+
+def stage_answer(
+    llm: ChatOllama,
+    state: PipelineState,
+    *,
+    chat_history: deque[ChatMsg],
+    hits: list[Document],
+    capability_status: CapabilityStatus,
+) -> PipelineState:
     context_str = render_context(hits)
     history_str = format_chat_history(chat_history)
     msgs = ANSWER_PROMPT.format_messages(input=state.user_input, chat_history=history_str, context=context_str)
 
+    fallback_action = decide_fallback_action(
+        intent=_intent_class_for_policy(state.user_input),
+        memory_hit=bool(state.confidence_decision.get("context_confident", False)),
+        ambiguity=bool(state.confidence_decision.get("ambiguity_detected", False)),
+        capability_status=capability_status,
+    )
+
     if is_unsafe_user_request(state.user_input):
         draft_answer = ""
         final_answer = DENY_ANSWER
-    elif not state.confidence_decision.get("context_confident", False):
+    elif fallback_action == "ROUTE_TO_ASK":
+        draft_answer = ""
+        final_answer = ROUTE_TO_ASK_ANSWER
+    elif fallback_action == "ASK_CLARIFYING_QUESTION":
+        draft_answer = ""
+        final_answer = CLARIFY_ANSWER
+    elif fallback_action == "EXACT_MEMORY_FALLBACK":
         draft_answer = ""
         final_answer = FALLBACK_ANSWER
     else:
@@ -243,7 +274,20 @@ def stage_answer(llm: ChatOllama, state: PipelineState, *, chat_history: deque[C
         "response_contains_claims": response_contains_claims(draft_answer),
         "has_required_memory_citation": has_required_memory_citation(draft_answer),
         "answer_contract_valid": validate_answer_contract(draft_answer),
-        "answer_mode": "deny" if final_answer == DENY_ANSWER else ("dont-know" if final_answer == FALLBACK_ANSWER else "memory-grounded"),
+        "answer_mode": (
+            "deny"
+            if final_answer == DENY_ANSWER
+            else (
+                "dont-know"
+                if final_answer == FALLBACK_ANSWER
+                else (
+                    "clarify"
+                    if final_answer in {CLARIFY_ANSWER, ROUTE_TO_ASK_ANSWER}
+                    else "memory-grounded"
+                )
+            )
+        ),
+        "fallback_action": fallback_action,
     }
     return replace(
         state,
@@ -417,6 +461,7 @@ def _run_chat_loop(
     chat_history: deque[ChatMsg],
     near_tie_delta: float,
     io_channel: str,
+    capability_status: CapabilityStatus,
     read_user_utterance,
     send_assistant_text,
 ) -> None:
@@ -563,7 +608,13 @@ def _run_chat_loop(
             # 3) Answer using ONLY memory + recent chat
             # -----------------------
         _validate_and_log_transition(validate_answer_pre(state))
-        state = stage_answer(llm, state, chat_history=chat_history, hits=hits)
+        state = stage_answer(
+            llm,
+            state,
+            chat_history=chat_history,
+            hits=hits,
+            capability_status=capability_status,
+        )
         _validate_and_log_transition(validate_answer_post(state))
         append_pipeline_snapshot("answer", state)
         append_session_log(
@@ -649,6 +700,7 @@ def _run_cli_mode(*, llm: ChatOllama, store: InMemoryVectorStore, chat_history: 
         chat_history=chat_history,
         near_tie_delta=near_tie_delta,
         io_channel="cli",
+        capability_status="ask_unavailable",
         read_user_utterance=_read,
         send_assistant_text=_send,
     )
@@ -694,6 +746,7 @@ def _run_satellite_mode(
             chat_history=chat_history,
             near_tie_delta=near_tie_delta,
             io_channel="satellite",
+            capability_status="ask_available",
             read_user_utterance=_read,
             send_assistant_text=_send,
         )
