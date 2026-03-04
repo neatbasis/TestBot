@@ -90,10 +90,18 @@ pip install -e .[dev]
 For full environment prerequisites and `.env` variables, use [docs/quickstart.md](docs/quickstart.md).
 
 ## Run
-Start the chatbot loop:
+Start in auto mode (prefers Home Assistant satellite, falls back to CLI chat):
 
 ```bash
-testbot
+testbot --mode auto
+```
+
+Other common modes:
+
+```bash
+testbot --mode satellite
+testbot --mode cli
+testbot --mode satellite --daemon
 ```
 
 Alternative direct module run:

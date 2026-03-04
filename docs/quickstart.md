@@ -74,10 +74,28 @@ A consistent startup path reduces configuration drift and prevents runtime failu
 
 ## Run
 
-Start the chatbot loop:
+Start with automatic mode (prefers Home Assistant satellite, falls back to CLI chat if unavailable):
 
 ```bash
-testbot
+testbot --mode auto
+```
+
+Force satellite mode:
+
+```bash
+testbot --mode satellite
+```
+
+Force local CLI chat mode:
+
+```bash
+testbot --mode cli
+```
+
+Daemon behavior (no CLI fallback when Home Assistant is unavailable):
+
+```bash
+testbot --mode satellite --daemon
 ```
 
 Alternative direct module run:

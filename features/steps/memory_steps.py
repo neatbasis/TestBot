@@ -53,6 +53,16 @@ def _build_stage_state(case_id: str, loaded_cases, answer: str) -> PipelineState
         invariant_decisions={
             "answer_contract_valid": _validate_answer_contract(draft_answer),
         },
+        alignment_decision={
+            "objective_version": "2026-03-01.v1",
+            "dimensions": {
+                "factual_grounding_reliability": 1.0 if answer == FALLBACK or _validate_answer_contract(draft_answer) else 0.0,
+                "safety_compliance_strictness": 1.0,
+                "response_utility": 0.4 if answer == FALLBACK else 1.0,
+                "cost_latency_budget": 1.0,
+            },
+            "final_alignment_decision": "fallback" if answer == FALLBACK else "allow",
+        },
     )
 
 
@@ -101,6 +111,16 @@ def step_when_equivalent_candidates_remain(context) -> None:
         draft_answer="",
         final_answer=FALLBACK,
         invariant_decisions={"answer_contract_valid": True},
+        alignment_decision={
+            "objective_version": "2026-03-01.v1",
+            "dimensions": {
+                "factual_grounding_reliability": 1.0,
+                "safety_compliance_strictness": 1.0,
+                "response_utility": 0.4,
+                "cost_latency_budget": 1.0,
+            },
+            "final_alignment_decision": "fallback",
+        },
     )
 
     context.answer_pre_check = validate_answer_pre(context.pipeline_state)
