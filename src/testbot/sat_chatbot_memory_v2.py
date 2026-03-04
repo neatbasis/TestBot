@@ -35,6 +35,7 @@ from testbot.time_parse import parse_target_time
 from testbot.intent_router import IntentType, classify_intent
 from ha_ask import AskSpec, ask_question
 from ha_ask.config import normalize_rest_api_url
+from testbot.history_packer import PackedHistory, labeled_history_claims, pack_chat_history, render_packed_history
 
 from langchain_core.documents import Document
 from langchain_core.prompts import ChatPromptTemplate
@@ -127,16 +128,6 @@ def _print_startup_status(*, selected_mode: str, daemon_mode: bool, runtime: dic
         print("Developer note: satellite ask/speak loop is enabled.")
     print("Continuity: memory cards are shared across interfaces in-process via one vector store.")
     print("==============================")
-
-
-def format_chat_history(hist: deque[ChatMsg]) -> str:
-    lines: list[str] = []
-    for m in hist:
-        role = m.get("role", "unknown")
-        content = (m.get("content") or "").strip()
-        if content:
-            lines.append(f"{role}: {content}")
-    return "\n".join(lines)
 
 
 def append_session_log(event: str, payload: dict, *, log_path: Path = Path("./logs/session.jsonl")) -> None:
@@ -232,7 +223,8 @@ def stage_answer(
     capability_status: CapabilityStatus,
 ) -> PipelineState:
     context_str = render_context(hits)
-    history_str = format_chat_history(chat_history)
+    packed_history = pack_chat_history(list(chat_history))
+    history_str = render_packed_history(packed_history)
     msgs = ANSWER_PROMPT.format_messages(input=state.user_input, chat_history=history_str, context=context_str)
 
     fallback_action = decide_fallback_action(
@@ -274,6 +266,7 @@ def stage_answer(
         final_answer=final_answer,
         hits=hits,
         chat_history=chat_history,
+        packed_history=packed_history,
     )
 
     invariant_decisions = {
@@ -436,6 +429,7 @@ def build_provenance_metadata(
     final_answer: str,
     hits: list[Document],
     chat_history: deque[ChatMsg],
+    packed_history: PackedHistory,
 ) -> tuple[list[ProvenanceType], list[str], str, list[str]]:
     if not is_non_trivial_answer(final_answer):
         return (
@@ -446,7 +440,9 @@ def build_provenance_metadata(
         )
 
     used_memory_refs = collect_used_memory_refs(hits)
-    claims = extract_claims(final_answer)
+    claims = [f"INFERENCE: {claim}" for claim in extract_claims(final_answer)]
+    claims.extend(labeled_history_claims(packed_history))
+    claims = claims[:8]
     provenance_types: list[ProvenanceType] = [ProvenanceType.INFERENCE]
     if used_memory_refs:
         provenance_types.append(ProvenanceType.MEMORY)
