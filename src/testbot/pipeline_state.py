@@ -26,6 +26,7 @@ class PipelineState:
     draft_answer: str = ""
     final_answer: str = ""
     invariant_decisions: dict[str, Any] = field(default_factory=dict)
+    alignment_decision: dict[str, Any] = field(default_factory=dict)
 
 
 def pipeline_state_to_dict(state: PipelineState) -> dict[str, Any]:
