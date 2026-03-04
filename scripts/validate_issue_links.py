@@ -8,6 +8,7 @@ import re
 import subprocess
 import sys
 from pathlib import Path
+from typing import NamedTuple
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 ISSUES_DIR = REPO_ROOT / "docs" / "issues"
@@ -22,6 +23,16 @@ RED_TAG_ITEM_PATTERN = re.compile(r"\b(ISSUE-\d{4})\b")
 STATUS_OPENISH = {"open", "in_progress", "blocked"}
 STATUS_CLOSEDISH = {"resolved", "closed"}
 PLACEHOLDER_VALUES = {"", "tbd", "none", "unassigned", "n/a", "na", "-"}
+
+
+class ValidationFailure(NamedTuple):
+    category: str
+    message: str
+    hint: str
+
+
+def record_failure(failures: list[ValidationFailure], category: str, message: str, hint: str) -> None:
+    failures.append(ValidationFailure(category=category, message=message, hint=hint))
 
 
 def parse_args() -> argparse.Namespace:
@@ -124,20 +135,35 @@ def is_placeholder(value: str) -> bool:
     return value.strip().lower() in PLACEHOLDER_VALUES
 
 
-def validate_pr_and_commit_metadata(pr_body_file: Path | None, base_ref: str, failures: list[str]) -> None:
+def validate_pr_and_commit_metadata(pr_body_file: Path | None, base_ref: str, failures: list[ValidationFailure]) -> None:
     if pr_body_file:
         body_path = pr_body_file if pr_body_file.is_absolute() else REPO_ROOT / pr_body_file
         if not body_path.exists():
-            failures.append(f"PR body file does not exist: {pr_body_file}")
+            record_failure(
+                failures,
+                "ISSUE_LINK",
+                f"PR body file does not exist: {pr_body_file}",
+                "Provide a valid --pr-body-file path or omit the flag when validating locally.",
+            )
         else:
             body = body_path.read_text(encoding="utf-8")
             if is_non_trivial(body) and not ISSUE_ID_PATTERN.search(body):
-                failures.append("Non-trivial PR metadata must include at least one issue ID (ISSUE-XXXX).")
+                record_failure(
+                    failures,
+                    "ISSUE_LINK",
+                    "Non-trivial PR metadata must include at least one issue ID (ISSUE-XXXX).",
+                    "Add an ISSUE-XXXX reference to the PR description (for example in Summary or Motivation).",
+                )
 
     try:
         rev_lines = [line.strip() for line in run_git(["rev-list", "--parents", f"{base_ref}...HEAD"]).splitlines() if line.strip()]
     except RuntimeError as exc:
-        failures.append(f"Could not inspect commits for issue links: {exc}")
+        record_failure(
+            failures,
+            "ISSUE_LINK",
+            f"Could not inspect commits for issue links: {exc}",
+            "Ensure the repository has the referenced base commit and rerun with a valid --base-ref.",
+        )
         return
 
     commit_ids: list[str] = []
@@ -153,12 +179,17 @@ def validate_pr_and_commit_metadata(pr_body_file: Path | None, base_ref: str, fa
         message = run_git(["show", "-s", "--format=%B", commit_id]).strip()
         if is_non_trivial(message) and not ISSUE_ID_PATTERN.search(message):
             short = run_git(["show", "-s", "--format=%s", commit_id]).strip()
-            failures.append(
-                f"Commit {commit_id[:10]} has non-trivial metadata but no ISSUE-XXXX reference: {short!r}"
+            record_failure(
+                failures,
+                "ISSUE_LINK",
+                f"Commit {commit_id[:10]} has non-trivial metadata but no ISSUE-XXXX reference: {short!r}",
+                "Amend the commit message to include an ISSUE-XXXX reference.",
             )
 
 
-def validate_issue_schema(issue_files: list[Path], canonical_sections: list[str], failures: list[str]) -> dict[str, dict[str, str]]:
+def validate_issue_schema(
+    issue_files: list[Path], canonical_sections: list[str], failures: list[ValidationFailure]
+) -> dict[str, dict[str, str]]:
     parsed: dict[str, dict[str, str]] = {}
     for issue_file in issue_files:
         rel = issue_file.relative_to(REPO_ROOT)
@@ -168,13 +199,23 @@ def validate_issue_schema(issue_files: list[Path], canonical_sections: list[str]
 
         missing_sections = [s for s in canonical_sections if not contains_schema_section(text, s)]
         if missing_sections:
-            failures.append(f"{rel}: missing canonical schema fields/sections: {', '.join(missing_sections)}")
+            record_failure(
+                failures,
+                "SCHEMA",
+                f"{rel}: missing canonical schema fields/sections: {', '.join(missing_sections)}",
+                "Update the issue document to include every required section from docs/issues.md.",
+            )
 
         if fields.get("ID"):
             expected_id = issue_file.name.split("-", maxsplit=2)
             expected_issue = "-".join(expected_id[:2]) if len(expected_id) >= 2 else ""
             if fields["ID"] != expected_issue:
-                failures.append(f"{rel}: ID field '{fields['ID']}' does not match filename issue id '{expected_issue}'.")
+                record_failure(
+                    failures,
+                    "SCHEMA",
+                    f"{rel}: ID field '{fields['ID']}' does not match filename issue id '{expected_issue}'.",
+                    "Rename the file or fix the **ID** field so both use the same ISSUE-XXXX value.",
+                )
     return parsed
 
 
@@ -201,11 +242,16 @@ def parse_red_tag_index() -> tuple[set[str], set[str]]:
     return active, resolved
 
 
-def validate_red_severity_consistency(all_issue_files: list[Path], failures: list[str]) -> None:
+def validate_red_severity_consistency(all_issue_files: list[Path], failures: list[ValidationFailure]) -> None:
     active_ids, resolved_ids = parse_red_tag_index()
     overlap = active_ids & resolved_ids
     if overlap:
-        failures.append(f"docs/issues/RED_TAG.md: issue(s) appear in both Active and Resolved: {', '.join(sorted(overlap))}")
+        record_failure(
+            failures,
+            "RED_TAG",
+            f"docs/issues/RED_TAG.md: issue(s) appear in both Active and Resolved: {', '.join(sorted(overlap))}",
+            "Keep each ISSUE-XXXX in exactly one RED_TAG section that matches its lifecycle state.",
+        )
 
     for issue_file in all_issue_files:
         rel = issue_file.relative_to(REPO_ROOT)
@@ -222,32 +268,72 @@ def validate_red_severity_consistency(all_issue_files: list[Path], failures: lis
             continue
 
         if not issue_id:
-            failures.append(f"{rel}: red-severity issue must include non-empty ID field.")
+            record_failure(
+                failures,
+                "RED_TAG",
+                f"{rel}: red-severity issue must include non-empty ID field.",
+                "Set the **ID** field to the issue identifier in ISSUE-XXXX format.",
+            )
             continue
 
         if is_placeholder(owner):
-            failures.append(f"{rel}: red-severity issue must include a concrete Owner (not placeholder).")
+            record_failure(
+                failures,
+                "RED_TAG",
+                f"{rel}: red-severity issue must include a concrete Owner (not placeholder).",
+                "Replace placeholder owner values with a responsible person/team.",
+            )
         if is_placeholder(target_sprint):
-            failures.append(f"{rel}: red-severity issue must include a concrete Target Sprint (not placeholder).")
+            record_failure(
+                failures,
+                "RED_TAG",
+                f"{rel}: red-severity issue must include a concrete Target Sprint (not placeholder).",
+                "Set **Target Sprint** to a planned sprint/milestone instead of TBD/none.",
+            )
 
         in_active = issue_id in active_ids
         in_resolved = issue_id in resolved_ids
         if not in_active and not in_resolved:
-            failures.append(f"{rel}: red-severity issue must be listed in docs/issues/RED_TAG.md.")
+            record_failure(
+                failures,
+                "RED_TAG",
+                f"{rel}: red-severity issue must be listed in docs/issues/RED_TAG.md.",
+                "Add the ISSUE-XXXX entry to RED_TAG Active or Resolved, based on Status.",
+            )
 
         if status in STATUS_OPENISH and not in_active:
-            failures.append(f"{rel}: status '{status}' requires membership in RED_TAG Active section.")
+            record_failure(
+                failures,
+                "RED_TAG",
+                f"{rel}: status '{status}' requires membership in RED_TAG Active section.",
+                "Move/add the ISSUE-XXXX entry under the Active section in docs/issues/RED_TAG.md.",
+            )
         if status in STATUS_CLOSEDISH and not in_resolved:
-            failures.append(f"{rel}: status '{status}' requires membership in RED_TAG Resolved section.")
+            record_failure(
+                failures,
+                "RED_TAG",
+                f"{rel}: status '{status}' requires membership in RED_TAG Resolved section.",
+                "Move/add the ISSUE-XXXX entry under the Resolved section in docs/issues/RED_TAG.md.",
+            )
         if status in STATUS_OPENISH and in_resolved:
-            failures.append(f"{rel}: status '{status}' is inconsistent with RED_TAG Resolved section.")
+            record_failure(
+                failures,
+                "RED_TAG",
+                f"{rel}: status '{status}' is inconsistent with RED_TAG Resolved section.",
+                "Change Status to resolved/closed or move the entry from Resolved to Active.",
+            )
         if status in STATUS_CLOSEDISH and in_active:
-            failures.append(f"{rel}: status '{status}' is inconsistent with RED_TAG Active section.")
+            record_failure(
+                failures,
+                "RED_TAG",
+                f"{rel}: status '{status}' is inconsistent with RED_TAG Active section.",
+                "Change Status to open/in_progress/blocked or move the entry from Active to Resolved.",
+            )
 
 
 def main() -> int:
     args = parse_args()
-    failures: list[str] = []
+    failures: list[ValidationFailure] = []
 
     validate_pr_and_commit_metadata(args.pr_body_file, args.base_ref, failures)
 
@@ -271,9 +357,12 @@ def main() -> int:
     validate_red_severity_consistency(list_all_issue_files(), failures)
 
     if failures:
-        print("Governance validation failed:")
+        print("Governance validation failed:", file=sys.stderr)
         for failure in failures:
-            print(f"- {failure}")
+            print(
+                f"- [{failure.category}] {failure.message}\n  Remediation: {failure.hint}",
+                file=sys.stderr,
+            )
         return 1
 
     print("Governance validation passed.")

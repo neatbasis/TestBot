@@ -1,0 +1,21 @@
+name: Issue Link Validation
+
+on:
+  pull_request:
+
+jobs:
+  validate-issue-links:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Validate issue linkage and governance data
+        run: python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main

@@ -102,6 +102,15 @@ Alternative direct module run:
 python src/testbot/sat_chatbot_memory_v2.py
 ```
 
+
+## Required before merge
+
+Run this governance gate locally before requesting review or merge:
+
+```bash
+python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main
+```
+
 ## Validate
 - Run behavior scenarios: `behave`
 - Run deterministic unit/component tests: `pytest -m "not live_smoke"`
