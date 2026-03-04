@@ -85,6 +85,30 @@ def step_when_user_asks_eval_case(context, case_id: str) -> None:
     assert context.answer_post_check.passed, f"answer.post failed: {context.answer_post_check.failures}"
 
 
+@when("equivalent top candidates remain after tie-break")
+def step_when_equivalent_candidates_remain(context) -> None:
+    candidates = [
+        CandidateHit(doc_id="", score=0.91, ts="", card_type="memory"),
+        CandidateHit(doc_id="", score=0.90, ts="", card_type="memory"),
+    ]
+    context.answer = FALLBACK
+    context.pipeline_state = PipelineState(
+        user_input="ambiguous recall",
+        rewritten_query="ambiguous recall",
+        retrieval_candidates=candidates,
+        reranked_hits=candidates,
+        confidence_decision={"context_confident": False, "ambiguity_detected": True},
+        draft_answer="",
+        final_answer=FALLBACK,
+        invariant_decisions={"answer_contract_valid": True},
+    )
+
+    context.answer_pre_check = validate_answer_pre(context.pipeline_state)
+    context.answer_post_check = validate_answer_post(context.pipeline_state)
+    assert context.answer_pre_check.passed, f"answer.pre failed: {context.answer_pre_check.failures}"
+    assert context.answer_post_check.passed, f"answer.post failed: {context.answer_post_check.failures}"
+
+
 @then("the assistant returns a memory-grounded answer")
 def step_then_grounded(context) -> None:
     assert context.answer != FALLBACK

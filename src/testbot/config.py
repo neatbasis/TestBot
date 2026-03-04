@@ -16,6 +16,19 @@ def _require(name: str) -> str:
         raise RuntimeError(f"Missing required environment variable: {name}")
     return value
 
+
+def _float_from_env(name: str, default: float) -> float:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        parsed = float(raw)
+    except ValueError as exc:
+        raise RuntimeError(f"Invalid float for {name}: {raw!r}") from exc
+    if parsed < 0:
+        raise RuntimeError(f"{name} must be non-negative; got {parsed}")
+    return parsed
+
 @dataclass(frozen=True)
 class Config:
     OLLAMA_BASE_URL: str
@@ -23,6 +36,7 @@ class Config:
     HA_API_URL: str
     HA_API_SECRET: str
     HA_SATELLITE_ENTITY_ID: str
+    MEMORY_NEAR_TIE_DELTA: float
 
     @classmethod
     def from_env(cls) -> "Config":
@@ -33,4 +47,5 @@ class Config:
             HA_API_URL=os.getenv("HA_API_URL", "http://localhost:8123"),
             HA_API_SECRET=_require("HA_API_SECRET"),
             HA_SATELLITE_ENTITY_ID=_require("HA_SATELLITE_ENTITY_ID"),
+            MEMORY_NEAR_TIE_DELTA=_float_from_env("MEMORY_NEAR_TIE_DELTA", 0.02),
         )

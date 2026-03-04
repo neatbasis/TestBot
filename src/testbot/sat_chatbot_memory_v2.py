@@ -15,7 +15,7 @@ from homeassistant_api import Client
 from testbot.config import Config
 from testbot.memory_cards import make_reflection_card, make_utterance_card, store_doc, utc_now_iso
 from testbot.pipeline_state import CandidateHit, PipelineState, append_pipeline_snapshot
-from testbot.rerank import adaptive_sigma_fractional, rerank_docs_with_time_and_type
+from testbot.rerank import adaptive_sigma_fractional, rerank_docs_with_time_and_type_outcome
 from testbot.stage_transitions import (
     append_transition_validation_log,
     validate_answer_post,
@@ -114,11 +114,12 @@ def stage_rerank(
     utterance: str,
     user_doc_id: str,
     user_reflection_doc_id: str,
+    near_tie_delta: float,
 ) -> tuple[PipelineState, list[Document]]:
     now = arrow.utcnow()
     target = parse_target_time(utterance, now=now)
     sigma = adaptive_sigma_fractional(now=now, target=target, frac=0.25)
-    hits = rerank_docs_with_time_and_type(
+    rerank_outcome = rerank_docs_with_time_and_type_outcome(
         docs_and_scores,
         now=now,
         target=target,
@@ -126,10 +127,15 @@ def stage_rerank(
         exclude_doc_ids={user_doc_id, user_reflection_doc_id},
         exclude_source_ids={user_doc_id},
         top_k=4,
+        near_tie_delta=near_tie_delta,
     )
+    hits = rerank_outcome.docs
     reranked_hits = [doc_to_candidate_hit(doc, score=0.0) for doc in hits]
+    has_context = has_sufficient_context_confidence(docs_and_scores)
     confidence_decision = {
-        "context_confident": has_sufficient_context_confidence(docs_and_scores),
+        "context_confident": has_context and not rerank_outcome.ambiguity_detected,
+        "ambiguity_detected": rerank_outcome.ambiguity_detected,
+        "ambiguous_candidates": rerank_outcome.near_tie_candidates,
         "now_ts": now.isoformat(),
         "target_ts": target.isoformat(),
         "sigma_seconds": sigma,
@@ -440,6 +446,7 @@ def main() -> None:
                 utterance=utterance,
                 user_doc_id=u_id,
                 user_reflection_doc_id=u_ref_id,
+                near_tie_delta=cfg.MEMORY_NEAR_TIE_DELTA,
             )
             _validate_and_log_transition(validate_rerank_post(state))
             append_pipeline_snapshot("rerank", state)
@@ -452,6 +459,14 @@ def main() -> None:
                     "sigma_seconds": state.confidence_decision.get("sigma_seconds", 0.0),
                 },
             )
+            if state.confidence_decision.get("ambiguity_detected", False):
+                append_session_log(
+                    "ambiguity_detected",
+                    {
+                        "query": state.rewritten_query,
+                        "candidates": state.confidence_decision.get("ambiguous_candidates", []),
+                    },
+                )
 
             # -----------------------
             # 3) Answer using ONLY memory + recent chat
