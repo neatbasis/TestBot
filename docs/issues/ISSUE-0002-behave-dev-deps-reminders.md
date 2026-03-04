@@ -52,3 +52,5 @@ README now includes the `.[dev]` install command, but it is still framed as opti
 - README Validate now annotates `behave` with the inline prerequisite text: requires `pip install -e .[dev]` first.
 - `docs/testing.md` mirrors the same prerequisite near canonical `behave` command snippets, reducing split guidance between setup and execution docs.
 - Residual risk reduced: contributors can now infer the required install command from both setup and command invocation contexts.
+
+- 2026-03-04 follow-up: A separate enforcement gap remains tracked in `ISSUE-0007` (mandatory `behave` gate not enforced in PR validation despite docs reminders).

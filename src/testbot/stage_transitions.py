@@ -164,7 +164,7 @@ def validate_answer_pre(state: PipelineState) -> TransitionCheckResult:
     return _run_checks(
         stage="answer",
         boundary="pre",
-        invariant_refs=("INV-001", "INV-002"),
+        invariant_refs=("INV-001", "INV-002", "INV-003"),
         checks=[
             ("confidence_decision_has_flag", lambda s: isinstance(s.confidence_decision.get("context_confident"), bool)),
         ],
@@ -176,7 +176,7 @@ def validate_answer_post(state: PipelineState) -> TransitionCheckResult:
     return _run_checks(
         stage="answer",
         boundary="post",
-        invariant_refs=("INV-001", "INV-002"),
+        invariant_refs=("INV-001", "INV-002", "INV-003"),
         checks=[
             ("invariant_decisions_recorded", lambda s: isinstance(s.invariant_decisions, dict) and bool(s.invariant_decisions)),
             (
@@ -195,6 +195,11 @@ def validate_answer_post(state: PipelineState) -> TransitionCheckResult:
             (
                 "inv_001_contract_enforced",
                 lambda s: bool(s.invariant_decisions.get("answer_contract_valid", False)) or s.final_answer == FALLBACK_ANSWER,
+            ),
+            (
+                "inv_003_general_knowledge_contract_enforced",
+                lambda s: bool(s.invariant_decisions.get("general_knowledge_contract_valid", True))
+                or s.final_answer == FALLBACK_ANSWER,
             ),
             (
                 "inv_002_exact_fallback_enforced",

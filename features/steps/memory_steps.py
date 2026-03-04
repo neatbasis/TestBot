@@ -5,7 +5,7 @@ import re
 from behave import given, then, when
 
 from testbot.eval_fixtures import best_candidate_doc_id, cases_by_id
-from testbot.pipeline_state import CandidateHit, PipelineState
+from testbot.pipeline_state import CandidateHit, PipelineState, ProvenanceType
 from testbot.stage_transitions import (
     validate_answer_post,
     validate_answer_pre,
@@ -42,6 +42,7 @@ def _build_stage_state(case_id: str, loaded_cases, answer: str) -> PipelineState
     ]
     context_confident = bool(candidates)
     draft_answer = "" if answer == FALLBACK else answer
+    has_claims = answer != FALLBACK
     return PipelineState(
         user_input=case.utterance,
         rewritten_query=case.utterance,
@@ -50,8 +51,13 @@ def _build_stage_state(case_id: str, loaded_cases, answer: str) -> PipelineState
         confidence_decision={"context_confident": context_confident},
         draft_answer=draft_answer,
         final_answer=answer,
+        claims=[f"INFERENCE: {answer}"] if has_claims else [],
+        provenance_types=[ProvenanceType.MEMORY, ProvenanceType.INFERENCE] if has_claims else [ProvenanceType.UNKNOWN],
+        used_memory_refs=[f"{candidates[0].doc_id}@{candidates[0].ts}"] if has_claims and candidates else [],
+        basis_statement=("Answer synthesized from reranked memory context." if has_claims else "Trivial fallback response with no substantive claim."),
         invariant_decisions={
             "answer_contract_valid": _validate_answer_contract(draft_answer),
+            "general_knowledge_contract_valid": True,
         },
         alignment_decision={
             "objective_version": "2026-03-01.v1",
@@ -110,7 +116,7 @@ def step_when_equivalent_candidates_remain(context) -> None:
         confidence_decision={"context_confident": False, "ambiguity_detected": True},
         draft_answer="",
         final_answer=FALLBACK,
-        invariant_decisions={"answer_contract_valid": True},
+        invariant_decisions={"answer_contract_valid": True, "general_knowledge_contract_valid": True},
         alignment_decision={
             "objective_version": "2026-03-01.v1",
             "dimensions": {
