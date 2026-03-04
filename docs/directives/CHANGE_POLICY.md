@@ -6,15 +6,27 @@ This policy defines how directive artifacts are versioned and changed. It applie
 
 The following directive documents are canonical references and must be treated as the source of truth when processing directive changes:
 
+- `docs/invariants.md` (canonical invariant registry)
 - `docs/directives/source-map.md`
 - `docs/directives/terms.md`
-- `docs/directives/invariants.md`
 - `docs/directives/traceability-matrix.md`
+
+`docs/directives/invariants.md` is a required mirror of `docs/invariants.md` and must not diverge on invariant IDs, invariant statements, or scenario-ID mappings.
 
 If a change conflicts with these references, either:
 
 1. update the relevant canonical reference in the same pull request, or
 2. block the directive change until canonical references are aligned.
+
+## Invariant update order and sync check
+
+For any invariant change, apply updates in this order:
+
+1. Edit `docs/invariants.md` first (canonical source-of-truth).
+2. Mirror equivalent invariant IDs, statements, and scenario mappings into `docs/directives/invariants.md`.
+3. Run `python scripts/validate_invariant_sync.py` and ensure it passes before merge.
+
+The sync check is a merge gate for invariant-related changes.
 
 ## Semantic versioning policy for terms and invariants
 
