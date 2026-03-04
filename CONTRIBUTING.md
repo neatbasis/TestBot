@@ -26,6 +26,15 @@ python scripts/validate_issue_links.py --pr-body-file .github/PULL_REQUEST_BODY.
 python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main
 ```
 
+
+## Required before merge
+
+Run this required governance check (same command used by CI):
+
+```bash
+python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main
+```
+
 ## Issue linkage requirements (mandatory)
 
 For any **non-trivial behavior change** or **architecture-impacting change**:
