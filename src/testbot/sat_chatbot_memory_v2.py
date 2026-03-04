@@ -217,6 +217,34 @@ def _intent_class_for_policy(user_input: str) -> str:
     return "non_memory"
 
 
+def _intent_label(intent: IntentType) -> str:
+    return intent.value
+
+
+def _ambiguity_score(confidence_decision: dict[str, object]) -> float:
+    scored_candidates = confidence_decision.get("scored_candidates", [])
+    if not isinstance(scored_candidates, list) or len(scored_candidates) < 2:
+        return 0.0
+    first = scored_candidates[0] if isinstance(scored_candidates[0], dict) else {}
+    second = scored_candidates[1] if isinstance(scored_candidates[1], dict) else {}
+    first_score = float(first.get("final_score", 0.0) or 0.0)
+    second_score = float(second.get("final_score", 0.0) or 0.0)
+    if first_score <= 0.0:
+        return 1.0
+    separation = max(0.0, first_score - second_score) / first_score
+    return round(max(0.0, min(1.0, 1.0 - separation)), 4)
+
+
+def _user_followup_signal_proxy(*, final_answer: str, fallback_action: str, ambiguity_score: float) -> float:
+    if final_answer in {CLARIFY_ANSWER, ROUTE_TO_ASK_ANSWER}:
+        return 1.0
+    if fallback_action in {"ASK_CLARIFYING_QUESTION", "ROUTE_TO_ASK"}:
+        return 0.9
+    if fallback_action == "EXACT_MEMORY_FALLBACK":
+        return round(max(0.2, ambiguity_score), 4)
+    return round(max(0.0, ambiguity_score * 0.5), 4)
+
+
 def stage_answer(
     llm: ChatOllama,
     state: PipelineState,
@@ -712,6 +740,18 @@ def _run_chat_loop(
         )
         _validate_and_log_transition(validate_rerank_post(state))
         append_pipeline_snapshot("rerank", state)
+        classified_intent = classify_intent(utterance)
+        intent_label = _intent_label(classified_intent)
+        ambiguity_score = _ambiguity_score(state.confidence_decision)
+        append_session_log(
+            "intent_classified",
+            {
+                "utterance": utterance,
+                "intent": intent_label,
+                "ambiguity_score": ambiguity_score,
+                "user_followup_signal_proxy": round(ambiguity_score, 4),
+            },
+        )
         append_session_log(
             "time_target_parse",
             {
@@ -751,6 +791,36 @@ def _run_chat_loop(
                 "query": state.rewritten_query,
                 "context_confident": state.confidence_decision.get("context_confident", False),
                 "retrieved_docs": [(d.id or d.metadata.get("doc_id") or "") for d in hits],
+                "claims": state.claims,
+                "provenance_types": [p.value for p in state.provenance_types],
+                "used_memory_refs": state.used_memory_refs,
+                "basis_statement": state.basis_statement,
+            },
+        )
+        chosen_action = str(state.invariant_decisions.get("fallback_action", "NONE"))
+        followup_proxy = _user_followup_signal_proxy(
+            final_answer=state.final_answer,
+            fallback_action=chosen_action,
+            ambiguity_score=ambiguity_score,
+        )
+        append_session_log(
+            "fallback_action_selected",
+            {
+                "utterance": utterance,
+                "intent": intent_label,
+                "ambiguity_score": ambiguity_score,
+                "chosen_action": chosen_action,
+                "user_followup_signal_proxy": followup_proxy,
+            },
+        )
+        append_session_log(
+            "provenance_summary",
+            {
+                "utterance": utterance,
+                "intent": intent_label,
+                "ambiguity_score": ambiguity_score,
+                "chosen_action": chosen_action,
+                "user_followup_signal_proxy": followup_proxy,
                 "claims": state.claims,
                 "provenance_types": [p.value for p in state.provenance_types],
                 "used_memory_refs": state.used_memory_refs,
