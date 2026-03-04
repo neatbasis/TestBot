@@ -968,6 +968,10 @@ def main(argv: list[str] | None = None) -> None:
         str(runtime["ha_satellite_entity_id"]),
     )
 
+    if args.mode == "auto" and ha_error is not None and args.daemon:
+        print(f"Daemon mode requested in auto mode and Home Assistant is unavailable: {ha_error}", file=sys.stderr)
+        return
+
     selected_mode = _resolve_mode(args.mode, ha_error)
 
     _print_startup_status(selected_mode=selected_mode, daemon_mode=args.daemon, runtime=runtime, ha_error=ha_error)
