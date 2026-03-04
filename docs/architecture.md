@@ -59,6 +59,10 @@ Each runtime stage receives a `PipelineState` and returns an updated `PipelineSt
 - `confidence_decision`
 - `draft_answer`
 - `final_answer`
+- `claims`
+- `provenance_types` (`MEMORY`, `CHAT_HISTORY`, `SYSTEM_STATE`, `GENERAL_KNOWLEDGE`, `INFERENCE`, `UNKNOWN`)
+- `used_memory_refs`
+- `basis_statement`
 - `invariant_decisions`
 
 Design rule: turn-level runtime logging must serialize this same structure (JSONL snapshots), so runtime evidence and in-memory reasoning artifacts stay structurally identical.
@@ -132,6 +136,11 @@ Each candidate exposes `semantic_score`, `temporal_gaussian_weight`, `temporal_b
 ## Answer contract
 
 - Responses with factual claims must include memory citation fields `doc_id` and `ts`.
+- Every non-trivial final answer (not deny/fallback/clarify) must emit provenance metadata in pipeline state and logs:
+  - `claims` is a non-empty list of extracted claim strings.
+  - `provenance_types` is a non-empty subset of the canonical enum values (`MEMORY`, `CHAT_HISTORY`, `SYSTEM_STATE`, `GENERAL_KNOWLEDGE`, `INFERENCE`, `UNKNOWN`).
+  - `used_memory_refs` lists concrete memory references used to ground the answer (for example `<doc_id>@<ts>`).
+  - `basis_statement` briefly explains what evidence classes the answer relied on.
 - If memory context is weak or citation rules are violated, output must be exactly:
   - `I don't know from memory.`
 
@@ -141,3 +150,4 @@ Each candidate exposes `semantic_score`, `temporal_gaussian_weight`, `temporal_b
 - [ ] Reflection cards always include `source_doc_id` linkage.
 - [ ] Time-aware rerank is applied when target time can be inferred.
 - [ ] Citation contract is enforced before final output is returned.
+- [ ] Non-trivial answers always include provenance metadata with allowed enum values.

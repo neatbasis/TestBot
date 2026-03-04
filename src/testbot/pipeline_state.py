@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from dataclasses import asdict, dataclass, field
+from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
@@ -18,6 +19,15 @@ class CandidateHit:
     card_type: str = ""
 
 
+class ProvenanceType(StrEnum):
+    MEMORY = "MEMORY"
+    CHAT_HISTORY = "CHAT_HISTORY"
+    SYSTEM_STATE = "SYSTEM_STATE"
+    GENERAL_KNOWLEDGE = "GENERAL_KNOWLEDGE"
+    INFERENCE = "INFERENCE"
+    UNKNOWN = "UNKNOWN"
+
+
 @dataclass(frozen=True)
 class PipelineState:
     user_input: str
@@ -27,12 +37,18 @@ class PipelineState:
     confidence_decision: dict[str, Any] = field(default_factory=dict)
     draft_answer: str = ""
     final_answer: str = ""
+    claims: list[str] = field(default_factory=list)
+    provenance_types: list[ProvenanceType] = field(default_factory=list)
+    used_memory_refs: list[str] = field(default_factory=list)
+    basis_statement: str = ""
     invariant_decisions: dict[str, Any] = field(default_factory=dict)
     alignment_decision: dict[str, Any] = field(default_factory=dict)
 
 
 def pipeline_state_to_dict(state: PipelineState) -> dict[str, Any]:
-    return asdict(state)
+    payload = asdict(state)
+    payload["provenance_types"] = [p.value for p in state.provenance_types]
+    return payload
 
 
 def append_pipeline_snapshot(
