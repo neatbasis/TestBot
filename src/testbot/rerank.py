@@ -12,6 +12,21 @@ class RerankOutcome:
     docs: list[Document]
     ambiguity_detected: bool
     near_tie_candidates: list[dict[str, float | str]]
+    scored_candidates: list[dict[str, float | str]]
+
+
+RERANK_OBJECTIVE_NAME = "semantic_temporal_type_v1"
+
+
+@dataclass(frozen=True)
+class RerankObjectiveCoefficients:
+    base_temporal_blend: float = 0.25
+    gaussian_temporal_blend: float = 0.75
+    reflection_type_prior: float = 0.7
+    default_type_prior: float = 1.0
+
+
+DEFAULT_RERANK_COEFFICIENTS = RerankObjectiveCoefficients()
 
 
 _CARD_TYPE_PRIORITY: dict[str, int] = {
@@ -52,12 +67,36 @@ def similarity_with_time_and_type_score(
     target: arrow.Arrow,
     sigma_seconds: float,
 ) -> float:
-    type_prior = 0.7 if doc_type == "reflection" else 1.0
-    tw = time_weight(doc_ts_iso, target, sigma_seconds)
+    return rerank_objective_score_components(
+        sim_score=sim_score,
+        doc_type=doc_type,
+        doc_ts_iso=doc_ts_iso,
+        target=target,
+        sigma_seconds=sigma_seconds,
+    )["final_score"]
 
-    # combine: similarity * time * type
-    # keep some similarity even if time weight is weak
-    return type_prior * float(sim_score) * (0.25 + 0.75 * tw)
+
+def rerank_objective_score_components(
+    *,
+    sim_score: float,
+    doc_type: str,
+    doc_ts_iso: str,
+    target: arrow.Arrow,
+    sigma_seconds: float,
+    coefficients: RerankObjectiveCoefficients = DEFAULT_RERANK_COEFFICIENTS,
+) -> dict[str, float | str]:
+    temporal_gaussian_weight = time_weight(doc_ts_iso, target, sigma_seconds)
+    type_prior = coefficients.reflection_type_prior if doc_type == "reflection" else coefficients.default_type_prior
+    temporal_blend = coefficients.base_temporal_blend + (coefficients.gaussian_temporal_blend * temporal_gaussian_weight)
+    final_score = type_prior * float(sim_score) * temporal_blend
+    return {
+        "objective": RERANK_OBJECTIVE_NAME,
+        "semantic_score": float(sim_score),
+        "temporal_gaussian_weight": float(temporal_gaussian_weight),
+        "temporal_blend": float(temporal_blend),
+        "type_prior": float(type_prior),
+        "final_score": float(final_score),
+    }
 
 
 def _doc_id(doc: Document) -> str:
@@ -123,7 +162,7 @@ def rerank_docs_with_time_and_type_outcome(
     """
     del now  # kept for call-site signature parity.
 
-    scored: list[tuple[float, Document]] = []
+    scored: list[tuple[float, Document, dict[str, float | str]]] = []
 
     for doc, sim in docs_and_scores:
         doc_id = _doc_id(doc)
@@ -132,23 +171,32 @@ def rerank_docs_with_time_and_type_outcome(
         if doc.metadata.get("source_doc_id") in exclude_source_ids:
             continue
 
-        score = similarity_with_time_and_type_score(
+        objective_components = rerank_objective_score_components(
             sim_score=sim,
             doc_type=doc.metadata.get("type", ""),
             doc_ts_iso=doc.metadata.get("ts", ""),
             target=target,
             sigma_seconds=sigma_seconds,
         )
-        scored.append((score, doc))
+        scored.append((float(objective_components["final_score"]), doc, objective_components))
 
     scored.sort(key=lambda x: (-x[0], -_ts_epoch(x[1]), _card_rank(x[1]), _doc_id(x[1])))
-    docs = [d for _, d in scored[:top_k]]
+    docs = [d for _, d, _ in scored[:top_k]]
+    scored_candidates = [
+        {
+            "doc_id": _doc_id(doc),
+            "doc_type": str(doc.metadata.get("type") or ""),
+            "ts": str(doc.metadata.get("ts") or ""),
+            **components,
+        }
+        for score, doc, components in scored
+    ]
 
     near_tie_candidates: list[dict[str, float | str]] = []
     ambiguity_detected = False
     if scored:
         top_score = scored[0][0]
-        near_tie = [(score, doc) for score, doc in scored if (top_score - score) <= near_tie_delta]
+        near_tie = [(score, doc) for score, doc, _ in scored if (top_score - score) <= near_tie_delta]
         near_tie_candidates = [
             {
                 "doc_id": _doc_id(doc),
@@ -162,4 +210,9 @@ def rerank_docs_with_time_and_type_outcome(
             unresolved = [doc for _, doc in near_tie if _tie_break_key(doc) == top_key]
             ambiguity_detected = len(unresolved) > 1
 
-    return RerankOutcome(docs=docs, ambiguity_detected=ambiguity_detected, near_tie_candidates=near_tie_candidates)
+    return RerankOutcome(
+        docs=docs,
+        ambiguity_detected=ambiguity_detected,
+        near_tie_candidates=near_tie_candidates,
+        scored_candidates=scored_candidates,
+    )

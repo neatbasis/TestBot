@@ -136,6 +136,7 @@ def stage_rerank(
         "context_confident": has_context and not rerank_outcome.ambiguity_detected,
         "ambiguity_detected": rerank_outcome.ambiguity_detected,
         "ambiguous_candidates": rerank_outcome.near_tie_candidates,
+        "scored_candidates": rerank_outcome.scored_candidates,
         "now_ts": now.isoformat(),
         "target_ts": target.isoformat(),
         "sigma_seconds": sigma,
@@ -457,6 +458,7 @@ def main() -> None:
                     "now_ts": state.confidence_decision.get("now_ts", ""),
                     "target_ts": state.confidence_decision.get("target_ts", ""),
                     "sigma_seconds": state.confidence_decision.get("sigma_seconds", 0.0),
+                    "objective_candidates": state.confidence_decision.get("scored_candidates", []),
                 },
             )
             if state.confidence_decision.get("ambiguity_detected", False):

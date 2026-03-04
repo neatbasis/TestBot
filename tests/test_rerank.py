@@ -3,7 +3,7 @@ from __future__ import annotations
 import arrow
 from langchain_core.documents import Document
 
-from testbot.rerank import rerank_docs_with_time_and_type_outcome
+from testbot.rerank import rerank_docs_with_time_and_type_outcome, rerank_objective_score_components
 
 
 def _doc(doc_id: str, *, ts: str, card_type: str) -> Document:
@@ -80,3 +80,40 @@ def test_rerank_near_tie_delta_controls_ambiguity_window() -> None:
 
     assert len(strict.near_tie_candidates) == 1
     assert len(relaxed.near_tie_candidates) == 2
+
+
+def test_rerank_includes_objective_component_breakdown() -> None:
+    now = arrow.get("2026-03-10T12:00:00+00:00")
+    docs_and_scores = [(_doc("winner", ts="2026-03-10T12:00:00+00:00", card_type="memory"), 0.85)]
+
+    outcome = rerank_docs_with_time_and_type_outcome(
+        docs_and_scores,
+        now=now,
+        target=now,
+        sigma_seconds=3600,
+        exclude_doc_ids=set(),
+        exclude_source_ids=set(),
+    )
+
+    assert len(outcome.scored_candidates) == 1
+    scored = outcome.scored_candidates[0]
+    assert scored["doc_id"] == "winner"
+    assert scored["objective"] == "semantic_temporal_type_v1"
+    assert float(scored["final_score"]) > 0.0
+
+
+def test_objective_components_apply_reflection_type_prior() -> None:
+    target = arrow.get("2026-03-10T12:00:00+00:00")
+    base = {
+        "sim_score": 1.0,
+        "doc_ts_iso": "2026-03-10T12:00:00+00:00",
+        "target": target,
+        "sigma_seconds": 3600.0,
+    }
+
+    reflection = rerank_objective_score_components(**base, doc_type="reflection")
+    memory = rerank_objective_score_components(**base, doc_type="memory")
+
+    assert float(reflection["type_prior"]) == 0.7
+    assert float(memory["type_prior"]) == 1.0
+    assert float(reflection["final_score"]) < float(memory["final_score"])
