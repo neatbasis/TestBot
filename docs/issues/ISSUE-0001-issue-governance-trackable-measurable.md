@@ -4,7 +4,7 @@
 - **Title:** Establish measurable and trackable in-repo issue governance
 - **Status:** open
 - **Severity:** red
-- **Owner:** unassigned
+- **Owner:** testbot-maintainers
 - **Created:** 2026-03-04
 - **Target Sprint:** Sprint 1
 - **Principle Alignment:** contract-first, invariant-driven, traceable, ci-enforced
