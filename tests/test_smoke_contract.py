@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from contextlib import contextmanager
@@ -35,7 +36,26 @@ def _local_ok_server() -> str:
         thread.join(timeout=2)
 
 
+def _write_env_file(home: Path) -> Path:
+    env_path = home / ".testbot" / ".env"
+    env_path.parent.mkdir(parents=True, exist_ok=True)
+    env_path.write_text(
+        "\n".join(
+            [
+                "OPENAI_BASE_URL=https://api.openai.test/v1",
+                "OPENAI_API_KEY=sk-test-supersecret-token",
+                "SMOKE_CONNECT_TIMEOUT_S=2",
+                "SMOKE_REQUEST_TIMEOUT_S=3",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return env_path
+
+
 def test_live_smoke_runner_writes_contract_artifacts(tmp_path: Path) -> None:
+    _write_env_file(tmp_path)
     checks_file = tmp_path / "checks.json"
     checks_file.write_text(
         json.dumps(
@@ -73,7 +93,7 @@ def test_live_smoke_runner_writes_contract_artifacts(tmp_path: Path) -> None:
         "--report-md",
     ]
 
-    completed = subprocess.run(command, capture_output=True, text=True)
+    completed = subprocess.run(command, capture_output=True, text=True, env={**dict(os.environ), "HOME": str(tmp_path)})
     assert completed.returncode == 1
 
     summary_path = output_dir / "smoke-summary.json"
@@ -105,6 +125,7 @@ def test_live_smoke_runner_writes_contract_artifacts(tmp_path: Path) -> None:
 
 
 def test_live_smoke_report_lists_validated_capabilities(tmp_path: Path) -> None:
+    _write_env_file(tmp_path)
     with _local_ok_server() as target:
         checks_file = tmp_path / "checks.json"
         checks_file.write_text(
@@ -137,7 +158,7 @@ def test_live_smoke_report_lists_validated_capabilities(tmp_path: Path) -> None:
             "--report-md",
         ]
 
-        completed = subprocess.run(command, capture_output=True, text=True)
+        completed = subprocess.run(command, capture_output=True, text=True, env={**dict(os.environ), "HOME": str(tmp_path)})
         assert completed.returncode == 0
 
     summary = json.loads((output_dir / "smoke-summary.json").read_text(encoding="utf-8"))
@@ -154,3 +175,35 @@ def test_live_smoke_report_lists_validated_capabilities(tmp_path: Path) -> None:
     report = (output_dir / "smoke-report.md").read_text(encoding="utf-8")
     assert "## Validated Capabilities" in report
     assert "Authentication service availability" in report
+
+
+def test_live_smoke_runner_fails_with_clear_env_error(tmp_path: Path) -> None:
+    checks_file = tmp_path / "checks.json"
+    checks_file.write_text(
+        json.dumps(
+            {
+                "checks": [
+                    {
+                        "name": "healthz",
+                        "target": "http://127.0.0.1:9/healthz",
+                        "expected_status": 200,
+                        "capability_id": "cap-auth-service-availability",
+                        "capability_name": "Authentication service availability",
+                        "business_impact": "Users cannot sign in if authentication health fails.",
+                        "severity_if_broken": "critical",
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    command = [
+        sys.executable,
+        "scripts/smoke/run_live_smoke.py",
+        "--checks-file",
+        str(checks_file),
+    ]
+    completed = subprocess.run(command, capture_output=True, text=True, env={**dict(os.environ), "HOME": str(tmp_path)})
+    assert completed.returncode == 2
+    assert "Missing required environment file" in completed.stdout
