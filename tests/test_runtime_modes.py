@@ -147,3 +147,55 @@ def test_run_source_ingestion_skips_unsupported_connector(monkeypatch) -> None:
 
     assert logs[-1][0] == "source_ingest_skipped"
     assert logs[-1][1]["reason"] == "unsupported_connector_type"
+
+
+def test_read_runtime_env_invalid_numerics_fallback(monkeypatch, caplog) -> None:
+    monkeypatch.setenv("MEMORY_NEAR_TIE_DELTA", "not-a-float")
+    monkeypatch.setenv("SOURCE_INGEST_LIMIT", "not-an-int")
+
+    with caplog.at_level("WARNING"):
+        runtime_env = runtime._read_runtime_env()
+
+    assert runtime_env["memory_near_tie_delta"] == 0.02
+    assert runtime_env["source_ingest_limit"] == 50
+    assert "Invalid MEMORY_NEAR_TIE_DELTA" in caplog.text
+    assert "Invalid SOURCE_INGEST_LIMIT" in caplog.text
+
+
+def test_run_source_ingestion_invalid_cursor_logs_and_falls_back(monkeypatch, tmp_path) -> None:
+    fixture_path = tmp_path / "ingest_fixture.json"
+    fixture_path.write_text(
+        json.dumps([
+            {
+                "item_id": "src-1",
+                "content": "Task: utility bill due Friday",
+                "source_uri": "ha://tasks/utility-bill",
+                "retrieved_at": "2026-03-10T09:00:00Z",
+                "trust_tier": "verified",
+                "metadata": {"ts": "2026-03-14T00:00:00Z"},
+            }
+        ]),
+        encoding="utf-8",
+    )
+
+    class _Store:
+        def add_documents(self, docs):
+            del docs
+
+    logs = []
+    monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: logs.append((event, payload)))
+
+    runtime._run_source_ingestion(
+        runtime={
+            "source_ingest_enabled": True,
+            "source_connector_type": "fixture",
+            "source_fixture_path": str(fixture_path),
+            "source_ingest_limit": 10,
+            "source_ingest_cursor": "bad-cursor",
+        },
+        store=_Store(),
+    )
+
+    assert logs[0][0] == "source_ingest_cursor_invalid"
+    assert logs[0][1]["cursor"] == "bad-cursor"
+    assert logs[-1][0] == "source_ingest_completed"

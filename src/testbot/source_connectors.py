@@ -1,11 +1,15 @@
 from __future__ import annotations
 
 import json
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
 from langchain_core.documents import Document
+
+
+_LOGGER = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -63,10 +67,23 @@ class FixtureSourceConnector:
         )
         return cls(source_type=source_type, fixtures=items)
 
+    def _parse_cursor(self, cursor: str | None, *, context: str) -> int:
+        if cursor is None:
+            return 0
+        try:
+            parsed = int(cursor)
+        except (TypeError, ValueError):
+            _LOGGER.warning("Invalid %s cursor=%r; defaulting to 0", context, cursor)
+            return 0
+        if parsed < 0:
+            _LOGGER.warning("Negative %s cursor=%r; defaulting to 0", context, cursor)
+            return 0
+        return parsed
+
     def fetch(self, *, cursor: str | None, limit: int = 50) -> list[SourceItem]:
         if limit <= 0:
             return []
-        start = int(cursor or "0")
+        start = self._parse_cursor(cursor, context="fetch")
         if start >= len(self.fixtures):
             return []
         return list(self.fixtures[start : start + limit])
@@ -85,5 +102,5 @@ class FixtureSourceConnector:
     def update_cursor(self, *, previous_cursor: str | None, fetched_items: list[SourceItem]) -> str | None:
         if not fetched_items:
             return previous_cursor
-        previous_index = int(previous_cursor or "0")
+        previous_index = self._parse_cursor(previous_cursor, context="update_cursor")
         return str(previous_index + len(fetched_items))
