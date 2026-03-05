@@ -115,9 +115,9 @@ Time-aware reranking biases retrieval toward memories near an inferred target ti
 
 This rerank pass is combined with semantic retrieval scores to improve temporal relevance.
 
-## Rerank objective (canonical)
+## Rerank objective (versioned config)
 
-Named objective: `semantic_temporal_type_v1`.
+Configured objective artifact: `config/rerank_objective.json` with explicit `objective_name` + `objective_version`.
 
 Formula:
 
@@ -125,7 +125,7 @@ Formula:
 final_score = semantic_score * type_prior * (base_temporal_blend + gaussian_temporal_blend * temporal_gaussian_weight)
 ```
 
-Canonical parameters:
+Default parameters (v1):
 
 | Parameter | Default | Rationale |
 | --- | --- | --- |
@@ -134,7 +134,25 @@ Canonical parameters:
 | `reflection_type_prior` | `0.7` | Slightly down-weights reflection cards versus direct utterance/memory cards to reduce speculative wins. |
 | `default_type_prior` | `1.0` | Keeps non-reflection card types unpenalized by default. |
 
-Each candidate exposes `semantic_score`, `temporal_gaussian_weight`, `temporal_blend`, `type_prior`, and `final_score` in session logs for ranking audits.
+Each candidate exposes `objective`, `objective_version`, `semantic_score`, `temporal_gaussian_weight`, `temporal_blend`, `type_prior`, and `final_score` in session logs for ranking audits.
+
+Confidence policy thresholds (`top_final_score_min`, margin, ambiguity override) are loaded from the same artifact so objective scoring and fallback policy stay in sync.
+
+### Rerank calibration workflow
+
+1. **Dataset slice**
+   - Use `eval/cases.jsonl` memory-lookup examples plus an explicit ambiguity slice (near-tie candidates) and stale-memory slice (high similarity but distant timestamps).
+2. **Optimization target**
+   - Maximize `hit_at_k` (k=4) while minimizing `dont_know_from_memory_decisions`, evaluated by `scripts/eval_recall.py`.
+   - Keep deterministic ordering and ambiguity behavior unchanged (tie-break invariants remain hard constraints).
+3. **Procedure**
+   - Copy `config/rerank_objective.json` and bump `objective_version` for each candidate.
+   - Run baseline and candidate objective comparisons with `scripts/eval_recall.py --objective-config ... --compare-objective-config ...`.
+   - Inspect per-case objective attribution deltas before promoting a candidate objective.
+4. **Acceptance criteria**
+   - Candidate objective improves or maintains `hit_at_k` with no regression >0.02 absolute.
+   - Candidate objective does not increase ambiguous unresolved top ties on the ambiguity slice.
+   - Candidate objective does not increase IDK decisions by more than 1 case on the canonical fixture set.
 
 ## Answer contract
 

@@ -15,8 +15,8 @@ from testbot.eval_fixtures import EvalCase, load_eval_cases
 from testbot.rerank import (
     RerankOutcome,
     adaptive_sigma_fractional,
-    DEFAULT_CONTEXT_CONFIDENCE_THRESHOLDS,
     has_sufficient_context_confidence_from_objective,
+    load_rerank_objective_config,
     rerank_docs_with_time_and_type_outcome,
     rerank_objective_score_components,
 )
@@ -94,7 +94,6 @@ def rank_candidates_with_signals(
     context_confident = has_sufficient_context_confidence_from_objective(
         scored_candidates=outcome.scored_candidates,
         ambiguity_detected=outcome.ambiguity_detected,
-        thresholds=DEFAULT_CONTEXT_CONFIDENCE_THRESHOLDS,
     )
     return {
         "ranked_candidates": ranked_candidates,
@@ -120,8 +119,15 @@ def candidate_objective_components(
     )
 
 
-def evaluate(cases: list[EvalCase], *, top_k: int, idk_threshold: float, now: arrow.Arrow | datetime | str) -> dict:
+def evaluate(
+    cases: list[EvalCase],
+    *,
+    top_k: int,
+    idk_threshold: float,
+    now: arrow.Arrow | datetime | str,
+) -> dict:
     now_arrow = _as_arrow(now)
+    objective_config = load_rerank_objective_config(force_reload=True)
     hit_count = 0
     memory_cases = 0
     ranks: list[int] = []
@@ -204,6 +210,8 @@ def evaluate(cases: list[EvalCase], *, top_k: int, idk_threshold: float, now: ar
         "top_k": top_k,
         "idk_threshold": idk_threshold,
         "fixed_now": now_arrow.isoformat(),
+        "objective": f"{objective_config.objective_name}_{objective_config.objective_version}",
+        "objective_version": objective_config.objective_version,
         "objective_component_attribution": {
             "average_top_candidate_components": avg_attribution,
             "per_case": case_attribution,
@@ -217,16 +225,75 @@ def main() -> None:
     parser.add_argument("--top-k", type=int, default=4)
     parser.add_argument("--idk-threshold", type=float, default=0.2)
     parser.add_argument("--now", default="2026-03-10T11:00:00+00:00")
+    parser.add_argument(
+        "--objective-config",
+        type=Path,
+        default=None,
+        help="Optional path to a rerank objective config JSON.",
+    )
+    parser.add_argument(
+        "--compare-objective-config",
+        action="append",
+        type=Path,
+        default=[],
+        help="Optional additional rerank objective config paths to compare against baseline.",
+    )
     args = parser.parse_args()
 
+    import os
+
     fixed_now = arrow.get(args.now)
-    metrics = evaluate(
-        load_eval_cases(args.cases),
-        top_k=args.top_k,
-        idk_threshold=args.idk_threshold,
-        now=fixed_now,
-    )
-    print(json.dumps(metrics, indent=2))
+    cases = load_eval_cases(args.cases)
+
+    original_config = os.getenv("TESTBOT_RERANK_OBJECTIVE_CONFIG")
+
+    def _set_config(path: Path | None) -> None:
+        if path is None:
+            os.environ.pop("TESTBOT_RERANK_OBJECTIVE_CONFIG", None)
+            return
+        os.environ["TESTBOT_RERANK_OBJECTIVE_CONFIG"] = str(path)
+
+    try:
+        _set_config(args.objective_config)
+        baseline_metrics = evaluate(
+            cases,
+            top_k=args.top_k,
+            idk_threshold=args.idk_threshold,
+            now=fixed_now,
+        )
+
+        comparison_metrics: list[dict[str, Any]] = []
+        baseline_hit = float(baseline_metrics["hit_at_k"])
+        baseline_idk = int(baseline_metrics["dont_know_from_memory_decisions"])
+
+        for compare_path in args.compare_objective_config:
+            _set_config(compare_path)
+            candidate_metrics = evaluate(
+                cases,
+                top_k=args.top_k,
+                idk_threshold=args.idk_threshold,
+                now=fixed_now,
+            )
+            comparison_metrics.append(
+                {
+                    "config_path": str(compare_path),
+                    "objective": candidate_metrics["objective"],
+                    "objective_version": candidate_metrics["objective_version"],
+                    "hit_at_k": candidate_metrics["hit_at_k"],
+                    "hit_at_k_delta_vs_baseline": float(candidate_metrics["hit_at_k"]) - baseline_hit,
+                    "dont_know_from_memory_decisions": candidate_metrics["dont_know_from_memory_decisions"],
+                    "idk_delta_vs_baseline": int(candidate_metrics["dont_know_from_memory_decisions"]) - baseline_idk,
+                }
+            )
+
+        baseline_metrics["objective_version_comparison"] = comparison_metrics
+    finally:
+        if original_config is None:
+            os.environ.pop("TESTBOT_RERANK_OBJECTIVE_CONFIG", None)
+        else:
+            os.environ["TESTBOT_RERANK_OBJECTIVE_CONFIG"] = original_config
+
+    print(json.dumps(baseline_metrics, indent=2))
 
 
 if __name__ == "__main__":
