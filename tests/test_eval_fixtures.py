@@ -24,3 +24,20 @@ def test_candidate_set_fixtures_track_eval_cases() -> None:
             expected_doc_id = fixture["expected_doc_id"]
             assert expected_doc_id == source_case.expected_doc_id
             assert all(is_iso_timestamp(candidate["ts"]) for candidate in fixture["candidates"])
+
+
+def test_eval_runtime_parity_fixture_sets_have_fixed_timestamps() -> None:
+    fixture_files = [
+        "tests/fixtures/eval_runtime_parity_ordering_topx_fallback_confidence.jsonl",
+        "tests/fixtures/eval_runtime_parity_edge_time.jsonl",
+        "tests/fixtures/eval_runtime_parity_ambiguous_intent.jsonl",
+        "tests/fixtures/eval_runtime_parity_observation_making_processes.jsonl",
+    ]
+
+    for fixture_path in fixture_files:
+        with Path(fixture_path).open("r", encoding="utf-8") as fixture_file:
+            for line in fixture_file:
+                fixture = json.loads(line)
+                assert fixture["family"]
+                assert fixture["expected"]["intent"] in {"memory-grounded", "dont-know"}
+                assert all(is_iso_timestamp(candidate["ts"]) for candidate in fixture["candidates"])

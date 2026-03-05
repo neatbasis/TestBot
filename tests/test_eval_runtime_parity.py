@@ -19,7 +19,6 @@ from testbot.rerank import adaptive_sigma_fractional, rerank_docs_with_time_and_
 from testbot.sat_chatbot_memory_v2 import has_sufficient_context_confidence
 
 FIXED_NOW = arrow.get("2026-03-10T11:00:00+00:00")
-IDK_THRESHOLD = 0.2
 NEAR_TIE_DELTA = 0.02
 
 
@@ -72,7 +71,9 @@ def _runtime_path_result(utterance: str, candidates: list[dict[str, Any]]) -> di
         "ranked_doc_ids": [str(doc.id or "") for doc in outcome.docs],
         "top_doc_id": str(outcome.docs[0].id or "") if outcome.docs else "",
         "intent": intent,
+        "ambiguity_detected": outcome.ambiguity_detected,
         "near_tie_candidates": outcome.near_tie_candidates,
+        "scored_candidates": outcome.scored_candidates,
         "top_score": float(outcome.scored_candidates[0]["final_score"]) if outcome.scored_candidates else 0.0,
     }
 
@@ -81,24 +82,29 @@ def _eval_path_result(utterance: str, candidates: list[dict[str, Any]]) -> dict[
     target = eval_recall.parse_target_time(utterance, now=FIXED_NOW)
     sigma = adaptive_sigma_fractional(now=FIXED_NOW, target=target)
 
-    ranked = eval_recall.rank_candidates(
+    eval_signals = eval_recall.rank_candidates_with_signals(
         candidates,
         now=FIXED_NOW,
         target=target,
         sigma_seconds=sigma,
+        near_tie_delta=NEAR_TIE_DELTA,
     )
+    ranked = eval_signals["ranked_candidates"]
     top_score = (
         float(eval_recall.candidate_objective_components(ranked[0], target=target, sigma_seconds=sigma)["final_score"])
         if ranked
         else 0.0
     )
-    intent = "memory-grounded" if top_score >= IDK_THRESHOLD else "dont-know"
+    intent = "memory-grounded" if eval_signals["context_confident"] and not eval_signals["ambiguity_detected"] else "dont-know"
 
     return {
         "ranked_doc_ids": [candidate.get("doc_id", "") for candidate in ranked],
         "top_doc_id": ranked[0].get("doc_id", "") if ranked else "",
         "intent": intent,
         "top_score": top_score,
+        "near_tie_candidates": eval_signals["near_tie_candidates"],
+        "ambiguity_detected": eval_signals["ambiguity_detected"],
+        "scored_candidates": eval_signals["scored_candidates"],
     }
 
 
@@ -128,3 +134,46 @@ def test_eval_runtime_parity_near_tie_fixture_case() -> None:
     assert len(runtime["near_tie_candidates"]) >= 2
     top_scores = [candidate["score"] for candidate in runtime["near_tie_candidates"]]
     assert max(top_scores) - min(top_scores) <= NEAR_TIE_DELTA
+
+
+def _load_runtime_parity_fixtures(file_name: str) -> list[dict[str, Any]]:
+    fixtures_path = Path("tests/fixtures") / file_name
+    loaded: list[dict[str, Any]] = []
+    with fixtures_path.open("r", encoding="utf-8") as fixture_file:
+        for line in fixture_file:
+            loaded.append(json.loads(line))
+    return loaded
+
+
+def test_eval_runtime_parity_fixture_families() -> None:
+    fixture_files = [
+        "eval_runtime_parity_ordering_topx_fallback_confidence.jsonl",
+        "eval_runtime_parity_edge_time.jsonl",
+        "eval_runtime_parity_ambiguous_intent.jsonl",
+        "eval_runtime_parity_observation_making_processes.jsonl",
+    ]
+
+    fixtures: list[dict[str, Any]] = []
+    for file_name in fixture_files:
+        fixtures.extend(_load_runtime_parity_fixtures(file_name))
+
+    for fixture in fixtures:
+        candidates = [dict(candidate) for candidate in fixture["candidates"]]
+        runtime = _runtime_path_result(fixture["utterance"], candidates)
+        eval_path = _eval_path_result(fixture["utterance"], candidates)
+
+        assert runtime["ranked_doc_ids"] == eval_path["ranked_doc_ids"], fixture["fixture_id"]
+        assert runtime["top_doc_id"] == eval_path["top_doc_id"], fixture["fixture_id"]
+        assert runtime["intent"] == eval_path["intent"], fixture["fixture_id"]
+        assert runtime["ambiguity_detected"] == eval_path["ambiguity_detected"], fixture["fixture_id"]
+
+        runtime_scored = [c["doc_id"] for c in runtime["scored_candidates"]]
+        eval_scored = [c["doc_id"] for c in eval_path["scored_candidates"]]
+        assert runtime_scored == eval_scored, fixture["fixture_id"]
+
+        expected = fixture["expected"]
+        top_k = int(expected.get("top_k", 1))
+        assert runtime["ranked_doc_ids"][:top_k] == expected["ranked_doc_ids_top_k"], fixture["fixture_id"]
+        assert runtime["intent"] == expected["intent"], fixture["fixture_id"]
+        if "near_tie_min_count" in expected:
+            assert len(runtime["near_tie_candidates"]) >= int(expected["near_tie_min_count"]), fixture["fixture_id"]

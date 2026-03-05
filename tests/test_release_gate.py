@@ -188,3 +188,36 @@ def test_non_blocking_check_is_warning(monkeypatch: pytest.MonkeyPatch) -> None:
 
     assert results[0].status == "warning"
     assert exit_code == 0
+
+
+def test_main_prints_parity_divergence_hint(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    monkeypatch.setattr(release_gate, "parse_args", lambda: release_gate.argparse.Namespace(
+        continue_on_failure=False,
+        json_output=None,
+        base_ref="origin/main",
+        replay_report=False,
+    ))
+    monkeypatch.setattr(release_gate, "build_checks", lambda **_kwargs: [])
+    monkeypatch.setattr(
+        release_gate,
+        "run_gate",
+        lambda **_kwargs: (
+            [
+                release_gate.CheckResult(
+                    name="pytest_eval_runtime_parity",
+                    command="python -m pytest tests/test_eval_runtime_parity.py",
+                    status="failed",
+                    exit_code=1,
+                    duration_s=0.1,
+                )
+            ],
+            1,
+        ),
+    )
+
+    exit_code = release_gate.main()
+    output = capsys.readouterr().out
+
+    assert exit_code == 1
+    assert "Parity gate failed" in output
+    assert "scripts/eval_recall.py <-> testbot.rerank" in output

@@ -13,8 +13,9 @@ from langchain_core.documents import Document
 
 from testbot.eval_fixtures import EvalCase, load_eval_cases
 from testbot.rerank import (
+    RerankOutcome,
     adaptive_sigma_fractional,
-    rerank_docs_with_time_and_type,
+    rerank_docs_with_time_and_type_outcome,
     rerank_objective_score_components,
 )
 from testbot.time_parse import parse_target_time as parse_target_time_shared
@@ -56,9 +57,26 @@ def rank_candidates(
     target: arrow.Arrow,
     sigma_seconds: float,
 ) -> list[dict[str, Any]]:
+    return rank_candidates_with_signals(
+        candidates,
+        now=now,
+        target=target,
+        sigma_seconds=sigma_seconds,
+    )["ranked_candidates"]
+
+
+def rank_candidates_with_signals(
+    candidates: list[dict[str, Any]],
+    *,
+    now: arrow.Arrow | datetime | str,
+    target: arrow.Arrow,
+    sigma_seconds: float,
+    near_tie_delta: float = 0.02,
+    context_confidence_min_similarity: float = 0.35,
+) -> dict[str, Any]:
     now_arrow = _as_arrow(now)
     docs_and_scores = [(_candidate_to_document(candidate), float(candidate.get("sim_score", 0.0))) for candidate in candidates]
-    ranked_docs = rerank_docs_with_time_and_type(
+    outcome: RerankOutcome = rerank_docs_with_time_and_type_outcome(
         docs_and_scores,
         now=now_arrow,
         target=target,
@@ -66,9 +84,20 @@ def rank_candidates(
         exclude_doc_ids=set(),
         exclude_source_ids=set(),
         top_k=len(candidates),
+        near_tie_delta=near_tie_delta,
     )
     candidates_by_doc_id = {candidate["doc_id"]: candidate for candidate in candidates}
-    return [candidates_by_doc_id.get((doc.id or ""), {"doc_id": (doc.id or "")}) for doc in ranked_docs]
+    ranked_candidates = [candidates_by_doc_id.get((doc.id or ""), {"doc_id": (doc.id or "")}) for doc in outcome.docs]
+    context_confident = bool(docs_and_scores) and (
+        max(float(score) for _, score in docs_and_scores) >= context_confidence_min_similarity
+    )
+    return {
+        "ranked_candidates": ranked_candidates,
+        "ambiguity_detected": outcome.ambiguity_detected,
+        "near_tie_candidates": outcome.near_tie_candidates,
+        "scored_candidates": outcome.scored_candidates,
+        "context_confident": context_confident,
+    }
 
 
 def candidate_objective_components(
