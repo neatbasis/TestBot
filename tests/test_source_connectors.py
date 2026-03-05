@@ -60,6 +60,60 @@ def test_fixture_connector_fetch_normalize_and_cursor_lifecycle() -> None:
     assert connector.fetch(cursor=end_cursor, limit=5) == []
 
 
+def test_fixture_connector_fetch_returns_empty_for_non_positive_limits() -> None:
+    connector = FixtureSourceConnector(
+        source_type="calendar",
+        fixtures=(
+            SourceItem(
+                item_id="evt-1",
+                content="Morning sync at 09:30.",
+                source_uri="calendar://team/evt-1",
+                retrieved_at="2026-03-11T09:00:00Z",
+                trust_tier="verified",
+                metadata={"ts": "2026-03-11T09:30:00Z"},
+            ),
+        ),
+    )
+
+    assert connector.fetch(cursor=None, limit=0) == []
+    assert connector.fetch(cursor=None, limit=-3) == []
+
+
+def test_fixture_connector_fetch_positive_limit_still_paginates() -> None:
+    connector = FixtureSourceConnector(
+        source_type="calendar",
+        fixtures=(
+            SourceItem(
+                item_id="evt-1",
+                content="Morning sync at 09:30.",
+                source_uri="calendar://team/evt-1",
+                retrieved_at="2026-03-11T09:00:00Z",
+                trust_tier="verified",
+                metadata={"ts": "2026-03-11T09:30:00Z"},
+            ),
+            SourceItem(
+                item_id="evt-2",
+                content="Retrospective at 15:00.",
+                source_uri="calendar://team/evt-2",
+                retrieved_at="2026-03-11T09:00:00Z",
+                trust_tier="verified",
+                metadata={"ts": "2026-03-11T15:00:00Z"},
+            ),
+            SourceItem(
+                item_id="evt-3",
+                content="Planning at 16:00.",
+                source_uri="calendar://team/evt-3",
+                retrieved_at="2026-03-11T09:00:00Z",
+                trust_tier="verified",
+                metadata={"ts": "2026-03-11T16:00:00Z"},
+            ),
+        ),
+    )
+
+    assert [item.item_id for item in connector.fetch(cursor=None, limit=2)] == ["evt-1", "evt-2"]
+    assert [item.item_id for item in connector.fetch(cursor="2", limit=2)] == ["evt-3"]
+
+
 def test_source_ingest_canonicalizes_fixture_connector_docs() -> None:
     connector = FixtureSourceConnector(
         source_type="calendar",

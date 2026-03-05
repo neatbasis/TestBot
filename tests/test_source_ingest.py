@@ -13,7 +13,8 @@ class _FakeConnector:
         self.cursor_updates: list[str | None] = []
 
     def fetch(self, *, cursor: str | None, limit: int = 50) -> list[SourceItem]:
-        del limit
+        if limit <= 0:
+            return []
         if cursor == "end":
             return []
         return [
@@ -102,3 +103,17 @@ def test_source_ingestor_derives_stable_ids_when_normalized_id_and_doc_id_are_mi
     assert evidence_id == second.evidence_documents[0].id
     assert evidence_id == f"evidence::{memory_id}"
     assert len(store.docs) == 4
+
+
+def test_source_ingestor_respects_zero_limit() -> None:
+    connector = _FakeConnector()
+    store = _FakeStore()
+    ingestor = SourceIngestor(connector=connector, memory_store=store)
+
+    result = ingestor.ingest_once(cursor=None, limit=0)
+
+    assert result.fetched_count == 0
+    assert result.stored_count == 0
+    assert result.next_cursor is None
+    assert connector.cursor_updates == [None]
+    assert store.docs == []
