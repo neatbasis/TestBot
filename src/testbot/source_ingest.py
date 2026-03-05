@@ -28,12 +28,15 @@ def _provenance_metadata(*, connector: SourceConnector, item: SourceItem) -> dic
 
 
 def _canonical_memory_doc(normalized_doc: Document, *, provenance: dict[str, str]) -> Document:
+    source_item_type = normalized_doc.metadata.get("type")
     metadata = {
         **dict(normalized_doc.metadata),
         **provenance,
-        "type": str(normalized_doc.metadata.get("type") or "memory"),
+        "type": "memory",
         "record_kind": "source_memory",
     }
+    if source_item_type is not None:
+        metadata["source_item_type"] = str(source_item_type)
     doc_id = _resolve_source_document_id(normalized_doc, provenance=provenance)
     return Document(id=doc_id, page_content=normalized_doc.page_content, metadata=metadata)
 
