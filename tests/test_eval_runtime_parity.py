@@ -64,7 +64,10 @@ def _runtime_path_result(utterance: str, candidates: list[dict[str, Any]]) -> di
         near_tie_delta=NEAR_TIE_DELTA,
     )
 
-    context_confident = has_sufficient_context_confidence(docs_and_scores) and not outcome.ambiguity_detected
+    context_confident = has_sufficient_context_confidence(
+        outcome.scored_candidates,
+        ambiguity_detected=outcome.ambiguity_detected,
+    )
     intent = "memory-grounded" if context_confident else "dont-know"
 
     return {
@@ -144,6 +147,31 @@ def _load_runtime_parity_fixtures(file_name: str) -> list[dict[str, Any]]:
             loaded.append(json.loads(line))
     return loaded
 
+
+def test_eval_runtime_parity_high_similarity_but_weak_objective_not_confident() -> None:
+    utterance = "What was my sleep quality last night?"
+    candidates = [
+        {
+            "doc_id": "stale-high-sim",
+            "text": "I slept great three months ago.",
+            "type": "reflection",
+            "ts": "2025-12-01T08:00:00+00:00",
+            "sim_score": 0.98,
+        },
+        {
+            "doc_id": "recent-lower-sim",
+            "text": "I slept okay last night.",
+            "type": "reflection",
+            "ts": "2026-03-09T23:50:00+00:00",
+            "sim_score": 0.6,
+        },
+    ]
+
+    runtime = _runtime_path_result(utterance, candidates)
+    eval_path = _eval_path_result(utterance, candidates)
+
+    assert runtime["intent"] == eval_path["intent"] == "dont-know"
+    assert runtime["top_score"] < 0.2
 
 def test_eval_runtime_parity_fixture_families() -> None:
     fixture_files = [
