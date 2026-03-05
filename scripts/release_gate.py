@@ -48,9 +48,9 @@ def parse_args() -> argparse.Namespace:
 
 def build_checks() -> list[GateCheck]:
     return [
-        GateCheck(name="behave", command=["behave"]),
-        GateCheck(name="pytest_non_live_smoke", command=["pytest", "-m", "not live_smoke"]),
-        GateCheck(name="pytest_eval_runtime_parity", command=["pytest", "tests/test_eval_runtime_parity.py"]),
+        GateCheck(name="behave", command=[sys.executable, "-m", "behave"]),
+        GateCheck(name="pytest_non_live_smoke", command=[sys.executable, "-m", "pytest", "-m", "not live_smoke"]),
+        GateCheck(name="pytest_eval_runtime_parity", command=[sys.executable, "-m", "pytest", "tests/test_eval_runtime_parity.py"]),
         GateCheck(
             name="validate_issue_links",
             command=[
@@ -126,6 +126,12 @@ def main() -> int:
 
     summary_json = json.dumps(summary, indent=2)
     print(summary_json)
+
+    if any(r.status == "failed" and r.exit_code in {1, 127} for r in results):
+        print(
+            "\nIf checks failed because test tooling is missing, install development dependencies first: "
+            "python -m pip install -e .[dev]"
+        )
 
     if args.json_output:
         out_path = args.json_output if args.json_output.is_absolute() else REPO_ROOT / args.json_output

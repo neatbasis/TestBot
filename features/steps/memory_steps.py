@@ -14,6 +14,8 @@ from testbot.stage_transitions import (
 )
 
 FALLBACK = "I don't know from memory."
+ASSIST_FALLBACK = "I don't have enough reliable memory to answer directly. I can either help you reconstruct the timeline from what you remember, or suggest where to check next for the missing detail."
+BRIDGING_CLARIFIER = "I found related memory fragments (fragment A; fragment B), but not enough to answer precisely. Which person, event, or time window should I focus on?"
 CITATION_PATTERN = re.compile(r"doc_id\s*[:=]\s*[^,\]\)\n]+.*?ts\s*[:=]\s*[^,\]\)\n]+", re.IGNORECASE)
 
 
@@ -28,7 +30,7 @@ def _answer_from_case(case_id: str, loaded_cases) -> str:
     case = loaded_cases[case_id]
     chosen_doc_id = best_candidate_doc_id(case)
     if not chosen_doc_id:
-        return FALLBACK
+        return ASSIST_FALLBACK
 
     chosen = next(candidate for candidate in case.candidates if candidate["doc_id"] == chosen_doc_id)
     return f"{chosen['text']} (doc_id: {chosen['doc_id']}, ts: {chosen['ts']})"
@@ -41,8 +43,8 @@ def _build_stage_state(case_id: str, loaded_cases, answer: str) -> PipelineState
         for candidate in case.candidates
     ]
     context_confident = bool(candidates)
-    draft_answer = "" if answer == FALLBACK else answer
-    has_claims = answer != FALLBACK
+    draft_answer = answer if "doc_id:" in answer else ""
+    has_claims = "doc_id:" in answer
     return PipelineState(
         user_input=case.utterance,
         rewritten_query=case.utterance,
@@ -62,12 +64,13 @@ def _build_stage_state(case_id: str, loaded_cases, answer: str) -> PipelineState
         alignment_decision={
             "objective_version": "2026-03-01.v1",
             "dimensions": {
-                "factual_grounding_reliability": 1.0 if answer == FALLBACK or _validate_answer_contract(draft_answer) else 0.0,
+                "factual_grounding_reliability": 1.0 if not has_claims or _validate_answer_contract(draft_answer) else 0.0,
                 "safety_compliance_strictness": 1.0,
-                "response_utility": 0.4 if answer == FALLBACK else 1.0,
+                "response_utility": 1.0 if has_claims else 0.7,
                 "cost_latency_budget": 1.0,
+                "provenance_transparency": 1.0,
             },
-            "final_alignment_decision": "fallback" if answer == FALLBACK else "allow",
+            "final_alignment_decision": "allow",
         },
     )
 
@@ -107,7 +110,7 @@ def step_when_equivalent_candidates_remain(context) -> None:
         CandidateHit(doc_id="", score=0.91, ts="", card_type="memory"),
         CandidateHit(doc_id="", score=0.90, ts="", card_type="memory"),
     ]
-    context.answer = FALLBACK
+    context.answer = BRIDGING_CLARIFIER
     context.pipeline_state = PipelineState(
         user_input="ambiguous recall",
         rewritten_query="ambiguous recall",
@@ -115,17 +118,21 @@ def step_when_equivalent_candidates_remain(context) -> None:
         reranked_hits=candidates,
         confidence_decision={"context_confident": False, "ambiguity_detected": True},
         draft_answer="",
-        final_answer=FALLBACK,
-        invariant_decisions={"answer_contract_valid": True, "general_knowledge_contract_valid": True},
+        final_answer=BRIDGING_CLARIFIER,
+        claims=["INFERENCE: Ambiguous memory fragments"],
+        provenance_types=[ProvenanceType.INFERENCE],
+        basis_statement="Ambiguous fragments require clarification.",
+        invariant_decisions={"answer_contract_valid": True, "general_knowledge_contract_valid": True, "answer_mode": "clarify"},
         alignment_decision={
             "objective_version": "2026-03-01.v1",
             "dimensions": {
                 "factual_grounding_reliability": 1.0,
                 "safety_compliance_strictness": 1.0,
-                "response_utility": 0.4,
+                "response_utility": 0.7,
                 "cost_latency_budget": 1.0,
+                "provenance_transparency": 1.0,
             },
-            "final_alignment_decision": "fallback",
+            "final_alignment_decision": "allow",
         },
     )
 
@@ -146,6 +153,13 @@ def step_then_has_citation(context) -> None:
     assert "ts:" in context.answer
 
 
-@then('the assistant responds exactly "I don\'t know from memory."')
-def step_then_exact_fallback(context) -> None:
-    assert context.answer == FALLBACK
+@then("the assistant returns an assistive fallback response")
+def step_then_assistive_fallback(context) -> None:
+    lowered = context.answer.lower()
+    assert "either" in lowered and "or" in lowered
+
+
+@then("the assistant returns a bridging clarification response")
+def step_then_bridging_clarifier(context) -> None:
+    lowered = context.answer.lower()
+    assert "which" in lowered and "time window" in lowered

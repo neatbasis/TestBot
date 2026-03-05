@@ -53,7 +53,7 @@ def _is_scored_candidate_list(candidates: list[CandidateHit]) -> bool:
 
 def _is_non_trivial_answer(answer: str) -> bool:
     normalized = (answer or "").strip()
-    return normalized not in {"", FALLBACK_ANSWER, DENY_ANSWER, "Can you clarify which memory and time window you mean?", "I can disambiguate this with a quick follow-up question."}
+    return normalized not in {"", FALLBACK_ANSWER, DENY_ANSWER, "Can you clarify which memory and time window you mean?", "I can disambiguate this with a quick follow-up question.", "I don't have enough reliable memory to answer directly. I can either help you reconstruct the timeline from what you remember, or suggest where to check next for the missing detail."}
 
 
 def _has_allowed_provenance_types(state: PipelineState) -> bool:
@@ -195,7 +195,8 @@ def validate_answer_post(state: PipelineState) -> TransitionCheckResult:
             ),
             (
                 "inv_001_contract_enforced",
-                lambda s: bool(s.invariant_decisions.get("answer_contract_valid", False)) or s.final_answer == FALLBACK_ANSWER,
+                lambda s: bool(s.invariant_decisions.get("answer_contract_valid", False))
+                or s.invariant_decisions.get("answer_mode") in {"deny", "dont-know", "clarify", "assist"},
             ),
             (
                 "inv_003_general_knowledge_contract_enforced",
@@ -203,14 +204,20 @@ def validate_answer_post(state: PipelineState) -> TransitionCheckResult:
                 or s.final_answer == FALLBACK_ANSWER,
             ),
             (
-                "inv_002_exact_fallback_enforced",
-                lambda s: s.final_answer in {FALLBACK_ANSWER, DENY_ANSWER}
-                if (
-                    not s.confidence_decision.get("context_confident", False)
-                    or not (s.draft_answer or "").strip()
-                    or not s.invariant_decisions.get("answer_contract_valid", False)
-                )
-                else True,
+                "inv_002_progressive_fallback_enforced",
+                lambda s: (
+                    s.final_answer == DENY_ANSWER
+                    if s.invariant_decisions.get("answer_mode") == "deny"
+                    else (
+                        s.final_answer != FALLBACK_ANSWER
+                        if (
+                            not s.confidence_decision.get("context_confident", False)
+                            or not (s.draft_answer or "").strip()
+                            or not s.invariant_decisions.get("answer_contract_valid", False)
+                        )
+                        else True
+                    )
+                ),
             ),
             (
                 "alignment_decision_consistent",

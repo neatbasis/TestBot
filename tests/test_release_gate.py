@@ -127,9 +127,9 @@ def test_build_checks_order_and_commands() -> None:
         "pytest_eval_runtime_parity",
         "validate_issue_links",
     ]
-    assert checks[0].command == ["behave"]
-    assert checks[1].command == ["pytest", "-m", "not live_smoke"]
-    assert checks[2].command == ["pytest", "tests/test_eval_runtime_parity.py"]
+    assert checks[0].command[1:] == ["-m", "behave"]
+    assert checks[1].command[1:] == ["-m", "pytest", "-m", "not live_smoke"]
+    assert checks[2].command[1:] == ["-m", "pytest", "tests/test_eval_runtime_parity.py"]
     assert checks[3].command[1:] == [
         "scripts/validate_issue_links.py",
         "--all-issue-files",

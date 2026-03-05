@@ -2,7 +2,7 @@
 Feature: Memory recall behavior
   In order to trust responses grounded in memory
   As a resident
-  I want cited answers when memory is sufficient and exact fallback when it is not
+  I want cited answers when memory is sufficient and progressive fallback when it is not
 
   Scenario: cited memory-grounded answer path
     Given a deterministic in-memory recall harness
@@ -11,13 +11,13 @@ Feature: Memory recall behavior
     Then the assistant returns a memory-grounded answer
     And the answer includes citation fields "doc_id" and "ts"
 
-  Scenario: exact fallback path
+  Scenario: progressive assist fallback path
     Given a deterministic in-memory recall harness
     And eval cases are loaded from "eval/cases.jsonl"
     When the user asks about eval case "no-memory-match"
-    Then the assistant responds exactly "I don't know from memory."
+    Then the assistant returns an assistive fallback response
 
   Scenario: equivalent candidates remain ambiguous after tie-break
     Given a deterministic in-memory recall harness
     When equivalent top candidates remain after tie-break
-    Then the assistant responds exactly "I don't know from memory."
+    Then the assistant returns a bridging clarification response
