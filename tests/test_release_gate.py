@@ -98,6 +98,7 @@ def test_summarize_reports_per_check_fields(checks: list[release_gate.GateCheck]
     summary = release_gate.summarize(results=results, continue_on_failure=True)
 
     assert summary["status"] == "failed"
+    assert summary["exit_code"] == 1
     assert summary["continue_on_failure"] is True
     assert summary["checks"] == [
         {
@@ -114,4 +115,24 @@ def test_summarize_reports_per_check_fields(checks: list[release_gate.GateCheck]
             "exit_code": 1,
             "duration_s": 0.2,
         },
+    ]
+
+
+def test_build_checks_order_and_commands() -> None:
+    checks = release_gate.build_checks()
+
+    assert [check.name for check in checks] == [
+        "behave",
+        "pytest_non_live_smoke",
+        "pytest_eval_runtime_parity",
+        "validate_issue_links",
+    ]
+    assert checks[0].command == ["behave"]
+    assert checks[1].command == ["pytest", "-m", "not live_smoke"]
+    assert checks[2].command == ["pytest", "tests/test_eval_runtime_parity.py"]
+    assert checks[3].command[1:] == [
+        "scripts/validate_issue_links.py",
+        "--all-issue-files",
+        "--base-ref",
+        "origin/main",
     ]

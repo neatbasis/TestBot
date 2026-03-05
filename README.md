@@ -123,6 +123,7 @@ python scripts/release_gate.py
 ## Validate
 - Canonical merge/release gate: `python scripts/release_gate.py`
 - Optional run-all mode (collect every failure before exiting non-zero): `python scripts/release_gate.py --continue-on-failure`
+- Machine-readable summary artifact: `python scripts/release_gate.py --json-output artifacts/release-gate-summary.json`
 - Run optional live smoke profile: `pytest -m live_smoke`
 - Optional docs path validation: `python scripts/validate_markdown_paths.py`
 

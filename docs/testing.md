@@ -105,6 +105,12 @@ Run gate in run-all mode (returns non-zero if any check failed):
 python scripts/release_gate.py --continue-on-failure
 ```
 
+Write gate results to a JSON artifact (for CI/log processing):
+
+```bash
+python scripts/release_gate.py --json-output artifacts/release-gate-summary.json
+```
+
 Run BDD scenarios directly (requires `pip install -e .[dev]` first):
 
 ```bash
