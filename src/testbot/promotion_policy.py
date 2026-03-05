@@ -59,7 +59,10 @@ def _is_clarified_intent(claim: str) -> bool:
 
 def _is_definition_or_domain_context(claim: str) -> bool:
     lowered = claim.lower()
-    return any(token in lowered for token in ("definition", "means", "refers to", "domain context"))
+    return any(
+        token in lowered
+        for token in ("definition", "means", "refers to", "domain context", "relevant summary", "source evidence")
+    )
 
 
 def _is_uncertain_or_conflicting(claim: str) -> bool:

@@ -35,3 +35,11 @@ def test_classify_intent_capabilities_help_help() -> None:
 
 def test_classify_intent_capabilities_help_capabilities() -> None:
     assert classify_intent("capabilities") is IntentType.CAPABILITIES_HELP
+
+
+def test_classify_intent_knowledge_question_when_is_prompt() -> None:
+    assert classify_intent("when is my next utility event?") is IntentType.KNOWLEDGE_QUESTION
+
+
+def test_classify_intent_meta_conversation_relevance_summary() -> None:
+    assert classify_intent("summarize our conversation") is IntentType.META_CONVERSATION

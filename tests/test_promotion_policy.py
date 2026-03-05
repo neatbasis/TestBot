@@ -83,3 +83,18 @@ def test_no_debug_or_internal_leakage_promoted() -> None:
 
     assert not decision.items
     assert "contains_internal_debug" in decision.rejected_reasons
+
+
+def test_relevance_and_source_evidence_claims_promote_as_accepted_context() -> None:
+    reflection_yaml = (
+        "claims:\n"
+        "  - Relevant summary: the user is focused on ontology follow-ups\n"
+        "  - Source evidence confirms next event is from calendar feed\n"
+        "uncertainties: []\n"
+        "confidence: 0.89"
+    )
+
+    decision = evaluate_promotion_policy(reflection_yaml=reflection_yaml)
+
+    assert len(decision.items) == 2
+    assert {item.category for item in decision.items} == {"accepted_context"}

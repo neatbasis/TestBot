@@ -407,6 +407,11 @@ def stage_answer(
         memory_hit=bool(state.confidence_decision.get("context_confident", False)),
         ambiguity=bool(state.confidence_decision.get("ambiguity_detected", False)),
         capability_status=capability_status,
+        source_confidence=(
+            float(state.confidence_decision["source_confidence"])
+            if "source_confidence" in state.confidence_decision
+            else None
+        ),
     )
 
     if is_unsafe_user_request(state.user_input):
@@ -418,6 +423,9 @@ def stage_answer(
     elif fallback_action == "ASK_CLARIFYING_QUESTION":
         draft_answer = ""
         final_answer = build_partial_memory_clarifier(hits)
+    elif fallback_action == "ANSWER_UNKNOWN":
+        draft_answer = FALLBACK_ANSWER
+        final_answer = FALLBACK_ANSWER
     elif fallback_action == "OFFER_CAPABILITY_ALTERNATIVES":
         draft_answer = ""
         final_answer = ASSIST_ALTERNATIVES_ANSWER
@@ -696,6 +704,12 @@ def build_provenance_metadata(
         )
     elif used_source_evidence_refs:
         basis_statement = "Answer synthesized from reranked source evidence documents."
+    elif chat_history:
+        basis_statement = (
+            "Relevance summary basis: synthesized from recent chat history signals."
+            if final_answer.startswith("Relevant summary:")
+            else "Answer synthesized from recent chat history."
+        )
     else:
         basis_statement = "General-knowledge basis: no supporting memory references were retrieved."
     return (
