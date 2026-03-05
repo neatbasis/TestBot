@@ -29,6 +29,19 @@ def _float_from_env(name: str, default: float) -> float:
         raise RuntimeError(f"{name} must be non-negative; got {parsed}")
     return parsed
 
+
+def _int_from_env(name: str, default: int) -> int:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        parsed = int(raw)
+    except ValueError as exc:
+        raise RuntimeError(f"Invalid int for {name}: {raw!r}") from exc
+    if parsed < 0:
+        raise RuntimeError(f"{name} must be non-negative; got {parsed}")
+    return parsed
+
 @dataclass(frozen=True)
 class Config:
     OLLAMA_BASE_URL: str
@@ -37,6 +50,11 @@ class Config:
     HA_API_SECRET: str
     HA_SATELLITE_ENTITY_ID: str
     MEMORY_NEAR_TIE_DELTA: float
+    SOURCE_INGEST_ENABLED: bool
+    SOURCE_CONNECTOR_TYPE: str
+    SOURCE_FIXTURE_PATH: str
+    SOURCE_INGEST_LIMIT: int
+    SOURCE_INGEST_CURSOR: str | None
 
     @classmethod
     def from_env(cls) -> "Config":
@@ -48,4 +66,9 @@ class Config:
             HA_API_SECRET=_require("HA_API_SECRET"),
             HA_SATELLITE_ENTITY_ID=_require("HA_SATELLITE_ENTITY_ID"),
             MEMORY_NEAR_TIE_DELTA=_float_from_env("MEMORY_NEAR_TIE_DELTA", 0.02),
+            SOURCE_INGEST_ENABLED=(os.getenv("SOURCE_INGEST_ENABLED", "0") == "1"),
+            SOURCE_CONNECTOR_TYPE=os.getenv("SOURCE_CONNECTOR_TYPE", "fixture"),
+            SOURCE_FIXTURE_PATH=os.getenv("SOURCE_FIXTURE_PATH", ""),
+            SOURCE_INGEST_LIMIT=_int_from_env("SOURCE_INGEST_LIMIT", 50),
+            SOURCE_INGEST_CURSOR=os.getenv("SOURCE_INGEST_CURSOR") or None,
         )
