@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Literal
 from typing import Protocol
 
 from langchain_core.documents import Document
@@ -12,6 +13,20 @@ class MemoryStore(Protocol):
     def add_documents(self, documents: list[Document]) -> None: ...
 
     def similarity_search_with_score(self, query: str, k: int = 4) -> list[tuple[Document, float]]: ...
+
+
+MemoryBackend = Literal["in_memory", "elasticsearch", "hybrid"]
+
+
+def normalize_memory_store_mode(mode: str) -> MemoryBackend:
+    normalized = mode.strip().lower()
+    if normalized in {"inmemory", "in_memory"}:
+        return "in_memory"
+    if normalized == "elasticsearch":
+        return "elasticsearch"
+    if normalized == "hybrid":
+        return "hybrid"
+    raise ValueError(f"Unsupported memory store mode: {mode}")
 
 
 @dataclass
@@ -143,12 +158,13 @@ class PromotingMemoryStore:
 
 
 def build_memory_store(*, embeddings: Embeddings, mode: str, elasticsearch_url: str = "", elasticsearch_index: str = "") -> MemoryStore:
+    backend = normalize_memory_store_mode(mode)
     in_memory = InMemoryMemoryStore(InMemoryVectorStore(embeddings))
-    if mode == "inmemory":
+    if backend == "in_memory":
         return in_memory
-    if mode == "elasticsearch":
+    if backend == "elasticsearch":
         return ElasticsearchMemoryStore(embeddings=embeddings, url=elasticsearch_url, index=elasticsearch_index)
-    if mode == "hybrid":
+    if backend == "hybrid":
         fallback = ElasticsearchMemoryStore(embeddings=embeddings, url=elasticsearch_url, index=elasticsearch_index)
         return PromotingMemoryStore(primary=in_memory, fallback=fallback)
     raise ValueError(f"Unsupported memory store mode: {mode}")

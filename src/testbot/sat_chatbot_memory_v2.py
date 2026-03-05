@@ -41,7 +41,7 @@ from testbot.history_packer import PackedHistory, labeled_history_claims, pack_c
 
 from langchain_core.documents import Document
 from langchain_core.prompts import ChatPromptTemplate
-from testbot.vector_store import MemoryStore, build_memory_store
+from testbot.vector_store import MemoryStore, build_memory_store, normalize_memory_store_mode
 from langchain_ollama import ChatOllama, OllamaEmbeddings
 
 
@@ -101,6 +101,7 @@ def _parse_args(argv: list[str] | None = None) -> Namespace:
 
 
 def _read_runtime_env() -> dict[str, object]:
+    memory_store_mode = os.getenv("MEMORY_STORE_MODE", "in_memory")
     return {
         "ha_api_url": os.getenv("HA_API_URL", "http://localhost:8123"),
         "ha_api_secret": os.getenv("HA_API_SECRET", ""),
@@ -108,7 +109,8 @@ def _read_runtime_env() -> dict[str, object]:
         "ollama_base_url": os.getenv("OLLAMA_BASE_URL") or os.getenv("OLLAMA_HOST") or "http://localhost:11434",
         "ollama_model": os.getenv("OLLAMA_MODEL", "llama3.1:latest"),
         "memory_near_tie_delta": float(os.getenv("MEMORY_NEAR_TIE_DELTA", "0.02")),
-        "memory_store_mode": os.getenv("MEMORY_STORE_MODE", "inmemory"),
+        "memory_store_mode": memory_store_mode,
+        "memory_store_backend": normalize_memory_store_mode(memory_store_mode),
         "elasticsearch_url": os.getenv("ELASTICSEARCH_URL", "http://localhost:9200"),
         "elasticsearch_index": os.getenv("ELASTICSEARCH_INDEX", "testbot_memory_cards"),
     }
@@ -164,7 +166,7 @@ def _print_startup_status(
     else:
         print(f"Selected mode: {effective_mode} (requested={requested_mode}, daemon={daemon_mode})")
     print(f"Ollama endpoint: {runtime['ollama_base_url']} model={runtime['ollama_model']}")
-    print(f"Memory store: {runtime['memory_store_mode']}")
+    print(f"Memory backend: {runtime['memory_store_backend']}")
     if ha_error:
         print(f"Home Assistant: unavailable ({ha_error})")
         print("Install warning [YELLOW]: Home Assistant capability is degraded; configure HA_API_SECRET and HA_SATELLITE_ENTITY_ID to enable satellite mode.")
