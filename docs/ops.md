@@ -48,6 +48,32 @@ Current event contracts validated by `scripts/validate_log_schema.py`:
 Use fixture artifacts in `tests/fixtures/log_schema/` to keep both current and previous schema
 versions valid over time.
 
+
+## Turn analytics + KPI loop
+
+Aggregate runtime logs into a per-turn analytics dataset:
+
+```bash
+python scripts/aggregate_turn_analytics.py   --input logs/session.jsonl   --output logs/turn_analytics.jsonl   --summary-output logs/turn_analytics_summary.json
+```
+
+Per-turn dataset fields:
+
+- `intent`: model intent label for the turn.
+- `ambiguity_score`: ambiguity signal from ranking/policy.
+- `action`: fallback/policy action (`NONE` means grounded-answer path).
+- `followup_proxy`: proxy for user follow-up pressure.
+- `provenance_completeness`: normalized [0,1] completeness score from provenance evidence.
+
+### KPI definitions
+
+- **grounded-answer precision**: among turns with `action == "NONE"`, share where `provenance_completeness >= 0.66`.
+- **false-knowing rate**: among turns with `action == "NONE"`, share where `provenance_completeness == 0.0`.
+- **fallback appropriateness**: among fallback turns (`action != "NONE"`), share where `followup_proxy >= 0.5`.
+- **citation completeness**: mean `provenance_completeness` across all turns.
+
+These KPIs are emitted to `logs/turn_analytics_summary.json` for release-review and drift tracking.
+
 ## Troubleshooting
 
 ### `AttributeError: 'tuple' object has no attribute 'metadata'`

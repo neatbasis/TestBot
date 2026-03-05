@@ -1,0 +1,8 @@
+{"ts":"2026-01-01T00:00:00Z","event":"user_utterance_ingest","utterance":"What did I say yesterday?"}
+{"ts":"2026-01-01T00:00:01Z","event":"intent_classified","intent":"memory_recall","ambiguity_score":0.2,"user_followup_signal_proxy":0.2}
+{"ts":"2026-01-01T00:00:02Z","event":"fallback_action_selected","intent":"memory_recall","ambiguity_score":0.2,"chosen_action":"NONE","user_followup_signal_proxy":0.2}
+{"ts":"2026-01-01T00:00:03Z","event":"provenance_summary","provenance_types":["memory"],"used_memory_refs":[{"doc_id":"d1"}],"basis_statement":"derived from memory"}
+{"ts":"2026-01-01T00:00:04Z","event":"user_utterance_ingest","utterance":"What is my SSN?"}
+{"ts":"2026-01-01T00:00:05Z","event":"intent_classified","intent":"knowledge_question","ambiguity_score":0.9,"user_followup_signal_proxy":0.9}
+{"ts":"2026-01-01T00:00:06Z","event":"fallback_action_selected","intent":"knowledge_question","ambiguity_score":0.9,"chosen_action":"ASK_CLARIFYING_QUESTION","user_followup_signal_proxy":1.0}
+{"ts":"2026-01-01T00:00:07Z","event":"provenance_summary","provenance_types":[],"used_memory_refs":[],"basis_statement":""}
