@@ -194,11 +194,12 @@ def parse_target_time(utterance: str, *, now: Optional[arrow.Arrow] = None) -> a
     dur_s = _extract_duration_seconds(text)
     if dur_s is not None:
         past_cues = [" ago", " earlier", " before", " previously"]
-        future_cues = [" in ", " from now", " later", " after ", " hence"]
+        future_cues = [" from now", " later", " after ", " hence"]
+        has_in_cue = re.search(r"\bin\b", text) is not None
 
         if any(cue in text for cue in past_cues):
             return now.shift(seconds=-int(round(dur_s)))
-        if any(cue in text for cue in future_cues):
+        if has_in_cue or any(cue in text for cue in future_cues):
             return now.shift(seconds=+int(round(dur_s)))
 
         if "since" in text:
