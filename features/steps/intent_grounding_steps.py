@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+from collections import deque
 from dataclasses import replace
 
 from behave import given, then, when
+from langchain_core.documents import Document
 
+from testbot.history_packer import PackedHistory
 from testbot.intent_router import IntentType, classify_intent
 from testbot.pipeline_state import CandidateHit, PipelineState, ProvenanceType
-from testbot.sat_chatbot_memory_v2 import validate_general_knowledge_contract
+from testbot.sat_chatbot_memory_v2 import FALLBACK_ANSWER, build_provenance_metadata, validate_general_knowledge_contract
 from testbot.stage_transitions import validate_answer_post, validate_answer_pre
 
 GENERAL_MARKER = "General definition (not from your memory):"
@@ -116,6 +119,68 @@ def step_when_relevance_question(context) -> None:
     _run_contract_checks(context)
 
 
+@when("the user asks a source-backed knowing question")
+def step_when_source_backed_knowing_question(context) -> None:
+    answer = "Your next power utility event is Friday at 7pm (source_uri: calendar://work/event-42)."
+    context.pipeline_state = _build_base_state(
+        user_input="When is my next utility event?",
+        final_answer=answer,
+        draft_answer=answer,
+        confidence_decision={"context_confident": True, "source_confidence": 0.93},
+    )
+    hit = CandidateHit(
+        doc_id="src-42",
+        score=0.92,
+        ts="2026-03-10T09:00:00Z",
+        card_type="source_evidence",
+        source_doc_id="calendar://work/event-42",
+    )
+    context.pipeline_state = replace(context.pipeline_state, reranked_hits=[hit])
+    provenance, _claims, basis, memory_refs, source_refs, source_attr = build_provenance_metadata(
+        final_answer=context.pipeline_state.final_answer,
+        hits=[
+            Document(
+                id="src-42",
+                page_content="utility event",
+                metadata={
+                    "type": "source_evidence",
+                    "source_type": "calendar",
+                    "source_uri": "calendar://work/event-42",
+                    "retrieved_at": "2026-03-10T09:00:00Z",
+                    "trust_tier": "high",
+                },
+            )
+        ],
+        chat_history=deque(),
+        packed_history=PackedHistory([], [], [], [], []),
+    )
+    context.pipeline_state = replace(
+        context.pipeline_state,
+        provenance_types=provenance,
+        basis_statement=basis,
+        used_memory_refs=memory_refs,
+        used_source_evidence_refs=source_refs,
+        source_evidence_attribution=source_attr,
+    )
+    _run_contract_checks(context)
+
+
+@when("source confidence is insufficient for a knowing answer")
+def step_when_source_confidence_insufficient(context) -> None:
+    context.pipeline_state = _build_base_state(
+        user_input="What happened in my calendar?",
+        final_answer=FALLBACK_ANSWER,
+        draft_answer=FALLBACK_ANSWER,
+        confidence_decision={"context_confident": False, "source_confidence": 0.35},
+    )
+    context.pipeline_state = replace(
+        context.pipeline_state,
+        provenance_types=[ProvenanceType.UNKNOWN],
+        basis_statement="Trivial fallback/deny/clarification response with no substantive claim.",
+    )
+    _run_contract_checks(context)
+
+
 @then("the assistant returns a labeled general answer with clarification")
 def step_then_labeled_general_answer(context) -> None:
     assert context.pipeline_state.final_answer.startswith(GENERAL_MARKER)
@@ -151,6 +216,26 @@ def step_then_relevance_summary(context) -> None:
 def step_then_relevance_basis(context) -> None:
     assert "Relevance summary basis:" in context.pipeline_state.basis_statement
     assert "chat history" in context.pipeline_state.basis_statement.lower()
+
+
+@then("the assistant returns a source-backed answer with citation")
+def step_then_source_backed_answer_with_citation(context) -> None:
+    assert "source_uri:" in context.pipeline_state.final_answer
+    assert context.pipeline_state.used_source_evidence_refs == ["src-42"]
+
+
+@then('the source provenance includes "{source_uri}" and "{source_type}"')
+def step_then_source_provenance_includes_fields(context, source_uri: str, source_type: str) -> None:
+    assert context.pipeline_state.source_evidence_attribution
+    attribution = context.pipeline_state.source_evidence_attribution[0]
+    assert attribution["source_uri"] == source_uri
+    assert attribution["source_type"] == source_type
+
+
+@then("the assistant returns explicit unknowing fallback")
+def step_then_explicit_unknowing_fallback(context) -> None:
+    assert context.pipeline_state.final_answer == FALLBACK_ANSWER
+    assert context.pipeline_state.provenance_types == [ProvenanceType.UNKNOWN]
 
 
 @then('the response should include "{expected_substring}"')

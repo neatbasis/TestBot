@@ -23,6 +23,13 @@ EVENT_FIELDS: dict[str, dict[str, type]] = {
         "passed": bool,
         "failures": list,
     },
+    "provenance_summary": {
+        "provenance_types": list,
+        "used_memory_refs": list,
+        "used_source_evidence_refs": list,
+        "source_evidence_attribution": list,
+        "basis_statement": str,
+    },
 }
 
 

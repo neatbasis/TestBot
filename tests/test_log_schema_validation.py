@@ -19,6 +19,7 @@ def test_validate_log_schema_accepts_previous_and_current_fixture_artifacts() ->
     fixture_paths = [
         FIXTURE_DIR / "previous_schema_v1.jsonl",
         FIXTURE_DIR / "current_schema_v2.jsonl",
+        FIXTURE_DIR / "current_schema_v3.jsonl",
     ]
 
     for fixture_path in fixture_paths:
@@ -35,3 +36,19 @@ def test_validate_log_schema_rejects_invalid_schema_version_type() -> None:
     errors = validate_row(row, row_label="test-row")
 
     assert "test-row: key 'schema_version' expected int when present" in errors
+
+
+def test_validate_log_schema_rejects_provenance_summary_missing_source_fields() -> None:
+    row = {
+        "ts": "2026-03-03T00:00:00Z",
+        "event": "provenance_summary",
+        "schema_version": 3,
+        "provenance_types": ["memory"],
+        "used_memory_refs": [],
+        "basis_statement": "derived from memory",
+    }
+
+    errors = validate_row(row, row_label="test-row")
+
+    assert "test-row: missing required key 'used_source_evidence_refs'" in errors
+    assert "test-row: missing required key 'source_evidence_attribution'" in errors

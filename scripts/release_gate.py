@@ -55,6 +55,17 @@ def parse_args() -> argparse.Namespace:
 def build_checks(*, replay_report: bool = False) -> list[GateCheck]:
     checks = [
         GateCheck(name="behave", command=[sys.executable, "-m", "behave"]),
+        GateCheck(
+            name="pytest_source_and_provenance_fast",
+            command=[
+                sys.executable,
+                "-m",
+                "pytest",
+                "tests/test_vector_store.py",
+                "tests/test_source_fusion.py",
+                "tests/test_log_schema_validation.py",
+            ],
+        ),
         GateCheck(name="pytest_non_live_smoke", command=[sys.executable, "-m", "pytest", "-m", "not live_smoke"]),
         GateCheck(name="pytest_eval_runtime_parity", command=[sys.executable, "-m", "pytest", "tests/test_eval_runtime_parity.py"]),
         GateCheck(
