@@ -72,6 +72,11 @@ ASSIST_ALTERNATIVES_ANSWER = (
     "I can either help you reconstruct the timeline from what you remember, "
     "or suggest where to check next for the missing detail."
 )
+CAPABILITIES_HELP_ANSWER = (
+    "I can help with: memory-grounded recall; general explanation support; clarifying-question support when "
+    "memory is incomplete; Home Assistant actions (with a degraded message when unavailable); and debug visibility "
+    "only when debug mode is enabled."
+)
 GENERAL_KNOWLEDGE_MARKER_PREFIX = "General definition (not from your memory):"
 GENERAL_KNOWLEDGE_CONFIDENCE_MIN = 0.85
 GENERAL_KNOWLEDGE_SUPPORT_MIN = 2
@@ -162,7 +167,7 @@ def _print_startup_status(
     print(f"Memory store: {runtime['memory_store_mode']}")
     if ha_error:
         print(f"Home Assistant: unavailable ({ha_error})")
-        print(f"Install warning [YELLOW]: Home Assistant capability is degraded; configure HA_API_SECRET and HA_SATELLITE_ENTITY_ID to enable satellite mode.")
+        print("Install warning [YELLOW]: Home Assistant capability is degraded; configure HA_API_SECRET and HA_SATELLITE_ENTITY_ID to enable satellite mode.")
         print("Developer note: satellite interface disabled; CLI fallback will be used unless --daemon is set.")
     else:
         print(f"Home Assistant: available ({runtime['ha_api_url']}, entity={runtime['ha_satellite_entity_id']})")
@@ -259,6 +264,10 @@ def _intent_class_for_policy(user_input: str) -> str:
     return "non_memory"
 
 
+def _is_capabilities_help_request(user_input: str) -> bool:
+    return classify_intent(user_input) == IntentType.CAPABILITIES_HELP
+
+
 def _intent_label(intent: IntentType) -> str:
     return intent.value
 
@@ -331,6 +340,45 @@ def stage_answer(
     clock: Clock,
     timezone: str = "Europe/Helsinki",
 ) -> PipelineState:
+    if _is_capabilities_help_request(state.user_input):
+        final_answer = CAPABILITIES_HELP_ANSWER
+        provenance_types, claims, basis_statement, used_memory_refs = build_provenance_metadata(
+            final_answer=final_answer,
+            hits=hits,
+            chat_history=chat_history,
+            packed_history=pack_chat_history(list(chat_history)),
+        )
+        alignment_decision = evaluate_alignment_decision(
+            user_input=state.user_input,
+            draft_answer="",
+            final_answer=final_answer,
+            confidence_decision=state.confidence_decision,
+            claims=claims,
+            provenance_types=provenance_types,
+            basis_statement=basis_statement,
+        )
+        return replace(
+            state,
+            draft_answer="",
+            final_answer=final_answer,
+            claims=claims,
+            provenance_types=provenance_types,
+            used_memory_refs=used_memory_refs,
+            basis_statement=basis_statement,
+            invariant_decisions={
+                "response_contains_claims": False,
+                "has_required_memory_citation": False,
+                "answer_contract_valid": True,
+                "general_knowledge_contract_valid": True,
+                "has_general_knowledge_marker": False,
+                "general_knowledge_confidence_gate_passed": True,
+                "answer_mode": "assist",
+                "fallback_action": "ANSWER_GENERAL_KNOWLEDGE",
+                "provenance_recorded": True,
+            },
+            alignment_decision=alignment_decision,
+        )
+
     context_str = render_context(hits)
     packed_history = pack_chat_history(list(chat_history))
     history_str = render_packed_history(packed_history)
@@ -362,13 +410,6 @@ def stage_answer(
             now=clock.now(),
             last_user_message_ts=state.last_user_message_ts,
             timezone=timezone,
-        )
-    elif re.search(r"\b(what can you do|your capabilities|help options)\b", state.user_input.lower()):
-        draft_answer = ""
-        final_answer = (
-            "I can recall memory-grounded details, explain concepts in general terms, ask clarifying questions "
-            "when memory is insufficient, answer relative time questions across turns, and route Home Assistant asks "
-            "when that capability is available."
         )
     else:
         draft_answer = (llm.invoke(msgs).content or "").strip()
