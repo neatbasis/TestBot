@@ -77,6 +77,8 @@ GENERAL_KNOWLEDGE_CONFIDENCE_MIN = 0.85
 GENERAL_KNOWLEDGE_SUPPORT_MIN = 2
 ALIGNMENT_OBJECTIVE_VERSION = "2026-03-04.v2"
 SESSION_LOG_SCHEMA_VERSION = 2
+OUTPUT_MODE_NORMAL = "normal"
+OUTPUT_MODE_DEBUG = "debug"
 
 
 def _parse_args(argv: list[str] | None = None) -> Namespace:
@@ -92,6 +94,11 @@ def _parse_args(argv: list[str] | None = None) -> Namespace:
         action="store_true",
         help="Do not fall back to CLI if satellite mode is unavailable; exit instead.",
     )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Include internal provenance diagnostics in user-facing answers.",
+    )
     return parser.parse_args(argv)
 
 
@@ -103,6 +110,7 @@ def _read_runtime_env() -> dict[str, object]:
         "ollama_base_url": os.getenv("OLLAMA_BASE_URL") or os.getenv("OLLAMA_HOST") or "http://localhost:11434",
         "ollama_model": os.getenv("OLLAMA_MODEL", "llama3.1:latest"),
         "memory_near_tie_delta": float(os.getenv("MEMORY_NEAR_TIE_DELTA", "0.02")),
+        "output_mode": OUTPUT_MODE_DEBUG if os.getenv("TESTBOT_DEBUG_OUTPUT", "").strip().lower() in {"1", "true", "yes", "on"} else OUTPUT_MODE_NORMAL,
     }
 
 
@@ -325,6 +333,7 @@ def stage_answer(
     hits: list[Document],
     capability_status: CapabilityStatus,
     clock: Clock,
+    debug_mode: bool,
     timezone: str = "Europe/Helsinki",
 ) -> PipelineState:
     context_str = render_context(hits)
@@ -338,6 +347,8 @@ def stage_answer(
         ambiguity=bool(state.confidence_decision.get("ambiguity_detected", False)),
         capability_status=capability_status,
     )
+
+    expected_refs = collect_used_memory_refs(hits)
 
     if is_unsafe_user_request(state.user_input):
         draft_answer = ""
@@ -362,17 +373,18 @@ def stage_answer(
     else:
         draft_answer = (llm.invoke(msgs).content or "").strip()
         if not draft_answer:
-            final_answer = ASSIST_ALTERNATIVES_ANSWER
-        elif validate_answer_contract(draft_answer):
+            final_answer = FALLBACK_ANSWER
+        elif validate_answer_contract(draft_answer, used_memory_refs=expected_refs):
             final_answer = draft_answer
         else:
             final_answer = build_partial_memory_clarifier(hits)
 
-    provenance_types, claims, basis_statement, used_memory_refs = build_provenance_metadata(
+    provenance_types, claims, basis_statement, used_memory_refs, final_answer_with_mode = build_provenance_metadata(
         final_answer=final_answer,
         hits=hits,
         chat_history=chat_history,
         packed_history=packed_history,
+        debug_mode=debug_mode,
     )
 
     general_knowledge_contract_valid = (
@@ -385,12 +397,13 @@ def stage_answer(
         )
     )
     if final_answer != FALLBACK_ANSWER and not general_knowledge_contract_valid:
-        final_answer = build_partial_memory_clarifier(hits)
-        provenance_types, claims, basis_statement, used_memory_refs = build_provenance_metadata(
+        final_answer = FALLBACK_ANSWER
+        provenance_types, claims, basis_statement, used_memory_refs, final_answer_with_mode = build_provenance_metadata(
             final_answer=final_answer,
             hits=hits,
             chat_history=chat_history,
             packed_history=packed_history,
+            debug_mode=debug_mode,
         )
 
     alignment_decision = evaluate_alignment_decision(
@@ -401,12 +414,13 @@ def stage_answer(
         claims=claims,
         provenance_types=provenance_types,
         basis_statement=basis_statement,
+        used_memory_refs=used_memory_refs,
     )
 
     invariant_decisions = {
         "response_contains_claims": response_contains_claims(draft_answer),
-        "has_required_memory_citation": has_required_memory_citation(draft_answer),
-        "answer_contract_valid": validate_answer_contract(draft_answer),
+        "has_required_memory_citation": has_required_memory_citation(draft_answer, used_memory_refs=used_memory_refs),
+        "answer_contract_valid": validate_answer_contract(draft_answer, used_memory_refs=used_memory_refs),
         "general_knowledge_contract_valid": general_knowledge_contract_valid,
         "has_general_knowledge_marker": has_general_knowledge_marker(final_answer),
         "general_knowledge_confidence_gate_passed": passes_general_knowledge_confidence_gate(state.confidence_decision),
@@ -429,7 +443,7 @@ def stage_answer(
     return replace(
         state,
         draft_answer=draft_answer,
-        final_answer=final_answer,
+        final_answer=final_answer_with_mode,
         claims=claims,
         provenance_types=provenance_types,
         used_memory_refs=used_memory_refs,
@@ -552,15 +566,20 @@ def extract_claims(text: str) -> list[str]:
     return parts[:4]
 
 
-def collect_used_memory_refs(hits: list[Document]) -> list[str]:
-    refs: list[str] = []
+def collect_used_memory_refs(hits: list[Document]) -> list[dict[str, str]]:
+    refs: list[dict[str, str]] = []
+    seen: set[tuple[str, str]] = set()
     for d in hits:
         doc_id = str(d.id or d.metadata.get("doc_id") or "").strip()
         if not doc_id:
             continue
         ts = str(d.metadata.get("ts") or "").strip()
-        refs.append(f"{doc_id}@{ts}" if ts else doc_id)
-    return list(dict.fromkeys(refs))
+        key = (doc_id, ts)
+        if key in seen:
+            continue
+        seen.add(key)
+        refs.append({"doc_id": doc_id, "ts": ts})
+    return refs
 
 
 def build_provenance_metadata(
@@ -569,13 +588,15 @@ def build_provenance_metadata(
     hits: list[Document],
     chat_history: deque[ChatMsg],
     packed_history: PackedHistory,
-) -> tuple[list[ProvenanceType], list[str], str, list[str]]:
+    debug_mode: bool,
+) -> tuple[list[ProvenanceType], list[str], str, list[dict[str, str]], str]:
     if not is_non_trivial_answer(final_answer):
         return (
             [ProvenanceType.UNKNOWN],
             [],
             "Trivial fallback/deny/clarification response with no substantive claim.",
             [],
+            final_answer,
         )
 
     used_memory_refs = collect_used_memory_refs(hits)
@@ -597,7 +618,12 @@ def build_provenance_metadata(
         )
     else:
         basis_statement = "General-knowledge basis: no supporting memory references were retrieved."
-    return list(dict.fromkeys(provenance_types)), claims, basis_statement, used_memory_refs
+    response_text = final_answer
+    if debug_mode and used_memory_refs:
+        debug_refs = "; ".join(f"doc_id={ref['doc_id']}, ts={ref['ts'] or 'unknown'}" for ref in used_memory_refs)
+        response_text = f"{final_answer}\n\n[debug provenance] {debug_refs}"
+    return list(dict.fromkeys(provenance_types)), claims, basis_statement, used_memory_refs, response_text
+
 
 def response_contains_claims(text: str) -> bool:
     normalized = (text or "").strip()
@@ -609,15 +635,18 @@ def response_contains_claims(text: str) -> bool:
     return bool(re.search(r"[A-Za-z0-9].{8,}", normalized))
 
 
-def has_required_memory_citation(text: str) -> bool:
+def has_required_memory_citation(text: str, *, used_memory_refs: list[dict[str, str]] | None = None) -> bool:
+    refs = used_memory_refs or []
+    if refs:
+        return any(bool((ref.get("doc_id") or "").strip()) and bool((ref.get("ts") or "").strip()) for ref in refs)
     citation_pattern = re.compile(r"doc_id\s*[:=]\s*[^,\]\)\n]+.*?ts\s*[:=]\s*[^,\]\)\n]+", re.IGNORECASE)
     return bool(citation_pattern.search(text or ""))
 
 
-def validate_answer_contract(text: str) -> bool:
+def validate_answer_contract(text: str, *, used_memory_refs: list[dict[str, str]] | None = None) -> bool:
     if not response_contains_claims(text):
         return True
-    return has_required_memory_citation(text)
+    return has_required_memory_citation(text, used_memory_refs=used_memory_refs)
 
 
 def has_general_knowledge_marker(text: str) -> bool:
@@ -658,9 +687,10 @@ def evaluate_alignment_decision(
     claims: list[str],
     provenance_types: list[ProvenanceType],
     basis_statement: str,
+    used_memory_refs: list[dict[str, str]],
 ) -> dict[str, object]:
     has_claims = response_contains_claims(draft_answer)
-    has_citation = has_required_memory_citation(draft_answer)
+    has_citation = has_required_memory_citation(draft_answer, used_memory_refs=used_memory_refs)
     context_confident = bool(confidence_decision.get("context_confident", False))
     unsafe_request = is_unsafe_user_request(user_input)
 
@@ -705,6 +735,7 @@ def _run_chat_loop(
     near_tie_delta: float,
     io_channel: str,
     capability_status: CapabilityStatus,
+    debug_mode: bool,
     read_user_utterance,
     send_assistant_text,
     clock: Clock,
@@ -873,6 +904,7 @@ def _run_chat_loop(
             hits=hits,
             capability_status=capability_status,
             clock=clock,
+            debug_mode=debug_mode,
         )
         _validate_and_log_transition(validate_answer_post(state))
         append_pipeline_snapshot("answer", state)
@@ -976,7 +1008,7 @@ def _run_chat_loop(
         )
 
 
-def _run_cli_mode(*, llm: ChatOllama, store: InMemoryVectorStore, chat_history: deque[ChatMsg], near_tie_delta: float, clock: Clock) -> None:
+def _run_cli_mode(*, llm: ChatOllama, store: InMemoryVectorStore, chat_history: deque[ChatMsg], near_tie_delta: float, debug_mode: bool, clock: Clock) -> None:
     print("CLI chat ready. Ask memory-grounded questions; type 'stop' to exit.")
 
     def _read() -> str | None:
@@ -995,6 +1027,7 @@ def _run_cli_mode(*, llm: ChatOllama, store: InMemoryVectorStore, chat_history: 
         near_tie_delta=near_tie_delta,
         io_channel="cli",
         capability_status="ask_unavailable",
+        debug_mode=debug_mode,
         read_user_utterance=_read,
         send_assistant_text=_send,
         clock=clock,
@@ -1010,6 +1043,7 @@ def _run_satellite_mode(
     api_url: str,
     token: str,
     entity_id: str,
+    debug_mode: bool,
     clock: Clock,
 ) -> None:
     rest = normalize_rest_api_url(api_url)
@@ -1043,6 +1077,7 @@ def _run_satellite_mode(
             near_tie_delta=near_tie_delta,
             io_channel="satellite",
             capability_status="ask_available",
+            debug_mode=debug_mode,
             read_user_utterance=_read,
             send_assistant_text=_send,
             clock=clock,
@@ -1052,6 +1087,7 @@ def _run_satellite_mode(
 def main(argv: list[str] | None = None) -> None:
     args = _parse_args(argv)
     runtime = _read_runtime_env()
+    debug_mode = bool(args.debug or runtime["output_mode"] == OUTPUT_MODE_DEBUG)
 
     llm = ChatOllama(model=str(runtime["ollama_model"]), base_url=str(runtime["ollama_base_url"]), temperature=0.0)
     embeddings = OllamaEmbeddings(model="nomic-embed-text", base_url=str(runtime["ollama_base_url"]))
@@ -1081,6 +1117,7 @@ def main(argv: list[str] | None = None) -> None:
             "ha_error": ha_error,
             "fallback_reason": fallback_reason,
             "exit_reason": exit_reason,
+            "debug_mode": debug_mode,
         },
     )
 
@@ -1109,6 +1146,7 @@ def main(argv: list[str] | None = None) -> None:
             api_url=str(runtime["ha_api_url"]),
             token=str(runtime["ha_api_secret"]),
             entity_id=str(runtime["ha_satellite_entity_id"]),
+            debug_mode=debug_mode,
             clock=clock,
         )
         return
@@ -1118,6 +1156,7 @@ def main(argv: list[str] | None = None) -> None:
         store=store,
         chat_history=chat_history,
         near_tie_delta=float(runtime["memory_near_tie_delta"]),
+        debug_mode=debug_mode,
         clock=clock,
     )
 

@@ -65,6 +65,7 @@ def test_stage_answer_time_query_uses_fake_clock_and_helsinki() -> None:
         hits=[],
         capability_status="ask_unavailable",
         clock=FakeClock(frozen_now),
+        debug_mode=False,
         timezone="Europe/Helsinki",
     )
 

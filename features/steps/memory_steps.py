@@ -19,11 +19,11 @@ BRIDGING_CLARIFIER = "I found related memory fragments (fragment A; fragment B),
 CITATION_PATTERN = re.compile(r"doc_id\s*[:=]\s*[^,\]\)\n]+.*?ts\s*[:=]\s*[^,\]\)\n]+", re.IGNORECASE)
 
 
-def _validate_answer_contract(text: str) -> bool:
+def _validate_answer_contract(text: str, used_memory_refs: list[dict[str, str]]) -> bool:
     normalized = (text or "").strip()
     if not normalized or normalized == FALLBACK:
         return True
-    return bool(CITATION_PATTERN.search(text or ""))
+    return any(ref.get("doc_id") and ref.get("ts") for ref in used_memory_refs)
 
 
 def _answer_from_case(case_id: str, loaded_cases) -> str:
@@ -33,7 +33,7 @@ def _answer_from_case(case_id: str, loaded_cases) -> str:
         return ASSIST_FALLBACK
 
     chosen = next(candidate for candidate in case.candidates if candidate["doc_id"] == chosen_doc_id)
-    return f"{chosen['text']} (doc_id: {chosen['doc_id']}, ts: {chosen['ts']})"
+    return chosen["text"]
 
 
 def _build_stage_state(case_id: str, loaded_cases, answer: str) -> PipelineState:
@@ -43,8 +43,9 @@ def _build_stage_state(case_id: str, loaded_cases, answer: str) -> PipelineState
         for candidate in case.candidates
     ]
     context_confident = bool(candidates)
-    draft_answer = answer if "doc_id:" in answer else ""
-    has_claims = "doc_id:" in answer
+    draft_answer = "" if answer == FALLBACK else answer
+    has_claims = answer != FALLBACK
+    used_refs = ([{"doc_id": candidates[0].doc_id, "ts": candidates[0].ts}] if has_claims and candidates else [])
     return PipelineState(
         user_input=case.utterance,
         rewritten_query=case.utterance,
@@ -55,16 +56,16 @@ def _build_stage_state(case_id: str, loaded_cases, answer: str) -> PipelineState
         final_answer=answer,
         claims=[f"INFERENCE: {answer}"] if has_claims else [],
         provenance_types=[ProvenanceType.MEMORY, ProvenanceType.INFERENCE] if has_claims else [ProvenanceType.UNKNOWN],
-        used_memory_refs=[f"{candidates[0].doc_id}@{candidates[0].ts}"] if has_claims and candidates else [],
+        used_memory_refs=used_refs,
         basis_statement=("Answer synthesized from reranked memory context." if has_claims else "Trivial fallback response with no substantive claim."),
         invariant_decisions={
-            "answer_contract_valid": _validate_answer_contract(draft_answer),
+            "answer_contract_valid": _validate_answer_contract(draft_answer, used_refs),
             "general_knowledge_contract_valid": True,
         },
         alignment_decision={
             "objective_version": "2026-03-01.v1",
             "dimensions": {
-                "factual_grounding_reliability": 1.0 if not has_claims or _validate_answer_contract(draft_answer) else 0.0,
+                "factual_grounding_reliability": 1.0 if answer == FALLBACK or _validate_answer_contract(draft_answer, used_refs) else 0.0,
                 "safety_compliance_strictness": 1.0,
                 "response_utility": 1.0 if has_claims else 0.7,
                 "cost_latency_budget": 1.0,
@@ -147,10 +148,11 @@ def step_then_grounded(context) -> None:
     assert context.answer != FALLBACK
 
 
-@then('the answer includes citation fields "doc_id" and "ts"')
+@then('structured provenance is recorded with "doc_id" and "ts"')
 def step_then_has_citation(context) -> None:
-    assert "doc_id:" in context.answer
-    assert "ts:" in context.answer
+    assert context.pipeline_state.used_memory_refs
+    assert context.pipeline_state.used_memory_refs[0]["doc_id"]
+    assert context.pipeline_state.used_memory_refs[0]["ts"]
 
 
 @then("the assistant returns an assistive fallback response")
