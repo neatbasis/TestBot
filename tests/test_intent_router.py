@@ -23,3 +23,15 @@ def test_classify_intent_time_query_minutes_ago() -> None:
 
 def test_classify_intent_time_query_tomorrow() -> None:
     assert classify_intent("what is tomorrow?") is IntentType.TIME_QUERY
+
+
+def test_classify_intent_capabilities_help_what_can_you_do() -> None:
+    assert classify_intent("what can you do") is IntentType.CAPABILITIES_HELP
+
+
+def test_classify_intent_capabilities_help_help() -> None:
+    assert classify_intent("help") is IntentType.CAPABILITIES_HELP
+
+
+def test_classify_intent_capabilities_help_capabilities() -> None:
+    assert classify_intent("capabilities") is IntentType.CAPABILITIES_HELP
