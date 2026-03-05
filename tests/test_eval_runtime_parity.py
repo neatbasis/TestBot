@@ -179,6 +179,7 @@ def test_eval_runtime_parity_fixture_families() -> None:
         "eval_runtime_parity_edge_time.jsonl",
         "eval_runtime_parity_ambiguous_intent.jsonl",
         "eval_runtime_parity_observation_making_processes.jsonl",
+        "eval_runtime_parity_temporal_uncertainty.jsonl",
     ]
 
     fixtures: list[dict[str, Any]] = []

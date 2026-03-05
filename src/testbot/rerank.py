@@ -38,6 +38,7 @@ class RerankObjectiveCoefficients:
     gaussian_temporal_blend: float = 0.75
     reflection_type_prior: float = 0.7
     default_type_prior: float = 1.0
+    neutral_temporal_prior: float = 0.5
 
 
 DEFAULT_RERANK_COEFFICIENTS = RerankObjectiveCoefficients()
@@ -139,6 +140,12 @@ def _parse_coefficients(raw: object) -> RerankObjectiveCoefficients:
             where="coefficients.default_type_prior",
             minimum=0.0,
             maximum=2.0,
+        ),
+        neutral_temporal_prior=_require_float(
+            mapping.get("neutral_temporal_prior", DEFAULT_RERANK_COEFFICIENTS.neutral_temporal_prior),
+            where="coefficients.neutral_temporal_prior",
+            minimum=0.0,
+            maximum=1.0,
         ),
     )
 
@@ -292,13 +299,33 @@ def adaptive_sigma_fractional(
     return max(sigma_min, min(sigma, sigma_max))
 
 
-def time_weight(doc_ts_iso: str, target: arrow.Arrow, sigma_seconds: float) -> float:
+def _temporal_weight_and_quality(
+    doc_ts_iso: str,
+    *,
+    target: arrow.Arrow,
+    sigma_seconds: float,
+    neutral_temporal_prior: float,
+) -> tuple[float, str]:
+    raw_ts = str(doc_ts_iso or "").strip()
+    if not raw_ts:
+        return float(neutral_temporal_prior), "missing"
+
     try:
-        ts = arrow.get(doc_ts_iso)
-        dt = (ts - target).total_seconds()
-        return math.exp(-(dt * dt) / (2.0 * sigma_seconds * sigma_seconds))
+        ts = arrow.get(raw_ts)
     except Exception:
-        return 0.0
+        return float(neutral_temporal_prior), "invalid"
+
+    dt = (ts - target).total_seconds()
+    return math.exp(-(dt * dt) / (2.0 * sigma_seconds * sigma_seconds)), "valid"
+
+
+def time_weight(doc_ts_iso: str, target: arrow.Arrow, sigma_seconds: float) -> float:
+    return _temporal_weight_and_quality(
+        doc_ts_iso,
+        target=target,
+        sigma_seconds=sigma_seconds,
+        neutral_temporal_prior=DEFAULT_RERANK_COEFFICIENTS.neutral_temporal_prior,
+    )[0]
 
 
 def similarity_with_time_and_type_score(
@@ -329,7 +356,12 @@ def rerank_objective_score_components(
 ) -> dict[str, float | str]:
     active_config = load_rerank_objective_config()
     effective_coefficients = coefficients or active_config.coefficients
-    temporal_gaussian_weight = time_weight(doc_ts_iso, target, sigma_seconds)
+    temporal_gaussian_weight, timestamp_quality = _temporal_weight_and_quality(
+        doc_ts_iso,
+        target=target,
+        sigma_seconds=sigma_seconds,
+        neutral_temporal_prior=effective_coefficients.neutral_temporal_prior,
+    )
     type_prior = (
         effective_coefficients.reflection_type_prior if doc_type == "reflection" else effective_coefficients.default_type_prior
     )
@@ -344,6 +376,7 @@ def rerank_objective_score_components(
         "semantic_score": float(sim_score),
         "temporal_gaussian_weight": float(temporal_gaussian_weight),
         "temporal_blend": float(temporal_blend),
+        "timestamp_quality": timestamp_quality,
         "type_prior": float(type_prior),
         "final_score": float(final_score),
     }
