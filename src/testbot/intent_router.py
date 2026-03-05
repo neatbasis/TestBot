@@ -12,6 +12,7 @@ class IntentType(str, Enum):
     KNOWLEDGE_QUESTION = "knowledge_question"
     META_CONVERSATION = "meta_conversation"
     MEMORY_RECALL = "memory_recall"
+    TIME_QUERY = "time_query"
     CONTROL = "control"
 
 
@@ -34,6 +35,11 @@ _META_CONVERSATION_PATTERNS = (
     r"\bwhat('?s| is) relevant\b",
     r"\bsummarize (this|our) (chat|conversation)\b",
     r"\bhow are we doing\b",
+)
+
+_TIME_QUERY_PATTERNS = (
+    r"\bhow many (seconds?|minutes?|hours?|days?) ago\b",
+    r"\bwhat is (today|tomorrow|yesterday)\b",
 )
 
 _KNOWLEDGE_CUES = (
@@ -67,9 +73,10 @@ def classify_intent(user_input: str) -> IntentType:
         return IntentType.CONTROL
     if _matches_any(normalized, _MEMORY_RECALL_PATTERNS):
         return IntentType.MEMORY_RECALL
+    if _matches_any(normalized, _TIME_QUERY_PATTERNS):
+        return IntentType.TIME_QUERY
     if _matches_any(normalized, _META_CONVERSATION_PATTERNS):
         return IntentType.META_CONVERSATION
     if _matches_any(normalized, _KNOWLEDGE_CUES):
         return IntentType.KNOWLEDGE_QUESTION
     return IntentType.KNOWLEDGE_QUESTION
-

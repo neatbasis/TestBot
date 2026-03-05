@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from typing import Literal
 
-IntentClass = Literal["memory_recall", "non_memory"]
+IntentClass = Literal["memory_recall", "time_query", "non_memory"]
 CapabilityStatus = Literal["ask_available", "ask_unavailable"]
 FallbackAction = Literal[
+    "ANSWER_TIME",
     "ANSWER_GENERAL_KNOWLEDGE",
     "ASK_CLARIFYING_QUESTION",
     "ROUTE_TO_ASK",
@@ -29,6 +30,9 @@ def decide_fallback_action(
     - Memory intents without an acceptable memory hit should move the user forward with alternatives.
     - Memory intents with a clean memory hit proceed with the normal answer path.
     """
+
+    if intent == "time_query":
+        return "ANSWER_TIME"
 
     if intent == "non_memory":
         return "ANSWER_GENERAL_KNOWLEDGE"

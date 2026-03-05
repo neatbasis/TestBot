@@ -8,6 +8,8 @@ from testbot.reflection_policy import decide_fallback_action
 @pytest.mark.parametrize(
     ("intent", "memory_hit", "ambiguity", "capability_status", "expected"),
     [
+        ("time_query", True, True, "ask_available", "ANSWER_TIME"),
+        ("time_query", False, False, "ask_unavailable", "ANSWER_TIME"),
         ("memory_recall", True, True, "ask_available", "ROUTE_TO_ASK"),
         ("memory_recall", True, True, "ask_unavailable", "ASK_CLARIFYING_QUESTION"),
         ("memory_recall", True, False, "ask_available", "ANSWER_GENERAL_KNOWLEDGE"),

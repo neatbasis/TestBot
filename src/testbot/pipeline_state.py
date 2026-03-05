@@ -43,6 +43,7 @@ class PipelineState:
     basis_statement: str = ""
     invariant_decisions: dict[str, Any] = field(default_factory=dict)
     alignment_decision: dict[str, Any] = field(default_factory=dict)
+    last_user_message_ts: str = ""
 
 
 def pipeline_state_to_dict(state: PipelineState) -> dict[str, Any]:

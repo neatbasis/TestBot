@@ -14,6 +14,7 @@ from pathlib import Path
 import arrow
 from homeassistant_api import Client
 
+from testbot.clock import Clock, SystemClock
 from testbot.memory_cards import make_reflection_card, make_utterance_card, store_doc, utc_now_iso
 from testbot.pipeline_state import CandidateHit, PipelineState, ProvenanceType, append_pipeline_snapshot
 from testbot.reflection_policy import CapabilityStatus, decide_fallback_action
@@ -33,6 +34,7 @@ from testbot.stage_transitions import (
 )
 from testbot.time_parse import parse_target_time
 from testbot.intent_router import IntentType, classify_intent
+from testbot.time_reasoning import elapsed_since_last_user_message, resolve_relative_date
 from ha_ask import AskSpec, ask_question
 from ha_ask.config import normalize_rest_api_url
 from testbot.history_packer import PackedHistory, labeled_history_claims, pack_chat_history, render_packed_history
@@ -214,8 +216,9 @@ def stage_rerank(
     user_doc_id: str,
     user_reflection_doc_id: str,
     near_tie_delta: float,
+    clock: Clock,
 ) -> tuple[PipelineState, list[Document]]:
-    now = arrow.utcnow()
+    now = clock.now()
     target = parse_target_time(utterance, now=now)
     sigma = adaptive_sigma_fractional(now=now, target=target, frac=0.25)
     rerank_outcome = rerank_docs_with_time_and_type_outcome(
@@ -247,6 +250,8 @@ def _intent_class_for_policy(user_input: str) -> str:
     intent = classify_intent(user_input)
     if intent == IntentType.MEMORY_RECALL:
         return "memory_recall"
+    if intent == IntentType.TIME_QUERY:
+        return "time_query"
     return "non_memory"
 
 
@@ -293,6 +298,25 @@ def build_partial_memory_clarifier(hits: list[Document], *, max_items: int = 2) 
     return CLARIFY_ANSWER
 
 
+def _build_time_answer(*, user_input: str, now: arrow.Arrow, last_user_message_ts: str | None, timezone: str) -> str:
+    normalized = user_input.strip().lower()
+
+    if "ago" in normalized:
+        elapsed_seconds = elapsed_since_last_user_message(last_user_message_ts, now)
+        if elapsed_seconds is None:
+            return "I don't have a previous user-message timestamp yet."
+        minutes = elapsed_seconds // 60
+        return f"Your previous user message was {minutes} minute(s) ago."
+
+    for token in ("today", "tomorrow", "yesterday"):
+        if token in normalized:
+            resolved = resolve_relative_date(token, now, timezone)
+            if resolved is not None:
+                return f"{token.capitalize()} is {resolved} in {timezone}."
+
+    return "I can answer relative time questions like 'how many minutes ago' or 'what is tomorrow?'."
+
+
 def stage_answer(
     llm: ChatOllama,
     state: PipelineState,
@@ -300,6 +324,8 @@ def stage_answer(
     chat_history: deque[ChatMsg],
     hits: list[Document],
     capability_status: CapabilityStatus,
+    clock: Clock,
+    timezone: str = "Europe/Helsinki",
 ) -> PipelineState:
     context_str = render_context(hits)
     packed_history = pack_chat_history(list(chat_history))
@@ -325,6 +351,14 @@ def stage_answer(
     elif fallback_action == "OFFER_CAPABILITY_ALTERNATIVES":
         draft_answer = ""
         final_answer = ASSIST_ALTERNATIVES_ANSWER
+    elif fallback_action == "ANSWER_TIME":
+        draft_answer = ""
+        final_answer = _build_time_answer(
+            user_input=state.user_input,
+            now=clock.now(),
+            last_user_message_ts=state.last_user_message_ts,
+            timezone=timezone,
+        )
     else:
         draft_answer = (llm.invoke(msgs).content or "").strip()
         if not draft_answer:
@@ -341,10 +375,14 @@ def stage_answer(
         packed_history=packed_history,
     )
 
-    general_knowledge_contract_valid = validate_general_knowledge_contract(
-        final_answer,
-        provenance_types=provenance_types,
-        confidence_decision=state.confidence_decision,
+    general_knowledge_contract_valid = (
+        True
+        if fallback_action == "ANSWER_TIME"
+        else validate_general_knowledge_contract(
+            final_answer,
+            provenance_types=provenance_types,
+            confidence_decision=state.confidence_decision,
+        )
     )
     if final_answer != FALLBACK_ANSWER and not general_knowledge_contract_valid:
         final_answer = build_partial_memory_clarifier(hits)
@@ -669,7 +707,9 @@ def _run_chat_loop(
     capability_status: CapabilityStatus,
     read_user_utterance,
     send_assistant_text,
+    clock: Clock,
 ) -> None:
+    last_user_message_ts = ""
     while True:
         utterance = read_user_utterance()
         if utterance is None:
@@ -692,7 +732,7 @@ def _run_chat_loop(
             send_assistant_text("Stopping. Bye.")
             break
 
-        state = PipelineState(user_input=utterance)
+        state = PipelineState(user_input=utterance, last_user_message_ts=last_user_message_ts)
         append_pipeline_snapshot("ingest", state)
 
         _validate_and_log_transition(validate_observe_pre(state))
@@ -703,7 +743,7 @@ def _run_chat_loop(
             # -----------------------
             # 1) Store user utterance card + reflection card
             # -----------------------
-        now_iso = utc_now_iso()
+        now_iso = clock.now().isoformat()
         u_id = str(uuid.uuid4())
 
         u_card = make_utterance_card(
@@ -728,7 +768,7 @@ def _run_chat_loop(
         )
 
         u_ref_yaml = generate_reflection_yaml(llm, speaker="user", text=utterance)
-        u_ref_ts = utc_now_iso()
+        u_ref_ts = clock.now().isoformat()
         u_ref_id = str(uuid.uuid4())
 
         u_ref_card = make_reflection_card(
@@ -787,6 +827,7 @@ def _run_chat_loop(
             user_doc_id=u_id,
             user_reflection_doc_id=u_ref_id,
             near_tie_delta=near_tie_delta,
+            clock=clock,
         )
         _validate_and_log_transition(validate_rerank_post(state))
         append_pipeline_snapshot("rerank", state)
@@ -831,6 +872,7 @@ def _run_chat_loop(
             chat_history=chat_history,
             hits=hits,
             capability_status=capability_status,
+            clock=clock,
         )
         _validate_and_log_transition(validate_answer_post(state))
         append_pipeline_snapshot("answer", state)
@@ -883,10 +925,11 @@ def _run_chat_loop(
             # -----------------------
             # 4) Store assistant utterance card + reflection card
             # -----------------------
+        last_user_message_ts = now_iso
         chat_history.append({"role": "user", "content": utterance})
         chat_history.append({"role": "assistant", "content": state.final_answer})
 
-        a_ts = utc_now_iso()
+        a_ts = clock.now().isoformat()
         a_id = str(uuid.uuid4())
         a_card = make_utterance_card(
             ts_iso=a_ts,
@@ -910,7 +953,7 @@ def _run_chat_loop(
         )
 
         a_ref_yaml = generate_reflection_yaml(llm, speaker="assistant", text=state.final_answer)
-        a_ref_ts = utc_now_iso()
+        a_ref_ts = clock.now().isoformat()
         a_ref_id = str(uuid.uuid4())
         a_ref_card = make_reflection_card(
             ts_iso=a_ref_ts,
@@ -933,7 +976,7 @@ def _run_chat_loop(
         )
 
 
-def _run_cli_mode(*, llm: ChatOllama, store: InMemoryVectorStore, chat_history: deque[ChatMsg], near_tie_delta: float) -> None:
+def _run_cli_mode(*, llm: ChatOllama, store: InMemoryVectorStore, chat_history: deque[ChatMsg], near_tie_delta: float, clock: Clock) -> None:
     print("CLI chat ready. Ask memory-grounded questions; type 'stop' to exit.")
 
     def _read() -> str | None:
@@ -954,6 +997,7 @@ def _run_cli_mode(*, llm: ChatOllama, store: InMemoryVectorStore, chat_history: 
         capability_status="ask_unavailable",
         read_user_utterance=_read,
         send_assistant_text=_send,
+        clock=clock,
     )
 
 
@@ -966,6 +1010,7 @@ def _run_satellite_mode(
     api_url: str,
     token: str,
     entity_id: str,
+    clock: Clock,
 ) -> None:
     rest = normalize_rest_api_url(api_url)
     with Client(rest, token) as client:
@@ -1000,6 +1045,7 @@ def _run_satellite_mode(
             capability_status="ask_available",
             read_user_utterance=_read,
             send_assistant_text=_send,
+            clock=clock,
         )
 
 
@@ -1011,6 +1057,7 @@ def main(argv: list[str] | None = None) -> None:
     embeddings = OllamaEmbeddings(model="nomic-embed-text", base_url=str(runtime["ollama_base_url"]))
     store = InMemoryVectorStore(embeddings)
     chat_history: deque[ChatMsg] = deque(maxlen=10)
+    clock = SystemClock()
 
     ha_error = _ha_connection_error(
         str(runtime["ha_api_url"]),
@@ -1062,6 +1109,7 @@ def main(argv: list[str] | None = None) -> None:
             api_url=str(runtime["ha_api_url"]),
             token=str(runtime["ha_api_secret"]),
             entity_id=str(runtime["ha_satellite_entity_id"]),
+            clock=clock,
         )
         return
 
@@ -1070,6 +1118,7 @@ def main(argv: list[str] | None = None) -> None:
         store=store,
         chat_history=chat_history,
         near_tie_delta=float(runtime["memory_near_tie_delta"]),
+        clock=clock,
     )
 
     return
