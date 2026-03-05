@@ -117,3 +117,17 @@ def test_source_ingestor_respects_zero_limit() -> None:
     assert result.next_cursor is None
     assert connector.cursor_updates == [None]
     assert store.docs == []
+
+
+def test_source_ingestor_respects_negative_limit() -> None:
+    connector = _FakeConnector()
+    store = _FakeStore()
+    ingestor = SourceIngestor(connector=connector, memory_store=store)
+
+    result = ingestor.ingest_once(cursor=None, limit=-2)
+
+    assert result.fetched_count == 0
+    assert result.stored_count == 0
+    assert result.next_cursor is None
+    assert connector.cursor_updates == [None]
+    assert store.docs == []
