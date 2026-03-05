@@ -1,0 +1,32 @@
+{
+  "summary_path": "logs/turn_analytics_summary.json",
+  "kpis": {
+    "grounded_answer_precision": {
+      "min": 0.75,
+      "description": "Higher is better. Guardrail ensures grounded answers stay evidence-backed."
+    },
+    "false_knowing_rate": {
+      "max": 0.05,
+      "description": "Lower is better. Guardrail limits unsupported confident responses."
+    },
+    "fallback_appropriateness": {
+      "min": 0.7,
+      "description": "Higher is better. Guardrail ensures fallback action tracks follow-up pressure."
+    },
+    "citation_completeness": {
+      "min": 0.7,
+      "description": "Higher is better. Guardrail maintains provenance quality across turns."
+    }
+  },
+  "rollout": {
+    "release_gate": {
+      "current_mode": "optional",
+      "target_mode": "blocking",
+      "switch_condition": "Promote to blocking after two consecutive sprint evidence reviews with zero guardrail regressions."
+    }
+  },
+  "evidence": {
+    "recurring_artifact_pattern": "docs/issues/evidence/sprint-<NN>-kpi-review.md",
+    "triage_link": "docs/issues/RED_TAG.md"
+  }
+}

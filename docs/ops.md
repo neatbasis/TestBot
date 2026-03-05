@@ -74,6 +74,27 @@ Per-turn dataset fields:
 
 These KPIs are emitted to `logs/turn_analytics_summary.json` for release-review and drift tracking.
 
+### KPI guardrails (release thresholds)
+
+Machine-readable guardrails live in `config/kpi_guardrails.json` and are validated by
+`scripts/validate_kpi_guardrails.py` against `logs/turn_analytics_summary.json`.
+
+Current acceptable ranges:
+
+- `grounded_answer_precision`: **min 0.75**
+- `false_knowing_rate`: **max 0.05**
+- `fallback_appropriateness`: **min 0.70**
+- `citation_completeness`: **min 0.70**
+
+### Release-gate rollout plan for KPI validation
+
+`python scripts/release_gate.py` includes KPI guardrail validation in a phased mode:
+
+1. **Optional phase (current)**: check runs as warning-only via `--kpi-guardrail-mode optional` (default).
+2. **Blocking phase (target)**: switch to `--kpi-guardrail-mode blocking` once two consecutive sprint KPI evidence reviews show zero regressions.
+3. **Emergency bypass**: `--kpi-guardrail-mode off` is available for incident response and must be documented in triage notes.
+
+
 ## Troubleshooting
 
 ### `AttributeError: 'tuple' object has no attribute 'metadata'`
@@ -105,6 +126,21 @@ Checklist:
 - [ ] Confirm retrieval candidates are present in logs.
 - [ ] Check citation contract enforcement in answer stage.
 - [ ] Validate temporal parsing for time-sensitive queries.
+
+
+## KPI evidence artifacts
+
+Recurring KPI review evidence is tracked at:
+
+- `docs/issues/evidence/sprint-<NN>-kpi-review.md`
+
+Each red-tag triage cycle must update the latest sprint evidence file with:
+
+- current KPI values from `logs/turn_analytics_summary.json`
+- pass/fail state against `config/kpi_guardrails.json`
+- mitigation owners and due dates for any failed guardrail
+
+Link this evidence from `docs/issues/RED_TAG.md` triage updates.
 
 ## Environment notes
 
