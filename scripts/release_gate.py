@@ -187,6 +187,13 @@ def main() -> int:
             "python -m pip install -e .[dev]"
         )
 
+    parity_failed = any(r.name == "pytest_eval_runtime_parity" and r.status == "failed" for r in results)
+    if parity_failed:
+        print(
+            "\nParity gate failed: likely divergence in eval/runtime adapter boundaries "
+            "(scripts/eval_recall.py <-> testbot.rerank or sat_chatbot_memory_v2 confidence/ambiguity handling)."
+        )
+
     if args.json_output:
         out_path = args.json_output if args.json_output.is_absolute() else REPO_ROOT / args.json_output
         out_path.parent.mkdir(parents=True, exist_ok=True)
