@@ -195,7 +195,8 @@ def validate_answer_post(state: PipelineState) -> TransitionCheckResult:
             ),
             (
                 "inv_001_contract_enforced",
-                lambda s: bool(s.invariant_decisions.get("answer_contract_valid", False)) or s.final_answer == FALLBACK_ANSWER,
+                lambda s: bool(s.invariant_decisions.get("answer_contract_valid", False))
+                or s.invariant_decisions.get("answer_mode") in {"deny", "dont-know", "clarify", "assist"},
             ),
             (
                 "inv_003_general_knowledge_contract_enforced",

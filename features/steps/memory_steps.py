@@ -119,7 +119,10 @@ def step_when_equivalent_candidates_remain(context) -> None:
         confidence_decision={"context_confident": False, "ambiguity_detected": True},
         draft_answer="",
         final_answer=BRIDGING_CLARIFIER,
-        invariant_decisions={"answer_contract_valid": True, "general_knowledge_contract_valid": True},
+        claims=["INFERENCE: Ambiguous memory fragments"],
+        provenance_types=[ProvenanceType.INFERENCE],
+        basis_statement="Ambiguous fragments require clarification.",
+        invariant_decisions={"answer_contract_valid": True, "general_knowledge_contract_valid": True, "answer_mode": "clarify"},
         alignment_decision={
             "objective_version": "2026-03-01.v1",
             "dimensions": {
