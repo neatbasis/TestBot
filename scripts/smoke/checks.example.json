@@ -6,7 +6,10 @@
       "method": "GET",
       "expected_status": 200,
       "timeout_s": 5,
-      "capabilities": ["auth"]
+      "capability_id": "cap-auth-service-availability",
+      "capability_name": "Authentication service availability",
+      "business_impact": "Users cannot sign in if authentication health fails.",
+      "severity_if_broken": "critical"
     },
     {
       "name": "payments-ready",
@@ -14,7 +17,10 @@
       "method": "GET",
       "expected_status": 200,
       "timeout_s": 5,
-      "capabilities": ["payments"]
+      "capability_id": "cap-payments-acceptance",
+      "capability_name": "Payments acceptance",
+      "business_impact": "Revenue is blocked when payment readiness is unavailable.",
+      "severity_if_broken": "critical"
     },
     {
       "name": "notifications-ready",
@@ -22,7 +28,10 @@
       "method": "GET",
       "expected_status": 200,
       "timeout_s": 5,
-      "capabilities": ["notifications"]
+      "capability_id": "cap-notifications-delivery",
+      "capability_name": "Notification delivery",
+      "business_impact": "Time-sensitive customer communications are delayed or lost.",
+      "severity_if_broken": "high"
     }
   ]
 }

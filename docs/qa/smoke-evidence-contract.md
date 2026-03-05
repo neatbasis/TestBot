@@ -17,6 +17,10 @@ Environment variables:
 - `SMOKE_TIMESTAMP` (optional explicit ISO-8601 UTC timestamp for deterministic reruns)
 - `SMOKE_WRITE_MARKDOWN=1` to also write `smoke-report.md`
 
+## Capability catalog
+
+`docs/qa/capability-map.yaml` is the production capability catalog. It records each critical capability and the smoke check(s) that own proving it.
+
 ## Input check schema
 
 The checks file is JSON and accepts either a top-level array or `{ "checks": [...] }`.
@@ -25,13 +29,16 @@ Each check object must include:
 
 - `name` (string)
 - `target` (string URL)
+- `capability_id` (string)
+- `capability_name` (string)
+- `business_impact` (string)
+- `severity_if_broken` (string)
 
 Optional fields:
 
 - `method` (defaults to `GET`)
 - `expected_status` (defaults to `200`)
 - `timeout_s` (defaults to `10`)
-- `capabilities` (array of tags such as `auth`, `payments`, `notifications`)
 
 ## Output artifacts
 
@@ -51,7 +58,16 @@ Optional fields:
     "passed": 2,
     "failed": 1
   },
-  "gate_status": "fail"
+  "gate_status": "fail",
+  "validated_capabilities": [
+    {
+      "capability_id": "cap-auth-service-availability",
+      "capability_name": "Authentication service availability",
+      "business_impact": "Users cannot sign in if authentication health fails.",
+      "severity_if_broken": "critical",
+      "validated_by_check": "healthz"
+    }
+  ]
 }
 ```
 
@@ -69,18 +85,21 @@ One JSON object per check, sorted by `check_name`.
   "latency_ms": 11,
   "passed": true,
   "error_snippet": "",
-  "capability_tags": ["auth"]
+  "capability_id": "cap-auth-service-availability",
+  "capability_name": "Authentication service availability",
+  "business_impact": "Users cannot sign in if authentication health fails.",
+  "severity_if_broken": "critical"
 }
 ```
 
 ### Optional `smoke-report.md`
 
-A human-readable tabular report with the same pass/fail data as JSON artifacts.
+A human-readable tabular report with the same pass/fail data as JSON artifacts plus a **Validated Capabilities** section listing production capabilities proven by successful checks in the run.
 
 ## Determinism and CI suitability
 
 - JSON keys are sorted and written with stable formatting.
 - Check execution order is deterministic (`name` sort).
-- Capability tags are deduplicated and sorted.
+- Validated capabilities are deduplicated by `capability_id` and sorted.
 - All output paths are inside one directory for straightforward CI artifact upload.
 - `SMOKE_TIMESTAMP` allows deterministic reruns for evidence regeneration.
