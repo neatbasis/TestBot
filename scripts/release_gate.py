@@ -109,8 +109,10 @@ def run_gate(checks: Sequence[GateCheck], continue_on_failure: bool) -> tuple[li
 
 
 def summarize(results: Sequence[CheckResult], continue_on_failure: bool) -> dict[str, object]:
+    has_failure = any(result.status == "failed" for result in results)
     return {
-        "status": "failed" if any(result.status == "failed" for result in results) else "passed",
+        "status": "failed" if has_failure else "passed",
+        "exit_code": 1 if has_failure else 0,
         "continue_on_failure": continue_on_failure,
         "checks": [asdict(result) for result in results],
     }
