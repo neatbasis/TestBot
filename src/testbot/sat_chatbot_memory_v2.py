@@ -334,7 +334,17 @@ def doc_to_candidate_hit(doc: Document, score: float) -> CandidateHit:
 
 
 def stage_rewrite_query(llm: ChatOllama, state: PipelineState) -> PipelineState:
-    rewritten_query = llm.invoke(QUERY_REWRITE_PROMPT.format_messages(input=state.user_input)).content.strip() or state.user_input
+    try:
+        rewritten_query = llm.invoke(QUERY_REWRITE_PROMPT.format_messages(input=state.user_input)).content.strip() or state.user_input
+    except Exception as exc:
+        append_session_log(
+            "query_rewrite_failed",
+            {
+                "error_class": type(exc).__name__,
+                "error_message": str(exc),
+            },
+        )
+        rewritten_query = state.user_input
     return replace(state, rewritten_query=rewritten_query)
 
 
@@ -492,6 +502,22 @@ def stage_answer(
     clock: Clock,
     timezone: str = "Europe/Helsinki",
 ) -> PipelineState:
+    def _fallback_answer_for_action(action: str) -> str:
+        if action == "ROUTE_TO_ASK":
+            return ROUTE_TO_ASK_ANSWER
+        if action == "ASK_CLARIFYING_QUESTION":
+            return build_partial_memory_clarifier(hits)
+        if action == "ANSWER_UNKNOWN":
+            return FALLBACK_ANSWER
+        if action == "ANSWER_TIME":
+            return _build_time_answer(
+                user_input=state.user_input,
+                now=clock.now(),
+                last_user_message_ts=state.last_user_message_ts,
+                timezone=timezone,
+            )
+        return ASSIST_ALTERNATIVES_ANSWER
+
     if _is_capabilities_help_request(state.user_input):
         final_answer = CAPABILITIES_HELP_ANSWER
         provenance_types, claims, basis_statement, used_memory_refs, used_source_evidence_refs, source_evidence_attribution = build_provenance_metadata(
@@ -567,20 +593,28 @@ def stage_answer(
         final_answer = ASSIST_ALTERNATIVES_ANSWER
     elif fallback_action == "ANSWER_TIME":
         draft_answer = ""
-        final_answer = _build_time_answer(
-            user_input=state.user_input,
-            now=clock.now(),
-            last_user_message_ts=state.last_user_message_ts,
-            timezone=timezone,
-        )
+        final_answer = _fallback_answer_for_action(fallback_action)
     else:
-        draft_answer = (llm.invoke(msgs).content or "").strip()
-        if not draft_answer:
-            final_answer = ASSIST_ALTERNATIVES_ANSWER
-        elif validate_answer_contract(draft_answer):
-            final_answer = draft_answer
+        try:
+            draft_answer = (llm.invoke(msgs).content or "").strip()
+        except Exception as exc:
+            append_session_log(
+                "answer_generation_failed",
+                {
+                    "error_class": type(exc).__name__,
+                    "error_message": str(exc),
+                    "fallback_action": fallback_action,
+                },
+            )
+            draft_answer = ""
+            final_answer = _fallback_answer_for_action(fallback_action)
         else:
-            final_answer = build_partial_memory_clarifier(hits)
+            if not draft_answer:
+                final_answer = ASSIST_ALTERNATIVES_ANSWER
+            elif validate_answer_contract(draft_answer):
+                final_answer = draft_answer
+            else:
+                final_answer = build_partial_memory_clarifier(hits)
 
     provenance_types, claims, basis_statement, used_memory_refs, used_source_evidence_refs, source_evidence_attribution = build_provenance_metadata(
         final_answer=final_answer,
@@ -691,7 +725,17 @@ REFLECTION_PROMPT = ChatPromptTemplate.from_messages(
 
 def generate_reflection_yaml(llm: ChatOllama, *, speaker: str, text: str) -> str:
     msgs = REFLECTION_PROMPT.format_messages(speaker=speaker, text=text)
-    out = llm.invoke(msgs).content
+    try:
+        out = llm.invoke(msgs).content
+    except Exception as exc:
+        append_session_log(
+            "reflection_generation_failed",
+            {
+                "error_class": type(exc).__name__,
+                "error_message": str(exc),
+            },
+        )
+        out = ""
     return (out or "").strip() or (
         "claims: []\ncommitments: []\npreferences: []\nuncertainties: []\nfollowups: []\nconfidence: 0.2"
     )
