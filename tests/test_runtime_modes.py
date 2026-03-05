@@ -28,13 +28,38 @@ def test_resolve_mode_falls_back_to_cli_when_ha_unavailable() -> None:
     assert _resolve_mode("cli", "auth failed") == "cli"
 
 
-def _patch_main_dependencies(monkeypatch, *, args, ha_error: str | None, calls: dict[str, int], startup: dict | None = None) -> None:
+def test_ollama_connection_error_detects_missing_embedding_model(monkeypatch) -> None:
+    class _Resp:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def read(self):
+            return b'{"models":[{"model":"llama3.1:latest"}]}'
+
+    monkeypatch.setattr(runtime, "urlopen", lambda *_args, **_kwargs: _Resp())
+    err = runtime._ollama_connection_error("http://localhost:11434", "llama3.1:latest", "nomic-embed-text")
+    assert "embedding model" in str(err)
+
+
+def _patch_main_dependencies(
+    monkeypatch,
+    *,
+    args,
+    ha_error: str | None,
+    ollama_error: str | None,
+    calls: dict[str, int],
+    startup: dict | None = None,
+) -> None:
     runtime_env = {
         "ha_api_url": "http://localhost:8123",
         "ha_api_secret": "token",
         "ha_satellite_entity_id": "assist_satellite.kitchen",
         "ollama_base_url": "http://localhost:11434",
         "ollama_model": "llama3.1:latest",
+        "ollama_embedding_model": "nomic-embed-text",
         "memory_near_tie_delta": 0.02,
         "memory_store_mode": "inmemory",
         "elasticsearch_url": "http://localhost:9200",
@@ -44,6 +69,7 @@ def _patch_main_dependencies(monkeypatch, *, args, ha_error: str | None, calls: 
     monkeypatch.setattr(runtime, "_parse_args", lambda _argv=None: args)
     monkeypatch.setattr(runtime, "_read_runtime_env", lambda: runtime_env)
     monkeypatch.setattr(runtime, "_ha_connection_error", lambda *_args, **_kwargs: ha_error)
+    monkeypatch.setattr(runtime, "_ollama_connection_error", lambda *_args, **_kwargs: ollama_error)
     if startup is not None:
         monkeypatch.setattr(runtime, "_print_startup_status", lambda **kwargs: startup.update(kwargs))
     else:
@@ -59,7 +85,7 @@ def _patch_main_dependencies(monkeypatch, *, args, ha_error: str | None, calls: 
 def test_main_auto_daemon_ha_unavailable_exits_without_cli_fallback(monkeypatch, capsys) -> None:
     calls = {"cli": 0, "satellite": 0}
     args = SimpleNamespace(mode="auto", daemon=True)
-    _patch_main_dependencies(monkeypatch, args=args, ha_error="auth failed", calls=calls)
+    _patch_main_dependencies(monkeypatch, args=args, ha_error="auth failed", ollama_error=None, calls=calls)
 
     runtime.main([])
 
@@ -71,7 +97,7 @@ def test_main_auto_daemon_ha_unavailable_exits_without_cli_fallback(monkeypatch,
 def test_main_auto_daemon_ha_available_uses_satellite(monkeypatch) -> None:
     calls = {"cli": 0, "satellite": 0}
     args = SimpleNamespace(mode="auto", daemon=True)
-    _patch_main_dependencies(monkeypatch, args=args, ha_error=None, calls=calls)
+    _patch_main_dependencies(monkeypatch, args=args, ha_error=None, ollama_error=None, calls=calls)
 
     runtime.main([])
 
@@ -82,7 +108,7 @@ def test_main_satellite_mode_reports_cli_as_effective_mode_when_fallback_applies
     calls = {"cli": 0, "satellite": 0}
     startup: dict[str, object] = {}
     args = SimpleNamespace(mode="satellite", daemon=False)
-    _patch_main_dependencies(monkeypatch, args=args, ha_error="auth failed", calls=calls, startup=startup)
+    _patch_main_dependencies(monkeypatch, args=args, ha_error="auth failed", ollama_error=None, calls=calls, startup=startup)
 
     runtime.main([])
 
@@ -90,6 +116,30 @@ def test_main_satellite_mode_reports_cli_as_effective_mode_when_fallback_applies
     assert startup["requested_mode"] == "satellite"
     assert startup["effective_mode"] == "cli"
     assert startup["fallback_reason"] == "satellite connection is unavailable"
+
+
+def test_main_auto_non_daemon_ollama_unavailable_exits_early(monkeypatch, capsys) -> None:
+    calls = {"cli": 0, "satellite": 0}
+    args = SimpleNamespace(mode="auto", daemon=False)
+    _patch_main_dependencies(monkeypatch, args=args, ha_error=None, ollama_error="missing models", calls=calls)
+
+    runtime.main([])
+
+    captured = capsys.readouterr()
+    assert "Startup failed and Ollama is unavailable" in captured.err
+    assert calls == {"cli": 0, "satellite": 0}
+
+
+def test_main_daemon_ollama_unavailable_exits_early(monkeypatch, capsys) -> None:
+    calls = {"cli": 0, "satellite": 0}
+    args = SimpleNamespace(mode="satellite", daemon=True)
+    _patch_main_dependencies(monkeypatch, args=args, ha_error=None, ollama_error="missing models", calls=calls)
+
+    runtime.main([])
+
+    captured = capsys.readouterr()
+    assert "Startup failed and Ollama is unavailable" in captured.err
+    assert calls == {"cli": 0, "satellite": 0}
 
 
 def test_run_source_ingestion_stores_fixture_docs_and_logs(monkeypatch, tmp_path) -> None:

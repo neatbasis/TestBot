@@ -7,6 +7,9 @@ import os
 import re
 import sys
 import uuid
+from urllib.error import URLError
+from urllib.parse import urljoin
+from urllib.request import urlopen
 from argparse import ArgumentParser, Namespace
 from collections import deque
 from dataclasses import replace
@@ -142,6 +145,7 @@ def _read_runtime_env() -> dict[str, object]:
         "ha_satellite_entity_id": os.getenv("HA_SATELLITE_ENTITY_ID", ""),
         "ollama_base_url": os.getenv("OLLAMA_BASE_URL") or os.getenv("OLLAMA_HOST") or "http://localhost:11434",
         "ollama_model": os.getenv("OLLAMA_MODEL", "llama3.1:latest"),
+        "ollama_embedding_model": os.getenv("OLLAMA_EMBEDDING_MODEL", "nomic-embed-text"),
         "memory_near_tie_delta": _parse_env_float("MEMORY_NEAR_TIE_DELTA", 0.02),
         "memory_store_mode": memory_store_mode,
         "memory_store_backend": normalize_memory_store_mode(memory_store_mode),
@@ -167,6 +171,35 @@ def _ha_connection_error(api_url: str, token: str, entity_id: str) -> str | None
         return f"{type(exc).__name__}: {exc}"
 
 
+def _ollama_connection_error(base_url: str, chat_model: str, embedding_model: str) -> str | None:
+    tags_url = urljoin(base_url.rstrip("/") + "/", "api/tags")
+    try:
+        with urlopen(tags_url, timeout=3.0) as resp:  # noqa: S310
+            payload = json.loads(resp.read().decode("utf-8"))
+    except URLError as exc:  # pragma: no cover - network dependent
+        return f"Cannot reach Ollama endpoint {base_url}: {type(exc.reason).__name__}: {exc.reason}"
+    except Exception as exc:  # pragma: no cover - network dependent
+        return f"Cannot reach Ollama endpoint {base_url}: {type(exc).__name__}: {exc}"
+
+    models = payload.get("models", []) if isinstance(payload, dict) else []
+    available = {
+        str(item.get("model") or item.get("name") or "")
+        for item in models
+        if isinstance(item, dict)
+    }
+    if chat_model not in available:
+        return (
+            f"Configured chat model '{chat_model}' is not installed on Ollama. "
+            f"Run: ollama pull {chat_model}"
+        )
+    if embedding_model not in available:
+        return (
+            f"Configured embedding model '{embedding_model}' is not installed on Ollama. "
+            f"Run: ollama pull {embedding_model}"
+        )
+    return None
+
+
 def _resolve_mode(requested_mode: str, ha_error: str | None) -> str:
     if requested_mode == "auto":
         return "satellite" if ha_error is None else "cli"
@@ -178,7 +211,11 @@ def _resolve_effective_mode(
     requested_mode: str,
     daemon_mode: bool,
     ha_error: str | None,
+    ollama_error: str | None,
 ) -> tuple[str | None, str | None, str | None]:
+    if ollama_error is not None:
+        return None, None, f"Ollama is unavailable: {ollama_error}"
+
     if requested_mode == "auto" and ha_error is not None and daemon_mode:
         return None, None, f"Home Assistant is unavailable: {ha_error}"
 
@@ -243,6 +280,7 @@ def _print_startup_status(
     daemon_mode: bool,
     runtime: dict[str, object],
     ha_error: str | None,
+    ollama_error: str | None,
     fallback_reason: str | None = None,
 ) -> None:
     print("=== TestBot startup status ===")
@@ -250,7 +288,17 @@ def _print_startup_status(
         print(f"Selected mode: {effective_mode} (requested={requested_mode}, fallback reason={fallback_reason}, daemon={daemon_mode})")
     else:
         print(f"Selected mode: {effective_mode} (requested={requested_mode}, daemon={daemon_mode})")
-    print(f"Ollama endpoint: {runtime['ollama_base_url']} model={runtime['ollama_model']}")
+    print(
+        f"Ollama endpoint: {runtime['ollama_base_url']} "
+        f"chat_model={runtime['ollama_model']} embed_model={runtime['ollama_embedding_model']}"
+    )
+    if ollama_error:
+        print(f"Ollama: unavailable ({ollama_error})")
+        print("Install warning [RED]: Ollama capability is unavailable; verify OLLAMA_BASE_URL and pull required models before restarting.")
+        print("Developer note: runtime will exit early because model and embedding checks are required at startup.")
+    else:
+        print("Ollama: available (chat + embedding models verified)")
+        print("Install warning [GREEN]: Ollama capability is active; keep OLLAMA_MODEL and OLLAMA_EMBEDDING_MODEL provisioned.")
     print(f"Memory backend: {runtime['memory_store_backend']}")
     if ha_error:
         print(f"Home Assistant: unavailable ({ha_error})")
@@ -1371,29 +1419,22 @@ def main(argv: list[str] | None = None) -> None:
     args = _parse_args(argv)
     runtime = _read_runtime_env()
 
-    llm = ChatOllama(model=str(runtime["ollama_model"]), base_url=str(runtime["ollama_base_url"]), temperature=0.0)
-    embeddings = OllamaEmbeddings(model="nomic-embed-text", base_url=str(runtime["ollama_base_url"]))
-    store = build_memory_store(
-        embeddings=embeddings,
-        mode=str(runtime["memory_store_mode"]),
-        elasticsearch_url=str(runtime["elasticsearch_url"]),
-        elasticsearch_index=str(runtime["elasticsearch_index"]),
-    )
-    chat_history: deque[ChatMsg] = deque(maxlen=10)
-    clock = SystemClock()
-
-    _run_source_ingestion(runtime=runtime, store=store)
-
     ha_error = _ha_connection_error(
         str(runtime["ha_api_url"]),
         str(runtime["ha_api_secret"]),
         str(runtime["ha_satellite_entity_id"]),
+    )
+    ollama_error = _ollama_connection_error(
+        str(runtime["ollama_base_url"]),
+        str(runtime["ollama_model"]),
+        str(runtime["ollama_embedding_model"]),
     )
 
     effective_mode, fallback_reason, exit_reason = _resolve_effective_mode(
         requested_mode=args.mode,
         daemon_mode=args.daemon,
         ha_error=ha_error,
+        ollama_error=ollama_error,
     )
 
     append_session_log(
@@ -1404,26 +1445,42 @@ def main(argv: list[str] | None = None) -> None:
             "daemon_mode": args.daemon,
             "ha_available": ha_error is None,
             "ha_error": ha_error,
+            "ollama_available": ollama_error is None,
+            "ollama_error": ollama_error,
             "fallback_reason": fallback_reason,
             "exit_reason": exit_reason,
         },
     )
 
-    if effective_mode is None:
-        if args.mode == "auto":
-            print(f"Daemon mode requested in auto mode and {exit_reason}", file=sys.stderr)
-        else:
-            print(f"Daemon mode requested and {exit_reason}", file=sys.stderr)
-        return
-
     _print_startup_status(
         requested_mode=args.mode,
-        effective_mode=effective_mode,
+        effective_mode=effective_mode or "unavailable",
         daemon_mode=args.daemon,
         runtime=runtime,
         ha_error=ha_error,
+        ollama_error=ollama_error,
         fallback_reason=fallback_reason,
     )
+
+    if effective_mode is None:
+        if args.mode == "auto" and args.daemon:
+            print(f"Daemon mode requested in auto mode and {exit_reason}", file=sys.stderr)
+        else:
+            print(f"Startup failed and {exit_reason}", file=sys.stderr)
+        return
+
+    llm = ChatOllama(model=str(runtime["ollama_model"]), base_url=str(runtime["ollama_base_url"]), temperature=0.0)
+    embeddings = OllamaEmbeddings(model=str(runtime["ollama_embedding_model"]), base_url=str(runtime["ollama_base_url"]))
+    store = build_memory_store(
+        embeddings=embeddings,
+        mode=str(runtime["memory_store_mode"]),
+        elasticsearch_url=str(runtime["elasticsearch_url"]),
+        elasticsearch_index=str(runtime["elasticsearch_index"]),
+    )
+    chat_history: deque[ChatMsg] = deque(maxlen=10)
+    clock = SystemClock()
+
+    _run_source_ingestion(runtime=runtime, store=store)
 
     if effective_mode == "satellite":
         _run_satellite_mode(
