@@ -3,6 +3,11 @@
 ## What
 TestBot is a memory-grounded chatbot loop for Home Assistant Assist Satellite.
 
+TestBot operates in two explicit response intents:
+
+- **Knowing mode**: provide a grounded answer based on available evidence and include provenance for where the answer came from.
+- **Unknowing mode**: do not fabricate; explicitly state uncertainty and either ask for clarification or provide a safe fallback path.
+
 ### Start here by role
 - **Operator**: read [docs/quickstart.md](docs/quickstart.md).
 - **Developer / QA**: read [docs/testing.md](docs/testing.md).
@@ -19,56 +24,30 @@ Project issue tracking is now standardized in-repo and remains the default workf
 Use issue IDs (for example `ISSUE-0002`) in PR descriptions and non-trivial commit messages for any non-trivial change.
 
 ---
+### Repository map (maintained)
+Use this high-level map instead of a full tree snapshot:
 
+- `src/testbot/` — runtime chatbot loop, memory recall, ranking, and mode orchestration.
+- `features/` — behavior scenarios for answer contract, memory recall, and intent grounding.
+- `tests/` — unit/integration-style Python test coverage.
+- `docs/` — architecture, directives, testing policy, operations notes, and roadmap/status docs.
+- `scripts/` — release gates and validation/automation helpers.
+- `eval/` — evaluation fixtures and supporting artifacts.
 
-### Current vs Planned
-The tree below distinguishes files that exist today from placeholders planned for future work.
+For canonical project status and planned work, use `docs/roadmap/`.
 
-#### Current repository tree
-```text
-.
-├── CONTRIBUTING.md
-├── README.md
-├── docs/
-│   ├── architecture.md
-│   ├── directives/
-│   │   ├── CHANGE_POLICY.md
-│   │   ├── invariants.md
-│   │   ├── source-map.md
-│   │   ├── terms.md
-│   │   └── traceability-matrix.md
-│   ├── ops.md
-│   ├── quickstart.md
-│   ├── style-guide.md
-│   └── testing.md
-├── eval/
-│   └── cases.jsonl
-├── features/
-│   ├── README.md
-│   ├── answer_contract.feature
-│   ├── memory_recall.feature
-│   └── steps/
-│       ├── answer_contract_steps.py
-│       └── memory_steps.py
-├── pyproject.toml
-├── scripts/
-│   ├── eval_recall.py
-│   ├── release_gate.py
-│   ├── validate_issue_links.py
-│   └── validate_markdown_paths.py
-└── src/
-    └── testbot/
-        ├── __init__.py
-        ├── config.py
-        ├── memory_cards.py
-        ├── rerank.py
-        ├── sat_chatbot_memory_v2.py
-        └── time_parse.py
-```
+## Grounding model
+Authoritative grounding/intent references:
 
-#### Planned (not in repo yet)
-- `prompts.py`
-- `scripts/run_sat.sh`
+- [docs/architecture.md](docs/architecture.md)
+- [features/intent_grounding.feature](features/intent_grounding.feature)
+- [docs/directives/traceability-matrix.md](docs/directives/traceability-matrix.md)
+
+## Current limitations
+- External fact integrations are currently limited.
+- Most grounding comes from conversation memory plus deterministic policy/routing behavior.
+- For current validation expectations, see [docs/testing.md](docs/testing.md).
+- For roadmap and delivery status, see [docs/roadmap/](docs/roadmap/).
 
 ## Setup
 From the repository root:
