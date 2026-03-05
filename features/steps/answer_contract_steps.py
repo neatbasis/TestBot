@@ -4,7 +4,11 @@ from behave import given, then, when
 
 from testbot.eval_fixtures import cases_by_id
 from testbot.pipeline_state import CandidateHit, PipelineState, ProvenanceType
-from testbot.sat_chatbot_memory_v2 import validate_answer_contract, validate_general_knowledge_contract
+from testbot.sat_chatbot_memory_v2 import (
+    build_provenance_metadata,
+    validate_answer_contract,
+    validate_general_knowledge_contract,
+)
 from testbot.stage_transitions import validate_answer_post, validate_answer_pre
 
 
@@ -88,3 +92,48 @@ def step_then_general_knowledge_rejected(context) -> None:
 @then("the general-knowledge candidate is accepted")
 def step_then_general_knowledge_accepted(context) -> None:
     assert context.gk_contract_passed is True
+
+
+@given("a memory-grounded answer rendered in normal mode")
+def step_given_normal_mode_render(context) -> None:
+    from collections import deque
+    from langchain_core.documents import Document
+    from testbot.history_packer import pack_chat_history
+
+    _, _, _, _, rendered = build_provenance_metadata(
+        final_answer="You usually sleep around 11pm (doc_id: abc, ts: 2026-01-01T00:00:00Z).",
+        hits=[Document(page_content="x", metadata={"doc_id": "abc", "ts": "2026-01-01T00:00:00Z"}, id="abc")],
+        chat_history=deque(),
+        packed_history=pack_chat_history([]),
+        debug_mode=False,
+    )
+    context.rendered_answer = rendered
+
+
+@then("the user-facing answer omits raw citation markers")
+def step_then_normal_omits_markers(context) -> None:
+    assert "doc_id" not in context.rendered_answer.lower()
+    assert "ts:" not in context.rendered_answer.lower()
+
+
+@given("a memory-grounded answer rendered in debug mode")
+def step_given_debug_mode_render(context) -> None:
+    from collections import deque
+    from langchain_core.documents import Document
+    from testbot.history_packer import pack_chat_history
+
+    _, _, _, _, rendered = build_provenance_metadata(
+        final_answer="You usually sleep around 11pm.",
+        hits=[Document(page_content="x", metadata={"doc_id": "abc", "ts": "2026-01-01T00:00:00Z"}, id="abc")],
+        chat_history=deque(),
+        packed_history=pack_chat_history([]),
+        debug_mode=True,
+    )
+    context.rendered_answer = rendered
+
+
+@then("the user-facing answer includes internal citation diagnostics")
+def step_then_debug_has_diagnostics(context) -> None:
+    assert "debug provenance" in context.rendered_answer.lower()
+    assert "doc_id=" in context.rendered_answer
+    assert "ts=" in context.rendered_answer

@@ -20,3 +20,11 @@ Feature: Answer citation contract enforcement
     And the general-knowledge confidence gate passes
     When the general-knowledge contract validator checks the candidate
     Then the general-knowledge candidate is accepted
+
+  Scenario: normal mode suppresses raw citation markers in user text
+    Given a memory-grounded answer rendered in normal mode
+    Then the user-facing answer omits raw citation markers
+
+  Scenario: debug mode includes internal citation diagnostics
+    Given a memory-grounded answer rendered in debug mode
+    Then the user-facing answer includes internal citation diagnostics

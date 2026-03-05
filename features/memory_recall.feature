@@ -9,7 +9,7 @@ Feature: Memory recall behavior
     And eval cases are loaded from "eval/cases.jsonl"
     When the user asks about eval case "sleep-followup"
     Then the assistant returns a memory-grounded answer
-    And the answer includes citation fields "doc_id" and "ts"
+    And structured provenance is recorded with "doc_id" and "ts"
 
   Scenario: exact fallback path
     Given a deterministic in-memory recall harness

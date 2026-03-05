@@ -10,12 +10,14 @@ def test_parse_args_defaults() -> None:
     args = _parse_args([])
     assert args.mode == "auto"
     assert args.daemon is False
+    assert args.debug is False
 
 
 def test_parse_args_satellite_daemon() -> None:
-    args = _parse_args(["--mode", "satellite", "--daemon"])
+    args = _parse_args(["--mode", "satellite", "--daemon", "--debug"])
     assert args.mode == "satellite"
     assert args.daemon is True
+    assert args.debug is True
 
 
 def test_resolve_mode_prefers_satellite_when_ha_available() -> None:
@@ -35,6 +37,7 @@ def _patch_main_dependencies(monkeypatch, *, args, ha_error: str | None, calls: 
         "ollama_base_url": "http://localhost:11434",
         "ollama_model": "llama3.1:latest",
         "memory_near_tie_delta": 0.02,
+        "output_mode": "normal",
     }
 
     monkeypatch.setattr(runtime, "_parse_args", lambda _argv=None: args)
@@ -54,7 +57,7 @@ def _patch_main_dependencies(monkeypatch, *, args, ha_error: str | None, calls: 
 
 def test_main_auto_daemon_ha_unavailable_exits_without_cli_fallback(monkeypatch, capsys) -> None:
     calls = {"cli": 0, "satellite": 0}
-    args = SimpleNamespace(mode="auto", daemon=True)
+    args = SimpleNamespace(mode="auto", daemon=True, debug=False)
     _patch_main_dependencies(monkeypatch, args=args, ha_error="auth failed", calls=calls)
 
     runtime.main([])
@@ -66,7 +69,7 @@ def test_main_auto_daemon_ha_unavailable_exits_without_cli_fallback(monkeypatch,
 
 def test_main_auto_daemon_ha_available_uses_satellite(monkeypatch) -> None:
     calls = {"cli": 0, "satellite": 0}
-    args = SimpleNamespace(mode="auto", daemon=True)
+    args = SimpleNamespace(mode="auto", daemon=True, debug=False)
     _patch_main_dependencies(monkeypatch, args=args, ha_error=None, calls=calls)
 
     runtime.main([])
@@ -77,7 +80,7 @@ def test_main_auto_daemon_ha_available_uses_satellite(monkeypatch) -> None:
 def test_main_satellite_mode_reports_cli_as_effective_mode_when_fallback_applies(monkeypatch) -> None:
     calls = {"cli": 0, "satellite": 0}
     startup: dict[str, object] = {}
-    args = SimpleNamespace(mode="satellite", daemon=False)
+    args = SimpleNamespace(mode="satellite", daemon=False, debug=False)
     _patch_main_dependencies(monkeypatch, args=args, ha_error="auth failed", calls=calls, startup=startup)
 
     runtime.main([])

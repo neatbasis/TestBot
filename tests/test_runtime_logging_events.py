@@ -1,10 +1,16 @@
 from __future__ import annotations
 
+from collections import deque
+
 from testbot.intent_router import IntentType
+from langchain_core.documents import Document
+
+from testbot.history_packer import pack_chat_history
 from testbot.sat_chatbot_memory_v2 import (
     _ambiguity_score,
     _intent_label,
     _user_followup_signal_proxy,
+    build_provenance_metadata,
 )
 
 
@@ -63,7 +69,7 @@ def test_provenance_summary_log_contains_bandit_and_provenance_fields() -> None:
         "ambiguity_score": ambiguity_score,
         "chosen_action": "NONE",
         "user_followup_signal_proxy": _user_followup_signal_proxy(
-            final_answer="A grounded answer with citation doc_id: abc, ts: 2026-01-01T00:00:00Z",
+            final_answer="A grounded answer about bedtime routine.",
             fallback_action="NONE",
             ambiguity_score=ambiguity_score,
         ),
@@ -74,3 +80,33 @@ def test_provenance_summary_log_contains_bandit_and_provenance_fields() -> None:
     assert row["ambiguity_score"] == 0.0
     assert row["provenance_types"] == ["memory"]
     assert row["used_memory_refs"][0]["doc_id"] == "abc"
+
+
+def test_build_provenance_metadata_normal_mode_suppresses_raw_ids_in_text() -> None:
+    _, _, _, used_refs, rendered = build_provenance_metadata(
+        final_answer="Your bedtime has been around 11pm (doc_id: abc, ts: 2026-01-01T00:00:00Z).",
+        hits=[Document(page_content="memory", metadata={"doc_id": "abc", "ts": "2026-01-01T00:00:00Z"}, id="abc")],
+        chat_history=deque(),
+        packed_history=pack_chat_history([]),
+        debug_mode=False,
+    )
+
+    assert used_refs == [{"doc_id": "abc", "ts": "2026-01-01T00:00:00Z"}]
+    assert "doc_id" not in rendered.lower()
+    assert "ts:" not in rendered.lower()
+    assert "Your bedtime has been around 11pm" in rendered
+
+
+def test_build_provenance_metadata_debug_mode_includes_diagnostics() -> None:
+    _, _, _, used_refs, rendered = build_provenance_metadata(
+        final_answer="Your bedtime has been around 11pm (doc_id: abc, ts: 2026-01-01T00:00:00Z).",
+        hits=[Document(page_content="memory", metadata={"doc_id": "abc", "ts": "2026-01-01T00:00:00Z"}, id="abc")],
+        chat_history=deque(),
+        packed_history=pack_chat_history([]),
+        debug_mode=True,
+    )
+
+    assert used_refs == [{"doc_id": "abc", "ts": "2026-01-01T00:00:00Z"}]
+    assert "[debug provenance]" in rendered
+    assert "doc_id=abc" in rendered
+    assert "ts=2026-01-01T00:00:00Z" in rendered
