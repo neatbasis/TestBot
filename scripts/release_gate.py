@@ -20,6 +20,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 class GateCheck:
     name: str
     command: list[str]
+    blocking: bool = True
 
 
 @dataclass
@@ -43,11 +44,16 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         help="Optional path to write the JSON summary.",
     )
+    parser.add_argument(
+        "--replay-report",
+        action="store_true",
+        help="Include the optional replay KPI drift report command.",
+    )
     return parser.parse_args()
 
 
-def build_checks() -> list[GateCheck]:
-    return [
+def build_checks(*, replay_report: bool = False) -> list[GateCheck]:
+    checks = [
         GateCheck(name="behave", command=[sys.executable, "-m", "behave"]),
         GateCheck(name="pytest_non_live_smoke", command=[sys.executable, "-m", "pytest", "-m", "not live_smoke"]),
         GateCheck(name="pytest_eval_runtime_parity", command=[sys.executable, "-m", "pytest", "tests/test_eval_runtime_parity.py"]),
@@ -62,6 +68,24 @@ def build_checks() -> list[GateCheck]:
             ],
         ),
     ]
+    if replay_report:
+        checks.append(
+            GateCheck(
+                name="replay_report",
+                command=[
+                    sys.executable,
+                    "scripts/aggregate_turn_analytics.py",
+                    "--input",
+                    "logs/session.jsonl",
+                    "--output",
+                    "logs/turn_analytics.jsonl",
+                    "--summary-output",
+                    "logs/turn_analytics_summary.json",
+                ],
+                blocking=False,
+            )
+        )
+    return checks
 
 
 def run_check(check: GateCheck) -> CheckResult:
@@ -89,9 +113,11 @@ def run_gate(checks: Sequence[GateCheck], continue_on_failure: bool) -> tuple[li
 
     for idx, check in enumerate(checks):
         result = run_check(check)
+        if result.status == "failed" and not check.blocking:
+            result.status = "warning"
         results.append(result)
 
-        if result.status == "failed" and not continue_on_failure:
+        if result.status == "failed" and check.blocking and not continue_on_failure:
             for remaining in checks[idx + 1 :]:
                 results.append(
                     CheckResult(
@@ -110,17 +136,19 @@ def run_gate(checks: Sequence[GateCheck], continue_on_failure: bool) -> tuple[li
 
 def summarize(results: Sequence[CheckResult], continue_on_failure: bool) -> dict[str, object]:
     has_failure = any(result.status == "failed" for result in results)
+    warning_count = sum(1 for result in results if result.status == "warning")
     return {
         "status": "failed" if has_failure else "passed",
         "exit_code": 1 if has_failure else 0,
         "continue_on_failure": continue_on_failure,
+        "warning_count": warning_count,
         "checks": [asdict(result) for result in results],
     }
 
 
 def main() -> int:
     args = parse_args()
-    checks = build_checks()
+    checks = build_checks(replay_report=args.replay_report)
     results, exit_code = run_gate(checks=checks, continue_on_failure=args.continue_on_failure)
     summary = summarize(results=results, continue_on_failure=args.continue_on_failure)
 

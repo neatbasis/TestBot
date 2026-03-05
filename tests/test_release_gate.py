@@ -100,6 +100,7 @@ def test_summarize_reports_per_check_fields(checks: list[release_gate.GateCheck]
     assert summary["status"] == "failed"
     assert summary["exit_code"] == 1
     assert summary["continue_on_failure"] is True
+    assert summary["warning_count"] == 0
     assert summary["checks"] == [
         {
             "name": "first",
@@ -136,3 +137,39 @@ def test_build_checks_order_and_commands() -> None:
         "--base-ref",
         "origin/main",
     ]
+
+
+def test_build_checks_includes_optional_replay_report() -> None:
+    checks = release_gate.build_checks(replay_report=True)
+
+    assert checks[-1].name == "replay_report"
+    assert checks[-1].blocking is False
+    assert checks[-1].command[1:] == [
+        "scripts/aggregate_turn_analytics.py",
+        "--input",
+        "logs/session.jsonl",
+        "--output",
+        "logs/turn_analytics.jsonl",
+        "--summary-output",
+        "logs/turn_analytics_summary.json",
+    ]
+
+
+def test_non_blocking_check_is_warning(monkeypatch: pytest.MonkeyPatch) -> None:
+    checks = [release_gate.GateCheck(name="optional", command=["optional"], blocking=False)]
+
+    def fake_run_check(_check: release_gate.GateCheck) -> release_gate.CheckResult:
+        return release_gate.CheckResult(
+            name="optional",
+            command="optional",
+            status="failed",
+            exit_code=2,
+            duration_s=0.01,
+        )
+
+    monkeypatch.setattr(release_gate, "run_check", fake_run_check)
+
+    results, exit_code = release_gate.run_gate(checks=checks, continue_on_failure=False)
+
+    assert results[0].status == "warning"
+    assert exit_code == 0
