@@ -1,0 +1,28 @@
+{
+  "checks": [
+    {
+      "name": "healthz",
+      "target": "http://127.0.0.1:8000/healthz",
+      "method": "GET",
+      "expected_status": 200,
+      "timeout_s": 5,
+      "capabilities": ["auth"]
+    },
+    {
+      "name": "payments-ready",
+      "target": "http://127.0.0.1:8000/payments/ready",
+      "method": "GET",
+      "expected_status": 200,
+      "timeout_s": 5,
+      "capabilities": ["payments"]
+    },
+    {
+      "name": "notifications-ready",
+      "target": "http://127.0.0.1:8000/notifications/ready",
+      "method": "GET",
+      "expected_status": 200,
+      "timeout_s": 5,
+      "capabilities": ["notifications"]
+    }
+  ]
+}
