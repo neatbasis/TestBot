@@ -15,3 +15,11 @@ def test_classify_intent_knowledge_question_ontology() -> None:
 
 def test_classify_intent_control_takes_precedence() -> None:
     assert classify_intent("stop and what did I ask?") is IntentType.CONTROL
+
+
+def test_classify_intent_time_query_minutes_ago() -> None:
+    assert classify_intent("how many minutes ago did I ask?") is IntentType.TIME_QUERY
+
+
+def test_classify_intent_time_query_tomorrow() -> None:
+    assert classify_intent("what is tomorrow?") is IntentType.TIME_QUERY
