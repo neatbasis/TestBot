@@ -28,3 +28,16 @@ Feature: Intent-specific grounding and provenance behavior
     And the response should include "Relevant summary:"
     And the response includes a relevance basis assertion
     And the provenance and basis should include "CHAT_HISTORY" and "Relevance summary basis:"
+
+  Scenario: source-backed knowing answer includes source citation provenance
+    Given an intent response harness
+    When the user asks a source-backed knowing question
+    Then the assistant returns a source-backed answer with citation
+    And the provenance and basis should include "MEMORY" and "source evidence"
+    And the source provenance includes "calendar://work/event-42" and "calendar"
+
+  Scenario: source confidence insufficient triggers explicit unknowing fallback
+    Given an intent response harness
+    When source confidence is insufficient for a knowing answer
+    Then the assistant returns explicit unknowing fallback
+    And the provenance and basis should include "UNKNOWN" and "Trivial fallback"

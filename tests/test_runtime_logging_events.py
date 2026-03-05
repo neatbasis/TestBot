@@ -69,8 +69,20 @@ def test_provenance_summary_log_contains_bandit_and_provenance_fields() -> None:
         ),
         "provenance_types": ["memory"],
         "used_memory_refs": [{"doc_id": "abc", "ts": "2026-01-01T00:00:00Z"}],
+        "used_source_evidence_refs": ["src-1"],
+        "source_evidence_attribution": [
+            {
+                "doc_id": "src-1",
+                "source_type": "calendar",
+                "source_uri": "calendar://work/event-1",
+                "retrieved_at": "2026-01-01T00:00:00Z",
+                "trust_tier": "high",
+            }
+        ],
     }
 
     assert row["ambiguity_score"] == 0.0
     assert row["provenance_types"] == ["memory"]
     assert row["used_memory_refs"][0]["doc_id"] == "abc"
+    assert row["used_source_evidence_refs"] == ["src-1"]
+    assert row["source_evidence_attribution"][0]["source_uri"] == "calendar://work/event-1"

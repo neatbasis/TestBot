@@ -124,14 +124,22 @@ def test_build_checks_order_and_commands() -> None:
 
     assert [check.name for check in checks] == [
         "behave",
+        "pytest_source_and_provenance_fast",
         "pytest_non_live_smoke",
         "pytest_eval_runtime_parity",
         "validate_issue_links",
     ]
     assert checks[0].command[1:] == ["-m", "behave"]
-    assert checks[1].command[1:] == ["-m", "pytest", "-m", "not live_smoke"]
-    assert checks[2].command[1:] == ["-m", "pytest", "tests/test_eval_runtime_parity.py"]
-    assert checks[3].command[1:] == [
+    assert checks[1].command[1:] == [
+        "-m",
+        "pytest",
+        "tests/test_vector_store.py",
+        "tests/test_source_fusion.py",
+        "tests/test_log_schema_validation.py",
+    ]
+    assert checks[2].command[1:] == ["-m", "pytest", "-m", "not live_smoke"]
+    assert checks[3].command[1:] == ["-m", "pytest", "tests/test_eval_runtime_parity.py"]
+    assert checks[4].command[1:] == [
         "scripts/validate_issue_links.py",
         "--all-issue-files",
         "--base-ref",
