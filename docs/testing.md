@@ -144,8 +144,23 @@ python -m pytest tests/test_eval_runtime_parity.py
 Run optional live smoke profile:
 
 ```bash
-pytest -m live_smoke
+python -m pytest -m live_smoke
 ```
+
+Run Ollama live smoke integration tests only (`tests/test_live_smoke_ollama.py`):
+
+```bash
+OLLAMA_BASE_URL=http://localhost:11434 \
+OLLAMA_MODEL=llama3.1:latest \
+OLLAMA_EMBEDDING_MODEL=nomic-embed-text \
+python -m pytest tests/test_live_smoke_ollama.py -m live_smoke -vv
+```
+
+Expected outcomes for `tests/test_live_smoke_ollama.py`:
+
+- If prerequisites are set and Ollama is reachable with both models pulled, both tests pass.
+- If `OLLAMA_BASE_URL`, `OLLAMA_MODEL`, or `OLLAMA_EMBEDDING_MODEL` are missing, tests skip with explicit guidance naming the missing variable.
+- If endpoint/model provisioning is incorrect, tests fail with a live connectivity/model error (intentional signal that environment is not ready).
 
 Run governance and issue-linkage checks:
 
