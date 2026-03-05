@@ -39,7 +39,7 @@ class PipelineState:
     final_answer: str = ""
     claims: list[str] = field(default_factory=list)
     provenance_types: list[ProvenanceType] = field(default_factory=list)
-    used_memory_refs: list[str] = field(default_factory=list)
+    used_memory_refs: list[dict[str, str]] = field(default_factory=list)
     basis_statement: str = ""
     invariant_decisions: dict[str, Any] = field(default_factory=dict)
     alignment_decision: dict[str, Any] = field(default_factory=dict)
