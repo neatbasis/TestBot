@@ -15,6 +15,12 @@ OllamaEmbeddings = langchain_ollama.OllamaEmbeddings
 
 pytestmark = pytest.mark.live_smoke
 
+if os.getenv("TESTBOT_ENABLE_LIVE_SMOKE", "").strip().lower() not in {"1", "true", "yes"}:
+    pytest.skip(
+        "Set TESTBOT_ENABLE_LIVE_SMOKE=1 to run live_smoke Ollama integration tests",
+        allow_module_level=True,
+    )
+
 
 def _require_env(name: str) -> str:
     value = os.getenv(name, "").strip()
@@ -23,7 +29,6 @@ def _require_env(name: str) -> str:
     return value
 
 
-@pytest.mark.live_smoke
 def test_live_smoke_chat_ollama_invoke_returns_non_empty_response() -> None:
     base_url = _require_env("OLLAMA_BASE_URL")
     model = _require_env("OLLAMA_MODEL")
@@ -35,7 +40,6 @@ def test_live_smoke_chat_ollama_invoke_returns_non_empty_response() -> None:
     assert text, "Expected non-empty text response from ChatOllama.invoke"
 
 
-@pytest.mark.live_smoke
 def test_live_smoke_ollama_embeddings_returns_non_empty_vector() -> None:
     base_url = _require_env("OLLAMA_BASE_URL")
     embedding_model = _require_env("OLLAMA_EMBEDDING_MODEL")

@@ -153,14 +153,32 @@ Run Ollama live smoke integration tests only (`tests/test_live_smoke_ollama.py`)
 OLLAMA_BASE_URL=http://localhost:11434 \
 OLLAMA_MODEL=llama3.1:latest \
 OLLAMA_EMBEDDING_MODEL=nomic-embed-text \
+TESTBOT_ENABLE_LIVE_SMOKE=1 \
 python -m pytest tests/test_live_smoke_ollama.py -m live_smoke -vv
 ```
 
 Expected outcomes for `tests/test_live_smoke_ollama.py`:
 
+- If `TESTBOT_ENABLE_LIVE_SMOKE` is not set to `1` (or `true`/`yes`), the module is skipped so live tests do not run accidentally.
 - If prerequisites are set and Ollama is reachable with both models pulled, both tests pass.
 - If `OLLAMA_BASE_URL`, `OLLAMA_MODEL`, or `OLLAMA_EMBEDDING_MODEL` are missing, tests skip with explicit guidance naming the missing variable.
 - If endpoint/model provisioning is incorrect, tests fail with a live connectivity/model error (intentional signal that environment is not ready).
+
+### Production validation record (live Ollama smoke)
+
+Observed external validation run:
+
+```text
+(base) sebastian@grape:~/Services/TestBot$ pytest tests/test_live_smoke_ollama.py
+==================== test session starts =====================
+platform linux -- Python 3.13.9, pytest-9.0.2, pluggy-1.5.0
+rootdir: /home/sebastian/Services/TestBot                     configfile: pyproject.toml
+plugins: langsmith-0.6.1, anyio-4.12.0, cov-7.0.0
+collected 2 items
+tests/test_live_smoke_ollama.py ..                     [100%]
+
+===================== 2 passed in 1.75s =====================
+```
 
 Run governance and issue-linkage checks:
 
