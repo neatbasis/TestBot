@@ -75,6 +75,53 @@ def test_validate_answer_post_allows_progressive_clarifier_when_factual_groundin
     assert result.passed
 
 
+def test_validate_answer_post_progressive_fallback_enforced_allows_fallback_when_low_confidence() -> None:
+    invariant_decisions = {
+        **_base_state().invariant_decisions,
+        "answer_contract_valid": False,
+        "answer_mode": "dont-know",
+    }
+    alignment_decision = {
+        **_base_state().alignment_decision,
+        "final_alignment_decision": "fallback",
+    }
+    state = replace(
+        _base_state(),
+        confidence_decision={"context_confident": False},
+        draft_answer="",
+        final_answer=FALLBACK_ANSWER,
+        invariant_decisions=invariant_decisions,
+        alignment_decision=alignment_decision,
+    )
+
+    result = validate_answer_post(state)
+
+    assert result.passed, "progressive fallback should allow approved fallback path when confidence is low"
+
+
+def test_validate_answer_post_progressive_fallback_enforced_rejects_direct_answer_when_low_confidence() -> None:
+    state = replace(
+        _base_state(),
+        confidence_decision={"context_confident": False},
+        draft_answer="",
+        final_answer="You said hi. doc_id: 1 ts: 2025-01-01T00:00:00Z",
+        alignment_decision={**_base_state().alignment_decision, "final_alignment_decision": "allow"},
+    )
+
+    result = validate_answer_post(state)
+
+    assert not result.passed
+    assert "inv_002_progressive_fallback_enforced" in result.failures
+
+
+def test_validate_answer_post_progressive_fallback_enforced_allows_confident_valid_contract_path() -> None:
+    state = _base_state()
+
+    result = validate_answer_post(state)
+
+    assert result.passed, "progressive fallback should permit confident answers with a valid contract"
+
+
 def test_validate_answer_post_allows_deny_when_safety_dimension_fails() -> None:
     invariant_decisions = {**_base_state().invariant_decisions, "answer_mode": "deny"}
     alignment_decision = {

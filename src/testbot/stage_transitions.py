@@ -60,6 +60,17 @@ def _has_allowed_provenance_types(state: PipelineState) -> bool:
     allowed = {p.value for p in ProvenanceType}
     return all(isinstance(p, ProvenanceType) and p.value in allowed for p in state.provenance_types)
 
+
+def _follows_approved_fallback_path(state: PipelineState) -> bool:
+    answer_mode = state.invariant_decisions.get("answer_mode")
+    final_answer = (state.final_answer or "").strip()
+
+    if answer_mode == "dont-know":
+        return final_answer == FALLBACK_ANSWER
+    if answer_mode in {"clarify", "assist"}:
+        return final_answer not in {"", FALLBACK_ANSWER, DENY_ANSWER}
+    return False
+
 def _run_checks(
     *,
     stage: str,
@@ -209,7 +220,7 @@ def validate_answer_post(state: PipelineState) -> TransitionCheckResult:
                     s.final_answer == DENY_ANSWER
                     if s.invariant_decisions.get("answer_mode") == "deny"
                     else (
-                        s.final_answer != FALLBACK_ANSWER
+                        _follows_approved_fallback_path(s)
                         if (
                             not s.confidence_decision.get("context_confident", False)
                             or not (s.draft_answer or "").strip()
