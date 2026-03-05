@@ -1,0 +1,16 @@
+{
+  "objective_name": "semantic_temporal_type",
+  "objective_version": "v1",
+  "coefficients": {
+    "base_temporal_blend": 0.25,
+    "gaussian_temporal_blend": 0.75,
+    "reflection_type_prior": 0.7,
+    "default_type_prior": 1.0
+  },
+  "confidence_thresholds": {
+    "top_final_score_min": 0.2,
+    "min_margin_to_second": 0.0,
+    "allow_ambiguity_override": false,
+    "ambiguity_override_top_final_score_min": 0.6
+  }
+}

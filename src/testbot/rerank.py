@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 import math
 from dataclasses import dataclass
+from pathlib import Path
 
 import arrow
 from langchain_core.documents import Document
@@ -15,7 +17,8 @@ class RerankOutcome:
     scored_candidates: list[dict[str, float | str]]
 
 
-RERANK_OBJECTIVE_NAME = "semantic_temporal_type_v1"
+DEFAULT_RERANK_OBJECTIVE_CONFIG_PATH = Path("config/rerank_objective.json")
+RERANK_OBJECTIVE_CONFIG_ENV = "TESTBOT_RERANK_OBJECTIVE_CONFIG"
 
 
 @dataclass(frozen=True)
@@ -40,6 +43,22 @@ class RerankObjectiveCoefficients:
 DEFAULT_RERANK_COEFFICIENTS = RerankObjectiveCoefficients()
 
 
+@dataclass(frozen=True)
+class RerankObjectiveConfig:
+    objective_name: str
+    objective_version: str
+    coefficients: RerankObjectiveCoefficients
+    confidence_thresholds: ContextConfidenceThresholds
+
+
+DEFAULT_RERANK_OBJECTIVE_CONFIG = RerankObjectiveConfig(
+    objective_name="semantic_temporal_type",
+    objective_version="v1",
+    coefficients=DEFAULT_RERANK_COEFFICIENTS,
+    confidence_thresholds=DEFAULT_CONTEXT_CONFIDENCE_THRESHOLDS,
+)
+
+
 _CARD_TYPE_PRIORITY: dict[str, int] = {
     "user_utterance": 0,
     "assistant_utterance": 1,
@@ -49,6 +68,170 @@ _CARD_TYPE_PRIORITY: dict[str, int] = {
 }
 
 
+_RERANK_OBJECTIVE_CONFIG_CACHE: RerankObjectiveConfig | None = None
+_RERANK_OBJECTIVE_CONFIG_CACHE_PATH: Path | None = None
+
+
+def _objective_label(config: RerankObjectiveConfig) -> str:
+    return f"{config.objective_name}_{config.objective_version}"
+
+
+def rerank_objective_name() -> str:
+    return _objective_label(load_rerank_objective_config())
+
+
+def _config_path() -> Path:
+    import os
+
+    configured = os.getenv(RERANK_OBJECTIVE_CONFIG_ENV)
+    if configured:
+        return Path(configured)
+    return DEFAULT_RERANK_OBJECTIVE_CONFIG_PATH
+
+
+def _require_mapping(raw: object, *, where: str) -> dict[str, object]:
+    if not isinstance(raw, dict):
+        raise ValueError(f"{where} must be an object")
+    return raw
+
+
+def _require_float(raw: object, *, where: str, minimum: float, maximum: float) -> float:
+    if isinstance(raw, bool) or not isinstance(raw, (int, float)):
+        raise ValueError(f"{where} must be a number")
+    value = float(raw)
+    if value < minimum or value > maximum:
+        raise ValueError(f"{where} out of bounds [{minimum}, {maximum}]: {value}")
+    return value
+
+
+def _parse_coefficients(raw: object) -> RerankObjectiveCoefficients:
+    mapping = _require_mapping(raw, where="coefficients")
+    required = {
+        "base_temporal_blend",
+        "gaussian_temporal_blend",
+        "reflection_type_prior",
+        "default_type_prior",
+    }
+    missing = required.difference(mapping)
+    if missing:
+        raise ValueError(f"coefficients missing keys: {sorted(missing)}")
+    return RerankObjectiveCoefficients(
+        base_temporal_blend=_require_float(
+            mapping["base_temporal_blend"],
+            where="coefficients.base_temporal_blend",
+            minimum=0.0,
+            maximum=1.0,
+        ),
+        gaussian_temporal_blend=_require_float(
+            mapping["gaussian_temporal_blend"],
+            where="coefficients.gaussian_temporal_blend",
+            minimum=0.0,
+            maximum=1.0,
+        ),
+        reflection_type_prior=_require_float(
+            mapping["reflection_type_prior"],
+            where="coefficients.reflection_type_prior",
+            minimum=0.0,
+            maximum=2.0,
+        ),
+        default_type_prior=_require_float(
+            mapping["default_type_prior"],
+            where="coefficients.default_type_prior",
+            minimum=0.0,
+            maximum=2.0,
+        ),
+    )
+
+
+def _parse_confidence_thresholds(raw: object) -> ContextConfidenceThresholds:
+    mapping = _require_mapping(raw, where="confidence_thresholds")
+    required = {
+        "top_final_score_min",
+        "min_margin_to_second",
+        "allow_ambiguity_override",
+        "ambiguity_override_top_final_score_min",
+    }
+    missing = required.difference(mapping)
+    if missing:
+        raise ValueError(f"confidence_thresholds missing keys: {sorted(missing)}")
+    allow_override = mapping["allow_ambiguity_override"]
+    if not isinstance(allow_override, bool):
+        raise ValueError("confidence_thresholds.allow_ambiguity_override must be boolean")
+    return ContextConfidenceThresholds(
+        top_final_score_min=_require_float(
+            mapping["top_final_score_min"],
+            where="confidence_thresholds.top_final_score_min",
+            minimum=0.0,
+            maximum=1.0,
+        ),
+        min_margin_to_second=_require_float(
+            mapping["min_margin_to_second"],
+            where="confidence_thresholds.min_margin_to_second",
+            minimum=0.0,
+            maximum=1.0,
+        ),
+        allow_ambiguity_override=allow_override,
+        ambiguity_override_top_final_score_min=_require_float(
+            mapping["ambiguity_override_top_final_score_min"],
+            where="confidence_thresholds.ambiguity_override_top_final_score_min",
+            minimum=0.0,
+            maximum=1.0,
+        ),
+    )
+
+
+def _parse_objective_config(raw: object) -> RerankObjectiveConfig:
+    mapping = _require_mapping(raw, where="root")
+    objective_name = mapping.get("objective_name")
+    objective_version = mapping.get("objective_version")
+    if not isinstance(objective_name, str) or not objective_name.strip():
+        raise ValueError("objective_name must be a non-empty string")
+    if not isinstance(objective_version, str) or not objective_version.strip():
+        raise ValueError("objective_version must be a non-empty string")
+    if "coefficients" not in mapping:
+        raise ValueError("missing required key: coefficients")
+    if "confidence_thresholds" not in mapping:
+        raise ValueError("missing required key: confidence_thresholds")
+    return RerankObjectiveConfig(
+        objective_name=objective_name.strip(),
+        objective_version=objective_version.strip(),
+        coefficients=_parse_coefficients(mapping["coefficients"]),
+        confidence_thresholds=_parse_confidence_thresholds(mapping["confidence_thresholds"]),
+    )
+
+
+def load_rerank_objective_config(*, force_reload: bool = False) -> RerankObjectiveConfig:
+    global _RERANK_OBJECTIVE_CONFIG_CACHE
+    global _RERANK_OBJECTIVE_CONFIG_CACHE_PATH
+
+    path = _config_path()
+    if (
+        _RERANK_OBJECTIVE_CONFIG_CACHE is not None
+        and not force_reload
+        and _RERANK_OBJECTIVE_CONFIG_CACHE_PATH == path
+    ):
+        return _RERANK_OBJECTIVE_CONFIG_CACHE
+
+    try:
+        if not path.exists():
+            _RERANK_OBJECTIVE_CONFIG_CACHE = DEFAULT_RERANK_OBJECTIVE_CONFIG
+            _RERANK_OBJECTIVE_CONFIG_CACHE_PATH = path
+            return _RERANK_OBJECTIVE_CONFIG_CACHE
+        raw = json.loads(path.read_text(encoding="utf-8"))
+        _RERANK_OBJECTIVE_CONFIG_CACHE = _parse_objective_config(raw)
+    except (OSError, json.JSONDecodeError, ValueError):
+        _RERANK_OBJECTIVE_CONFIG_CACHE = DEFAULT_RERANK_OBJECTIVE_CONFIG
+
+    _RERANK_OBJECTIVE_CONFIG_CACHE_PATH = path
+    return _RERANK_OBJECTIVE_CONFIG_CACHE
+
+
+def rerank_coefficients() -> RerankObjectiveCoefficients:
+    return load_rerank_objective_config().coefficients
+
+
+def rerank_confidence_thresholds() -> ContextConfidenceThresholds:
+    return load_rerank_objective_config().confidence_thresholds
 
 
 def is_source_evidence_doc(doc: Document) -> bool:
@@ -142,14 +325,22 @@ def rerank_objective_score_components(
     doc_ts_iso: str,
     target: arrow.Arrow,
     sigma_seconds: float,
-    coefficients: RerankObjectiveCoefficients = DEFAULT_RERANK_COEFFICIENTS,
+    coefficients: RerankObjectiveCoefficients | None = None,
 ) -> dict[str, float | str]:
+    active_config = load_rerank_objective_config()
+    effective_coefficients = coefficients or active_config.coefficients
     temporal_gaussian_weight = time_weight(doc_ts_iso, target, sigma_seconds)
-    type_prior = coefficients.reflection_type_prior if doc_type == "reflection" else coefficients.default_type_prior
-    temporal_blend = coefficients.base_temporal_blend + (coefficients.gaussian_temporal_blend * temporal_gaussian_weight)
+    type_prior = (
+        effective_coefficients.reflection_type_prior if doc_type == "reflection" else effective_coefficients.default_type_prior
+    )
+    temporal_blend = (
+        effective_coefficients.base_temporal_blend
+        + (effective_coefficients.gaussian_temporal_blend * temporal_gaussian_weight)
+    )
     final_score = type_prior * float(sim_score) * temporal_blend
     return {
-        "objective": RERANK_OBJECTIVE_NAME,
+        "objective": _objective_label(active_config),
+        "objective_version": active_config.objective_version,
         "semantic_score": float(sim_score),
         "temporal_gaussian_weight": float(temporal_gaussian_weight),
         "temporal_blend": float(temporal_blend),
@@ -281,23 +472,24 @@ def has_sufficient_context_confidence_from_objective(
     *,
     scored_candidates: list[dict[str, float | str]],
     ambiguity_detected: bool,
-    thresholds: ContextConfidenceThresholds = DEFAULT_CONTEXT_CONFIDENCE_THRESHOLDS,
+    thresholds: ContextConfidenceThresholds | None = None,
 ) -> bool:
+    effective_thresholds = thresholds or rerank_confidence_thresholds()
     if not scored_candidates:
         return False
 
     top_score = float(scored_candidates[0].get("final_score", 0.0) or 0.0)
-    if top_score < thresholds.top_final_score_min:
+    if top_score < effective_thresholds.top_final_score_min:
         return False
 
     if len(scored_candidates) > 1:
         second_score = float(scored_candidates[1].get("final_score", 0.0) or 0.0)
-        if (top_score - second_score) < thresholds.min_margin_to_second:
+        if (top_score - second_score) < effective_thresholds.min_margin_to_second:
             return False
 
     if not ambiguity_detected:
         return True
 
-    if not thresholds.allow_ambiguity_override:
+    if not effective_thresholds.allow_ambiguity_override:
         return False
-    return top_score >= thresholds.ambiguity_override_top_final_score_min
+    return top_score >= effective_thresholds.ambiguity_override_top_final_score_min

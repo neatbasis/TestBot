@@ -27,6 +27,7 @@ def test_eval_reports_objective_component_attribution() -> None:
     )
     metrics = json.loads(out.stdout)
 
+    assert metrics["objective_version"] == "v1"
     attribution = metrics["objective_component_attribution"]
     assert "average_top_candidate_components" in attribution
     assert "per_case" in attribution
@@ -49,3 +50,52 @@ def test_rank_candidates_with_signals_emits_runtime_comparable_fields() -> None:
     assert len(signals["near_tie_candidates"]) >= 2
     assert [c["doc_id"] for c in signals["scored_candidates"]] == ["a", "b"]
     assert signals["context_confident"] is True
+
+
+def test_eval_compare_objective_versions_reports_deltas(tmp_path) -> None:
+    compare_config = tmp_path / "rerank_objective_v2.json"
+    compare_config.write_text(
+        json.dumps(
+            {
+                "objective_name": "semantic_temporal_type",
+                "objective_version": "v2",
+                "coefficients": {
+                    "base_temporal_blend": 0.5,
+                    "gaussian_temporal_blend": 0.5,
+                    "reflection_type_prior": 0.8,
+                    "default_type_prior": 1.0,
+                },
+                "confidence_thresholds": {
+                    "top_final_score_min": 0.2,
+                    "min_margin_to_second": 0.0,
+                    "allow_ambiguity_override": False,
+                    "ambiguity_override_top_final_score_min": 0.6,
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    env = dict(os.environ)
+    env["PYTHONPATH"] = "src"
+    out = subprocess.run(
+        [
+            "python",
+            "scripts/eval_recall.py",
+            "--now",
+            "2026-03-10T11:00:00+00:00",
+            "--compare-objective-config",
+            str(compare_config),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+    metrics = json.loads(out.stdout)
+
+    assert metrics["objective"] == "semantic_temporal_type_v1"
+    comparisons = metrics["objective_version_comparison"]
+    assert len(comparisons) == 1
+    assert comparisons[0]["objective_version"] == "v2"
+    assert "hit_at_k_delta_vs_baseline" in comparisons[0]

@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import arrow
+import json
 from langchain_core.documents import Document
 
 from testbot.rerank import (
     ContextConfidenceThresholds,
+    DEFAULT_RERANK_OBJECTIVE_CONFIG,
     has_sufficient_context_confidence_from_objective,
+    load_rerank_objective_config,
     mix_source_evidence_with_memory_cards,
     rerank_docs_with_time_and_type_outcome,
     rerank_objective_score_components,
@@ -175,3 +178,105 @@ def test_context_confidence_respects_second_place_margin_threshold() -> None:
     )
 
     assert not confident
+
+
+def test_rerank_objective_config_loader_parses_valid_artifact(tmp_path, monkeypatch) -> None:
+    config_path = tmp_path / "rerank_objective.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "objective_name": "semantic_temporal_type",
+                "objective_version": "v2",
+                "coefficients": {
+                    "base_temporal_blend": 0.3,
+                    "gaussian_temporal_blend": 0.7,
+                    "reflection_type_prior": 0.6,
+                    "default_type_prior": 1.1,
+                },
+                "confidence_thresholds": {
+                    "top_final_score_min": 0.25,
+                    "min_margin_to_second": 0.04,
+                    "allow_ambiguity_override": True,
+                    "ambiguity_override_top_final_score_min": 0.7,
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("TESTBOT_RERANK_OBJECTIVE_CONFIG", str(config_path))
+
+    loaded = load_rerank_objective_config(force_reload=True)
+
+    assert loaded.objective_version == "v2"
+    assert loaded.coefficients.base_temporal_blend == 0.3
+    assert loaded.confidence_thresholds.allow_ambiguity_override is True
+
+
+def test_rerank_objective_config_loader_falls_back_when_config_absent(tmp_path, monkeypatch) -> None:
+    missing = tmp_path / "missing_rerank_config.json"
+    monkeypatch.setenv("TESTBOT_RERANK_OBJECTIVE_CONFIG", str(missing))
+
+    loaded = load_rerank_objective_config(force_reload=True)
+
+    assert loaded == DEFAULT_RERANK_OBJECTIVE_CONFIG
+
+
+def test_rerank_objective_config_loader_falls_back_when_config_invalid(tmp_path, monkeypatch) -> None:
+    invalid_path = tmp_path / "invalid_rerank_config.json"
+    invalid_path.write_text(
+        json.dumps(
+            {
+                "objective_name": "semantic_temporal_type",
+                "objective_version": "v_bad",
+                "coefficients": {
+                    "base_temporal_blend": -0.1
+                },
+                "confidence_thresholds": {},
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("TESTBOT_RERANK_OBJECTIVE_CONFIG", str(invalid_path))
+
+    loaded = load_rerank_objective_config(force_reload=True)
+
+    assert loaded == DEFAULT_RERANK_OBJECTIVE_CONFIG
+
+
+def test_rerank_scored_candidates_surface_objective_version(tmp_path, monkeypatch) -> None:
+    config_path = tmp_path / "rerank_objective.json"
+    config_path.write_text(
+        json.dumps(
+            {
+                "objective_name": "semantic_temporal_type",
+                "objective_version": "v2",
+                "coefficients": {
+                    "base_temporal_blend": 0.25,
+                    "gaussian_temporal_blend": 0.75,
+                    "reflection_type_prior": 0.7,
+                    "default_type_prior": 1.0,
+                },
+                "confidence_thresholds": {
+                    "top_final_score_min": 0.2,
+                    "min_margin_to_second": 0.0,
+                    "allow_ambiguity_override": False,
+                    "ambiguity_override_top_final_score_min": 0.6,
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("TESTBOT_RERANK_OBJECTIVE_CONFIG", str(config_path))
+    load_rerank_objective_config(force_reload=True)
+
+    now = arrow.get("2026-03-10T12:00:00+00:00")
+    outcome = rerank_docs_with_time_and_type_outcome(
+        [(_doc("winner", ts="2026-03-10T12:00:00+00:00", card_type="memory"), 0.8)],
+        now=now,
+        target=now,
+        sigma_seconds=3600,
+        exclude_doc_ids=set(),
+        exclude_source_ids=set(),
+    )
+
+    assert outcome.scored_candidates[0]["objective_version"] == "v2"
