@@ -7,6 +7,7 @@ def test_startup_status_prints_yellow_install_warning_when_ha_unavailable(capsys
     runtime = {
         "ollama_base_url": "http://localhost:11434",
         "ollama_model": "llama3.1:latest",
+        "ollama_embedding_model": "nomic-embed-text",
         "ha_api_url": "http://localhost:8123",
         "ha_satellite_entity_id": "assist_satellite.kitchen",
         "memory_store_backend": "in_memory",
@@ -18,6 +19,7 @@ def test_startup_status_prints_yellow_install_warning_when_ha_unavailable(capsys
         daemon_mode=False,
         runtime=runtime,
         ha_error="Missing HA_API_SECRET",
+        ollama_error=None,
         fallback_reason="satellite connection is unavailable",
     )
 
@@ -29,6 +31,7 @@ def test_startup_status_prints_green_install_warning_when_ha_available(capsys) -
     runtime = {
         "ollama_base_url": "http://localhost:11434",
         "ollama_model": "llama3.1:latest",
+        "ollama_embedding_model": "nomic-embed-text",
         "ha_api_url": "http://localhost:8123",
         "ha_satellite_entity_id": "assist_satellite.kitchen",
         "memory_store_backend": "in_memory",
@@ -40,6 +43,7 @@ def test_startup_status_prints_green_install_warning_when_ha_available(capsys) -
         daemon_mode=False,
         runtime=runtime,
         ha_error=None,
+        ollama_error=None,
     )
 
     output = capsys.readouterr().out
@@ -51,6 +55,7 @@ def test_startup_status_prints_degraded_cli_fallback_note_and_continuity_message
     runtime = {
         "ollama_base_url": "http://localhost:11434",
         "ollama_model": "llama3.1:latest",
+        "ollama_embedding_model": "nomic-embed-text",
         "ha_api_url": "http://localhost:8123",
         "ha_satellite_entity_id": "assist_satellite.kitchen",
         "memory_store_backend": "in_memory",
@@ -62,6 +67,7 @@ def test_startup_status_prints_degraded_cli_fallback_note_and_continuity_message
         daemon_mode=False,
         runtime=runtime,
         ha_error="Missing HA_API_SECRET",
+        ollama_error=None,
         fallback_reason="satellite connection is unavailable",
     )
 
@@ -74,6 +80,7 @@ def test_startup_status_includes_requested_and_effective_modes_for_fallback(caps
     runtime = {
         "ollama_base_url": "http://localhost:11434",
         "ollama_model": "llama3.1:latest",
+        "ollama_embedding_model": "nomic-embed-text",
         "ha_api_url": "http://localhost:8123",
         "ha_satellite_entity_id": "assist_satellite.kitchen",
         "memory_store_backend": "in_memory",
@@ -85,6 +92,7 @@ def test_startup_status_includes_requested_and_effective_modes_for_fallback(caps
         daemon_mode=False,
         runtime=runtime,
         ha_error="Missing HA_API_SECRET",
+        ollama_error=None,
         fallback_reason="satellite connection is unavailable",
     )
 
@@ -96,6 +104,7 @@ def test_startup_status_prints_active_memory_backend(capsys) -> None:
     runtime = {
         "ollama_base_url": "http://localhost:11434",
         "ollama_model": "llama3.1:latest",
+        "ollama_embedding_model": "nomic-embed-text",
         "ha_api_url": "http://localhost:8123",
         "ha_satellite_entity_id": "assist_satellite.kitchen",
         "memory_store_backend": "elasticsearch",
@@ -107,8 +116,34 @@ def test_startup_status_prints_active_memory_backend(capsys) -> None:
         daemon_mode=False,
         runtime=runtime,
         ha_error="Missing HA_API_SECRET",
+        ollama_error=None,
         fallback_reason="satellite connection is unavailable",
     )
 
     output = capsys.readouterr().out
     assert "Memory backend: elasticsearch" in output
+
+
+def test_startup_status_prints_ollama_unavailable_guidance(capsys) -> None:
+    runtime = {
+        "ollama_base_url": "http://localhost:11434",
+        "ollama_model": "llama3.1:latest",
+        "ollama_embedding_model": "nomic-embed-text",
+        "ha_api_url": "http://localhost:8123",
+        "ha_satellite_entity_id": "assist_satellite.kitchen",
+        "memory_store_backend": "in_memory",
+    }
+
+    _print_startup_status(
+        requested_mode="auto",
+        effective_mode="unavailable",
+        daemon_mode=True,
+        runtime=runtime,
+        ha_error=None,
+        ollama_error="Configured chat model 'llama3.1:latest' is not installed",
+    )
+
+    output = capsys.readouterr().out
+    assert "Ollama: unavailable" in output
+    assert "Install warning [RED]" in output
+    assert "pull required models" in output
