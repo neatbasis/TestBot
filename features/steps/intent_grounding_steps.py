@@ -30,7 +30,12 @@ def _build_base_state(*, user_input: str, final_answer: str, draft_answer: str, 
         draft_answer=draft_answer,
         final_answer=final_answer,
         claims=[f"INFERENCE: {final_answer}"],
-        invariant_decisions={"answer_contract_valid": True, "general_knowledge_contract_valid": True},
+        invariant_decisions={
+            "answer_contract_valid": True,
+            "general_knowledge_contract_valid": True,
+            "answer_mode": "memory-grounded",
+            "fallback_action": "ANSWER_GENERAL_KNOWLEDGE",
+        },
         alignment_decision={
             "objective_version": "2026-03-01.v1",
             "dimensions": {
@@ -38,6 +43,7 @@ def _build_base_state(*, user_input: str, final_answer: str, draft_answer: str, 
                 "safety_compliance_strictness": 1.0,
                 "response_utility": 1.0,
                 "cost_latency_budget": 1.0,
+                "provenance_transparency": 1.0,
             },
             "final_alignment_decision": "allow",
         },
@@ -133,7 +139,6 @@ def step_when_source_backed_knowing_question(context) -> None:
         score=0.92,
         ts="2026-03-10T09:00:00Z",
         card_type="source_evidence",
-        source_doc_id="calendar://work/event-42",
     )
     context.pipeline_state = replace(context.pipeline_state, reranked_hits=[hit])
     provenance, _claims, basis, memory_refs, source_refs, source_attr = build_provenance_metadata(
@@ -171,12 +176,29 @@ def step_when_source_confidence_insufficient(context) -> None:
         user_input="What happened in my calendar?",
         final_answer=FALLBACK_ANSWER,
         draft_answer=FALLBACK_ANSWER,
-        confidence_decision={"context_confident": False, "source_confidence": 0.35},
+        confidence_decision={"context_confident": True, "source_confidence": 0.35},
     )
     context.pipeline_state = replace(
         context.pipeline_state,
         provenance_types=[ProvenanceType.UNKNOWN],
         basis_statement="Trivial fallback/deny/clarification response with no substantive claim.",
+        alignment_decision={
+            "objective_version": "2026-03-01.v1",
+            "dimensions": {
+                "factual_grounding_reliability": 1.0,
+                "safety_compliance_strictness": 1.0,
+                "response_utility": 1.0,
+                "cost_latency_budget": 1.0,
+                "provenance_transparency": 1.0,
+            },
+            "final_alignment_decision": "fallback",
+        },
+        invariant_decisions={
+            "answer_contract_valid": True,
+            "general_knowledge_contract_valid": True,
+            "answer_mode": "dont-know",
+            "fallback_action": "ANSWER_UNKNOWN",
+        },
     )
     _run_contract_checks(context)
 

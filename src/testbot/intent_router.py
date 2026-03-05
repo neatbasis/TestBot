@@ -54,6 +54,7 @@ _TIME_QUERY_PATTERNS = (
 _KNOWLEDGE_CUES = (
     r"^\s*what is\b",
     r"^\s*who is\b",
+    r"^\s*when (is|was)\b",
     r"^\s*define\b",
     r"^\s*explain\b",
     r"\bhow does\b",

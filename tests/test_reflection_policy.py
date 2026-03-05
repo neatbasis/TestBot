@@ -44,3 +44,23 @@ def test_decide_fallback_action_policy_rows(
         )
         == expected
     )
+
+
+def test_low_source_confidence_without_memory_hit_returns_unknown_fallback() -> None:
+    assert decide_fallback_action(
+        intent="non_memory",
+        memory_hit=False,
+        ambiguity=False,
+        capability_status="ask_unavailable",
+        source_confidence=0.2,
+    ) == "ANSWER_UNKNOWN"
+
+
+def test_source_confidence_does_not_override_time_query() -> None:
+    assert decide_fallback_action(
+        intent="time_query",
+        memory_hit=False,
+        ambiguity=False,
+        capability_status="ask_unavailable",
+        source_confidence=0.1,
+    ) == "ANSWER_TIME"
