@@ -80,8 +80,9 @@ class ElasticsearchMemoryStore:
             return
         ops: list[dict] = []
         vectors = self._embeddings.embed_documents([d.page_content for d in documents])
-        for doc, vector in zip(documents, vectors, strict=True):
-            ops.append({"index": {"_index": self._index, "_id": doc.id}})
+        for index, (doc, vector) in enumerate(zip(documents, vectors, strict=True)):
+            normalized_id = self._normalize_document_id(doc, position=index)
+            ops.append({"index": {"_index": self._index, "_id": normalized_id}})
             ops.append(
                 {
                     "page_content": doc.page_content,
@@ -90,6 +91,16 @@ class ElasticsearchMemoryStore:
                 }
             )
         self._es.bulk(operations=ops, refresh=True)
+
+    def _normalize_document_id(self, doc: Document, *, position: int) -> str:
+        raw_id = doc.id
+        if raw_id is None:
+            raise ValueError(f"Document at position {position} has invalid id: None")
+
+        normalized_id = str(raw_id).strip()
+        if not normalized_id:
+            raise ValueError(f"Document at position {position} has invalid id: {raw_id!r}")
+        return normalized_id
 
     def similarity_search_with_score(self, query: str, k: int = 4) -> list[tuple[Document, float]]:
         query_vector = self._embeddings.embed_query(query)
