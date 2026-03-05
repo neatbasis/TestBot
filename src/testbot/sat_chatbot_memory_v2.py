@@ -19,7 +19,12 @@ from testbot.memory_cards import make_reflection_card, make_utterance_card, stor
 from testbot.pipeline_state import CandidateHit, PipelineState, ProvenanceType, append_pipeline_snapshot
 from testbot.promotion_policy import persist_promoted_context
 from testbot.reflection_policy import CapabilityStatus, decide_fallback_action
-from testbot.rerank import adaptive_sigma_fractional, rerank_docs_with_time_and_type_outcome
+from testbot.rerank import (
+    adaptive_sigma_fractional,
+    is_source_evidence_doc,
+    mix_source_evidence_with_memory_cards,
+    rerank_docs_with_time_and_type_outcome,
+)
 from testbot.stage_transitions import (
     append_transition_validation_log,
     validate_answer_post,
@@ -215,7 +220,8 @@ def encode_stage(llm: ChatOllama, state: PipelineState) -> PipelineState:
 
 
 def stage_retrieve(store: MemoryStore, state: PipelineState) -> tuple[PipelineState, list[tuple[Document, float]]]:
-    docs_and_scores = store.similarity_search_with_score(state.rewritten_query, k=12)
+    raw_docs_and_scores = store.similarity_search_with_score(state.rewritten_query, k=18)
+    docs_and_scores = mix_source_evidence_with_memory_cards(raw_docs_and_scores, top_k=12, source_quota=3)
     retrieval_candidates = [doc_to_candidate_hit(doc, score) for doc, score in docs_and_scores]
     return replace(state, retrieval_candidates=retrieval_candidates), docs_and_scores
 
@@ -352,7 +358,7 @@ def stage_answer(
 ) -> PipelineState:
     if _is_capabilities_help_request(state.user_input):
         final_answer = CAPABILITIES_HELP_ANSWER
-        provenance_types, claims, basis_statement, used_memory_refs = build_provenance_metadata(
+        provenance_types, claims, basis_statement, used_memory_refs, used_source_evidence_refs, source_evidence_attribution = build_provenance_metadata(
             final_answer=final_answer,
             hits=hits,
             chat_history=chat_history,
@@ -374,6 +380,8 @@ def stage_answer(
             claims=claims,
             provenance_types=provenance_types,
             used_memory_refs=used_memory_refs,
+            used_source_evidence_refs=used_source_evidence_refs,
+            source_evidence_attribution=source_evidence_attribution,
             basis_statement=basis_statement,
             invariant_decisions={
                 "response_contains_claims": False,
@@ -430,7 +438,7 @@ def stage_answer(
         else:
             final_answer = build_partial_memory_clarifier(hits)
 
-    provenance_types, claims, basis_statement, used_memory_refs = build_provenance_metadata(
+    provenance_types, claims, basis_statement, used_memory_refs, used_source_evidence_refs, source_evidence_attribution = build_provenance_metadata(
         final_answer=final_answer,
         hits=hits,
         chat_history=chat_history,
@@ -448,7 +456,7 @@ def stage_answer(
     )
     if final_answer != FALLBACK_ANSWER and not general_knowledge_contract_valid:
         final_answer = build_partial_memory_clarifier(hits)
-        provenance_types, claims, basis_statement, used_memory_refs = build_provenance_metadata(
+        provenance_types, claims, basis_statement, used_memory_refs, used_source_evidence_refs, source_evidence_attribution = build_provenance_metadata(
             final_answer=final_answer,
             hits=hits,
             chat_history=chat_history,
@@ -495,6 +503,8 @@ def stage_answer(
         claims=claims,
         provenance_types=provenance_types,
         used_memory_refs=used_memory_refs,
+        used_source_evidence_refs=used_source_evidence_refs,
+        source_evidence_attribution=source_evidence_attribution,
         basis_statement=basis_statement,
         invariant_decisions=invariant_decisions,
         alignment_decision=alignment_decision,
@@ -617,6 +627,8 @@ def extract_claims(text: str) -> list[str]:
 def collect_used_memory_refs(hits: list[Document]) -> list[str]:
     refs: list[str] = []
     for d in hits:
+        if is_source_evidence_doc(d):
+            continue
         doc_id = str(d.id or d.metadata.get("doc_id") or "").strip()
         if not doc_id:
             continue
@@ -625,27 +637,52 @@ def collect_used_memory_refs(hits: list[Document]) -> list[str]:
     return list(dict.fromkeys(refs))
 
 
+def collect_used_source_evidence_refs(hits: list[Document]) -> tuple[list[str], list[dict[str, str]]]:
+    refs: list[str] = []
+    attributions: list[dict[str, str]] = []
+    for d in hits:
+        if not is_source_evidence_doc(d):
+            continue
+        doc_id = str(d.id or d.metadata.get("doc_id") or "").strip()
+        if doc_id:
+            refs.append(doc_id)
+        attribution = {
+            "doc_id": doc_id,
+            "source_type": str(d.metadata.get("source_type") or ""),
+            "source_uri": str(d.metadata.get("source_uri") or ""),
+            "retrieved_at": str(d.metadata.get("retrieved_at") or ""),
+            "trust_tier": str(d.metadata.get("trust_tier") or ""),
+        }
+        attributions.append(attribution)
+    deduped_refs = list(dict.fromkeys(refs))
+    deduped_attributions = list({json.dumps(item, sort_keys=True): item for item in attributions}.values())
+    return deduped_refs, deduped_attributions
+
+
 def build_provenance_metadata(
     *,
     final_answer: str,
     hits: list[Document],
     chat_history: deque[ChatMsg],
     packed_history: PackedHistory,
-) -> tuple[list[ProvenanceType], list[str], str, list[str]]:
+) -> tuple[list[ProvenanceType], list[str], str, list[str], list[str], list[dict[str, str]]]:
     if not is_non_trivial_answer(final_answer):
         return (
             [ProvenanceType.UNKNOWN],
             [],
             "Trivial fallback/deny/clarification response with no substantive claim.",
             [],
+            [],
+            [],
         )
 
     used_memory_refs = collect_used_memory_refs(hits)
+    used_source_evidence_refs, source_evidence_attribution = collect_used_source_evidence_refs(hits)
     claims = [f"INFERENCE: {claim}" for claim in extract_claims(final_answer)]
     claims.extend(labeled_history_claims(packed_history))
     claims = claims[:8]
     provenance_types: list[ProvenanceType] = [ProvenanceType.INFERENCE]
-    if used_memory_refs:
+    if used_memory_refs or used_source_evidence_refs:
         provenance_types.append(ProvenanceType.MEMORY)
     else:
         provenance_types.append(ProvenanceType.GENERAL_KNOWLEDGE)
@@ -657,9 +694,18 @@ def build_provenance_metadata(
             "Answer synthesized from reranked memory context"
             + (" and recent chat history." if chat_history else ".")
         )
+    elif used_source_evidence_refs:
+        basis_statement = "Answer synthesized from reranked source evidence documents."
     else:
         basis_statement = "General-knowledge basis: no supporting memory references were retrieved."
-    return list(dict.fromkeys(provenance_types)), claims, basis_statement, used_memory_refs
+    return (
+        list(dict.fromkeys(provenance_types)),
+        claims,
+        basis_statement,
+        used_memory_refs,
+        used_source_evidence_refs,
+        source_evidence_attribution,
+    )
 
 def response_contains_claims(text: str) -> bool:
     normalized = (text or "").strip()
@@ -954,6 +1000,8 @@ def _run_chat_loop(
                 "claims": state.claims,
                 "provenance_types": [p.value for p in state.provenance_types],
                 "used_memory_refs": state.used_memory_refs,
+                "used_source_evidence_refs": state.used_source_evidence_refs,
+                "source_evidence_attribution": state.source_evidence_attribution,
                 "basis_statement": state.basis_statement,
             },
         )
@@ -984,6 +1032,8 @@ def _run_chat_loop(
                 "claims": state.claims,
                 "provenance_types": [p.value for p in state.provenance_types],
                 "used_memory_refs": state.used_memory_refs,
+                "used_source_evidence_refs": state.used_source_evidence_refs,
+                "source_evidence_attribution": state.source_evidence_attribution,
                 "basis_statement": state.basis_statement,
             },
         )
