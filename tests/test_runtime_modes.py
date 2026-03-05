@@ -35,6 +35,9 @@ def _patch_main_dependencies(monkeypatch, *, args, ha_error: str | None, calls: 
         "ollama_base_url": "http://localhost:11434",
         "ollama_model": "llama3.1:latest",
         "memory_near_tie_delta": 0.02,
+        "memory_store_mode": "inmemory",
+        "elasticsearch_url": "http://localhost:9200",
+        "elasticsearch_index": "testbot_memory_cards",
     }
 
     monkeypatch.setattr(runtime, "_parse_args", lambda _argv=None: args)
@@ -46,7 +49,7 @@ def _patch_main_dependencies(monkeypatch, *, args, ha_error: str | None, calls: 
         monkeypatch.setattr(runtime, "_print_startup_status", lambda **_kwargs: None)
     monkeypatch.setattr(runtime, "ChatOllama", lambda *a, **k: object())
     monkeypatch.setattr(runtime, "OllamaEmbeddings", lambda *a, **k: object())
-    monkeypatch.setattr(runtime, "InMemoryVectorStore", lambda *_args, **_kwargs: object())
+    monkeypatch.setattr(runtime, "build_memory_store", lambda *_args, **_kwargs: object())
     monkeypatch.setattr(runtime, "append_session_log", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(runtime, "_run_cli_mode", lambda **_kwargs: calls.__setitem__("cli", calls["cli"] + 1))
     monkeypatch.setattr(runtime, "_run_satellite_mode", lambda **_kwargs: calls.__setitem__("satellite", calls["satellite"] + 1))

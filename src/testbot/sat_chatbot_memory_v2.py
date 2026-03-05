@@ -41,7 +41,7 @@ from testbot.history_packer import PackedHistory, labeled_history_claims, pack_c
 
 from langchain_core.documents import Document
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.vectorstores import InMemoryVectorStore
+from testbot.vector_store import MemoryStore, build_memory_store
 from langchain_ollama import ChatOllama, OllamaEmbeddings
 
 
@@ -103,6 +103,9 @@ def _read_runtime_env() -> dict[str, object]:
         "ollama_base_url": os.getenv("OLLAMA_BASE_URL") or os.getenv("OLLAMA_HOST") or "http://localhost:11434",
         "ollama_model": os.getenv("OLLAMA_MODEL", "llama3.1:latest"),
         "memory_near_tie_delta": float(os.getenv("MEMORY_NEAR_TIE_DELTA", "0.02")),
+        "memory_store_mode": os.getenv("MEMORY_STORE_MODE", "inmemory"),
+        "elasticsearch_url": os.getenv("ELASTICSEARCH_URL", "http://localhost:9200"),
+        "elasticsearch_index": os.getenv("ELASTICSEARCH_INDEX", "testbot_memory_cards"),
     }
 
 
@@ -156,6 +159,7 @@ def _print_startup_status(
     else:
         print(f"Selected mode: {effective_mode} (requested={requested_mode}, daemon={daemon_mode})")
     print(f"Ollama endpoint: {runtime['ollama_base_url']} model={runtime['ollama_model']}")
+    print(f"Memory store: {runtime['memory_store_mode']}")
     if ha_error:
         print(f"Home Assistant: unavailable ({ha_error})")
         print(f"Install warning [YELLOW]: Home Assistant capability is degraded; configure HA_API_SECRET and HA_SATELLITE_ENTITY_ID to enable satellite mode.")
@@ -202,7 +206,7 @@ def encode_stage(llm: ChatOllama, state: PipelineState) -> PipelineState:
     return stage_rewrite_query(llm, state)
 
 
-def stage_retrieve(store: InMemoryVectorStore, state: PipelineState) -> tuple[PipelineState, list[tuple[Document, float]]]:
+def stage_retrieve(store: MemoryStore, state: PipelineState) -> tuple[PipelineState, list[tuple[Document, float]]]:
     docs_and_scores = store.similarity_search_with_score(state.rewritten_query, k=12)
     retrieval_candidates = [doc_to_candidate_hit(doc, score) for doc, score in docs_and_scores]
     return replace(state, retrieval_candidates=retrieval_candidates), docs_and_scores
@@ -358,6 +362,13 @@ def stage_answer(
             now=clock.now(),
             last_user_message_ts=state.last_user_message_ts,
             timezone=timezone,
+        )
+    elif re.search(r"\b(what can you do|your capabilities|help options)\b", state.user_input.lower()):
+        draft_answer = ""
+        final_answer = (
+            "I can recall memory-grounded details, explain concepts in general terms, ask clarifying questions "
+            "when memory is insufficient, answer relative time questions across turns, and route Home Assistant asks "
+            "when that capability is available."
         )
     else:
         draft_answer = (llm.invoke(msgs).content or "").strip()
@@ -700,7 +711,7 @@ def evaluate_alignment_decision(
 def _run_chat_loop(
     *,
     llm: ChatOllama,
-    store: InMemoryVectorStore,
+    store: MemoryStore,
     chat_history: deque[ChatMsg],
     near_tie_delta: float,
     io_channel: str,
@@ -976,7 +987,7 @@ def _run_chat_loop(
         )
 
 
-def _run_cli_mode(*, llm: ChatOllama, store: InMemoryVectorStore, chat_history: deque[ChatMsg], near_tie_delta: float, clock: Clock) -> None:
+def _run_cli_mode(*, llm: ChatOllama, store: MemoryStore, chat_history: deque[ChatMsg], near_tie_delta: float, clock: Clock) -> None:
     print("CLI chat ready. Ask memory-grounded questions; type 'stop' to exit.")
 
     def _read() -> str | None:
@@ -1004,7 +1015,7 @@ def _run_cli_mode(*, llm: ChatOllama, store: InMemoryVectorStore, chat_history: 
 def _run_satellite_mode(
     *,
     llm: ChatOllama,
-    store: InMemoryVectorStore,
+    store: MemoryStore,
     chat_history: deque[ChatMsg],
     near_tie_delta: float,
     api_url: str,
@@ -1055,7 +1066,12 @@ def main(argv: list[str] | None = None) -> None:
 
     llm = ChatOllama(model=str(runtime["ollama_model"]), base_url=str(runtime["ollama_base_url"]), temperature=0.0)
     embeddings = OllamaEmbeddings(model="nomic-embed-text", base_url=str(runtime["ollama_base_url"]))
-    store = InMemoryVectorStore(embeddings)
+    store = build_memory_store(
+        embeddings=embeddings,
+        mode=str(runtime["memory_store_mode"]),
+        elasticsearch_url=str(runtime["elasticsearch_url"]),
+        elasticsearch_index=str(runtime["elasticsearch_index"]),
+    )
     chat_history: deque[ChatMsg] = deque(maxlen=10)
     clock = SystemClock()
 
