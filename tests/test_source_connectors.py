@@ -60,7 +60,7 @@ def test_fixture_connector_fetch_normalize_and_cursor_lifecycle() -> None:
     assert connector.fetch(cursor=end_cursor, limit=5) == []
 
 
-def test_fixture_connector_fetch_returns_empty_for_non_positive_limits() -> None:
+def test_fixture_connector_fetch_returns_empty_for_zero_limit() -> None:
     connector = FixtureSourceConnector(
         source_type="calendar",
         fixtures=(
@@ -75,7 +75,25 @@ def test_fixture_connector_fetch_returns_empty_for_non_positive_limits() -> None
         ),
     )
 
+
     assert connector.fetch(cursor=None, limit=0) == []
+
+
+def test_fixture_connector_fetch_returns_empty_for_negative_limit() -> None:
+    connector = FixtureSourceConnector(
+        source_type="calendar",
+        fixtures=(
+            SourceItem(
+                item_id="evt-1",
+                content="Morning sync at 09:30.",
+                source_uri="calendar://team/evt-1",
+                retrieved_at="2026-03-11T09:00:00Z",
+                trust_tier="verified",
+                metadata={"ts": "2026-03-11T09:30:00Z"},
+            ),
+        ),
+    )
+
     assert connector.fetch(cursor=None, limit=-3) == []
 
 
