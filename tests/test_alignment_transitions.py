@@ -44,24 +44,24 @@ def test_validate_answer_post_rejects_missing_alignment_dimension() -> None:
     assert "alignment_dimensions_present" in result.failures
 
 
-def test_validate_answer_post_allows_fallback_when_factual_grounding_fails() -> None:
-    invariant_decisions = {**_base_state().invariant_decisions, "answer_contract_valid": True, "answer_mode": "dont-know"}
+def test_validate_answer_post_allows_progressive_clarifier_when_factual_grounding_fails() -> None:
+    invariant_decisions = {**_base_state().invariant_decisions, "answer_contract_valid": True, "answer_mode": "clarify"}
     alignment_decision = {
         "objective_version": "2026-03-04.v2",
         "dimensions": {
             "factual_grounding_reliability": 0.0,
             "safety_compliance_strictness": 1.0,
-            "response_utility": 0.4,
+            "response_utility": 0.7,
             "cost_latency_budget": 1.0,
             "provenance_transparency": 1.0,
         },
-        "final_alignment_decision": "fallback",
+        "final_alignment_decision": "allow",
     }
     state = replace(
         _base_state(),
         confidence_decision={"context_confident": False},
         draft_answer="",
-        final_answer=FALLBACK_ANSWER,
+        final_answer="Can you clarify which memory and time window you mean?",
         invariant_decisions=invariant_decisions,
         alignment_decision=alignment_decision,
     )

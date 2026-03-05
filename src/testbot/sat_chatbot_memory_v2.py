@@ -65,6 +65,11 @@ FALLBACK_ANSWER = "I don't know from memory."
 DENY_ANSWER = "I can't comply with that request."
 CLARIFY_ANSWER = "Can you clarify which memory and time window you mean?"
 ROUTE_TO_ASK_ANSWER = "I can disambiguate this with a quick follow-up question."
+ASSIST_ALTERNATIVES_ANSWER = (
+    "I don't have enough reliable memory to answer directly. "
+    "I can either help you reconstruct the timeline from what you remember, "
+    "or suggest where to check next for the missing detail."
+)
 GENERAL_KNOWLEDGE_MARKER_PREFIX = "General definition (not from your memory):"
 GENERAL_KNOWLEDGE_CONFIDENCE_MIN = 0.85
 GENERAL_KNOWLEDGE_SUPPORT_MIN = 2
@@ -268,9 +273,24 @@ def _user_followup_signal_proxy(*, final_answer: str, fallback_action: str, ambi
         return 1.0
     if fallback_action in {"ASK_CLARIFYING_QUESTION", "ROUTE_TO_ASK"}:
         return 0.9
-    if fallback_action == "EXACT_MEMORY_FALLBACK":
+    if fallback_action == "OFFER_CAPABILITY_ALTERNATIVES":
         return round(max(0.2, ambiguity_score), 4)
     return round(max(0.0, ambiguity_score * 0.5), 4)
+
+
+def build_partial_memory_clarifier(hits: list[Document], *, max_items: int = 2) -> str:
+    snippets: list[str] = []
+    for doc in hits[:max_items]:
+        snippet = (doc.page_content or "").strip()
+        if snippet:
+            snippets.append(snippet[:80])
+    if snippets:
+        joined = "; ".join(snippets)
+        return (
+            f"I found related memory fragments ({joined}), but not enough to answer precisely. "
+            "Which person, event, or time window should I focus on?"
+        )
+    return CLARIFY_ANSWER
 
 
 def stage_answer(
@@ -301,18 +321,18 @@ def stage_answer(
         final_answer = ROUTE_TO_ASK_ANSWER
     elif fallback_action == "ASK_CLARIFYING_QUESTION":
         draft_answer = ""
-        final_answer = CLARIFY_ANSWER
-    elif fallback_action == "EXACT_MEMORY_FALLBACK":
+        final_answer = build_partial_memory_clarifier(hits)
+    elif fallback_action == "OFFER_CAPABILITY_ALTERNATIVES":
         draft_answer = ""
-        final_answer = FALLBACK_ANSWER
+        final_answer = ASSIST_ALTERNATIVES_ANSWER
     else:
         draft_answer = (llm.invoke(msgs).content or "").strip()
         if not draft_answer:
-            final_answer = FALLBACK_ANSWER
+            final_answer = ASSIST_ALTERNATIVES_ANSWER
         elif validate_answer_contract(draft_answer):
             final_answer = draft_answer
         else:
-            final_answer = FALLBACK_ANSWER
+            final_answer = build_partial_memory_clarifier(hits)
 
     provenance_types, claims, basis_statement, used_memory_refs = build_provenance_metadata(
         final_answer=final_answer,
@@ -327,7 +347,7 @@ def stage_answer(
         confidence_decision=state.confidence_decision,
     )
     if final_answer != FALLBACK_ANSWER and not general_knowledge_contract_valid:
-        final_answer = FALLBACK_ANSWER
+        final_answer = build_partial_memory_clarifier(hits)
         provenance_types, claims, basis_statement, used_memory_refs = build_provenance_metadata(
             final_answer=final_answer,
             hits=hits,
@@ -356,12 +376,12 @@ def stage_answer(
             "deny"
             if final_answer == DENY_ANSWER
             else (
-                "dont-know"
-                if final_answer == FALLBACK_ANSWER
+                "clarify"
+                if final_answer in {CLARIFY_ANSWER, ROUTE_TO_ASK_ANSWER}
                 else (
-                    "clarify"
-                    if final_answer in {CLARIFY_ANSWER, ROUTE_TO_ASK_ANSWER}
-                    else "memory-grounded"
+                    "assist"
+                    if final_answer == ASSIST_ALTERNATIVES_ANSWER
+                    else ("dont-know" if final_answer == FALLBACK_ANSWER else "memory-grounded")
                 )
             )
         ),
@@ -432,9 +452,10 @@ ANSWER_PROMPT = ChatPromptTemplate.from_messages(
             "system",
             "You are a careful assistant.\n"
             "Use ONLY the provided memory context and recent chat.\n"
-            "If the memory does not contain the answer, say: \"I don't know from memory.\"\n"
-            "For any factual claim, include at least one cited memory with both doc_id and ts.\n"
-            "If confidence in memory context is low or context is insufficient, respond EXACTLY: \"I don't know from memory.\"\n\n"
+            "If memory is empty or low-confidence, ask one targeted clarifying question or offer at least two capability-based alternatives.\n"
+            "If memory is partial or ambiguous, provide a short user-facing summary and one bridging clarifier.\n"
+            "Keep the exact phrase \"I don't know from memory.\" only for explicit deny/safety-policy cases.\n"
+            "For any factual claim, include at least one cited memory with both doc_id and ts.\n\n"
             "Recent chat:\n{chat_history}\n\n"
             "Memory context:\n{context}\n",
         ),
@@ -482,6 +503,7 @@ def is_non_trivial_answer(text: str) -> bool:
         DENY_ANSWER,
         CLARIFY_ANSWER,
         ROUTE_TO_ASK_ANSWER,
+        ASSIST_ALTERNATIVES_ANSWER,
     }
 
 
@@ -543,7 +565,7 @@ def response_contains_claims(text: str) -> bool:
     normalized = (text or "").strip()
     if not normalized:
         return False
-    if normalized == "I don't know from memory.":
+    if normalized in {FALLBACK_ANSWER, CLARIFY_ANSWER, ROUTE_TO_ASK_ANSWER, ASSIST_ALTERNATIVES_ANSWER}:
         return False
     # A simple heuristic: if there is sentence-like prose, treat it as factual/semantic claims.
     return bool(re.search(r"[A-Za-z0-9].{8,}", normalized))

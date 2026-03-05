@@ -10,7 +10,7 @@ FallbackAction = Literal[
     "ANSWER_GENERAL_KNOWLEDGE",
     "ASK_CLARIFYING_QUESTION",
     "ROUTE_TO_ASK",
-    "EXACT_MEMORY_FALLBACK",
+    "OFFER_CAPABILITY_ALTERNATIVES",
 ]
 
 
@@ -21,12 +21,12 @@ def decide_fallback_action(
     ambiguity: bool,
     capability_status: CapabilityStatus,
 ) -> FallbackAction:
-    """Return the exact fallback action for the current policy row.
+    """Return the fallback action for the current policy row.
 
     Policy intent:
     - Non-memory intents should proceed with the normal answer path.
     - Memory intents with ambiguity should disambiguate, preferring Ask when available.
-    - Memory intents without an acceptable memory hit must emit exact memory fallback.
+    - Memory intents without an acceptable memory hit should move the user forward with alternatives.
     - Memory intents with a clean memory hit proceed with the normal answer path.
     """
 
@@ -39,6 +39,6 @@ def decide_fallback_action(
         return "ASK_CLARIFYING_QUESTION"
 
     if not memory_hit:
-        return "EXACT_MEMORY_FALLBACK"
+        return "OFFER_CAPABILITY_ALTERNATIVES"
 
     return "ANSWER_GENERAL_KNOWLEDGE"
