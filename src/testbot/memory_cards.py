@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 import arrow
 from langchain_core.documents import Document
-from langchain_core.vectorstores import InMemoryVectorStore
+from testbot.vector_store import MemoryStore
 
 
 @dataclass(frozen=True)
@@ -60,7 +60,7 @@ def make_reflection_card(*, ts_iso: str, about: str, source_doc_id: str, doc_id:
     )
 
 
-def store_doc(store: InMemoryVectorStore, *, doc_id: str, content: str, metadata: dict) -> None:
+def store_doc(store: MemoryStore, *, doc_id: str, content: str, metadata: dict) -> None:
     """
     Newer LangChain core: attach the id directly on Document.
     """
