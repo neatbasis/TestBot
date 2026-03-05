@@ -64,10 +64,12 @@ class FixtureSourceConnector:
         return cls(source_type=source_type, fixtures=items)
 
     def fetch(self, *, cursor: str | None, limit: int = 50) -> list[SourceItem]:
+        if limit <= 0:
+            return []
         start = int(cursor or "0")
         if start >= len(self.fixtures):
             return []
-        return list(self.fixtures[start : start + max(1, limit)])
+        return list(self.fixtures[start : start + limit])
 
     def normalize(self, item: SourceItem) -> Document:
         metadata = {
