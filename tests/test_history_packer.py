@@ -52,3 +52,36 @@ def test_pack_chat_history_is_deterministic_for_same_transcript() -> None:
     assert first.to_dict() == second.to_dict()
     assert render_packed_history(first) == render_packed_history(second)
     assert labeled_history_claims(first) == labeled_history_claims(second)
+
+
+def test_extract_constraints_true_positives() -> None:
+    transcript = [
+        {"role": "user", "content": "You must include citations."},
+        {"role": "user", "content": "Do not guess."},
+    ]
+
+    packed = pack_chat_history(transcript)
+
+    assert packed.constraints == ["You must include citations.", "Do not guess."]
+
+
+def test_extract_constraints_avoids_substring_false_positives() -> None:
+    transcript = [
+        {"role": "user", "content": "I have shoulder pain."},
+        {"role": "user", "content": "Mustard is in the fridge."},
+    ]
+
+    packed = pack_chat_history(transcript)
+
+    assert packed.constraints == []
+
+
+def test_extract_constraints_handles_punctuation_and_case_variants() -> None:
+    transcript = [
+        {"role": "user", "content": "DON’T improvise."},
+        {"role": "user", "content": "Use AT LEAST two examples."},
+    ]
+
+    packed = pack_chat_history(transcript)
+
+    assert packed.constraints == ["DON’T improvise.", "Use AT LEAST two examples."]
