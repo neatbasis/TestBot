@@ -2,7 +2,7 @@
 
 - **ID:** ISSUE-0006
 - **Title:** Operationalize `docs/issues/` and `docs/issues.md` as governed project infrastructure
-- **Status:** open
+- **Status:** resolved
 - **Severity:** red
 - **Owner:** Sebastian Mäki (@NeatBasis, Release Manager & Process Adoption Lead)
 - **Created:** 2026-03-04
@@ -51,5 +51,5 @@ A new in-repo issue system was introduced and must be formalized to avoid becomi
 
 ## Closure Notes
 
-- _Pending adoption._
+- Resolved by operationalizing validator-backed adoption checks in the merge gate and contributor/testing docs so governance evidence format matches enforced commands and failure modes.
 

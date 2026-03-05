@@ -45,6 +45,11 @@ def parse_args() -> argparse.Namespace:
         help="Optional path to write the JSON summary.",
     )
     parser.add_argument(
+        "--base-ref",
+        default="origin/main",
+        help="Git base ref passed to governance validators (default: origin/main).",
+    )
+    parser.add_argument(
         "--replay-report",
         action="store_true",
         help="Include the optional replay KPI drift report command.",
@@ -52,7 +57,7 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def build_checks(*, replay_report: bool = False) -> list[GateCheck]:
+def build_checks(*, replay_report: bool = False, base_ref: str = "origin/main") -> list[GateCheck]:
     checks = [
         GateCheck(name="behave", command=[sys.executable, "-m", "behave"]),
         GateCheck(
@@ -75,7 +80,17 @@ def build_checks(*, replay_report: bool = False) -> list[GateCheck]:
                 "scripts/validate_issue_links.py",
                 "--all-issue-files",
                 "--base-ref",
-                "origin/main",
+                base_ref,
+            ],
+        ),
+        GateCheck(
+            name="validate_issues",
+            command=[
+                sys.executable,
+                "scripts/validate_issues.py",
+                "--all-issue-files",
+                "--base-ref",
+                base_ref,
             ],
         ),
     ]
@@ -159,7 +174,7 @@ def summarize(results: Sequence[CheckResult], continue_on_failure: bool) -> dict
 
 def main() -> int:
     args = parse_args()
-    checks = build_checks(replay_report=args.replay_report)
+    checks = build_checks(replay_report=args.replay_report, base_ref=args.base_ref)
     results, exit_code = run_gate(checks=checks, continue_on_failure=args.continue_on_failure)
     summary = summarize(results=results, continue_on_failure=args.continue_on_failure)
 

@@ -14,11 +14,13 @@ Use this note under each red-tag issue entry whenever status changes or during s
 
 ## Active
 
-- ISSUE-0008 — **Intent-grounding gate failures block merge readiness**: Canonical merge gate currently fails at BDD intent-grounding scenarios, so knowing/unknowing behavior is not merge-safe until deterministic fixes land.
 - ISSUE-0007 — **Behave gate not enforced in PR validation**: Mandatory BDD gate execution can be skipped when dev dependencies are missing, allowing invariant regressions to pass review until later validation.
-- ISSUE-0001 — **Establish measurable and trackable in-repo issue governance**: Governance remains non-canonical and weakly auditable, risking inconsistent issue quality and unresolved blockers.
-- ISSUE-0006 — **Operationalize `docs/issues/` and `docs/issues.md` as governed project infrastructure**: Adoption is not yet enforced, risking fragmented tracking and non-measurable governance behavior.
 
 ## Resolved
+
+- ISSUE-0008 — **Intent-grounding gate failures block merge readiness**: Canonical merge gate failures were remediated with deterministic intent-routing/reflection/provenance fixes and regression coverage.
+
+- ISSUE-0001 — **Establish measurable and trackable in-repo issue governance**: Governance is now machine-enforced via canonical validators in the release gate, with auditable failure modes for missing linkage and incomplete issue records.
+- ISSUE-0006 — **Operationalize `docs/issues/` and `docs/issues.md` as governed project infrastructure**: Contributor/test guidance and merge validation now enforce the same governance evidence contract, closing the adoption gap.
 
 - ISSUE-0004 — **BDD policy declared but not executable in repository**: Executable baseline BDD coverage now exists, reducing policy-to-practice drift risk to ongoing contract maintenance.

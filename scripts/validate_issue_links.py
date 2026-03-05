@@ -23,6 +23,29 @@ RED_TAG_ITEM_PATTERN = re.compile(r"\b(ISSUE-\d{4})\b")
 STATUS_OPENISH = {"open", "in_progress", "blocked"}
 STATUS_CLOSEDISH = {"resolved", "closed"}
 PLACEHOLDER_VALUES = {"", "tbd", "none", "unassigned", "n/a", "na", "-"}
+REQUIRED_ENUMS: dict[str, set[str]] = {
+    "Status": {"open", "in_progress", "blocked", "resolved", "closed"},
+    "Severity": {"red", "amber", "green"},
+}
+REQUIRED_FIELD_VALUES = [
+    "ID",
+    "Title",
+    "Status",
+    "Severity",
+    "Owner",
+    "Created",
+    "Target Sprint",
+    "Principle Alignment",
+]
+REQUIRED_SECTION_BODIES = [
+    "Problem Statement",
+    "Evidence",
+    "Impact",
+    "Acceptance Criteria",
+    "Work Plan",
+    "Verification",
+    "Closure Notes",
+]
 
 
 class ValidationFailure(NamedTuple):
@@ -125,6 +148,28 @@ def parse_issue_fields(issue_text: str) -> dict[str, str]:
     return fields
 
 
+def parse_section_bodies(issue_text: str) -> dict[str, str]:
+    sections: dict[str, str] = {}
+    current: str | None = None
+    body_lines: list[str] = []
+
+    for line in issue_text.splitlines():
+        heading = re.match(r"^##\s+(.+?)\s*$", line)
+        if heading:
+            if current is not None:
+                sections[current] = "\n".join(body_lines).strip()
+            current = heading.group(1).strip()
+            body_lines = []
+            continue
+
+        if current is not None:
+            body_lines.append(line)
+
+    if current is not None:
+        sections[current] = "\n".join(body_lines).strip()
+    return sections
+
+
 def contains_schema_section(issue_text: str, section_name: str) -> bool:
     label = re.compile(rf"^[-*]\s+\*\*{re.escape(section_name)}:\*\*\s*.+$", re.IGNORECASE | re.MULTILINE)
     heading = re.compile(rf"^##\s+{re.escape(section_name)}\s*$", re.IGNORECASE | re.MULTILINE)
@@ -195,6 +240,7 @@ def validate_issue_schema(
         rel = issue_file.relative_to(REPO_ROOT)
         text = issue_file.read_text(encoding="utf-8")
         fields = parse_issue_fields(text)
+        sections = parse_section_bodies(text)
         parsed[issue_file.name] = fields
 
         missing_sections = [s for s in canonical_sections if not contains_schema_section(text, s)]
@@ -204,16 +250,56 @@ def validate_issue_schema(
                 "SCHEMA",
                 f"{rel}: missing canonical schema fields/sections: {', '.join(missing_sections)}",
                 "Update the issue document to include every required section from docs/issues.md.",
-            )
+                )
 
-        if fields.get("ID"):
-            expected_id = issue_file.name.split("-", maxsplit=2)
-            expected_issue = "-".join(expected_id[:2]) if len(expected_id) >= 2 else ""
-            if fields["ID"] != expected_issue:
+        for field_name in REQUIRED_FIELD_VALUES:
+            value = fields.get(field_name, "")
+            if is_placeholder(value):
                 record_failure(
                     failures,
                     "SCHEMA",
-                    f"{rel}: ID field '{fields['ID']}' does not match filename issue id '{expected_issue}'.",
+                    f"{rel}: required canonical field '{field_name}' is missing or placeholder.",
+                    f"Set **{field_name}** to a concrete non-placeholder value.",
+                )
+
+        for enum_field, allowed_values in REQUIRED_ENUMS.items():
+            raw_value = fields.get(enum_field, "")
+            normalized = raw_value.strip().lower()
+            if normalized and normalized not in allowed_values:
+                record_failure(
+                    failures,
+                    "SCHEMA",
+                    f"{rel}: field '{enum_field}' has invalid value '{raw_value}'.",
+                    f"Use one of: {', '.join(sorted(allowed_values))}.",
+                )
+
+        issue_id = fields.get("ID", "")
+        if issue_id and not ISSUE_ID_PATTERN.fullmatch(issue_id):
+            record_failure(
+                failures,
+                "SCHEMA",
+                f"{rel}: ID field '{issue_id}' is not in ISSUE-XXXX format.",
+                "Set **ID** to an ISSUE-XXXX identifier.",
+            )
+
+        for section_name in REQUIRED_SECTION_BODIES:
+            body = sections.get(section_name, "")
+            if is_placeholder(body):
+                record_failure(
+                    failures,
+                    "SCHEMA",
+                    f"{rel}: section '{section_name}' is empty or placeholder.",
+                    f"Add concrete content under ## {section_name}.",
+                )
+
+        if issue_id:
+            expected_id = issue_file.name.split("-", maxsplit=2)
+            expected_issue = "-".join(expected_id[:2]) if len(expected_id) >= 2 else ""
+            if issue_id != expected_issue:
+                record_failure(
+                    failures,
+                    "SCHEMA",
+                    f"{rel}: ID field '{issue_id}' does not match filename issue id '{expected_issue}'.",
                     "Rename the file or fix the **ID** field so both use the same ISSUE-XXXX value.",
                 )
     return parsed

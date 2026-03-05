@@ -3,7 +3,7 @@
 - **ID:** ISSUE-0008
 - **Title:** Intent-grounding gate failures block merge readiness
 - **Status:** closed
-- **Severity:** resolved
+- **Severity:** red
 - **Owner:** platform-qa
 - **Created:** 2026-03-05
 - **Target Sprint:** Sprint 1

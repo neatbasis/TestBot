@@ -83,6 +83,7 @@ For non-live changes, this is the expected offline/deterministic contributor gat
 3. `pytest -m "not live_smoke"`
 4. `pytest tests/test_eval_runtime_parity.py`
 5. `python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main`
+6. `python scripts/validate_issues.py --all-issue-files --base-ref origin/main`
 
 Default behavior is fail-closed (stop on first failure). Use `--continue-on-failure` to run every check and still exit non-zero if any check fails.
 
@@ -92,7 +93,8 @@ Default behavior is fail-closed (stop on first failure). Use `--continue-on-fail
 | BDD acceptance (`behave`) | `python -m behave` _(requires `pip install -e .[dev]` first)_ | Python dev extras (`behave`) and local deterministic fixtures | **Required (merge gate)** | ~10-60s for current feature set | Exit code `0`; no failed/undefined steps; acceptance scenarios for changed behavior pass. |
 | Deterministic unit/component (`pytest`) | `python -m pytest -m "not live_smoke"` | Python dev extras (`pytest`); no network or external services | **Required (merge gate)** | ~5-30s for fast deterministic scope | Exit code `0`; no flaky network-bound failures; logic and wiring tests for changed code pass. |
 | Eval/runtime parity check (`pytest`) | `python -m pytest tests/test_eval_runtime_parity.py` | Python dev extras (`pytest`) and fixed fixtures (`eval/cases.jsonl`, `tests/fixtures/candidate_sets.jsonl`) | **Required (merge gate, deterministic)** | ~1-5s | Exit code `0`; runtime path scoring and eval adapter path stay aligned for ordering, top-1, and fallback intent decisions. |
-| Governance / issue linkage checks | `python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main` | Local git metadata + docs/issues files | **Required (merge gate)** | ~1-5s | Exit code `0`; non-trivial PR/commit metadata include `ISSUE-XXXX`; red-severity ownership/sprint/status and canonical issue schema checks pass. |
+| Governance / issue linkage checks | `python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main` | Local git metadata + docs/issues files | **Required (merge gate)** | ~1-5s | Exit code `0`; non-trivial PR/commit metadata include `ISSUE-XXXX`; canonical fields are non-placeholder; required issue section bodies are non-empty; red-severity ownership/sprint/status and RED_TAG consistency checks pass. |
+| Policy compatibility checks | `python scripts/validate_issues.py --all-issue-files --base-ref origin/main` | Local git metadata + docs/issues files | **Required (merge gate)** | ~1-5s | Exit code `0`; compatibility validator reports no missing canonical sections and no red-tag owner/sprint gaps. |
 | Optional live smoke profile | `pytest -m live_smoke` | Reachable Home Assistant + Ollama endpoints and any required env vars/secrets | **Optional (post-merge/manual gate)** | ~1-5 min depending on services | Exit code `0`; no infra/auth/connectivity errors; end-to-end smoke assertions pass. |
 
 ### Dependency policy for test tooling
@@ -149,6 +151,7 @@ Run governance and issue-linkage checks:
 
 ```bash
 python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main
+python scripts/validate_issues.py --all-issue-files --base-ref origin/main
 ```
 
 

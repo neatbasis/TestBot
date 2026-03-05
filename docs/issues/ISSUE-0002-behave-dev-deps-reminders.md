@@ -4,7 +4,7 @@
 - **Title:** Repeated reminders to install `behave` and dev dependencies
 - **Status:** closed
 - **Severity:** amber
-- **Owner:** unassigned
+- **Owner:** Sebastian Mäki (@NeatBasis, QA Enablement)
 - **Created:** 2026-03-04
 - **Target Sprint:** Sprint 1
 - **Principle Alignment:** deterministic, ci-enforced, user-centric

@@ -4,7 +4,7 @@
 - **Title:** README repository layout drift vs actual tree
 - **Status:** resolved
 - **Severity:** amber
-- **Owner:** unassigned
+- **Owner:** Sebastian Mäki (@NeatBasis, Documentation Maintainer)
 - **Created:** 2026-03-04
 - **Target Sprint:** Sprint 2
 - **Principle Alignment:** traceable, user-centric

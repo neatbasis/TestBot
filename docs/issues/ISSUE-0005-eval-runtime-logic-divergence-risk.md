@@ -4,7 +4,7 @@
 - **Title:** Eval script logic divergence risk from runtime logic
 - **Status:** open
 - **Severity:** amber
-- **Owner:** unassigned
+- **Owner:** Sebastian Mäki (@NeatBasis, Runtime Quality Lead)
 - **Created:** 2026-03-04
 - **Target Sprint:** Sprint 3
 - **Principle Alignment:** deterministic, traceable, invariant-driven
