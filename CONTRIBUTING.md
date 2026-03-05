@@ -39,10 +39,10 @@ python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main
 
 For any **non-trivial behavior change** or **architecture-impacting change**:
 
-- PR metadata must include at least one issue reference in the form `ISSUE-XXXX`.
-- Non-trivial commit metadata must include at least one issue reference in the form `ISSUE-XXXX`.
+- PR metadata (title/body text) with non-trivial content must include at least one issue reference token matching `ISSUE-XXXX`.
+- Non-trivial commit metadata must include at least one issue reference token matching `ISSUE-XXXX`.
 - If an issue has `Severity: red`, it must have a concrete `Owner`, concrete `Target Sprint`, and status-consistent placement in `docs/issues/RED_TAG.md` (`Active` for `open/in_progress/blocked`, `Resolved` for `resolved/closed`).
-- New/updated issue files in `docs/issues/` must conform to the canonical schema declared in `docs/issues.md`.
+- New/updated issue files in `docs/issues/` must conform to the canonical schema declared in `docs/issues.md`, with all required canonical fields non-placeholder and required section bodies non-empty.
 
 Failure mode when missing linkage or schema consistency:
 

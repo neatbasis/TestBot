@@ -2,7 +2,7 @@
 
 - **ID:** ISSUE-0001
 - **Title:** Establish measurable and trackable in-repo issue governance
-- **Status:** open
+- **Status:** resolved
 - **Severity:** red
 - **Owner:** Sebastian Mäki (@NeatBasis, Engineering Manager & Docs Governance Lead)
 - **Created:** 2026-03-04
@@ -53,5 +53,5 @@ The project lacks a canonical, measurable, and auditable issue workflow inside t
 
 ## Closure Notes
 
-- _Pending implementation and review._
+- Resolved after validator-backed enforcement landed: `scripts/validate_issue_links.py` now enforces non-trivial `ISSUE-XXXX` linkage plus canonical field completeness, and `scripts/release_gate.py` runs governance validators in the canonical gate.
 
