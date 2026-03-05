@@ -4,7 +4,7 @@
 - **Title:** Behave gate not enforced in PR validation
 - **Status:** open
 - **Severity:** red
-- **Owner:** unassigned
+- **Owner:** platform-qa
 - **Created:** 2026-03-04
 - **Target Sprint:** Sprint 1
 - **Principle Alignment:** ci-enforced, deterministic, traceable
