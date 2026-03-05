@@ -138,5 +138,15 @@ See [docs/testing.md](docs/testing.md) for test-layer policy and acceptance crit
 
 The canonical definition of **"all systems green"** is the stakeholder obligations matrix in [docs/directives/stakeholder-obligations.md](docs/directives/stakeholder-obligations.md).
 
+## Grounding sources
+
+You can ingest external grounding content (Wikipedia, arXiv, and local markdown directories) with:
+
+```bash
+python scripts/ingest_grounding_sources.py --help
+```
+
+See [docs/ops.md](docs/ops.md) for end-to-end examples and operational notes.
+
 ## Contribute
 Please follow [CONTRIBUTING.md](CONTRIBUTING.md) and use [docs/style-guide.md](docs/style-guide.md) for documentation style.

@@ -48,6 +48,31 @@ Current event contracts validated by `scripts/validate_log_schema.py`:
 Use fixture artifacts in `tests/fixtures/log_schema/` to keep both current and previous schema
 versions valid over time.
 
+
+## Grounding source ingestion (Wikipedia, arXiv, markdown)
+
+Use `scripts/ingest_grounding_sources.py` to prepare grounding documents and load them into the configured memory store.
+
+Dry-run example (fetch + parse only):
+
+```bash
+python scripts/ingest_grounding_sources.py   --namespace testbot   --markdown-dir ./grounding   --wikipedia-title "Leonardo da Vinci"   --arxiv-query "retrieval augmented generation"   --arxiv-max-results 3   --dry-run
+```
+
+Load into Elasticsearch-backed memory index:
+
+```bash
+python scripts/ingest_grounding_sources.py   --namespace testbot   --markdown-dir ./grounding   --wikipedia-title "Leonardo da Vinci"   --arxiv-query "retrieval augmented generation"   --memory-store-mode elasticsearch   --elasticsearch-url http://localhost:9200   --elasticsearch-index testbot_memory_cards
+```
+
+Operational notes:
+
+- Markdown files are loaded recursively from `--markdown-dir` (`*.md`).
+- Wikipedia uses the REST summary endpoint with provenance `source=wikipedia`.
+- arXiv uses the official Atom API with provenance `source=arxiv`.
+- Keep canonical partitioning stable with `--namespace` (for example `testbot`, `prod`, `research`).
+- Use `--dry-run` in CI or validation flows that should not mutate indices.
+
 ## Troubleshooting
 
 ### `AttributeError: 'tuple' object has no attribute 'metadata'`
