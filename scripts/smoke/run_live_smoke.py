@@ -72,16 +72,25 @@ def _load_checks(path: Path) -> list[dict[str, Any]]:
         target = str(entry.get("target", "")).strip()
         if not name or not target:
             raise ValueError("every check requires non-empty 'name' and 'target'")
-        capabilities = entry.get("capabilities", [])
-        if not isinstance(capabilities, list) or any(not isinstance(cap, str) for cap in capabilities):
-            raise ValueError("capabilities must be a list of strings")
+        capability_id = str(entry.get("capability_id", "")).strip()
+        capability_name = str(entry.get("capability_name", "")).strip()
+        business_impact = str(entry.get("business_impact", "")).strip()
+        severity_if_broken = str(entry.get("severity_if_broken", "")).strip()
+        if not all((capability_id, capability_name, business_impact, severity_if_broken)):
+            raise ValueError(
+                "every check requires non-empty capability_id, capability_name, "
+                "business_impact, and severity_if_broken"
+            )
         normalized.append(
             {
                 "name": name,
                 "target": target,
                 "method": str(entry.get("method", "GET")).upper(),
                 "expected_status": int(entry.get("expected_status", 200)),
-                "capabilities": sorted({cap.strip() for cap in capabilities if cap.strip()}),
+                "capability_id": capability_id,
+                "capability_name": capability_name,
+                "business_impact": business_impact,
+                "severity_if_broken": severity_if_broken,
                 "timeout_s": float(entry.get("timeout_s", 10)),
             }
         )
@@ -119,8 +128,27 @@ def _run_check(check: dict[str, Any]) -> dict[str, Any]:
         "latency_ms": latency_ms,
         "passed": passed,
         "error_snippet": error_snippet,
-        "capability_tags": check["capabilities"],
+        "capability_id": check["capability_id"],
+        "capability_name": check["capability_name"],
+        "business_impact": check["business_impact"],
+        "severity_if_broken": check["severity_if_broken"],
     }
+
+
+def _validated_capabilities(details: list[dict[str, Any]]) -> list[dict[str, str]]:
+    passed_capabilities: dict[str, dict[str, str]] = {}
+    for row in details:
+        if not row["passed"]:
+            continue
+        capability_id = row["capability_id"]
+        passed_capabilities[capability_id] = {
+            "capability_id": capability_id,
+            "capability_name": row["capability_name"],
+            "business_impact": row["business_impact"],
+            "severity_if_broken": row["severity_if_broken"],
+            "validated_by_check": row["check_name"],
+        }
+    return [passed_capabilities[key] for key in sorted(passed_capabilities)]
 
 
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
@@ -141,15 +169,26 @@ def _write_markdown(path: Path, summary: dict[str, Any], details: list[dict[str,
         f"- Passed: {summary['counts']['passed']}",
         f"- Failed: {summary['counts']['failed']}",
         "",
-        "| Check | Status | HTTP | Latency (ms) | Capabilities |",
-        "|---|---|---:|---:|---|",
+        "| Check | Status | HTTP | Latency (ms) | Capability | Severity if Broken |",
+        "|---|---|---:|---:|---|---|",
     ]
     for row in details:
         status = "PASS" if row["passed"] else "FAIL"
-        capabilities = ", ".join(row["capability_tags"])
         lines.append(
-            f"| {row['check_name']} | {status} | {row['status_code']} | {row['latency_ms']} | {capabilities} |"
+            f"| {row['check_name']} | {status} | {row['status_code']} | {row['latency_ms']} | "
+            f"{row['capability_name']} ({row['capability_id']}) | {row['severity_if_broken']} |"
         )
+
+    lines.extend(["", "## Validated Capabilities", ""])
+    if summary["validated_capabilities"]:
+        for capability in summary["validated_capabilities"]:
+            lines.append(
+                f"- **{capability['capability_name']}** ({capability['capability_id']}) via "
+                f"`{capability['validated_by_check']}` — {capability['business_impact']} "
+                f"(severity if broken: {capability['severity_if_broken']})"
+            )
+    else:
+        lines.append("- No production capabilities were validated in this run.")
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
@@ -177,6 +216,7 @@ def main() -> int:
             "failed": failed_count,
         },
         "gate_status": "pass" if failed_count == 0 else "fail",
+        "validated_capabilities": _validated_capabilities(details),
     }
 
     output_dir = args.output_dir
