@@ -20,6 +20,25 @@ _STOPWORDS = {
     "who", "why", "with", "you", "your",
 }
 
+_APOSTROPHE_VARIANTS = re.compile(r"[\u2018\u2019\u02bc\u2032`´]")
+_SINGLE_WORD_CONSTRAINT_MARKERS = (
+    "must",
+    "should",
+    "only",
+    "exactly",
+    "never",
+    "always",
+    "don't",
+)
+_MULTIWORD_CONSTRAINT_MARKERS = (
+    "at least",
+    "do not",
+)
+_CONSTRAINT_PATTERNS = tuple(
+    [re.compile(rf"\b{re.escape(marker)}\b") for marker in _SINGLE_WORD_CONSTRAINT_MARKERS]
+    + [re.compile(rf"\b{re.escape(first)}\s+{re.escape(second)}\b") for first, second in (marker.split(" ") for marker in _MULTIWORD_CONSTRAINT_MARKERS)]
+)
+
 
 @dataclass(frozen=True)
 class PackedHistory:
@@ -48,6 +67,10 @@ def _truncate(text: str, limit: int) -> str:
     if len(normalized) <= limit:
         return normalized
     return normalized[: max(0, limit - 1)].rstrip() + "…"
+
+
+def _normalize_apostrophes(text: str) -> str:
+    return _APOSTROPHE_VARIANTS.sub("'", text)
 
 
 def _take_last_turns(transcript: list[ChatMsg], *, role: str, n: int) -> list[str]:
@@ -92,24 +115,13 @@ def _extract_topic_entity_hints(transcript: list[ChatMsg]) -> list[str]:
 
 
 def _extract_constraints(transcript: list[ChatMsg]) -> list[str]:
-    markers = (
-        "must",
-        "should",
-        "only",
-        "exactly",
-        "at least",
-        "do not",
-        "don't",
-        "never",
-        "always",
-    )
     constraints: list[str] = []
     for msg in transcript:
         if msg.get("role") != "user":
             continue
         content = _normalize_text(msg.get("content", ""))
-        lowered = content.lower()
-        if any(marker in lowered for marker in markers):
+        lowered = _normalize_apostrophes(content.lower())
+        if any(pattern.search(lowered) for pattern in _CONSTRAINT_PATTERNS):
             constraints.append(_truncate(content, MAX_CONSTRAINT_CHARS))
 
     deduped = list(dict.fromkeys(constraints))
