@@ -6,12 +6,23 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
+import os
 import subprocess
 import time
 import urllib.error
 import urllib.request
 from pathlib import Path
+from urllib.parse import urlparse
 from typing import Any
+
+
+ENV_FILE_PATH = Path("~/.testbot/.env").expanduser()
+REQUIRED_ENV_KEYS = (
+    "OPENAI_BASE_URL",
+    "OPENAI_API_KEY",
+    "SMOKE_CONNECT_TIMEOUT_S",
+    "SMOKE_REQUEST_TIMEOUT_S",
+)
 
 
 def _git_value(*args: str) -> str:
@@ -25,6 +36,63 @@ def _git_value(*args: str) -> str:
     except (subprocess.CalledProcessError, FileNotFoundError):
         return "unknown"
     return completed.stdout.strip() or "unknown"
+
+
+def _load_required_env(path: Path = ENV_FILE_PATH) -> dict[str, str]:
+    if not path.exists():
+        raise ValueError(
+            f"Missing required environment file: {path}. "
+            "Create it with the required OPENAI_* and SMOKE_* keys before running smoke checks."
+        )
+
+    env_values: dict[str, str] = {}
+    for line_no, raw_line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("export "):
+            line = line[len("export ") :].strip()
+        if "=" not in line:
+            raise ValueError(
+                f"Invalid .env line {line_no} in {path}: expected KEY=VALUE format."
+            )
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        if not key:
+            raise ValueError(f"Invalid .env line {line_no} in {path}: missing key name.")
+        env_values[key] = value
+
+    missing = [key for key in REQUIRED_ENV_KEYS if not env_values.get(key, "").strip()]
+    if missing:
+        raise ValueError(
+            "Missing required environment variables in "
+            f"{path}: {', '.join(missing)}."
+        )
+
+    parsed_base_url = urlparse(env_values["OPENAI_BASE_URL"])
+    if parsed_base_url.scheme not in {"http", "https"} or not parsed_base_url.netloc:
+        raise ValueError(
+            "Invalid OPENAI_BASE_URL in "
+            f"{path}: must be a full http(s) URL."
+        )
+    if len(env_values["OPENAI_API_KEY"].strip()) < 8:
+        raise ValueError(
+            "Invalid OPENAI_API_KEY in "
+            f"{path}: value is too short to be a usable credential/token."
+        )
+    for key in ("SMOKE_CONNECT_TIMEOUT_S", "SMOKE_REQUEST_TIMEOUT_S"):
+        raw_value = env_values[key]
+        try:
+            timeout = float(raw_value)
+        except ValueError as exc:
+            raise ValueError(f"Invalid {key} in {path}: '{raw_value}' is not numeric.") from exc
+        if timeout <= 0:
+            raise ValueError(f"Invalid {key} in {path}: must be > 0 seconds.")
+
+    for key, value in env_values.items():
+        os.environ[key] = value
+    return env_values
 
 
 def parse_args() -> argparse.Namespace:
@@ -69,7 +137,7 @@ def _load_checks(path: Path) -> list[dict[str, Any]]:
         if not isinstance(entry, dict):
             raise ValueError("every check must be an object")
         name = str(entry.get("name", "")).strip()
-        target = str(entry.get("target", "")).strip()
+        target = os.path.expandvars(str(entry.get("target", "")).strip())
         if not name or not target:
             raise ValueError("every check requires non-empty 'name' and 'target'")
         capability_id = str(entry.get("capability_id", "")).strip()
@@ -91,7 +159,7 @@ def _load_checks(path: Path) -> list[dict[str, Any]]:
                 "capability_name": capability_name,
                 "business_impact": business_impact,
                 "severity_if_broken": severity_if_broken,
-                "timeout_s": float(entry.get("timeout_s", 10)),
+                "timeout_s": float(entry.get("timeout_s", os.environ["SMOKE_REQUEST_TIMEOUT_S"])),
             }
         )
     return sorted(normalized, key=lambda item: item["name"])
@@ -194,6 +262,11 @@ def _write_markdown(path: Path, summary: dict[str, Any], details: list[dict[str,
 
 def main() -> int:
     args = parse_args()
+    try:
+        env_values = _load_required_env()
+    except ValueError as exc:
+        print(f"[smoke-config-error] {exc}")
+        return 2
     checks = _load_checks(args.checks_file)
 
     metadata = {
@@ -202,6 +275,8 @@ def main() -> int:
         "branch": _git_value("rev-parse", "--abbrev-ref", "HEAD"),
         "environment": args.environment,
         "actor": args.actor,
+        "env_file": str(ENV_FILE_PATH),
+        "request_timeout_s": float(env_values["SMOKE_REQUEST_TIMEOUT_S"]),
     }
 
     details = [_run_check(check) for check in checks]
