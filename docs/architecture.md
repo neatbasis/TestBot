@@ -39,10 +39,11 @@ flowchart LR
    - Generate and store reflection cards linked to source utterances.
 4. **Retrieve**
    - Rewrite user input into a retrieval-oriented query.
-   - Fetch top-k memory candidates from vector search.
+   - Fetch memory cards and source-evidence candidates from vector search.
+   - Deterministically mix source evidence with memory cards before rerank.
 5. **Rerank**
    - Infer target time from natural language cues.
-   - Apply Gaussian time weighting centered on inferred target time.
+   - Apply Gaussian time weighting centered on inferred target time across mixed candidates.
 6. **Answer**
    - Provide recent chat window + memory context to the answer stage.
    - Enforce memory-only answering and citation contract.
@@ -62,6 +63,8 @@ Each runtime stage receives a `PipelineState` and returns an updated `PipelineSt
 - `claims`
 - `provenance_types` (`MEMORY`, `CHAT_HISTORY`, `SYSTEM_STATE`, `GENERAL_KNOWLEDGE`, `INFERENCE`, `UNKNOWN`)
 - `used_memory_refs`
+- `used_source_evidence_refs`
+- `source_evidence_attribution`
 - `basis_statement`
 - `invariant_decisions`
 
@@ -151,3 +154,29 @@ Each candidate exposes `semantic_score`, `temporal_gaussian_weight`, `temporal_b
 - [ ] Time-aware rerank is applied when target time can be inferred.
 - [ ] Citation contract is enforced before final output is returned.
 - [ ] Non-trivial answers always include provenance metadata with allowed enum values.
+
+
+## Source acquisition lifecycle and trust boundaries
+
+Source acquisition is handled by a connector protocol and ingestion orchestrator in `src/testbot/source_connectors.py` and `src/testbot/source_ingest.py`.
+
+Lifecycle:
+
+1. **Fetch**
+   - A connector fetches raw source items using a connector cursor/watermark (`fetch`).
+2. **Normalize**
+   - Each source item is normalized into a canonical document (`normalize`).
+3. **Canonicalize for storage**
+   - Ingestion creates two document forms:
+     - source-memory document (`record_kind: source_memory`)
+     - source-evidence document (`record_kind: source_evidence`, `type: source_evidence`)
+4. **Store provenance metadata**
+   - Every stored source artifact carries: `source_type`, `source_uri`, `retrieved_at`, `trust_tier`.
+5. **Advance cursor**
+   - Connector updates its cursor/watermark after successful fetch+normalize (`update_cursor`).
+
+Trust boundaries:
+
+- **Tiered trust is explicit metadata**, not an implicit score; downstream stages can reason about `trust_tier` directly.
+- **Source evidence is attributable** through `used_source_evidence_refs` and `source_evidence_attribution`, separate from chat-memory refs.
+- **Deterministic fallback remains preserved**: if source evidence is unavailable, retrieval behavior degrades to memory-card-only ranking without non-deterministic branching.

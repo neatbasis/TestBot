@@ -8,7 +8,7 @@ from typing import Any
 
 from testbot.memory_cards import utc_now_iso
 
-PIPELINE_SNAPSHOT_SCHEMA_VERSION = 2
+PIPELINE_SNAPSHOT_SCHEMA_VERSION = 3
 
 
 @dataclass(frozen=True)
@@ -40,6 +40,8 @@ class PipelineState:
     claims: list[str] = field(default_factory=list)
     provenance_types: list[ProvenanceType] = field(default_factory=list)
     used_memory_refs: list[str] = field(default_factory=list)
+    used_source_evidence_refs: list[str] = field(default_factory=list)
+    source_evidence_attribution: list[dict[str, str]] = field(default_factory=list)
     basis_statement: str = ""
     invariant_decisions: dict[str, Any] = field(default_factory=dict)
     alignment_decision: dict[str, Any] = field(default_factory=dict)

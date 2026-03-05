@@ -33,8 +33,56 @@ _CARD_TYPE_PRIORITY: dict[str, int] = {
     "user_utterance": 0,
     "assistant_utterance": 1,
     "memory": 2,
-    "reflection": 3,
+    "source_evidence": 3,
+    "reflection": 4,
 }
+
+
+
+
+def is_source_evidence_doc(doc: Document) -> bool:
+    doc_type = str(doc.metadata.get("type") or "").strip()
+    record_kind = str(doc.metadata.get("record_kind") or "").strip()
+    return doc_type == "source_evidence" or record_kind == "source_evidence"
+
+
+def mix_source_evidence_with_memory_cards(
+    docs_and_scores: list[tuple[Document, float]],
+    *,
+    top_k: int,
+    source_quota: int = 2,
+) -> list[tuple[Document, float]]:
+    """Mix source evidence with memory cards while keeping deterministic fallback behavior."""
+    if not docs_and_scores:
+        return []
+
+    source_candidates: list[tuple[Document, float]] = []
+    memory_candidates: list[tuple[Document, float]] = []
+    for doc, score in docs_and_scores:
+        if is_source_evidence_doc(doc):
+            source_candidates.append((doc, score))
+        else:
+            memory_candidates.append((doc, score))
+
+    if not source_candidates:
+        return docs_and_scores[:top_k]
+
+    ordered_source = sorted(source_candidates, key=lambda item: (-item[1], -_ts_epoch(item[0]), _card_rank(item[0]), _doc_id(item[0])))
+    ordered_memory = sorted(memory_candidates, key=lambda item: (-item[1], -_ts_epoch(item[0]), _card_rank(item[0]), _doc_id(item[0])))
+
+    mixed: list[tuple[Document, float]] = []
+    source_taken = min(source_quota, top_k)
+    mixed.extend(ordered_source[:source_taken])
+
+    remaining = top_k - len(mixed)
+    if remaining > 0:
+        mixed.extend(ordered_memory[:remaining])
+
+    remaining = top_k - len(mixed)
+    if remaining > 0:
+        mixed.extend(ordered_source[source_taken : source_taken + remaining])
+
+    return mixed
 
 
 def adaptive_sigma_fractional(
