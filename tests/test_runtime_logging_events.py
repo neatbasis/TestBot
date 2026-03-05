@@ -1,11 +1,85 @@
 from __future__ import annotations
 
+from collections import deque
+
+from testbot.clock import SystemClock
+from testbot.pipeline_state import PipelineState
+from testbot import sat_chatbot_memory_v2 as runtime
 from testbot.intent_router import IntentType
 from testbot.sat_chatbot_memory_v2 import (
+    ASSIST_ALTERNATIVES_ANSWER,
     _ambiguity_score,
     _intent_label,
     _user_followup_signal_proxy,
+    generate_reflection_yaml,
+    stage_answer,
+    stage_rewrite_query,
 )
+
+
+class _ExplodingLLM:
+    def __init__(self, message: str = "boom") -> None:
+        self._message = message
+
+    def invoke(self, _msgs):
+        raise RuntimeError(self._message)
+
+
+def test_stage_rewrite_query_invoke_failure_falls_back_and_logs(monkeypatch) -> None:
+    events: list[tuple[str, dict]] = []
+    monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: events.append((event, payload)))
+
+    state = PipelineState(user_input="what did i say last week?")
+
+    rewritten = stage_rewrite_query(_ExplodingLLM("rewrite down"), state)
+
+    assert rewritten.rewritten_query == state.user_input
+    assert events
+    assert events[0][0] == "query_rewrite_failed"
+    assert events[0][1]["error_class"] == "RuntimeError"
+    assert "rewrite down" in events[0][1]["error_message"]
+
+
+def test_stage_answer_invoke_failure_uses_deterministic_fallback_and_logs(monkeypatch) -> None:
+    events: list[tuple[str, dict]] = []
+    monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: events.append((event, payload)))
+    monkeypatch.setattr(runtime, "decide_fallback_action", lambda **_: "ANSWER_GENERAL_KNOWLEDGE")
+
+    state = PipelineState(
+        user_input="what happened yesterday?",
+        confidence_decision={"context_confident": True, "ambiguity_detected": False},
+    )
+
+    answered = stage_answer(
+        _ExplodingLLM("answer down"),
+        state,
+        chat_history=deque(),
+        hits=[],
+        capability_status="ask_unavailable",
+        clock=SystemClock(),
+    )
+
+    assert answered.draft_answer == ""
+    assert answered.final_answer == ASSIST_ALTERNATIVES_ANSWER
+    assert events
+    assert events[0][0] == "answer_generation_failed"
+    assert events[0][1]["error_class"] == "RuntimeError"
+    assert events[0][1]["fallback_action"] == "ANSWER_GENERAL_KNOWLEDGE"
+
+
+def test_generate_reflection_yaml_invoke_failure_returns_minimal_yaml_and_logs(monkeypatch) -> None:
+    events: list[tuple[str, dict]] = []
+    monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: events.append((event, payload)))
+
+    reflection = generate_reflection_yaml(_ExplodingLLM("reflect down"), speaker="user", text="i might be wrong")
+
+    assert reflection == (
+        "claims: []\ncommitments: []\npreferences: []\nuncertainties: []\nfollowups: []\nconfidence: 0.2"
+    )
+    assert events
+    assert events[0][0] == "reflection_generation_failed"
+    assert events[0][1]["error_class"] == "RuntimeError"
+    assert "reflect down" in events[0][1]["error_message"]
 
 
 def test_intent_classified_log_contains_bandit_fields() -> None:
