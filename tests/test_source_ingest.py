@@ -57,6 +57,15 @@ class _MissingIdConnector(_FakeConnector):
         return Document(id=None, page_content=self._item.content, metadata={"ts": self._item.metadata["ts"]})
 
 
+class _TypedNormalizeConnector(_FakeConnector):
+    def normalize(self, item: SourceItem) -> Document:
+        return Document(
+            id=item.item_id,
+            page_content=item.content,
+            metadata={"ts": item.metadata["ts"], "doc_id": item.item_id, "type": "calendar_event"},
+        )
+
+
 class _FakeStore:
     def __init__(self) -> None:
         self.docs: list[Document] = []
@@ -81,9 +90,28 @@ def test_source_ingestor_stores_memory_and_evidence_with_provenance() -> None:
     assert result.next_cursor == "end"
     assert len(result.memory_documents) == 1
     assert len(result.evidence_documents) == 1
+    assert result.memory_documents[0].metadata["type"] == "memory"
     assert result.evidence_documents[0].metadata["record_kind"] == "source_evidence"
+    assert result.evidence_documents[0].metadata["type"] == "source_evidence"
     assert result.evidence_documents[0].metadata["source_type"] == "calendar"
     assert len(store.docs) == 2
+
+
+def test_source_ingestor_memory_type_is_not_overridden_by_connector_item_type() -> None:
+    connector = _TypedNormalizeConnector()
+    store = _FakeStore()
+    ingestor = SourceIngestor(connector=connector, memory_store=store)
+
+    result = ingestor.ingest_once(cursor=None)
+
+    assert len(result.memory_documents) == 1
+    assert len(result.evidence_documents) == 1
+    assert result.memory_documents[0].metadata["type"] == "memory"
+    assert result.memory_documents[0].metadata["source_item_type"] == "calendar_event"
+    assert result.evidence_documents[0].metadata["type"] == "source_evidence"
+    assert result.memory_documents[0].metadata["record_kind"] == "source_memory"
+    assert result.evidence_documents[0].metadata["record_kind"] == "source_evidence"
+    assert [doc.metadata["record_kind"] for doc in store.docs] == ["source_memory", "source_evidence"]
 
 
 def test_source_ingestor_derives_stable_ids_when_normalized_id_and_doc_id_are_missing() -> None:
