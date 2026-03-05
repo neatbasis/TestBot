@@ -108,7 +108,62 @@ def test_rerank_includes_objective_component_breakdown() -> None:
     scored = outcome.scored_candidates[0]
     assert scored["doc_id"] == "winner"
     assert scored["objective"] == "semantic_temporal_type_v1"
+    assert scored["timestamp_quality"] == "valid"
     assert float(scored["final_score"]) > 0.0
+
+
+def test_valid_timestamp_weighting_behavior_is_unchanged() -> None:
+    target = arrow.get("2026-03-10T12:00:00+00:00")
+
+    scored = rerank_objective_score_components(
+        sim_score=0.8,
+        doc_type="memory",
+        doc_ts_iso="2026-03-10T12:00:00+00:00",
+        target=target,
+        sigma_seconds=3600.0,
+    )
+
+    assert float(scored["temporal_gaussian_weight"]) == 1.0
+    assert float(scored["temporal_blend"]) == 1.0
+    assert scored["timestamp_quality"] == "valid"
+
+
+def test_missing_timestamp_uses_neutral_temporal_prior_without_extreme_penalty() -> None:
+    target = arrow.get("2026-03-10T12:00:00+00:00")
+
+    missing_ts = rerank_objective_score_components(
+        sim_score=0.8,
+        doc_type="memory",
+        doc_ts_iso="",
+        target=target,
+        sigma_seconds=3600.0,
+    )
+    very_stale_valid_ts = rerank_objective_score_components(
+        sim_score=0.8,
+        doc_type="memory",
+        doc_ts_iso="2025-01-01T12:00:00+00:00",
+        target=target,
+        sigma_seconds=3600.0,
+    )
+
+    assert missing_ts["timestamp_quality"] == "missing"
+    assert float(missing_ts["temporal_gaussian_weight"]) == 0.5
+    assert float(missing_ts["final_score"]) > float(very_stale_valid_ts["final_score"])
+
+
+def test_invalid_timestamp_is_auditable_and_treated_as_neutral_temporal_signal() -> None:
+    target = arrow.get("2026-03-10T12:00:00+00:00")
+
+    invalid = rerank_objective_score_components(
+        sim_score=0.8,
+        doc_type="memory",
+        doc_ts_iso="not-a-timestamp",
+        target=target,
+        sigma_seconds=3600.0,
+    )
+
+    assert invalid["timestamp_quality"] == "invalid"
+    assert float(invalid["temporal_gaussian_weight"]) == 0.5
 
 
 def test_objective_components_apply_reflection_type_prior() -> None:

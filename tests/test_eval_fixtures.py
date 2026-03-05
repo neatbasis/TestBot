@@ -32,6 +32,7 @@ def test_eval_runtime_parity_fixture_sets_have_fixed_timestamps() -> None:
         "tests/fixtures/eval_runtime_parity_edge_time.jsonl",
         "tests/fixtures/eval_runtime_parity_ambiguous_intent.jsonl",
         "tests/fixtures/eval_runtime_parity_observation_making_processes.jsonl",
+        "tests/fixtures/eval_runtime_parity_temporal_uncertainty.jsonl",
     ]
 
     for fixture_path in fixture_files:
@@ -40,4 +41,4 @@ def test_eval_runtime_parity_fixture_sets_have_fixed_timestamps() -> None:
                 fixture = json.loads(line)
                 assert fixture["family"]
                 assert fixture["expected"]["intent"] in {"memory-grounded", "dont-know"}
-                assert all(is_iso_timestamp(candidate["ts"]) for candidate in fixture["candidates"])
+                assert all((not candidate.get("ts")) or is_iso_timestamp(candidate["ts"]) for candidate in fixture["candidates"])
