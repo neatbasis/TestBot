@@ -4,6 +4,8 @@ import arrow
 from langchain_core.documents import Document
 
 from testbot.rerank import (
+    ContextConfidenceThresholds,
+    has_sufficient_context_confidence_from_objective,
     mix_source_evidence_with_memory_cards,
     rerank_docs_with_time_and_type_outcome,
     rerank_objective_score_components,
@@ -147,3 +149,29 @@ def test_mix_source_evidence_with_memory_cards_falls_back_to_original_when_no_so
     mixed = mix_source_evidence_with_memory_cards(docs_and_scores, top_k=2, source_quota=1)
 
     assert [doc.id for doc, _ in mixed] == ["a", "b"]
+
+
+def test_context_confidence_rejects_high_similarity_when_temporal_signal_is_weak() -> None:
+    confident = has_sufficient_context_confidence_from_objective(
+        scored_candidates=[
+            {"doc_id": "stale-high-sim", "final_score": 0.19},
+            {"doc_id": "runner-up", "final_score": 0.17},
+        ],
+        ambiguity_detected=False,
+    )
+
+    assert not confident
+
+
+def test_context_confidence_respects_second_place_margin_threshold() -> None:
+    thresholds = ContextConfidenceThresholds(top_final_score_min=0.2, min_margin_to_second=0.02)
+    confident = has_sufficient_context_confidence_from_objective(
+        scored_candidates=[
+            {"doc_id": "a", "final_score": 0.42},
+            {"doc_id": "b", "final_score": 0.41},
+        ],
+        ambiguity_detected=False,
+        thresholds=thresholds,
+    )
+
+    assert not confident

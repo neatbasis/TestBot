@@ -15,6 +15,8 @@ from testbot.eval_fixtures import EvalCase, load_eval_cases
 from testbot.rerank import (
     RerankOutcome,
     adaptive_sigma_fractional,
+    DEFAULT_CONTEXT_CONFIDENCE_THRESHOLDS,
+    has_sufficient_context_confidence_from_objective,
     rerank_docs_with_time_and_type_outcome,
     rerank_objective_score_components,
 )
@@ -88,8 +90,11 @@ def rank_candidates_with_signals(
     )
     candidates_by_doc_id = {candidate["doc_id"]: candidate for candidate in candidates}
     ranked_candidates = [candidates_by_doc_id.get((doc.id or ""), {"doc_id": (doc.id or "")}) for doc in outcome.docs]
-    context_confident = bool(docs_and_scores) and (
-        max(float(score) for _, score in docs_and_scores) >= context_confidence_min_similarity
+    del context_confidence_min_similarity
+    context_confident = has_sufficient_context_confidence_from_objective(
+        scored_candidates=outcome.scored_candidates,
+        ambiguity_detected=outcome.ambiguity_detected,
+        thresholds=DEFAULT_CONTEXT_CONFIDENCE_THRESHOLDS,
     )
     return {
         "ranked_candidates": ranked_candidates,

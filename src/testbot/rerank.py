@@ -19,6 +19,17 @@ RERANK_OBJECTIVE_NAME = "semantic_temporal_type_v1"
 
 
 @dataclass(frozen=True)
+class ContextConfidenceThresholds:
+    top_final_score_min: float = 0.2
+    min_margin_to_second: float = 0.0
+    allow_ambiguity_override: bool = False
+    ambiguity_override_top_final_score_min: float = 0.6
+
+
+DEFAULT_CONTEXT_CONFIDENCE_THRESHOLDS = ContextConfidenceThresholds()
+
+
+@dataclass(frozen=True)
 class RerankObjectiveCoefficients:
     base_temporal_blend: float = 0.25
     gaussian_temporal_blend: float = 0.75
@@ -264,3 +275,29 @@ def rerank_docs_with_time_and_type_outcome(
         near_tie_candidates=near_tie_candidates,
         scored_candidates=scored_candidates,
     )
+
+
+def has_sufficient_context_confidence_from_objective(
+    *,
+    scored_candidates: list[dict[str, float | str]],
+    ambiguity_detected: bool,
+    thresholds: ContextConfidenceThresholds = DEFAULT_CONTEXT_CONFIDENCE_THRESHOLDS,
+) -> bool:
+    if not scored_candidates:
+        return False
+
+    top_score = float(scored_candidates[0].get("final_score", 0.0) or 0.0)
+    if top_score < thresholds.top_final_score_min:
+        return False
+
+    if len(scored_candidates) > 1:
+        second_score = float(scored_candidates[1].get("final_score", 0.0) or 0.0)
+        if (top_score - second_score) < thresholds.min_margin_to_second:
+            return False
+
+    if not ambiguity_detected:
+        return True
+
+    if not thresholds.allow_ambiguity_override:
+        return False
+    return top_score >= thresholds.ambiguity_override_top_final_score_min

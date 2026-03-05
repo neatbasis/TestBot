@@ -21,7 +21,9 @@ from testbot.pipeline_state import CandidateHit, PipelineState, ProvenanceType, 
 from testbot.promotion_policy import persist_promoted_context
 from testbot.reflection_policy import CapabilityStatus, decide_fallback_action
 from testbot.rerank import (
+    DEFAULT_CONTEXT_CONFIDENCE_THRESHOLDS,
     adaptive_sigma_fractional,
+    has_sufficient_context_confidence_from_objective,
     is_source_evidence_doc,
     mix_source_evidence_with_memory_cards,
     rerank_docs_with_time_and_type_outcome,
@@ -328,12 +330,19 @@ def stage_rerank(
     )
     hits = rerank_outcome.docs
     reranked_hits = [doc_to_candidate_hit(doc, score=0.0) for doc in hits]
-    has_context = has_sufficient_context_confidence(docs_and_scores)
+    has_context = has_sufficient_context_confidence(
+        rerank_outcome.scored_candidates,
+        ambiguity_detected=rerank_outcome.ambiguity_detected,
+    )
     confidence_decision = {
-        "context_confident": has_context and not rerank_outcome.ambiguity_detected,
+        "context_confident": has_context,
         "ambiguity_detected": rerank_outcome.ambiguity_detected,
         "ambiguous_candidates": rerank_outcome.near_tie_candidates,
         "scored_candidates": rerank_outcome.scored_candidates,
+        "top_final_score_min": DEFAULT_CONTEXT_CONFIDENCE_THRESHOLDS.top_final_score_min,
+        "min_margin_to_second": DEFAULT_CONTEXT_CONFIDENCE_THRESHOLDS.min_margin_to_second,
+        "allow_ambiguity_override": DEFAULT_CONTEXT_CONFIDENCE_THRESHOLDS.allow_ambiguity_override,
+        "ambiguity_override_top_final_score_min": DEFAULT_CONTEXT_CONFIDENCE_THRESHOLDS.ambiguity_override_top_final_score_min,
         "now_ts": now.isoformat(),
         "target_ts": target.isoformat(),
         "sigma_seconds": sigma,
@@ -682,11 +691,12 @@ def render_context(docs: list[Document], *, limit_chars: int = 5000) -> str:
 
 
 def has_sufficient_context_confidence(
-    docs_and_scores: list[tuple[Document, float]], *, min_similarity: float = 0.35, min_hits: int = 1
+    scored_candidates: list[dict[str, float | str]], *, ambiguity_detected: bool
 ) -> bool:
-    if len(docs_and_scores) < min_hits:
-        return False
-    return max(float(score) for _, score in docs_and_scores) >= min_similarity
+    return has_sufficient_context_confidence_from_objective(
+        scored_candidates=scored_candidates,
+        ambiguity_detected=ambiguity_detected,
+    )
 
 
 
