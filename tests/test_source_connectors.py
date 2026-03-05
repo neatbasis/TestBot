@@ -184,3 +184,47 @@ def test_fixture_connector_can_load_json_fixture_file(tmp_path) -> None:
     assert len(items) == 1
     assert items[0].item_id == "src-1"
     assert connector.normalize(items[0]).metadata["source_type"] == "home_automation"
+
+
+def test_fixture_connector_fetch_invalid_cursor_defaults_to_start(caplog) -> None:
+    connector = FixtureSourceConnector(
+        source_type="calendar",
+        fixtures=(
+            SourceItem(
+                item_id="evt-1",
+                content="Morning sync at 09:30.",
+                source_uri="calendar://team/evt-1",
+                retrieved_at="2026-03-11T09:00:00Z",
+                trust_tier="verified",
+                metadata={"ts": "2026-03-11T09:30:00Z"},
+            ),
+        ),
+    )
+
+    with caplog.at_level("WARNING"):
+        batch = connector.fetch(cursor="oops", limit=1)
+
+    assert [item.item_id for item in batch] == ["evt-1"]
+    assert "Invalid fetch cursor" in caplog.text
+
+
+def test_fixture_connector_update_cursor_invalid_previous_cursor_defaults_to_start(caplog) -> None:
+    connector = FixtureSourceConnector(
+        source_type="calendar",
+        fixtures=(
+            SourceItem(
+                item_id="evt-1",
+                content="Morning sync at 09:30.",
+                source_uri="calendar://team/evt-1",
+                retrieved_at="2026-03-11T09:00:00Z",
+                trust_tier="verified",
+                metadata={"ts": "2026-03-11T09:30:00Z"},
+            ),
+        ),
+    )
+
+    with caplog.at_level("WARNING"):
+        cursor = connector.update_cursor(previous_cursor="invalid", fetched_items=list(connector.fixtures))
+
+    assert cursor == "1"
+    assert "Invalid update_cursor cursor" in caplog.text

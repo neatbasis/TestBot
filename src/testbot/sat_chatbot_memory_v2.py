@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import os
 import re
 import sys
@@ -90,6 +91,29 @@ GENERAL_KNOWLEDGE_CONFIDENCE_MIN = 0.85
 GENERAL_KNOWLEDGE_SUPPORT_MIN = 2
 ALIGNMENT_OBJECTIVE_VERSION = "2026-03-04.v2"
 SESSION_LOG_SCHEMA_VERSION = 2
+_LOGGER = logging.getLogger(__name__)
+
+
+def _parse_env_float(name: str, default: float) -> float:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        return float(raw)
+    except (TypeError, ValueError):
+        _LOGGER.warning("Invalid %s=%r; using default=%s", name, raw, default)
+        return default
+
+
+def _parse_env_int(name: str, default: int) -> int:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        _LOGGER.warning("Invalid %s=%r; using default=%s", name, raw, default)
+        return default
 
 
 def _parse_args(argv: list[str] | None = None) -> Namespace:
@@ -116,7 +140,7 @@ def _read_runtime_env() -> dict[str, object]:
         "ha_satellite_entity_id": os.getenv("HA_SATELLITE_ENTITY_ID", ""),
         "ollama_base_url": os.getenv("OLLAMA_BASE_URL") or os.getenv("OLLAMA_HOST") or "http://localhost:11434",
         "ollama_model": os.getenv("OLLAMA_MODEL", "llama3.1:latest"),
-        "memory_near_tie_delta": float(os.getenv("MEMORY_NEAR_TIE_DELTA", "0.02")),
+        "memory_near_tie_delta": _parse_env_float("MEMORY_NEAR_TIE_DELTA", 0.02),
         "memory_store_mode": memory_store_mode,
         "memory_store_backend": normalize_memory_store_mode(memory_store_mode),
         "elasticsearch_url": os.getenv("ELASTICSEARCH_URL", "http://localhost:9200"),
@@ -124,7 +148,7 @@ def _read_runtime_env() -> dict[str, object]:
         "source_ingest_enabled": os.getenv("SOURCE_INGEST_ENABLED", "0") == "1",
         "source_connector_type": os.getenv("SOURCE_CONNECTOR_TYPE", "fixture"),
         "source_fixture_path": os.getenv("SOURCE_FIXTURE_PATH", ""),
-        "source_ingest_limit": int(os.getenv("SOURCE_INGEST_LIMIT", "50")),
+        "source_ingest_limit": _parse_env_int("SOURCE_INGEST_LIMIT", 50),
         "source_ingest_cursor": os.getenv("SOURCE_INGEST_CURSOR") or None,
     }
 
@@ -184,8 +208,18 @@ def _run_source_ingestion(*, runtime: dict[str, object], store: MemoryStore) -> 
     if connector is None:
         return
     ingestor = SourceIngestor(connector=connector, memory_store=store)
+    cursor = str(runtime.get("source_ingest_cursor")) if runtime.get("source_ingest_cursor") is not None else None
+    if cursor is not None and not cursor.isdigit():
+        append_session_log(
+            "source_ingest_cursor_invalid",
+            {
+                "cursor": cursor,
+                "fallback_cursor": None,
+            },
+        )
+        cursor = None
     result = ingestor.ingest_once(
-        cursor=(str(runtime.get("source_ingest_cursor")) if runtime.get("source_ingest_cursor") is not None else None),
+        cursor=cursor,
         limit=int(runtime.get("source_ingest_limit", 50)),
     )
     append_session_log(
