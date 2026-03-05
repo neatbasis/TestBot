@@ -135,6 +135,23 @@ def test_elasticsearch_memory_store_add_documents_and_search_are_safe_for_edge_c
     assert hits[0][1] == 0.0
     assert hits[1][0].id == ""
 
+def test_elasticsearch_memory_store_normalizes_and_validates_document_ids(
+    fake_elasticsearch_module: tuple[MagicMock, MagicMock],
+) -> None:
+    _es_ctor, es_client = fake_elasticsearch_module
+    es_client.indices.exists.return_value = True
+    store = ElasticsearchMemoryStore(embeddings=StubEmbeddings(), url="http://localhost:9200", index="cards")
+
+    store.add_documents([Document(id="  d1  ", page_content="alpha", metadata={})])
+    operations = es_client.bulk.call_args.kwargs["operations"]
+    assert operations[0] == {"index": {"_index": "cards", "_id": "d1"}}
+
+    with pytest.raises(ValueError, match="invalid id: None"):
+        store.add_documents([Document(id=None, page_content="missing", metadata={})])
+
+    with pytest.raises(ValueError, match="invalid id"):
+        store.add_documents([Document(id="   ", page_content="blank", metadata={})])
+
 
 class StubEmbeddings:
     def embed_documents(self, texts: list[str]) -> list[list[float]]:

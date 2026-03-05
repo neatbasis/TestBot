@@ -35,6 +35,27 @@ class _FakeConnector:
         return "end" if fetched_items else previous_cursor
 
 
+class _MissingIdConnector(_FakeConnector):
+    def __init__(self) -> None:
+        super().__init__()
+        self._item = SourceItem(
+            item_id="evt-x",
+            content="Team sync moved.",
+            source_uri="calendar://work/evt-x",
+            retrieved_at="2026-03-05T09:30:00Z",
+            trust_tier="verified",
+            metadata={"ts": "2026-03-06T11:00:00Z"},
+        )
+
+    def fetch(self, *, cursor: str | None, limit: int = 50) -> list[SourceItem]:
+        del cursor, limit
+        return [self._item]
+
+    def normalize(self, item: SourceItem) -> Document:
+        del item
+        return Document(id=None, page_content=self._item.content, metadata={"ts": self._item.metadata["ts"]})
+
+
 class _FakeStore:
     def __init__(self) -> None:
         self.docs: list[Document] = []
@@ -62,3 +83,22 @@ def test_source_ingestor_stores_memory_and_evidence_with_provenance() -> None:
     assert result.evidence_documents[0].metadata["record_kind"] == "source_evidence"
     assert result.evidence_documents[0].metadata["source_type"] == "calendar"
     assert len(store.docs) == 2
+
+
+def test_source_ingestor_derives_stable_ids_when_normalized_id_and_doc_id_are_missing() -> None:
+    connector = _MissingIdConnector()
+    store = _FakeStore()
+    ingestor = SourceIngestor(connector=connector, memory_store=store)
+
+    first = ingestor.ingest_once(cursor=None)
+    second = ingestor.ingest_once(cursor=None)
+
+    memory_id = first.memory_documents[0].id
+    evidence_id = first.evidence_documents[0].id
+
+    assert memory_id
+    assert evidence_id
+    assert memory_id == second.memory_documents[0].id
+    assert evidence_id == second.evidence_documents[0].id
+    assert evidence_id == f"evidence::{memory_id}"
+    assert len(store.docs) == 4

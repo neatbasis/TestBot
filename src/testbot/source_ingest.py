@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import hashlib
 
 from langchain_core.documents import Document
 
@@ -33,7 +34,8 @@ def _canonical_memory_doc(normalized_doc: Document, *, provenance: dict[str, str
         "type": str(normalized_doc.metadata.get("type") or "memory"),
         "record_kind": "source_memory",
     }
-    return Document(id=normalized_doc.id, page_content=normalized_doc.page_content, metadata=metadata)
+    doc_id = _resolve_source_document_id(normalized_doc, provenance=provenance)
+    return Document(id=doc_id, page_content=normalized_doc.page_content, metadata=metadata)
 
 
 def _canonical_evidence_doc(normalized_doc: Document, *, provenance: dict[str, str]) -> Document:
@@ -43,8 +45,24 @@ def _canonical_evidence_doc(normalized_doc: Document, *, provenance: dict[str, s
         "type": "source_evidence",
         "record_kind": "source_evidence",
     }
-    evidence_id = str(normalized_doc.id or normalized_doc.metadata.get("doc_id") or "")
-    return Document(id=f"evidence::{evidence_id}" if evidence_id else None, page_content=normalized_doc.page_content, metadata=metadata)
+    base_id = _resolve_source_document_id(normalized_doc, provenance=provenance)
+    return Document(id=f"evidence::{base_id}", page_content=normalized_doc.page_content, metadata=metadata)
+
+
+def _resolve_source_document_id(normalized_doc: Document, *, provenance: dict[str, str]) -> str:
+    normalized_id = str(normalized_doc.id or "").strip()
+    if normalized_id:
+        return normalized_id
+
+    metadata_doc_id = str(normalized_doc.metadata.get("doc_id") or "").strip()
+    if metadata_doc_id:
+        return metadata_doc_id
+
+    source_uri = str(provenance.get("source_uri") or "")
+    retrieved_at = str(provenance.get("retrieved_at") or "")
+    content_hash = hashlib.sha256(normalized_doc.page_content.encode("utf-8")).hexdigest()[:16]
+    deterministic = f"{source_uri}|{retrieved_at}|{content_hash}"
+    return f"derived::{hashlib.sha256(deterministic.encode('utf-8')).hexdigest()[:24]}"
 
 
 class SourceIngestor:
