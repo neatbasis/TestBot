@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from types import SimpleNamespace
 
 from testbot.sat_chatbot_memory_v2 import _parse_args, _resolve_mode
@@ -89,3 +90,60 @@ def test_main_satellite_mode_reports_cli_as_effective_mode_when_fallback_applies
     assert startup["requested_mode"] == "satellite"
     assert startup["effective_mode"] == "cli"
     assert startup["fallback_reason"] == "satellite connection is unavailable"
+
+
+def test_run_source_ingestion_stores_fixture_docs_and_logs(monkeypatch, tmp_path) -> None:
+    fixture_path = tmp_path / "ingest_fixture.json"
+    fixture_path.write_text(
+        json.dumps(
+            [
+                {
+                    "item_id": "src-1",
+                    "content": "Task: utility bill due Friday",
+                    "source_uri": "ha://tasks/utility-bill",
+                    "retrieved_at": "2026-03-10T09:00:00Z",
+                    "trust_tier": "verified",
+                    "metadata": {"ts": "2026-03-14T00:00:00Z"},
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    class _Store:
+        def __init__(self) -> None:
+            self.docs = []
+
+        def add_documents(self, docs):
+            self.docs.extend(docs)
+
+    logs = []
+    monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: logs.append((event, payload)))
+
+    runtime._run_source_ingestion(
+        runtime={
+            "source_ingest_enabled": True,
+            "source_connector_type": "fixture",
+            "source_fixture_path": str(fixture_path),
+            "source_ingest_limit": 10,
+            "source_ingest_cursor": None,
+        },
+        store=_Store(),
+    )
+
+    assert logs
+    assert logs[-1][0] == "source_ingest_completed"
+    assert logs[-1][1]["stored_count"] == 2
+
+
+def test_run_source_ingestion_skips_unsupported_connector(monkeypatch) -> None:
+    logs = []
+    monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: logs.append((event, payload)))
+
+    runtime._run_source_ingestion(
+        runtime={"source_ingest_enabled": True, "source_connector_type": "unknown", "source_fixture_path": ""},
+        store=object(),
+    )
+
+    assert logs[-1][0] == "source_ingest_skipped"
+    assert logs[-1][1]["reason"] == "unsupported_connector_type"

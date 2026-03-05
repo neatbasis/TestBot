@@ -41,6 +41,8 @@ from testbot.stage_transitions import (
 from testbot.time_parse import parse_target_time
 from testbot.intent_router import IntentType, classify_intent
 from testbot.time_reasoning import elapsed_since_last_user_message, resolve_relative_date
+from testbot.source_connectors import FixtureSourceConnector, SourceConnector
+from testbot.source_ingest import SourceIngestor
 from ha_ask import AskSpec, ask_question
 from ha_ask.config import normalize_rest_api_url
 from testbot.history_packer import PackedHistory, labeled_history_claims, pack_chat_history, render_packed_history
@@ -119,6 +121,11 @@ def _read_runtime_env() -> dict[str, object]:
         "memory_store_backend": normalize_memory_store_mode(memory_store_mode),
         "elasticsearch_url": os.getenv("ELASTICSEARCH_URL", "http://localhost:9200"),
         "elasticsearch_index": os.getenv("ELASTICSEARCH_INDEX", "testbot_memory_cards"),
+        "source_ingest_enabled": os.getenv("SOURCE_INGEST_ENABLED", "0") == "1",
+        "source_connector_type": os.getenv("SOURCE_CONNECTOR_TYPE", "fixture"),
+        "source_fixture_path": os.getenv("SOURCE_FIXTURE_PATH", ""),
+        "source_ingest_limit": int(os.getenv("SOURCE_INGEST_LIMIT", "50")),
+        "source_ingest_cursor": os.getenv("SOURCE_INGEST_CURSOR") or None,
     }
 
 
@@ -156,6 +163,42 @@ def _resolve_effective_mode(
         return "cli", "satellite connection is unavailable", None
     return selected_mode, None, None
 
+
+
+def _build_source_connector(runtime: dict[str, object]) -> SourceConnector | None:
+    if not bool(runtime.get("source_ingest_enabled", False)):
+        return None
+    connector_type = str(runtime.get("source_connector_type", "fixture"))
+    if connector_type != "fixture":
+        append_session_log("source_ingest_skipped", {"reason": "unsupported_connector_type", "connector_type": connector_type})
+        return None
+    fixture_path = str(runtime.get("source_fixture_path") or "").strip()
+    if not fixture_path:
+        append_session_log("source_ingest_skipped", {"reason": "missing_fixture_path", "connector_type": connector_type})
+        return None
+    return FixtureSourceConnector.from_json_file(source_type="fixture", fixture_path=fixture_path)
+
+
+def _run_source_ingestion(*, runtime: dict[str, object], store: MemoryStore) -> None:
+    connector = _build_source_connector(runtime)
+    if connector is None:
+        return
+    ingestor = SourceIngestor(connector=connector, memory_store=store)
+    result = ingestor.ingest_once(
+        cursor=(str(runtime.get("source_ingest_cursor")) if runtime.get("source_ingest_cursor") is not None else None),
+        limit=int(runtime.get("source_ingest_limit", 50)),
+    )
+    append_session_log(
+        "source_ingest_completed",
+        {
+            "source_type": connector.source_type,
+            "fetched_count": result.fetched_count,
+            "stored_count": result.stored_count,
+            "next_cursor": result.next_cursor,
+            "memory_doc_ids": [str(doc.id or "") for doc in result.memory_documents],
+            "evidence_doc_ids": [str(doc.id or "") for doc in result.evidence_documents],
+        },
+    )
 
 def _print_startup_status(
     *,
@@ -637,7 +680,7 @@ def collect_used_memory_refs(hits: list[Document]) -> list[str]:
     for d in hits:
         if is_source_evidence_doc(d):
             continue
-        doc_id = str(d.id or d.metadata.get("doc_id") or "").strip()
+        doc_id = str(d.metadata.get("doc_id") or d.id or "").strip()
         if not doc_id:
             continue
         ts = str(d.metadata.get("ts") or "").strip()
@@ -651,7 +694,7 @@ def collect_used_source_evidence_refs(hits: list[Document]) -> tuple[list[str], 
     for d in hits:
         if not is_source_evidence_doc(d):
             continue
-        doc_id = str(d.id or d.metadata.get("doc_id") or "").strip()
+        doc_id = str(d.metadata.get("doc_id") or d.id or "").strip()
         if doc_id:
             refs.append(doc_id)
         attribution = {
@@ -1214,6 +1257,8 @@ def main(argv: list[str] | None = None) -> None:
     )
     chat_history: deque[ChatMsg] = deque(maxlen=10)
     clock = SystemClock()
+
+    _run_source_ingestion(runtime=runtime, store=store)
 
     ha_error = _ha_connection_error(
         str(runtime["ha_api_url"]),
