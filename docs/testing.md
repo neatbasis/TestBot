@@ -31,6 +31,9 @@ Use BDD to validate externally visible outcomes:
 - Assistant returns exact fallback `I don't know from memory.` when context is insufficient.
 - Time-aware retrieval behavior matches expected outcomes for representative phrasing.
 
+`behave` is mandatory for canonical merge validation. If `behave` is missing, treat that as a local setup defect and
+fix it with `pip install -e .[dev]` before considering validation complete.
+
 Recommended layout:
 
 ```text

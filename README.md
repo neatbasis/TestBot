@@ -66,6 +66,7 @@ pip install -e .[dev]
 ```
 
 `behave` is installed via the `dev` extra, so install this before running behavior scenarios.
+Treat missing `behave` as a setup failure (not an acceptable skip): canonical validation is fail-closed on BDD.
 
 For full environment prerequisites and `.env` variables, use [docs/quickstart.md](docs/quickstart.md).
 
