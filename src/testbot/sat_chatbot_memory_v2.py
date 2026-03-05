@@ -91,7 +91,7 @@ CAPABILITIES_HELP_ANSWER = (
 GENERAL_KNOWLEDGE_MARKER_PREFIX = "General definition (not from your memory):"
 GENERAL_KNOWLEDGE_CONFIDENCE_MIN = 0.85
 GENERAL_KNOWLEDGE_SUPPORT_MIN = 2
-ALIGNMENT_OBJECTIVE_VERSION = "2026-03-04.v2"
+ALIGNMENT_OBJECTIVE_VERSION = "2026-03-05.v3"
 SESSION_LOG_SCHEMA_VERSION = 2
 _LOGGER = logging.getLogger(__name__)
 
@@ -870,6 +870,22 @@ def evaluate_alignment_decision(
     provenance_types: list[ProvenanceType],
     basis_statement: str,
 ) -> dict[str, object]:
+    def _clamp01(value: float) -> float:
+        return round(max(0.0, min(1.0, value)), 4)
+
+    def _candidate_margin_normalized() -> tuple[float, float, float]:
+        scored_candidates = confidence_decision.get("scored_candidates", [])
+        if not isinstance(scored_candidates, list) or len(scored_candidates) < 2:
+            return 0.0, 0.0, 0.0
+        first = scored_candidates[0] if isinstance(scored_candidates[0], dict) else {}
+        second = scored_candidates[1] if isinstance(scored_candidates[1], dict) else {}
+        top_score = float(first.get("final_score", 0.0) or 0.0)
+        second_score = float(second.get("final_score", 0.0) or 0.0)
+        observed_margin = max(0.0, top_score - second_score)
+        required_margin = float(confidence_decision.get("min_margin_to_second", 0.05) or 0.05)
+        normalized_margin = _clamp01(observed_margin / required_margin) if required_margin > 0.0 else 1.0
+        return observed_margin, required_margin, normalized_margin
+
     contract_exempt_response = is_clarification_answer(final_answer) or final_answer in {
         ASSIST_ALTERNATIVES_ANSWER,
         CAPABILITIES_HELP_ANSWER,
@@ -878,25 +894,51 @@ def evaluate_alignment_decision(
     has_citation = has_required_memory_citation(draft_answer)
     context_confident = bool(confidence_decision.get("context_confident", False))
     unsafe_request = is_unsafe_user_request(user_input)
+    observed_margin, required_margin, confidence_margin_normalized = _candidate_margin_normalized()
 
-    factual_grounding_reliability = 1.0 if (
-        contract_exempt_response or not has_claims or (has_citation and context_confident)
-    ) else 0.0
+    citation_validity = 1.0 if (contract_exempt_response or not has_claims or has_citation) else 0.0
+    factual_grounding_reliability = _clamp01((0.65 * citation_validity) + (0.35 * confidence_margin_normalized))
     safety_compliance_strictness = 0.0 if (unsafe_request and final_answer != DENY_ANSWER) else 1.0
-    response_utility = 1.0 if final_answer not in {"", FALLBACK_ANSWER, DENY_ANSWER} else 0.4
-    cost_latency_budget = 1.0
-    provenance_transparency = 1.0 if (
-        not is_non_trivial_answer(final_answer)
-        or (bool(claims) and bool(provenance_types) and bool((basis_statement or "").strip()))
-    ) else 0.0
+
+    fallback_mode_score = 1.0
+    if final_answer == DENY_ANSWER:
+        fallback_mode_score = 0.0
+    elif final_answer == FALLBACK_ANSWER:
+        fallback_mode_score = 0.25
+    elif contract_exempt_response:
+        fallback_mode_score = 0.7
+
+    intent_fulfillment_proxy = 1.0 if context_confident and final_answer not in {"", FALLBACK_ANSWER, DENY_ANSWER} else 0.45
+    if contract_exempt_response:
+        intent_fulfillment_proxy = 0.75
+    response_utility = _clamp01((0.5 * fallback_mode_score) + (0.5 * intent_fulfillment_proxy))
+
+    observed_latency_ms = float(confidence_decision.get("turn_latency_ms", 0.0) or 0.0)
+    latency_budget_ms = float(confidence_decision.get("latency_budget_ms", 3500.0) or 3500.0)
+    latency_score = 1.0 if observed_latency_ms <= 0.0 else _clamp01(1.0 - (observed_latency_ms / latency_budget_ms))
+    token_budget_ratio = float(confidence_decision.get("token_budget_ratio", 0.0) or 0.0)
+    token_budget_score = 1.0 if token_budget_ratio <= 0.0 else _clamp01(1.0 - token_budget_ratio)
+    cost_latency_budget = _clamp01(min(latency_score, token_budget_score))
+
+    required_provenance_checks = {
+        "claims_non_empty": bool(claims),
+        "provenance_types_non_empty": bool(provenance_types),
+        "basis_statement_non_empty": bool((basis_statement or "").strip()),
+    }
+    passed_required_checks = sum(1 for passed in required_provenance_checks.values() if passed)
+    provenance_transparency = 1.0 if not is_non_trivial_answer(final_answer) else _clamp01(
+        passed_required_checks / float(len(required_provenance_checks))
+    )
 
     if safety_compliance_strictness < 1.0:
         final_alignment_decision = "deny"
-    elif factual_grounding_reliability < 1.0:
+    elif factual_grounding_reliability < 0.6:
         final_alignment_decision = "fallback"
     elif response_utility < 0.5:
         final_alignment_decision = "fallback"
-    elif provenance_transparency < 1.0:
+    elif provenance_transparency < 0.75:
+        final_alignment_decision = "fallback"
+    elif cost_latency_budget < 0.35:
         final_alignment_decision = "fallback"
     else:
         final_alignment_decision = "allow"
@@ -909,6 +951,31 @@ def evaluate_alignment_decision(
             "response_utility": response_utility,
             "cost_latency_budget": cost_latency_budget,
             "provenance_transparency": provenance_transparency,
+        },
+        "dimension_inputs": {
+            "raw": {
+                "has_claims": has_claims,
+                "has_required_memory_citation": has_citation,
+                "context_confident": context_confident,
+                "unsafe_request": unsafe_request,
+                "confidence_margin_observed": round(observed_margin, 4),
+                "confidence_margin_required": round(required_margin, 4),
+                "fallback_mode_score": fallback_mode_score,
+                "intent_fulfillment_proxy": intent_fulfillment_proxy,
+                "turn_latency_ms": observed_latency_ms,
+                "latency_budget_ms": latency_budget_ms,
+                "token_budget_ratio": token_budget_ratio,
+                "provenance_checks": required_provenance_checks,
+            },
+            "normalized": {
+                "citation_validity": citation_validity,
+                "confidence_margin_normalized": confidence_margin_normalized,
+                "fallback_mode_score": fallback_mode_score,
+                "intent_fulfillment_proxy": intent_fulfillment_proxy,
+                "latency_score": latency_score,
+                "token_budget_score": token_budget_score,
+                "provenance_completeness": provenance_transparency,
+            },
         },
         "final_alignment_decision": final_alignment_decision,
     }
@@ -1138,6 +1205,17 @@ def _run_chat_loop(
                 "used_source_evidence_refs": state.used_source_evidence_refs,
                 "source_evidence_attribution": state.source_evidence_attribution,
                 "basis_statement": state.basis_statement,
+            },
+        )
+        append_session_log(
+            "alignment_decision_evaluated",
+            {
+                "utterance": utterance,
+                "intent": intent_label,
+                "alignment_decision": state.alignment_decision,
+                "alignment_dimension_inputs_raw": state.alignment_decision.get("dimension_inputs", {}).get("raw", {}),
+                "alignment_dimension_inputs_normalized": state.alignment_decision.get("dimension_inputs", {}).get("normalized", {}),
+                "alignment_dimensions": state.alignment_decision.get("dimensions", {}),
             },
         )
 

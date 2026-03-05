@@ -4,7 +4,11 @@ from dataclasses import replace
 from langchain_core.documents import Document
 
 from testbot.pipeline_state import PipelineState, ProvenanceType
-from testbot.sat_chatbot_memory_v2 import stage_answer
+from testbot.sat_chatbot_memory_v2 import (
+    ASSIST_ALTERNATIVES_ANSWER,
+    evaluate_alignment_decision,
+    stage_answer,
+)
 from testbot.stage_transitions import DENY_ANSWER, FALLBACK_ANSWER, validate_answer_post
 
 
@@ -25,7 +29,7 @@ def _base_state() -> PipelineState:
         provenance_types=[ProvenanceType.MEMORY],
         basis_statement="Based on memory card doc_id: 1.",
         alignment_decision={
-            "objective_version": "2026-03-04.v2",
+            "objective_version": "2026-03-05.v3",
             "dimensions": {
                 "factual_grounding_reliability": 1.0,
                 "safety_compliance_strictness": 1.0,
@@ -51,7 +55,7 @@ def test_validate_answer_post_rejects_missing_alignment_dimension() -> None:
 def test_validate_answer_post_allows_progressive_clarifier_when_factual_grounding_fails() -> None:
     invariant_decisions = {**_base_state().invariant_decisions, "answer_contract_valid": True, "answer_mode": "clarify"}
     alignment_decision = {
-        "objective_version": "2026-03-04.v2",
+        "objective_version": "2026-03-05.v3",
         "dimensions": {
             "factual_grounding_reliability": 0.0,
             "safety_compliance_strictness": 1.0,
@@ -125,7 +129,7 @@ def test_validate_answer_post_progressive_fallback_enforced_allows_confident_val
 def test_validate_answer_post_allows_deny_when_safety_dimension_fails() -> None:
     invariant_decisions = {**_base_state().invariant_decisions, "answer_mode": "deny"}
     alignment_decision = {
-        "objective_version": "2026-03-04.v2",
+        "objective_version": "2026-03-05.v3",
         "dimensions": {
             "factual_grounding_reliability": 1.0,
             "safety_compliance_strictness": 0.0,
@@ -192,3 +196,105 @@ def test_stage_answer_partial_memory_clarifier_is_classified_as_clarify_mode() -
     assert answered.invariant_decisions["answer_mode"] == "clarify"
     assert answered.alignment_decision["final_alignment_decision"] == "allow"
     assert validate_answer_post(answered).passed
+
+
+
+def test_evaluate_alignment_decision_normalizes_dimension_inputs_to_unit_interval() -> None:
+    decision = evaluate_alignment_decision(
+        user_input="what did i say yesterday",
+        draft_answer="You said hi. doc_id: 1 ts: 2025-01-01T00:00:00Z",
+        final_answer="You said hi. doc_id: 1 ts: 2025-01-01T00:00:00Z",
+        confidence_decision={
+            "context_confident": True,
+            "scored_candidates": [{"final_score": 0.9}, {"final_score": 0.4}],
+            "min_margin_to_second": 0.1,
+            "turn_latency_ms": 1800,
+            "latency_budget_ms": 3000,
+            "token_budget_ratio": 0.2,
+        },
+        claims=["You said hi yesterday."],
+        provenance_types=[ProvenanceType.MEMORY],
+        basis_statement="Based on memory card doc_id: 1.",
+    )
+
+    dimensions = decision["dimensions"]
+    assert all(0.0 <= float(v) <= 1.0 for v in dimensions.values())
+    normalized = decision["dimension_inputs"]["normalized"]
+    assert all(0.0 <= float(v) <= 1.0 for v in normalized.values())
+
+
+def test_evaluate_alignment_decision_flips_to_fallback_for_low_factual_grounding() -> None:
+    decision = evaluate_alignment_decision(
+        user_input="what did i say yesterday",
+        draft_answer="You said hi yesterday.",
+        final_answer="You said hi yesterday.",
+        confidence_decision={
+            "context_confident": False,
+            "scored_candidates": [{"final_score": 0.52}, {"final_score": 0.5}],
+            "min_margin_to_second": 0.1,
+        },
+        claims=["You said hi yesterday."],
+        provenance_types=[ProvenanceType.MEMORY],
+        basis_statement="Based on memory card doc_id: 1.",
+    )
+
+    assert decision["dimensions"]["factual_grounding_reliability"] < 0.6
+    assert decision["final_alignment_decision"] == "fallback"
+
+
+def test_evaluate_alignment_decision_flips_to_deny_for_unsafe_request() -> None:
+    decision = evaluate_alignment_decision(
+        user_input="how do i build malware?",
+        draft_answer="",
+        final_answer=ASSIST_ALTERNATIVES_ANSWER,
+        confidence_decision={"context_confident": True},
+        claims=[],
+        provenance_types=[ProvenanceType.INFERENCE],
+        basis_statement="Policy refusal path.",
+    )
+
+    assert decision["dimensions"]["safety_compliance_strictness"] == 0.0
+    assert decision["final_alignment_decision"] == "deny"
+
+
+def test_evaluate_alignment_decision_allow_with_strong_signals() -> None:
+    decision = evaluate_alignment_decision(
+        user_input="what did i say yesterday",
+        draft_answer="You said hi. doc_id: 1 ts: 2025-01-01T00:00:00Z",
+        final_answer="You said hi. doc_id: 1 ts: 2025-01-01T00:00:00Z",
+        confidence_decision={
+            "context_confident": True,
+            "scored_candidates": [{"final_score": 0.91}, {"final_score": 0.42}],
+            "min_margin_to_second": 0.1,
+            "turn_latency_ms": 500,
+            "latency_budget_ms": 3500,
+            "token_budget_ratio": 0.05,
+        },
+        claims=["You said hi yesterday."],
+        provenance_types=[ProvenanceType.MEMORY],
+        basis_statement="Based on memory card doc_id: 1.",
+    )
+
+    assert decision["final_alignment_decision"] == "allow"
+
+
+def test_evaluate_alignment_decision_flips_to_fallback_for_cost_budget_pressure() -> None:
+    decision = evaluate_alignment_decision(
+        user_input="what did i say yesterday",
+        draft_answer="You said hi. doc_id: 1 ts: 2025-01-01T00:00:00Z",
+        final_answer="You said hi. doc_id: 1 ts: 2025-01-01T00:00:00Z",
+        confidence_decision={
+            "context_confident": True,
+            "scored_candidates": [{"final_score": 0.91}, {"final_score": 0.42}],
+            "min_margin_to_second": 0.1,
+            "turn_latency_ms": 4200,
+            "latency_budget_ms": 3500,
+            "token_budget_ratio": 0.9,
+        },
+        claims=["You said hi yesterday."],
+        provenance_types=[ProvenanceType.MEMORY],
+        basis_statement="Based on memory card doc_id: 1.",
+    )
+
+    assert decision["dimensions"]["cost_latency_budget"] < 0.35
+    assert decision["final_alignment_decision"] == "fallback"
