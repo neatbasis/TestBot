@@ -9,8 +9,11 @@ Use this note under each red-tag issue entry whenever status changes or during s
 ```
 - Last reviewed: YYYY-MM-DD
 - Next review due: YYYY-MM-DD
+- KPI evidence: docs/issues/evidence/sprint-<NN>-kpi-review.md
 - Decision notes: <decision, rationale, and any escalation/rollback updates>
 ```
+
+KPI evidence updates are mandatory for red-tag triage. If any KPI guardrail fails, include owner + due date and escalation/rollback intent in both the evidence note and decision notes.
 
 ## Active
 

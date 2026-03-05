@@ -129,6 +129,7 @@ def test_build_checks_order_and_commands() -> None:
         "pytest_eval_runtime_parity",
         "validate_issue_links",
         "validate_issues",
+        "validate_kpi_guardrails",
     ]
     assert checks[0].command[1:] == ["-m", "behave"]
     assert checks[1].command[1:] == [
@@ -152,6 +153,14 @@ def test_build_checks_order_and_commands() -> None:
         "--base-ref",
         "origin/main",
     ]
+    assert checks[6].command[1:] == [
+        "scripts/validate_kpi_guardrails.py",
+        "--summary",
+        "logs/turn_analytics_summary.json",
+        "--config",
+        "config/kpi_guardrails.json",
+    ]
+    assert checks[6].blocking is False
 
 
 def test_build_checks_includes_optional_replay_report() -> None:
@@ -196,6 +205,7 @@ def test_main_prints_parity_divergence_hint(monkeypatch: pytest.MonkeyPatch, cap
         json_output=None,
         base_ref="origin/main",
         replay_report=False,
+        kpi_guardrail_mode="optional",
     ))
     monkeypatch.setattr(release_gate, "build_checks", lambda **_kwargs: [])
     monkeypatch.setattr(
@@ -221,3 +231,14 @@ def test_main_prints_parity_divergence_hint(monkeypatch: pytest.MonkeyPatch, cap
     assert exit_code == 1
     assert "Parity gate failed" in output
     assert "scripts/eval_recall.py <-> testbot.rerank" in output
+
+
+def test_build_checks_allows_blocking_kpi_guardrail_mode() -> None:
+    checks = release_gate.build_checks(kpi_guardrail_mode="blocking")
+    kpi_check = next(check for check in checks if check.name == "validate_kpi_guardrails")
+    assert kpi_check.blocking is True
+
+
+def test_build_checks_allows_disabling_kpi_guardrail_mode() -> None:
+    checks = release_gate.build_checks(kpi_guardrail_mode="off")
+    assert all(check.name != "validate_kpi_guardrails" for check in checks)

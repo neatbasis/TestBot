@@ -54,10 +54,16 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Include the optional replay KPI drift report command.",
     )
+    parser.add_argument(
+        "--kpi-guardrail-mode",
+        choices=("off", "optional", "blocking"),
+        default="optional",
+        help="Rollout mode for KPI guardrail validation (default: optional).",
+    )
     return parser.parse_args()
 
 
-def build_checks(*, replay_report: bool = False, base_ref: str = "origin/main") -> list[GateCheck]:
+def build_checks(*, replay_report: bool = False, base_ref: str = "origin/main", kpi_guardrail_mode: str = "optional") -> list[GateCheck]:
     checks = [
         GateCheck(name="behave", command=[sys.executable, "-m", "behave"]),
         GateCheck(
@@ -94,6 +100,23 @@ def build_checks(*, replay_report: bool = False, base_ref: str = "origin/main") 
             ],
         ),
     ]
+
+    if kpi_guardrail_mode != "off":
+        checks.append(
+            GateCheck(
+                name="validate_kpi_guardrails",
+                command=[
+                    sys.executable,
+                    "scripts/validate_kpi_guardrails.py",
+                    "--summary",
+                    "logs/turn_analytics_summary.json",
+                    "--config",
+                    "config/kpi_guardrails.json",
+                ],
+                blocking=kpi_guardrail_mode == "blocking",
+            )
+        )
+
     if replay_report:
         checks.append(
             GateCheck(
@@ -174,7 +197,11 @@ def summarize(results: Sequence[CheckResult], continue_on_failure: bool) -> dict
 
 def main() -> int:
     args = parse_args()
-    checks = build_checks(replay_report=args.replay_report, base_ref=args.base_ref)
+    checks = build_checks(
+        replay_report=args.replay_report,
+        base_ref=args.base_ref,
+        kpi_guardrail_mode=args.kpi_guardrail_mode,
+    )
     results, exit_code = run_gate(checks=checks, continue_on_failure=args.continue_on_failure)
     summary = summarize(results=results, continue_on_failure=args.continue_on_failure)
 
@@ -193,6 +220,9 @@ def main() -> int:
             "\nParity gate failed: likely divergence in eval/runtime adapter boundaries "
             "(scripts/eval_recall.py <-> testbot.rerank or sat_chatbot_memory_v2 confidence/ambiguity handling)."
         )
+
+    if args.kpi_guardrail_mode == "optional":
+        print("\nKPI guardrail check is running in optional mode. Promote with --kpi-guardrail-mode blocking once rollout criteria are met.")
 
     if args.json_output:
         out_path = args.json_output if args.json_output.is_absolute() else REPO_ROOT / args.json_output
