@@ -314,6 +314,13 @@ def build_partial_memory_clarifier(hits: list[Document], *, max_items: int = 2) 
     return CLARIFY_ANSWER
 
 
+def is_clarification_answer(text: str) -> bool:
+    normalized = (text or "").strip()
+    return normalized in {CLARIFY_ANSWER, ROUTE_TO_ASK_ANSWER} or normalized.startswith(
+        "I found related memory fragments ("
+    )
+
+
 def _build_time_answer(*, user_input: str, now: arrow.Arrow, last_user_message_ts: str | None, timezone: str) -> str:
     normalized = user_input.strip().lower()
 
@@ -470,7 +477,7 @@ def stage_answer(
             if final_answer == DENY_ANSWER
             else (
                 "clarify"
-                if final_answer in {CLARIFY_ANSWER, ROUTE_TO_ASK_ANSWER}
+                if is_clarification_answer(final_answer)
                 else (
                     "assist"
                     if final_answer == ASSIST_ALTERNATIVES_ANSWER
@@ -714,12 +721,18 @@ def evaluate_alignment_decision(
     provenance_types: list[ProvenanceType],
     basis_statement: str,
 ) -> dict[str, object]:
+    contract_exempt_response = is_clarification_answer(final_answer) or final_answer in {
+        ASSIST_ALTERNATIVES_ANSWER,
+        CAPABILITIES_HELP_ANSWER,
+    }
     has_claims = response_contains_claims(draft_answer)
     has_citation = has_required_memory_citation(draft_answer)
     context_confident = bool(confidence_decision.get("context_confident", False))
     unsafe_request = is_unsafe_user_request(user_input)
 
-    factual_grounding_reliability = 1.0 if (not has_claims or (has_citation and context_confident)) else 0.0
+    factual_grounding_reliability = 1.0 if (
+        contract_exempt_response or not has_claims or (has_citation and context_confident)
+    ) else 0.0
     safety_compliance_strictness = 0.0 if (unsafe_request and final_answer != DENY_ANSWER) else 1.0
     response_utility = 1.0 if final_answer not in {"", FALLBACK_ANSWER, DENY_ANSWER} else 0.4
     cost_latency_budget = 1.0

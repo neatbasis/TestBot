@@ -1,6 +1,10 @@
+from collections import deque
 from dataclasses import replace
 
+from langchain_core.documents import Document
+
 from testbot.pipeline_state import PipelineState, ProvenanceType
+from testbot.sat_chatbot_memory_v2 import stage_answer
 from testbot.stage_transitions import DENY_ANSWER, FALLBACK_ANSWER, validate_answer_post
 
 
@@ -106,3 +110,38 @@ def test_validate_answer_post_rejects_missing_provenance_dimension_for_non_trivi
 
     assert not result.passed
     assert "alignment_dimensions_present" in result.failures
+
+
+class _InvalidContractLLM:
+    class _Response:
+        content = "Topology studies shape and continuity across spaces."
+
+    def invoke(self, _msgs):
+        return self._Response()
+
+
+def test_stage_answer_partial_memory_clarifier_is_classified_as_clarify_mode() -> None:
+    state = PipelineState(
+        user_input="what did i say yesterday",
+        confidence_decision={"context_confident": True, "ambiguity_detected": False},
+    )
+    hits = [
+        Document(
+            page_content="You mentioned discussing topology during lunch.",
+            metadata={"doc_id": "d-1", "ts": "2025-01-01T00:00:00Z"},
+        )
+    ]
+
+    answered = stage_answer(
+        _InvalidContractLLM(),
+        state,
+        chat_history=deque(),
+        hits=hits,
+        capability_status="ask_unavailable",
+        clock=None,
+    )
+
+    assert answered.final_answer.startswith("I found related memory fragments (")
+    assert answered.invariant_decisions["answer_mode"] == "clarify"
+    assert answered.alignment_decision["final_alignment_decision"] == "allow"
+    assert validate_answer_post(answered).passed
