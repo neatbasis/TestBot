@@ -17,6 +17,7 @@ from homeassistant_api import Client
 from testbot.clock import Clock, SystemClock
 from testbot.memory_cards import make_reflection_card, make_utterance_card, store_doc, utc_now_iso
 from testbot.pipeline_state import CandidateHit, PipelineState, ProvenanceType, append_pipeline_snapshot
+from testbot.promotion_policy import persist_promoted_context
 from testbot.reflection_policy import CapabilityStatus, decide_fallback_action
 from testbot.rerank import adaptive_sigma_fractional, rerank_docs_with_time_and_type_outcome
 from testbot.stage_transitions import (
@@ -1028,6 +1029,25 @@ def _run_chat_loop(
                 "doc_id": a_ref_id,
             },
         )
+
+        promoted_doc_ids = persist_promoted_context(
+            store=store,
+            ts_iso=a_ref_ts,
+            source_doc_id=a_id,
+            source_reflection_id=a_ref_id,
+            reflection_yaml=a_ref_yaml,
+            channel=io_channel,
+        )
+        if promoted_doc_ids:
+            append_session_log(
+                "promoted_context_persisted",
+                {
+                    "source_doc_id": a_id,
+                    "source_reflection_id": a_ref_id,
+                    "promoted_doc_ids": promoted_doc_ids,
+                    "count": len(promoted_doc_ids),
+                },
+            )
 
 
 def _run_cli_mode(*, llm: ChatOllama, store: MemoryStore, chat_history: deque[ChatMsg], near_tie_delta: float, clock: Clock) -> None:
