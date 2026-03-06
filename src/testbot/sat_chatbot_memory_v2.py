@@ -1212,13 +1212,21 @@ def build_provenance_metadata(
     if chat_history:
         provenance_types.append(ProvenanceType.CHAT_HISTORY)
 
-    if used_memory_refs:
+    if used_memory_refs and used_source_evidence_refs:
+        basis_statement = (
+            "Answer synthesized from reranked memory context and source evidence documents"
+            + (" with recent chat history signals." if chat_history else ".")
+        )
+    elif used_memory_refs:
         basis_statement = (
             "Answer synthesized from reranked memory context"
             + (" and recent chat history." if chat_history else ".")
         )
     elif used_source_evidence_refs:
-        basis_statement = "Answer synthesized from reranked source evidence documents."
+        basis_statement = (
+            "Answer synthesized from reranked source evidence documents"
+            + (" and recent chat history." if chat_history else ".")
+        )
     elif chat_history:
         basis_statement = (
             "Relevance summary basis: synthesized from recent chat history signals."

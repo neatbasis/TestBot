@@ -155,3 +155,11 @@ def step_then_final_answer_is_knowledge_safe_fallback(context) -> None:
 @then('the final answer should not ask "{message}"')
 def step_then_final_answer_does_not_ask_message(context, message: str) -> None:
     assert message not in context.stage_answer_state.final_answer
+
+
+@then("the response records knowledge-safe fallback provenance transparency")
+def step_then_response_records_general_knowledge_provenance_and_basis(context) -> None:
+    provenance_names = {p.name for p in context.stage_answer_state.provenance_types}
+    assert provenance_names == {"UNKNOWN"}
+    assert context.stage_answer_state.basis_statement.strip()
+    assert "no substantive claim" in context.stage_answer_state.basis_statement.lower()

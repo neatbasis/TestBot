@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from collections import deque
 
+from langchain_core.documents import Document
+
 from testbot.clock import SystemClock
 from testbot.pipeline_state import PipelineState
 from testbot import sat_chatbot_memory_v2 as runtime
@@ -11,6 +13,7 @@ from testbot.sat_chatbot_memory_v2 import (
     _ambiguity_score,
     _intent_label,
     _user_followup_signal_proxy,
+    build_provenance_metadata,
     generate_reflection_yaml,
     stage_answer,
     stage_rewrite_query,
@@ -169,6 +172,42 @@ def test_provenance_summary_log_contains_bandit_and_provenance_fields() -> None:
     assert row["used_source_evidence_refs"] == ["src-1"]
     assert row["source_evidence_attribution"][0]["source_uri"] == "calendar://work/event-1"
 
+
+
+
+def test_build_provenance_metadata_mixed_memory_and_source_mentions_both_in_basis() -> None:
+    hits = [
+        Document(
+            id="mem-1",
+            page_content="memory fragment",
+            metadata={"doc_id": "mem-1", "ts": "2026-03-10T09:00:00Z", "type": "user_utterance"},
+        ),
+        Document(
+            id="src-1",
+            page_content="source evidence",
+            metadata={
+                "doc_id": "src-1",
+                "type": "source_evidence",
+                "source_type": "calendar",
+                "source_uri": "calendar://work/event-1",
+                "retrieved_at": "2026-03-10T09:05:00Z",
+                "trust_tier": "high",
+            },
+        ),
+    ]
+
+    provenance_types, _claims, basis_statement, used_memory_refs, used_source_refs, source_attr = build_provenance_metadata(
+        final_answer="Memory-backed answer (doc_id: mem-1, ts: 2026-03-10T09:00:00Z)",
+        hits=hits,
+        chat_history=deque([{"role": "user", "content": "what about the meeting?"}]),
+        packed_history=runtime.pack_chat_history([{"role": "user", "content": "what about the meeting?"}]),
+    )
+
+    assert used_memory_refs == ["mem-1@2026-03-10T09:00:00Z"]
+    assert used_source_refs == ["src-1"]
+    assert source_attr and source_attr[0]["source_uri"] == "calendar://work/event-1"
+    assert any(p.value == "MEMORY" for p in provenance_types)
+    assert "memory context and source evidence documents" in basis_statement.lower()
 
 def test_stage_answer_non_memory_without_ambiguity_does_not_emit_memory_fragment_clarifier(monkeypatch) -> None:
     monkeypatch.setattr(runtime, "decide_fallback_action", lambda **_: "ANSWER_GENERAL_KNOWLEDGE")
