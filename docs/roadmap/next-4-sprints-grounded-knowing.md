@@ -12,6 +12,18 @@ This roadmap operationalizes the top-5 grounded-knowing priorities over four spr
 4. **P4: Citation UX + provenance explainability output format**
 5. **P5: Feedback loop using follow-up signals and offline eval replay**
 
+### Priority ID convention
+
+Use `P1`-`P5` as stable **capability-family IDs** across roadmap and QA artifacts:
+
+- `P1` = source connector interface + ingestion pipeline
+- `P2` = evidence normalization/ranking for mixed sources
+- `P3` = knowing/unknowing decision policy with confidence calibration
+- `P4` = citation UX + provenance explainability output format
+- `P5` = feedback loop using follow-up signals and offline eval replay
+
+If a roadmap item is renamed for readability, keep the `P#` bound to the same capability family so status references in `docs/qa/feature-status.yaml` remain semantically stable over time.
+
 ---
 
 ## Sprint 1 — Foundation: connectors + ingestion contract (P1)

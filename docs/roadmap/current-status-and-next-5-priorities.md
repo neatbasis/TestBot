@@ -75,33 +75,35 @@ Interpretation rule:
 
 ---
 
-## Next 5 highest-value features (priority order)
+## Next 5 highest-value capability families (priority order)
 
-### P1 — Intent-grounding reliability hardening (merge-unblocker)
+Priority IDs in this document follow the canonical convention in `docs/roadmap/next-4-sprints-grounded-knowing.md#priority-id-convention`.
 
-- Goal: make all intent-grounding scenarios deterministic and green.
-- Value: immediately restores trust in knowing/unknowing selection logic.
-- Exit: all `features/intent_grounding.feature` scenarios pass in `python -m behave`.
+### P1 — Source connector interface + ingestion pipeline
 
-### P2 — Confidence calibration for knowing vs unknowing decisions
+- Goal: harden connector abstractions and ingestion flow so source evidence is fetched, normalized, and persisted deterministically.
+- Value: unlocks reliable grounding inputs for all downstream knowing decisions.
+- Exit: `features/source_ingestion.feature` plus connector/ingestion pytest coverage stay green with deterministic fixture-backed outputs.
 
-- Goal: tighten threshold policy to reduce false-knowing and ambiguous unknown responses.
-- Value: improves user trust by preventing overconfident unsupported answers.
-- Exit: fixture-driven threshold tests plus parity checks stay green.
+### P2 — Evidence normalization/ranking for mixed sources
 
-### P3 — Searchable external fact connectors (with trust tiers)
+- Goal: normalize and rank evidence consistently across memory and external source candidates.
+- Value: improves grounded-answer quality by stabilizing mixed-source ordering and top-hit selection.
+- Exit: reranking and parity checks remain deterministic for mixed-source fixtures.
 
-- Goal: add source connectors so conversation can ground to searchable facts beyond chat memory.
-- Value: unlocks broader “knowing mode” utility while preserving provenance.
-- Exit: deterministic connector fixture tests + source-backed BDD scenarios pass.
+### P3 — Knowing/unknowing decision policy with confidence calibration
 
-### P4 — Provenance explainability payload standardization
+- Goal: tighten intent/policy thresholds to reduce false-knowing behavior while preserving explicit safe fallback behavior.
+- Value: improves trust by making know-vs-unknown decisions reproducible and conservative under uncertainty.
+- Exit: intent-grounding and reflection-policy scenarios/tests pass with deterministic confidence-band expectations.
+
+### P4 — Citation UX + provenance explainability output format
 
 - Goal: consistently expose `doc_id`, `ts`, `source_id`, and basis/provenance fields in all knowing outputs.
 - Value: makes grounded answers auditable and debuggable.
 - Exit: answer-contract and runtime logging tests confirm complete provenance payloads.
 
-### P5 — Feedback/replay loop for policy drift detection
+### P5 — Feedback loop using follow-up signals and offline eval replay
 
 - Goal: capture correction/clarification signals and replay them offline to detect ranking/policy regressions.
 - Value: protects quality over time as features expand.
