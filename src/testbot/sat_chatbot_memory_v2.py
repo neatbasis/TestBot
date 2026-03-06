@@ -768,11 +768,13 @@ def stage_answer(
         satellite_ask_available=False,
     )
 
-    def _fallback_answer_for_action(action: str) -> str:
+    def _fallback_answer_for_action(action: str, *, intent_class: str) -> str:
         if action == "ROUTE_TO_ASK":
             return ROUTE_TO_ASK_ANSWER
         if action == "ASK_CLARIFYING_QUESTION":
-            return build_partial_memory_clarifier(hits)
+            if intent_class == "memory_recall":
+                return build_partial_memory_clarifier(hits)
+            return FALLBACK_ANSWER
         if action == "ANSWER_UNKNOWN":
             return FALLBACK_ANSWER
         if action == "ANSWER_TIME":
@@ -787,6 +789,7 @@ def stage_answer(
         return ASSIST_ALTERNATIVES_ANSWER
 
     resolved_intent = IntentType(state.resolved_intent or classify_intent(state.user_input).value)
+    intent_class = _intent_class_for_policy(resolved_intent)
     satellite_action_request = is_satellite_action_request(state.user_input)
 
     if _is_capabilities_help_request(resolved_intent):
@@ -850,7 +853,7 @@ def stage_answer(
     msgs = ANSWER_PROMPT.format_messages(input=state.user_input, chat_history=history_str, context=context_str)
 
     fallback_action = decide_fallback_action(
-        intent=_intent_class_for_policy(resolved_intent),
+        intent=intent_class,
         memory_hit=bool(state.confidence_decision.get("context_confident", False)),
         ambiguity=bool(state.confidence_decision.get("ambiguity_detected", False)),
         capability_status=capability_status,
@@ -860,7 +863,6 @@ def stage_answer(
             else None
         ),
     )
-    intent_class = _intent_class_for_policy(resolved_intent)
     ambiguity_detected = bool(state.confidence_decision.get("ambiguity_detected", False))
     memory_hit_count = len(hits)
     route_to_ask_expected = fallback_action == "ROUTE_TO_ASK"
@@ -875,6 +877,11 @@ def stage_answer(
             return build_partial_memory_clarifier(hits)
         if intent_class == "memory_recall":
             return ASSIST_ALTERNATIVES_ANSWER
+        return FALLBACK_ANSWER
+
+    def _knowledge_safe_fallback() -> str:
+        if intent_class == "memory_recall":
+            return _clarifier_or_policy_alternative()
         return FALLBACK_ANSWER
 
     if is_unsafe_user_request(state.user_input):
@@ -894,7 +901,7 @@ def stage_answer(
         final_answer = ASSIST_ALTERNATIVES_ANSWER
     elif fallback_action == "ANSWER_TIME":
         draft_answer = ""
-        final_answer = _fallback_answer_for_action(fallback_action)
+        final_answer = _fallback_answer_for_action(fallback_action, intent_class=intent_class)
     else:
         try:
             draft_answer = (llm.invoke(msgs).content or "").strip()
@@ -908,7 +915,7 @@ def stage_answer(
                 },
             )
             draft_answer = ""
-            final_answer = _fallback_answer_for_action(fallback_action)
+            final_answer = _fallback_answer_for_action(fallback_action, intent_class=intent_class)
         else:
             if not draft_answer:
                 final_answer = ASSIST_ALTERNATIVES_ANSWER
@@ -934,7 +941,7 @@ def stage_answer(
         )
     )
     if final_answer != FALLBACK_ANSWER and not general_knowledge_contract_valid:
-        final_answer = _clarifier_or_policy_alternative()
+        final_answer = _knowledge_safe_fallback()
         provenance_types, claims, basis_statement, used_memory_refs, used_source_evidence_refs, source_evidence_attribution = build_provenance_metadata(
             final_answer=final_answer,
             hits=hits,
@@ -952,6 +959,25 @@ def stage_answer(
         basis_statement=basis_statement,
     )
 
+    answer_mode = (
+        "deny"
+        if final_answer == DENY_ANSWER
+        else (
+            "clarify"
+            if is_clarification_answer(final_answer)
+            else (
+                "assist"
+                if final_answer == ASSIST_ALTERNATIVES_ANSWER
+                else ("dont-know" if final_answer == FALLBACK_ANSWER else "memory-grounded")
+            )
+        )
+    )
+    ambiguity_policy_allows_non_memory_clarify = bool(state.confidence_decision.get("allow_non_memory_clarify", False))
+    if answer_mode == "clarify" and intent_class != "memory_recall" and not ambiguity_policy_allows_non_memory_clarify:
+        raise AssertionError(
+            "Non-memory intent produced answer_mode=clarify without explicit ambiguity policy override."
+        )
+
     invariant_decisions = {
         "response_contains_claims": response_contains_claims(draft_answer),
         "has_required_memory_citation": has_required_memory_citation(draft_answer),
@@ -959,19 +985,7 @@ def stage_answer(
         "general_knowledge_contract_valid": general_knowledge_contract_valid,
         "has_general_knowledge_marker": has_general_knowledge_marker(final_answer),
         "general_knowledge_confidence_gate_passed": passes_general_knowledge_confidence_gate(state.confidence_decision),
-        "answer_mode": (
-            "deny"
-            if final_answer == DENY_ANSWER
-            else (
-                "clarify"
-                if is_clarification_answer(final_answer)
-                else (
-                    "assist"
-                    if final_answer == ASSIST_ALTERNATIVES_ANSWER
-                    else ("dont-know" if final_answer == FALLBACK_ANSWER else "memory-grounded")
-                )
-            )
-        ),
+        "answer_mode": answer_mode,
         "fallback_action": fallback_action,
         "provenance_recorded": bool(not is_non_trivial_answer(final_answer) or provenance_types),
     }

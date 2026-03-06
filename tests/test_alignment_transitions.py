@@ -72,6 +72,7 @@ def test_validate_answer_post_allows_progressive_clarifier_when_factual_groundin
         final_answer="Can you clarify which memory and time window you mean?",
         invariant_decisions=invariant_decisions,
         alignment_decision=alignment_decision,
+        resolved_intent="memory_recall",
     )
 
     result = validate_answer_post(state)
