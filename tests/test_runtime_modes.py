@@ -71,7 +71,19 @@ def _patch_main_dependencies(
     monkeypatch.setattr(runtime, "_ha_connection_error", lambda *_args, **_kwargs: ha_error)
     monkeypatch.setattr(runtime, "_ollama_connection_error", lambda *_args, **_kwargs: ollama_error)
     if startup is not None:
-        monkeypatch.setattr(runtime, "_print_startup_status", lambda **kwargs: startup.update(kwargs))
+        def _capture_startup(**kwargs):
+            startup.update(kwargs)
+            snapshot = kwargs.get("snapshot")
+            if snapshot is not None:
+                startup.update(
+                    {
+                        "requested_mode": snapshot.requested_mode,
+                        "effective_mode": snapshot.effective_mode,
+                        "fallback_reason": snapshot.fallback_reason,
+                    }
+                )
+
+        monkeypatch.setattr(runtime, "_print_startup_status", _capture_startup)
     else:
         monkeypatch.setattr(runtime, "_print_startup_status", lambda **_kwargs: None)
     monkeypatch.setattr(runtime, "ChatOllama", lambda *a, **k: object())
