@@ -3,6 +3,11 @@ last_updated: 2026-03-06
 report:
   canonical_generated_report: docs/qa/feature-status-report.md
   default_gate_summary: artifacts/all-green-gate-summary.json
+  provenance_contract:
+  - JSON summary includes generated_at_utc plus inputs.{contract_path,gate_summary_path,issues_dir,roadmap_dir}.
+  - JSON summary includes source_file_metadata with mtime_utc and sha256 for contract, gate summary, and open issue source files.
+  - Markdown report includes header/footer Generated at (UTC) and input file paths.
+  - Markdown may emit a warning when gate summary evidence is older than contract or open issue files.
 capabilities:
 - capability_id: knowing_grounded_answers
   capability_name: Knowing-mode grounded answer with provenance
