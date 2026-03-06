@@ -273,6 +273,11 @@ def main() -> int:
     effective_base_ref, base_ref_notes = resolve_base_ref(args.base_ref)
     for note in base_ref_notes:
         print(f"[WARN] {note}")
+    if args.base_ref == "origin/main" and effective_base_ref in {"HEAD~1", "HEAD"}:
+        print(
+            f"[INFO] Base-ref fallback is active by canonical policy: "
+            f"origin/main -> HEAD~1 -> HEAD (using {effective_base_ref!r})."
+        )
 
     checks = build_checks(base_ref=effective_base_ref)
     results, exit_code = run_gate(checks=checks, continue_on_failure=args.continue_on_failure)

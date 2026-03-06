@@ -8,91 +8,91 @@
       "command": "/root/.pyenv/versions/3.11.14/bin/python -m behave",
       "status": "passed",
       "exit_code": 0,
-      "duration_s": 3.93
+      "duration_s": 2.675
     },
     {
       "name": "product_eval_runtime_parity",
       "command": "/root/.pyenv/versions/3.11.14/bin/python -m pytest tests/test_eval_runtime_parity.py",
       "status": "passed",
       "exit_code": 0,
-      "duration_s": 3.718
+      "duration_s": 2.376
     },
     {
       "name": "product_eval_recall_topk4",
       "command": "/root/.pyenv/versions/3.11.14/bin/python scripts/eval_recall.py --top-k 4",
       "status": "passed",
       "exit_code": 0,
-      "duration_s": 0.479
+      "duration_s": 0.33
     },
     {
       "name": "safety_behave_answer_contract_and_memory",
       "command": "/root/.pyenv/versions/3.11.14/bin/python -m behave features/answer_contract.feature features/memory_recall.feature",
       "status": "passed",
       "exit_code": 0,
-      "duration_s": 1.902
+      "duration_s": 1.324
     },
     {
       "name": "safety_reflection_and_runtime_logging_pytests",
       "command": "/root/.pyenv/versions/3.11.14/bin/python -m pytest tests/test_reflection_policy.py tests/test_runtime_logging_events.py",
       "status": "passed",
       "exit_code": 0,
-      "duration_s": 2.643
+      "duration_s": 2.034
     },
     {
       "name": "safety_validate_log_schema",
       "command": "/root/.pyenv/versions/3.11.14/bin/python scripts/validate_log_schema.py",
       "status": "passed",
       "exit_code": 0,
-      "duration_s": 0.071
+      "duration_s": 0.053
     },
     {
       "name": "ops_runtime_modes_and_startup_status",
       "command": "/root/.pyenv/versions/3.11.14/bin/python -m pytest tests/test_runtime_modes.py tests/test_startup_status.py",
       "status": "passed",
       "exit_code": 0,
-      "duration_s": 2.548
+      "duration_s": 1.896
     },
     {
       "name": "qa_pytest_not_live_smoke",
       "command": "/root/.pyenv/versions/3.11.14/bin/python -m pytest -m 'not live_smoke'",
       "status": "passed",
       "exit_code": 0,
-      "duration_s": 5.394
+      "duration_s": 3.947
     },
     {
       "name": "qa_eval_fixtures_and_runtime_parity",
       "command": "/root/.pyenv/versions/3.11.14/bin/python -m pytest tests/test_eval_fixtures.py tests/test_eval_runtime_parity.py",
       "status": "passed",
       "exit_code": 0,
-      "duration_s": 2.497
+      "duration_s": 1.834
     },
     {
       "name": "qa_validate_issue_links",
       "command": "/root/.pyenv/versions/3.11.14/bin/python scripts/validate_issue_links.py --all-issue-files --base-ref 'HEAD~1'",
       "status": "passed",
       "exit_code": 0,
-      "duration_s": 0.14
+      "duration_s": 0.108
     },
     {
       "name": "qa_validate_issues",
       "command": "/root/.pyenv/versions/3.11.14/bin/python scripts/validate_issues.py --all-issue-files --base-ref 'HEAD~1'",
       "status": "passed",
       "exit_code": 0,
-      "duration_s": 0.103
+      "duration_s": 0.077
     },
     {
       "name": "qa_validate_invariant_sync",
       "command": "/root/.pyenv/versions/3.11.14/bin/python scripts/validate_invariant_sync.py",
       "status": "passed",
       "exit_code": 0,
-      "duration_s": 0.064
+      "duration_s": 0.044
     },
     {
       "name": "qa_validate_markdown_paths",
       "command": "/root/.pyenv/versions/3.11.14/bin/python scripts/validate_markdown_paths.py",
       "status": "passed",
       "exit_code": 0,
-      "duration_s": 0.063
+      "duration_s": 0.051
     }
   ]
 }
