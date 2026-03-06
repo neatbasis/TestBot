@@ -9,7 +9,12 @@ from langchain_core.documents import Document
 from testbot.history_packer import PackedHistory
 from testbot.intent_router import IntentType, classify_intent
 from testbot.pipeline_state import CandidateHit, PipelineState, ProvenanceType
-from testbot.sat_chatbot_memory_v2 import build_provenance_metadata, validate_general_knowledge_contract
+from testbot.sat_chatbot_memory_v2 import (
+    ROUTE_TO_ASK_ANSWER,
+    build_provenance_metadata,
+    resolve_turn_intent,
+    validate_general_knowledge_contract,
+)
 from testbot.stage_transitions import validate_answer_post, validate_answer_pre
 
 GENERAL_MARKER = "General definition (not from your memory):"
@@ -270,3 +275,25 @@ def step_then_response_includes_substring(context, expected_substring: str) -> N
 def step_then_provenance_and_basis_include(context, provenance_name: str, basis_text: str) -> None:
     assert any(provenance.name == provenance_name for provenance in context.pipeline_state.provenance_types)
     assert basis_text.lower() in context.pipeline_state.basis_statement.lower()
+
+
+@when('the user asks to ask something via satellite and follows up with "yes"')
+def step_when_affirmation_followup_continuity(context) -> None:
+    first_state = PipelineState(
+        user_input="ask something via satellite",
+        final_answer=ROUTE_TO_ASK_ANSWER,
+        classified_intent=IntentType.KNOWLEDGE_QUESTION.value,
+        resolved_intent=IntentType.CAPABILITIES_HELP.value,
+        prior_unresolved_intent=IntentType.CAPABILITIES_HELP.value,
+    )
+    context.followup_classified, context.followup_resolved = resolve_turn_intent(
+        utterance="yes",
+        prior_pipeline_state=first_state,
+    )
+
+
+@then("the resolved follow-up intent should preserve capabilities help continuity")
+def step_then_followup_preserves_capabilities_intent(context) -> None:
+    assert context.followup_classified is IntentType.KNOWLEDGE_QUESTION
+    assert context.followup_resolved is IntentType.CAPABILITIES_HELP
+

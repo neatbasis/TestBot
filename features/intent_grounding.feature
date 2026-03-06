@@ -41,3 +41,10 @@ Feature: Intent-specific grounding and provenance behavior
     When source confidence is insufficient for a knowing answer
     Then the assistant returns a progressive unknowing response
     And the provenance and basis should include "UNKNOWN" and "Trivial fallback"
+
+
+  Scenario: affirmation follow-up preserves clarification intent continuity
+    Given an intent response harness
+    When the user asks to ask something via satellite and follows up with "yes"
+    Then the resolved follow-up intent should preserve capabilities help continuity
+
