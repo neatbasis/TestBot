@@ -167,11 +167,15 @@ Confidence policy thresholds (`top_final_score_min`, margin, ambiguity override)
 
 ## Architecture acceptance criteria
 
-- [ ] Observe→intent→encode→retrieve→rerank→answer flow remains intact.
-- [ ] Reflection cards always include `source_doc_id` linkage.
-- [ ] Time-aware rerank is applied when target time can be inferred.
-- [ ] Citation contract is enforced before final output is returned.
-- [ ] Non-trivial answers always include provenance metadata with allowed enum values.
+| Criterion | Current status | Last verified | Verification command | Evidence artifact |
+| --- | --- | --- | --- | --- |
+| Observe→intent→encode→retrieve→rerank→answer flow remains intact. | pass | 2026-03-06 | `python scripts/all_green_gate.py --json-output artifacts/all-green-gate-summary.json` | `artifacts/all-green-gate-summary.json` |
+| Reflection cards always include `source_doc_id` linkage. | partial | 2026-03-06 | `python -m behave` | `docs/qa/feature-status-report.md` |
+| Time-aware rerank is applied when target time can be inferred. | pass | 2026-03-06 | `python -m pytest tests/test_eval_runtime_parity.py` | `docs/qa/feature-status-report.md` |
+| Citation contract is enforced before final output is returned. | pass | 2026-03-06 | `python -m behave` | `docs/qa/feature-status-report.md` |
+| Non-trivial answers always include provenance metadata with allowed enum values. | pending | 2026-03-06 | `python -m pytest -m "not live_smoke"` | `artifacts/feature-status-summary.json` |
+
+Maintenance note: Refresh `Current status`, `Last verified`, and evidence links whenever runtime behavior (`src/testbot/`) or directive/invariant policy files (`docs/directives/`, `docs/invariants.md`) change.
 
 
 ## Source acquisition lifecycle and trust boundaries
