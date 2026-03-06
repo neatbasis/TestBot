@@ -152,12 +152,20 @@ Link this evidence from `docs/issues/RED_TAG.md` triage updates.
 
 TestBot can ingest external sources before the chat loop starts when `SOURCE_INGEST_ENABLED=1`.
 
+Use connector examples that reflect the system's reasoning ontology (invariants, composition, and provenance), not just generic topical lookup.
+
+Recommended epistemic split:
+
+- `local_markdown`: operator-curated canonical notes/policies (highest operator-controlled trust).
+- `wikipedia`: stable background ontology references (mid-trust public scaffold).
+- `arxiv`: frontier/preprint research signals (explicitly preprint trust semantics).
+
 ### Local markdown connector
 
 ```bash
 SOURCE_INGEST_ENABLED=1 \
 SOURCE_CONNECTOR_TYPE=local_markdown \
-SOURCE_MARKDOWN_PATH=./docs \
+SOURCE_MARKDOWN_PATH=./docs/alignment-canon \
 SOURCE_INGEST_LIMIT=20 \
 python src/testbot/sat_chatbot_memory_v2.py --mode cli
 ```
@@ -167,20 +175,28 @@ python src/testbot/sat_chatbot_memory_v2.py --mode cli
 ```bash
 SOURCE_INGEST_ENABLED=1 \
 SOURCE_CONNECTOR_TYPE=wikipedia \
-SOURCE_WIKIPEDIA_TOPIC="OpenAI" \
+SOURCE_WIKIPEDIA_TOPIC="Hilbert space" \
 SOURCE_WIKIPEDIA_LANGUAGE=en \
 SOURCE_INGEST_LIMIT=1 \
 python src/testbot/sat_chatbot_memory_v2.py --mode cli
 ```
+
+Other high-signal ontology topics: `Category theory`, `Kernel method`, `Transformer`.
 
 ### arXiv connector
 
 ```bash
 SOURCE_INGEST_ENABLED=1 \
 SOURCE_CONNECTOR_TYPE=arxiv \
-SOURCE_ARXIV_QUERY="cat:cs.AI" \
+SOURCE_ARXIV_QUERY='all:"category theory" AND cat:cs.LG' \
 SOURCE_INGEST_LIMIT=5 \
 python src/testbot/sat_chatbot_memory_v2.py --mode cli
+```
+
+Alternative query example:
+
+```bash
+SOURCE_ARXIV_QUERY='all:"reproducing kernel Hilbert space"'
 ```
 
 ### Dry-run validation commands

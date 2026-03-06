@@ -117,12 +117,18 @@ Say `stop` to end the loop.
 
 Enable one connector at startup with `SOURCE_INGEST_ENABLED=1`.
 
+Prefer connector inputs that encode the system's intended reasoning basis:
+
+- local operator canon (invariants, trust policy, provenance doctrine),
+- stable public ontology references,
+- frontier research signals with explicit preprint trust semantics.
+
 Local markdown file/directory ingestion:
 
 ```bash
 SOURCE_INGEST_ENABLED=1 \
 SOURCE_CONNECTOR_TYPE=local_markdown \
-SOURCE_MARKDOWN_PATH=./docs \
+SOURCE_MARKDOWN_PATH=./docs/alignment-canon \
 SOURCE_INGEST_LIMIT=20 \
 testbot --mode cli
 ```
@@ -132,20 +138,28 @@ Wikipedia summary retrieval:
 ```bash
 SOURCE_INGEST_ENABLED=1 \
 SOURCE_CONNECTOR_TYPE=wikipedia \
-SOURCE_WIKIPEDIA_TOPIC="OpenAI" \
+SOURCE_WIKIPEDIA_TOPIC="Hilbert space" \
 SOURCE_WIKIPEDIA_LANGUAGE=en \
 SOURCE_INGEST_LIMIT=1 \
 testbot --mode cli
 ```
+
+Alternative ontology topics: `Category theory`, `Transformer`, `Kernel method`.
 
 arXiv metadata/content extraction:
 
 ```bash
 SOURCE_INGEST_ENABLED=1 \
 SOURCE_CONNECTOR_TYPE=arxiv \
-SOURCE_ARXIV_QUERY="cat:cs.AI" \
+SOURCE_ARXIV_QUERY='all:"category theory" AND cat:cs.LG' \
 SOURCE_INGEST_LIMIT=5 \
 testbot --mode cli
+```
+
+Alternative query:
+
+```bash
+SOURCE_ARXIV_QUERY='all:"reproducing kernel Hilbert space"'
 ```
 
 Dry-run validation (deterministic tests):
