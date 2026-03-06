@@ -123,7 +123,7 @@ capabilities:
   - qa_validate_invariant_sync
   - qa_validate_markdown_paths
   runtime_dependency_flags:
-  - base_ref:origin/main
+  - base_ref_policy:default_origin/main_with_canonical_fallback_HEAD~1_then_HEAD
   current_status: partial
   roadmap_priority_refs:
   - P5

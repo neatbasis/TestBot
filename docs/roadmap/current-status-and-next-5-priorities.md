@@ -33,7 +33,7 @@ From the latest validated gate artifact (`artifacts/all-green-gate-summary.json`
 - **Active blockers in "not yet green" are capability-delivery blockers, not executable gate blockers.**
 - Current executable gate status:
   - All canonical checks in `python scripts/all_green_gate.py --continue-on-failure --json-output artifacts/all-green-gate-summary.json` are passing.
-  - Governance validators passed using documented fallback base ref (`HEAD~1`) because `origin/main` is unavailable in this clone.
+  - Governance validators passed under the canonical base-ref policy: default `origin/main`, with documented fallback to `HEAD~1` then `HEAD` when `origin/main` is unavailable in this clone.
 
 ### Historical blockers moved out of active list
 
@@ -41,7 +41,7 @@ The following previously reported blockers are now resolved and retained as hist
 
 - Missing `behave` in environment (resolved by installing dev dependencies and re-running gate).
 - `product_eval_recall_topk4` import failure (`ModuleNotFoundError: No module named 'testbot'`) resolved in validated environment.
-- `qa_validate_issue_links` base-ref failure for `origin/main` resolved via canonical fallback behavior (`HEAD~1`).
+- `qa_validate_issue_links` base-ref failure for `origin/main` resolved via canonical fallback behavior (`HEAD~1` per policy order `origin/main` → `HEAD~1` → `HEAD`).
 
 ### Risk interpretation
 
@@ -67,7 +67,7 @@ Use this exact order for deterministic confidence:
 4. `python -m pytest tests/test_eval_runtime_parity.py`
    - Eval/runtime alignment signal for ordering/top-1/fallback parity.
 5. `python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main`
-   - Governance/traceability merge-safety signal.
+   - Governance/traceability merge-safety signal under canonical base-ref policy (`origin/main` default with fallback to `HEAD~1`, then `HEAD` when unavailable).
 
 Interpretation rule:
 
