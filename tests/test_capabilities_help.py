@@ -34,13 +34,17 @@ def test_stage_answer_capabilities_help_reflects_ha_unavailable_cli_fallback() -
             fallback_reason="satellite connection is unavailable",
             memory_backend="in_memory",
             debug_enabled=False,
+            text_clarification_available=True,
+            satellite_ask_available=False,
         ),
         clock=None,
     )
 
-    assert "Home Assistant actions: unavailable" in answer_state.final_answer
+    assert "interaction:" in answer_state.final_answer
+    assert "Clarification/disambiguation: available" in answer_state.final_answer
+    assert "Satellite ask loop: unavailable" in answer_state.final_answer
+    assert "Home Assistant satellite actions: unavailable" in answer_state.final_answer
     assert "can continue in cli mode (CLI fallback is active)" in answer_state.final_answer
-    assert "Ask/disambiguation flow: degraded" in answer_state.final_answer
     assert "Debug visibility: unavailable" in answer_state.final_answer
     assert answer_state.draft_answer == ""
 
@@ -61,13 +65,16 @@ def test_stage_answer_capabilities_help_reflects_ha_satellite_available() -> Non
             fallback_reason=None,
             memory_backend="elasticsearch",
             debug_enabled=True,
+            text_clarification_available=True,
+            satellite_ask_available=True,
         ),
         clock=None,
     )
 
-    assert "Home Assistant actions: available" in answer_state.final_answer
-    assert "can use satellite ask/speak actions" in answer_state.final_answer
-    assert "Ask/disambiguation flow: available" in answer_state.final_answer
+    assert "Home Assistant satellite actions: available" in answer_state.final_answer
+    assert "can use satellite speak/start-conversation actions" in answer_state.final_answer
+    assert "Clarification/disambiguation: available" in answer_state.final_answer
+    assert "Satellite ask loop: available" in answer_state.final_answer
     assert "Debug visibility: available" in answer_state.final_answer
     assert "Memory recall: available" in answer_state.final_answer
     assert answer_state.draft_answer == ""

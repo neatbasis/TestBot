@@ -110,6 +110,8 @@ class RuntimeCapabilityStatus:
     fallback_reason: str | None
     memory_backend: str
     debug_enabled: bool
+    text_clarification_available: bool
+    satellite_ask_available: bool
 
 
 @dataclass(frozen=True)
@@ -126,57 +128,76 @@ class CapabilitySnapshot:
 
 
 def _format_capabilities_help_answer(*, status: RuntimeCapabilityStatus, capability_status: CapabilityStatus) -> str:
-    memory_state = "available"
-    memory_text = (
-        f"- Memory recall: {memory_state}. can recall stored memory cards using the '{status.memory_backend}' backend; "
-        "cannot invent details that are not in memory."
-    )
-
-    general_state = "available" if status.ollama_available else "unavailable"
-    general_text = (
-        f"- General explanations: {general_state}. can provide grounded explanations when Ollama is reachable; "
-        "cannot generate model-based explanations while Ollama is unavailable."
-    )
-
-    if status.ha_available and status.effective_mode == "satellite":
-        ha_state = "available"
-        ha_text = (
-            "- Home Assistant actions: available. can use satellite ask/speak actions; "
-            "cannot act on entities that are missing or unauthorized."
+    def _derive_core_reasoning_lines() -> list[str]:
+        memory_text = (
+            f"- Memory recall: available. can recall stored memory cards using the '{status.memory_backend}' backend; "
+            "cannot invent details that are not in memory."
         )
-    elif status.ha_available:
-        ha_state = "degraded"
-        ha_text = (
-            "- Home Assistant actions: degraded. can connect to Home Assistant, but current mode is CLI; "
-            "cannot run the satellite voice loop until satellite mode is selected."
+        general_state = "available" if status.ollama_available else "unavailable"
+        general_text = (
+            f"- Grounded explanations: {general_state}. can provide grounded explanations when Ollama is reachable; "
+            "cannot generate model-based explanations while Ollama is unavailable."
         )
-    else:
-        ha_state = "unavailable"
-        mode_note = "daemon mode blocks fallback" if status.daemon_mode else "CLI fallback is active"
-        ha_text = (
-            f"- Home Assistant actions: {ha_state}. can continue in {status.effective_mode} mode ({mode_note}); "
-            "cannot run satellite actions while Home Assistant is unavailable."
+        return ["core_reasoning:", memory_text, general_text]
+
+    def _derive_interaction_lines() -> list[str]:
+        clarification_state = "available" if status.text_clarification_available else "degraded"
+        clarification_text = (
+            f"- Clarification/disambiguation: {clarification_state}. can ask text-based follow-up questions when memory is incomplete; "
+            "cannot run clarification flows when no interactive channel is active."
         )
+        satellite_ask_state = "available" if status.satellite_ask_available else "unavailable"
+        satellite_ask_text = (
+            f"- Satellite ask loop: {satellite_ask_state}. can run interactive satellite ask follow-ups when available; "
+            "cannot run satellite ask when Home Assistant satellite flow is unavailable."
+        )
+        return ["interaction:", clarification_text, satellite_ask_text]
 
-    ask_available = capability_status == "ask_available"
-    ask_state = "available" if ask_available else "degraded"
-    ask_text = (
-        f"- Ask/disambiguation flow: {ask_state}. can ask clarifying follow-ups when memory is incomplete; "
-        f"cannot use the interactive satellite ask flow in '{status.effective_mode}' mode when ask is unavailable."
-    )
+    def _derive_integrations_lines() -> list[str]:
+        if status.ha_available and status.effective_mode == "satellite":
+            ha_state = "available"
+            ha_text = (
+                "- Home Assistant satellite actions: available. can use satellite speak/start-conversation actions; "
+                "cannot act on entities that are missing or unauthorized."
+            )
+        elif status.ha_available:
+            ha_state = "degraded"
+            ha_text = (
+                "- Home Assistant satellite actions: degraded. can connect to Home Assistant, but current mode is CLI; "
+                "cannot run the satellite voice loop until satellite mode is selected."
+            )
+        else:
+            ha_state = "unavailable"
+            mode_note = "daemon mode blocks fallback" if status.daemon_mode else "CLI fallback is active"
+            ha_text = (
+                f"- Home Assistant satellite actions: {ha_state}. can continue in {status.effective_mode} mode ({mode_note}); "
+                "cannot run satellite actions while Home Assistant is unavailable."
+            )
+        return ["integrations:", ha_text]
 
-    debug_state = "available" if status.debug_enabled else "unavailable"
-    debug_text = (
-        f"- Debug visibility: {debug_state}. can expose debug details when TESTBOT_DEBUG=1; "
-        "cannot show debug-only internals when debug mode is disabled."
-    )
+    def _derive_diagnostics_lines() -> list[str]:
+        debug_state = "available" if status.debug_enabled else "unavailable"
+        debug_text = (
+            f"- Debug visibility: {debug_state}. can expose debug details when TESTBOT_DEBUG=1; "
+            "cannot show debug-only internals when debug mode is disabled."
+        )
+        return ["diagnostics:", debug_text]
 
     mode_line = (
         f"Runtime mode: requested={status.requested_mode}, effective={status.effective_mode}, "
         f"daemon={status.daemon_mode}, fallback={status.fallback_reason or 'none'}."
     )
 
-    return "\n".join([mode_line, memory_text, general_text, ha_text, ask_text, debug_text])
+    return "\n".join(
+        [
+            mode_line,
+            *_derive_core_reasoning_lines(),
+            *_derive_interaction_lines(),
+            *_derive_integrations_lines(),
+            *_derive_diagnostics_lines(),
+            f"policy_hint: reflection capability status={capability_status}.",
+        ]
+    )
 
 
 def _parse_env_float(name: str, default: float) -> float:
@@ -622,6 +643,8 @@ def stage_answer(
         fallback_reason=None,
         memory_backend="in_memory",
         debug_enabled=False,
+        text_clarification_available=True,
+        satellite_ask_available=False,
     )
 
     def _fallback_answer_for_action(action: str) -> str:
@@ -1600,15 +1623,20 @@ def _build_runtime_capability_status(
     ha_error: str | None,
     ollama_error: str | None,
 ) -> RuntimeCapabilityStatus:
+    effective = effective_mode or "unavailable"
+    can_text_clarify = effective in {"cli", "satellite"}
+    can_satellite_ask = ha_error is None and effective == "satellite"
     return RuntimeCapabilityStatus(
         ollama_available=ollama_error is None,
         ha_available=ha_error is None,
-        effective_mode=effective_mode or "unavailable",
+        effective_mode=effective,
         requested_mode=requested_mode,
         daemon_mode=daemon_mode,
         fallback_reason=fallback_reason,
         memory_backend=str(runtime.get("memory_store_backend", "unknown")),
         debug_enabled=os.getenv("TESTBOT_DEBUG", "0") == "1",
+        text_clarification_available=can_text_clarify,
+        satellite_ask_available=can_satellite_ask,
     )
 
 

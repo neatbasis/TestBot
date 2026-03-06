@@ -60,7 +60,7 @@ def test_shared_snapshot_keeps_cli_fallback_truth_consistent(monkeypatch, capsys
     assert "Install warning [YELLOW]" in startup_output
 
     assert "Runtime mode: requested=auto, effective=cli" in help_answer
-    assert "Home Assistant actions: unavailable" in help_answer
+    assert "Home Assistant satellite actions: unavailable" in help_answer
     assert "CLI fallback is active" in help_answer
 
 
@@ -81,5 +81,5 @@ def test_shared_snapshot_keeps_satellite_truth_consistent(monkeypatch, capsys) -
     assert "Install warning [GREEN]" in startup_output
 
     assert "Runtime mode: requested=satellite, effective=satellite" in help_answer
-    assert "Home Assistant actions: available" in help_answer
-    assert "can use satellite ask/speak actions" in help_answer
+    assert "Home Assistant satellite actions: available" in help_answer
+    assert "can use satellite speak/start-conversation actions" in help_answer

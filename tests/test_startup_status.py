@@ -31,6 +31,8 @@ def _snapshot(*, effective_mode: str | None, ha_error: str | None, ollama_error:
             fallback_reason=fallback_reason,
             memory_backend=memory_backend,
             debug_enabled=False,
+            text_clarification_available=(effective_mode or "unavailable") in {"cli", "satellite"},
+            satellite_ask_available=(ha_error is None and (effective_mode or "unavailable") == "satellite"),
         ),
     )
 
@@ -102,6 +104,8 @@ def test_startup_status_includes_requested_and_effective_modes_for_fallback(caps
             fallback_reason=snapshot.runtime_capability_status.fallback_reason,
             memory_backend=snapshot.runtime_capability_status.memory_backend,
             debug_enabled=snapshot.runtime_capability_status.debug_enabled,
+            text_clarification_available=snapshot.runtime_capability_status.text_clarification_available,
+            satellite_ask_available=snapshot.runtime_capability_status.satellite_ask_available,
         ),
     )
 
