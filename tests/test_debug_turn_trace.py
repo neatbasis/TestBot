@@ -32,4 +32,19 @@ def test_format_debug_turn_trace_reports_low_confidence_assist_reason() -> None:
 
     assert "answer_mode=assist" in trace
     assert "fallback_action=OFFER_CAPABILITY_ALTERNATIVES" in trace
+    assert "retrieval_branch=memory_retrieval" in trace
     assert "blocker_reason=insufficient confidence for a direct answer; offered capability alternatives" in trace
+
+
+def test_format_debug_turn_trace_reports_direct_answer_branch() -> None:
+    state = PipelineState(
+        user_input="what is ontology",
+        rewritten_query="what is ontology",
+        confidence_decision={"context_confident": False, "ambiguity_detected": False, "retrieval_branch": "direct_answer"},
+        invariant_decisions={"answer_mode": "assist", "fallback_action": "ANSWER_GENERAL_KNOWLEDGE"},
+    )
+
+    trace = _format_debug_turn_trace(state=state, intent_label="non_memory", hits=[])
+
+    assert "intent=non_memory" in trace
+    assert "retrieval_branch=direct_answer" in trace
