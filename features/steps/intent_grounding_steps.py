@@ -382,3 +382,24 @@ def step_when_unmatched_ambiguous_phrase(context) -> None:
 @then("the utterance should route to knowledge-question fallback deterministically")
 def step_then_unmatched_ambiguous_phrase(context) -> None:
     assert context.ambiguous_intent is IntentType.KNOWLEDGE_QUESTION
+
+
+@when("the user provides a self-identification utterance")
+def step_when_self_identification_utterance(context) -> None:
+    context.ambiguous_intent = classify_intent("my name is taylor")
+
+
+@when("the user provides a greeting utterance")
+def step_when_greeting_utterance(context) -> None:
+    context.ambiguous_intent = classify_intent("hello")
+
+
+@when("the user provides a say-hello command")
+def step_when_say_hello_command(context) -> None:
+    context.ambiguous_intent = classify_intent("say hello to me")
+
+
+@then("the utterance should route to non-knowledge social intent deterministically")
+def step_then_non_knowledge_social_intent(context) -> None:
+    assert context.ambiguous_intent is IntentType.META_CONVERSATION
+

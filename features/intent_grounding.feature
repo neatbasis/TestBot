@@ -74,3 +74,18 @@ Feature: Intent-specific grounding and provenance behavior
     When the user asks an unmatched ambiguous phrase
     Then the utterance should route to knowledge-question fallback deterministically
 
+
+  Scenario: self-identification utterance routes to non-knowledge intent
+    Given an intent response harness
+    When the user provides a self-identification utterance
+    Then the utterance should route to non-knowledge social intent deterministically
+
+  Scenario: greeting utterance routes to non-knowledge intent
+    Given an intent response harness
+    When the user provides a greeting utterance
+    Then the utterance should route to non-knowledge social intent deterministically
+
+  Scenario: say-hello command routes to command intent
+    Given an intent response harness
+    When the user provides a say-hello command
+    Then the utterance should route to control intent deterministically

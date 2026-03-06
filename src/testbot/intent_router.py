@@ -38,6 +38,20 @@ _META_CONVERSATION_PATTERNS = (
     r"\bhow are we doing\b",
 )
 
+_PROFILE_UPDATE_PATTERNS = (
+    r"^\s*i am\s+[\w'-]+(?:\s+[\w'-]+)*\s*[.!?]*\s*$",
+    r"^\s*i'm\s+[\w'-]+(?:\s+[\w'-]+)*\s*[.!?]*\s*$",
+    r"^\s*my name is\s+[\w'-]+(?:\s+[\w'-]+)*\s*[.!?]*\s*$",
+)
+
+_SOCIAL_CHAT_PATTERNS = (
+    r"^\s*(hi|hello|hey|hiya)\s*[.!?]*\s*$",
+)
+
+_GREETING_COMMAND_PATTERNS = (
+    r"^\s*say\s+hello\b",
+)
+
 _CAPABILITIES_HELP_PATTERNS = (
     r"^\s*help\s*$",
     r"\bwhat can you do\b",
@@ -89,8 +103,11 @@ def classify_intent(user_input: str | None) -> IntentType:
     2. Time queries use a dedicated path (even when memory language is present).
     3. Memory recall requests win over conversation-meta language.
     4. Capabilities/help requests use a stable responder path.
-    5. Meta-conversation requests are routed separately from factual Q&A.
-    6. Knowledge questions and the fallback default are KNOWLEDGE_QUESTION.
+    5. Explicit profile updates are routed as non-knowledge conversation.
+    6. Greeting/social prompts are routed as non-knowledge conversation.
+    7. Greeting commands are routed as control actions.
+    8. Meta-conversation requests are routed separately from factual Q&A.
+    9. Knowledge questions and the fallback default are KNOWLEDGE_QUESTION.
     """
 
     normalized = (user_input or "").strip().lower()
@@ -103,6 +120,12 @@ def classify_intent(user_input: str | None) -> IntentType:
         return IntentType.TIME_QUERY
     if _matches_any(normalized, _MEMORY_RECALL_PATTERNS):
         return IntentType.MEMORY_RECALL
+    if _matches_any(normalized, _PROFILE_UPDATE_PATTERNS):
+        return IntentType.META_CONVERSATION
+    if _matches_any(normalized, _SOCIAL_CHAT_PATTERNS):
+        return IntentType.META_CONVERSATION
+    if _matches_any(normalized, _GREETING_COMMAND_PATTERNS):
+        return IntentType.CONTROL
     if is_satellite_action_request(normalized):
         return IntentType.CAPABILITIES_HELP
     if _matches_any(normalized, _CAPABILITIES_HELP_PATTERNS):
