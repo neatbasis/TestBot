@@ -835,6 +835,22 @@ def stage_answer(
             else None
         ),
     )
+    intent_class = _intent_class_for_policy(IntentType(state.resolved_intent or classify_intent(state.user_input).value))
+    ambiguity_detected = bool(state.confidence_decision.get("ambiguity_detected", False))
+    memory_hit_count = len(hits)
+    route_to_ask_expected = fallback_action == "ROUTE_TO_ASK"
+    clarification_allowed = (
+        (intent_class == "memory_recall" or route_to_ask_expected)
+        and (ambiguity_detected or (intent_class == "memory_recall" and memory_hit_count == 0))
+        and (not route_to_ask_expected or capability_status == "ask_available")
+    )
+
+    def _clarifier_or_policy_alternative() -> str:
+        if clarification_allowed:
+            return build_partial_memory_clarifier(hits)
+        if intent_class == "memory_recall":
+            return ASSIST_ALTERNATIVES_ANSWER
+        return FALLBACK_ANSWER
 
     if is_unsafe_user_request(state.user_input):
         draft_answer = ""
@@ -844,7 +860,7 @@ def stage_answer(
         final_answer = ROUTE_TO_ASK_ANSWER
     elif fallback_action == "ASK_CLARIFYING_QUESTION":
         draft_answer = ""
-        final_answer = build_partial_memory_clarifier(hits)
+        final_answer = _clarifier_or_policy_alternative()
     elif fallback_action == "ANSWER_UNKNOWN":
         draft_answer = FALLBACK_ANSWER
         final_answer = FALLBACK_ANSWER
@@ -874,7 +890,7 @@ def stage_answer(
             elif validate_answer_contract(draft_answer):
                 final_answer = draft_answer
             else:
-                final_answer = build_partial_memory_clarifier(hits)
+                final_answer = _clarifier_or_policy_alternative()
 
     provenance_types, claims, basis_statement, used_memory_refs, used_source_evidence_refs, source_evidence_attribution = build_provenance_metadata(
         final_answer=final_answer,
@@ -893,7 +909,7 @@ def stage_answer(
         )
     )
     if final_answer != FALLBACK_ANSWER and not general_knowledge_contract_valid:
-        final_answer = build_partial_memory_clarifier(hits)
+        final_answer = _clarifier_or_policy_alternative()
         provenance_types, claims, basis_statement, used_memory_refs, used_source_evidence_refs, source_evidence_attribution = build_provenance_metadata(
             final_answer=final_answer,
             hits=hits,
