@@ -36,8 +36,8 @@ Feature: Intent-specific grounding and provenance behavior
     And the provenance and basis should include "MEMORY" and "source evidence"
     And the source provenance includes "calendar://work/event-42" and "calendar"
 
-  Scenario: source confidence insufficient triggers explicit unknowing fallback
+  Scenario: source confidence insufficient triggers progressive unknowing response
     Given an intent response harness
     When source confidence is insufficient for a knowing answer
-    Then the assistant returns explicit unknowing fallback
+    Then the assistant returns a progressive unknowing response
     And the provenance and basis should include "UNKNOWN" and "Trivial fallback"

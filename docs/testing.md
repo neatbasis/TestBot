@@ -28,7 +28,7 @@ Behavior that stakeholders care about must be written first as `.feature` scenar
 Use BDD to validate externally visible outcomes:
 
 - Memory-grounded responses include `doc_id` and `ts` when context is sufficient.
-- Assistant uses progressive fallback when memory is insufficient: ask one targeted clarifier or offer at least two capability-based alternatives; reserve exact `I don't know from memory.` for explicit deny/safety cases.
+- Assistant uses progressive fallback when memory is insufficient: ask one targeted clarifier or offer at least two capability-based alternatives; reserve exact `I don't know from memory.` for explicit deny/safety-only cases.
 - Time-aware retrieval behavior matches expected outcomes for representative phrasing.
 
 `behave` is mandatory for canonical merge validation. If `behave` is missing, treat that as a local setup defect and
@@ -59,7 +59,7 @@ Test retrieval/answer pipeline wiring with deterministic stubs:
 
 - Stub rewrite/answer outputs
 - Use deterministic fake embeddings and in-memory stores
-- Assert stable top-k ordering and progressive fallback behavior (clarifier/alternatives for insufficient memory; exact fallback only for deny/safety).
+- Assert stable top-k ordering and progressive fallback behavior (clarifier/alternatives for insufficient memory; exact fallback only for deny/safety-only cases).
 
 ### 4) Optional live integration smoke tests
 

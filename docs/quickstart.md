@@ -111,7 +111,7 @@ Say `stop` to end the loop.
 - [ ] Bot process starts without import/config errors.
 - [ ] Satellite utterances are ingested.
 - [ ] Memory-grounded responses include `doc_id` and `ts` citations when memory exists.
-- [ ] Memory-insufficient responses use progressive fallback (targeted clarifier or at least two capability-based alternatives), with exact `I don't know from memory.` reserved for explicit deny/safety cases.
+- [ ] Memory-insufficient responses use progressive fallback (targeted clarifier or at least two capability-based alternatives), with exact `I don't know from memory.` reserved for explicit deny/safety-only cases.
 
 ## Optional: source ingestion connectors
 
