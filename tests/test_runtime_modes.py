@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from types import SimpleNamespace
+from urllib.error import HTTPError
 
 from testbot.sat_chatbot_memory_v2 import _parse_args, _resolve_mode
 from testbot import sat_chatbot_memory_v2 as runtime
@@ -414,3 +415,84 @@ def test_main_reaches_cli_when_source_ingestion_fails(monkeypatch, tmp_path) -> 
     runtime.main([])
 
     assert calls == {"cli": 1, "satellite": 0}
+
+
+def test_main_reaches_cli_when_source_connector_fetch_raises_http_error(monkeypatch) -> None:
+    class _FetchFailingIngestor:
+        def __init__(self, *args, **kwargs):
+            del args, kwargs
+
+        def ingest_once(self, *, cursor, limit):
+            del cursor, limit
+            raise HTTPError(
+                url="https://example.invalid/source",
+                code=503,
+                msg="upstream unavailable",
+                hdrs=None,
+                fp=None,
+            )
+
+    calls = {"cli": 0, "satellite": 0}
+    logs: list[tuple[str, dict[str, object]]] = []
+    args = SimpleNamespace(mode="cli", daemon=False)
+    _patch_main_dependencies(
+        monkeypatch,
+        args=args,
+        ha_error=None,
+        ollama_error=None,
+        calls=calls,
+        runtime_overrides={
+            "source_ingest_enabled": True,
+            "source_connector_type": "fixture",
+            "source_fixture_path": "unused.json",
+            "source_ingest_limit": 5,
+            "source_ingest_cursor": None,
+        },
+    )
+    monkeypatch.setattr(runtime, "SourceIngestor", _FetchFailingIngestor)
+    monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: logs.append((event, payload)))
+    monkeypatch.setattr(runtime, "_build_source_connector", lambda _runtime: SimpleNamespace(source_type="fixture"))
+
+    runtime.main([])
+
+    assert calls == {"cli": 1, "satellite": 0}
+    assert logs[-1][0] == "source_ingest_failed"
+    assert logs[-1][1]["exception_class"] == "HTTPError"
+
+
+def test_main_reaches_cli_when_source_store_add_documents_raises(monkeypatch) -> None:
+    class _StoreFailingIngestor:
+        def __init__(self, *args, **kwargs):
+            del args, kwargs
+
+        def ingest_once(self, *, cursor, limit):
+            del cursor, limit
+            raise RuntimeError("embedding backend unavailable")
+
+    calls = {"cli": 0, "satellite": 0}
+    logs: list[tuple[str, dict[str, object]]] = []
+    args = SimpleNamespace(mode="cli", daemon=False)
+    _patch_main_dependencies(
+        monkeypatch,
+        args=args,
+        ha_error=None,
+        ollama_error=None,
+        calls=calls,
+        runtime_overrides={
+            "source_ingest_enabled": True,
+            "source_connector_type": "fixture",
+            "source_fixture_path": "unused.json",
+            "source_ingest_limit": 5,
+            "source_ingest_cursor": None,
+        },
+    )
+    monkeypatch.setattr(runtime, "SourceIngestor", _StoreFailingIngestor)
+    monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: logs.append((event, payload)))
+    monkeypatch.setattr(runtime, "_build_source_connector", lambda _runtime: SimpleNamespace(source_type="fixture"))
+
+    runtime.main([])
+
+    assert calls == {"cli": 1, "satellite": 0}
+    assert logs[-1][0] == "source_ingest_failed"
+    assert logs[-1][1]["exception_class"] == "RuntimeError"
+    assert logs[-1][1]["exception_message"] == "embedding backend unavailable"

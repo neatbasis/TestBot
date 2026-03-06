@@ -81,6 +81,20 @@ class _FakeStore:
         return []
 
 
+class _FailingStore:
+    def add_documents(self, documents: list[Document]) -> None:
+        del documents
+        raise RuntimeError("embedding backend unavailable")
+
+
+def test_source_ingestor_propagates_store_add_documents_failures() -> None:
+    connector = _FakeConnector()
+    ingestor = SourceIngestor(connector=connector, memory_store=_FailingStore())
+
+    with pytest.raises(RuntimeError, match="embedding backend unavailable"):
+        ingestor.ingest_once(cursor=None)
+
+
 def test_source_ingestor_stores_memory_and_evidence_with_provenance() -> None:
     connector = _FakeConnector()
     store = _FakeStore()
