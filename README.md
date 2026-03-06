@@ -101,11 +101,10 @@ python scripts/all_green_gate.py
 ```
 
 ## Validate
-- Canonical merge/readiness gate: `python scripts/all_green_gate.py`
-- Optional run-all mode (collect every failure before exiting non-zero): `python scripts/all_green_gate.py --continue-on-failure`
-- Machine-readable summary artifact: `python scripts/all_green_gate.py --json-output artifacts/all-green-gate-summary.json`
-- Run optional live smoke profile: `pytest -m live_smoke`
-- Optional docs path validation: `python scripts/validate_markdown_paths.py`
+- **Only authoritative merge/readiness sequence**: `python scripts/all_green_gate.py`
+- Optional run-all mode (same sequence, continues after failures): `python scripts/all_green_gate.py --continue-on-failure`
+- Machine-readable summary artifact for the same sequence: `python scripts/all_green_gate.py --json-output artifacts/all-green-gate-summary.json`
+- Optional post-merge live smoke profile: `pytest -m live_smoke`
 
 ### Quick contributor validation
 
