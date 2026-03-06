@@ -42,6 +42,8 @@ def test_stage_answer_capabilities_help_reflects_ha_unavailable_cli_fallback() -
 
     assert "interaction:" in answer_state.final_answer
     assert "Clarification/disambiguation: available" in answer_state.final_answer
+    assert "text clarification still available in CLI" in answer_state.final_answer
+    assert "interactive satellite ask flow unavailable in CLI mode" in answer_state.final_answer
     assert "Satellite ask loop: unavailable" in answer_state.final_answer
     assert "Home Assistant satellite actions: unavailable" in answer_state.final_answer
     assert "can continue in cli mode (CLI fallback is active)" in answer_state.final_answer
@@ -78,3 +80,30 @@ def test_stage_answer_capabilities_help_reflects_ha_satellite_available() -> Non
     assert "Debug visibility: available" in answer_state.final_answer
     assert "Memory recall: available" in answer_state.final_answer
     assert answer_state.draft_answer == ""
+
+
+def test_stage_answer_capabilities_help_reports_unavailable_when_no_clarification_path() -> None:
+    answer_state = stage_answer(
+        _FailIfInvokedLLM(),
+        _base_state(),
+        chat_history=deque(),
+        hits=[],
+        capability_status="ask_unavailable",
+        runtime_capability_status=RuntimeCapabilityStatus(
+            ollama_available=True,
+            ha_available=False,
+            effective_mode="cli",
+            requested_mode="auto",
+            daemon_mode=False,
+            fallback_reason="satellite connection is unavailable",
+            memory_backend="in_memory",
+            debug_enabled=False,
+            text_clarification_available=False,
+            satellite_ask_available=False,
+        ),
+        clock=None,
+    )
+
+    assert "Clarification/disambiguation: unavailable" in answer_state.final_answer
+    assert "no clarification path is active in the current runtime" in answer_state.final_answer
+    assert "interactive satellite ask flow unavailable" in answer_state.final_answer

@@ -128,6 +128,8 @@ class CapabilitySnapshot:
 
 
 def _format_capabilities_help_answer(*, status: RuntimeCapabilityStatus, capability_status: CapabilityStatus) -> str:
+    ask_available = capability_status == "ask_available"
+
     def _derive_core_reasoning_lines() -> list[str]:
         memory_text = (
             f"- Memory recall: available. can recall stored memory cards using the '{status.memory_backend}' backend; "
@@ -141,11 +143,26 @@ def _format_capabilities_help_answer(*, status: RuntimeCapabilityStatus, capabil
         return ["core_reasoning:", memory_text, general_text]
 
     def _derive_interaction_lines() -> list[str]:
-        clarification_state = "available" if status.text_clarification_available else "degraded"
-        clarification_text = (
-            f"- Clarification/disambiguation: {clarification_state}. can ask text-based follow-up questions when memory is incomplete; "
-            "cannot run clarification flows when no interactive channel is active."
-        )
+        if status.effective_mode == "cli":
+            if status.text_clarification_available:
+                clarification_state = "available"
+                clarification_text = (
+                    f"- Clarification/disambiguation: {clarification_state}. text clarification still available in CLI when memory is incomplete; "
+                    "interactive satellite ask flow unavailable in CLI mode."
+                )
+            else:
+                clarification_state = "unavailable"
+                clarification_text = (
+                    f"- Clarification/disambiguation: {clarification_state}. no clarification path is active in the current runtime; "
+                    "interactive satellite ask flow unavailable."
+                )
+        else:
+            clarification_available = ask_available or status.text_clarification_available
+            clarification_state = "available" if clarification_available else "unavailable"
+            clarification_text = (
+                f"- Clarification/disambiguation: {clarification_state}. can ask follow-up questions when an active clarification path exists; "
+                "cannot clarify when no clarification path is active."
+            )
         satellite_ask_state = "available" if status.satellite_ask_available else "unavailable"
         satellite_ask_text = (
             f"- Satellite ask loop: {satellite_ask_state}. can run interactive satellite ask follow-ups when available; "

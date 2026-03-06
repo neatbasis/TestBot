@@ -62,6 +62,9 @@ def test_shared_snapshot_keeps_cli_fallback_truth_consistent(monkeypatch, capsys
     assert "Runtime mode: requested=auto, effective=cli" in help_answer
     assert "Home Assistant satellite actions: unavailable" in help_answer
     assert "CLI fallback is active" in help_answer
+    assert "Clarification/disambiguation: available" in help_answer
+    assert "text clarification still available in CLI" in help_answer
+    assert "interactive satellite ask flow unavailable in CLI mode" in help_answer
 
 
 def test_shared_snapshot_keeps_satellite_truth_consistent(monkeypatch, capsys) -> None:

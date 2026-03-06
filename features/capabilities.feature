@@ -4,7 +4,7 @@ Feature: Capabilities help responses
   As a resident
   I want help/capabilities prompts to return truthful runtime capability summaries
 
-  Scenario Outline: HA unavailable with CLI fallback returns degraded/unavailable capability statements
+  Scenario Outline: HA unavailable with CLI fallback keeps text clarification available while satellite ask is unavailable
     Given a capabilities help prompt "<prompt>"
     When the stage answer flow handles capabilities under HA unavailable with CLI fallback
     Then the prompt is classified as capabilities help intent
@@ -12,6 +12,8 @@ Feature: Capabilities help responses
     And the answer includes "can continue in cli mode (CLI fallback is active)"
     And the answer includes "cannot run satellite actions while Home Assistant is unavailable"
     And the answer includes "Clarification/disambiguation: available"
+    And the answer includes "text clarification still available in CLI"
+    And the answer includes "interactive satellite ask flow unavailable in CLI mode"
     And the answer includes "Satellite ask loop: unavailable"
     And the answer includes "Debug visibility: unavailable"
 
