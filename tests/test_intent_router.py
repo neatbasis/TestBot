@@ -1,3 +1,5 @@
+from testbot.pipeline_state import PipelineState
+from testbot.sat_chatbot_memory_v2 import CLARIFY_ANSWER, resolve_turn_intent
 from testbot.intent_router import IntentType, classify_intent
 
 
@@ -43,3 +45,31 @@ def test_classify_intent_knowledge_question_when_is_prompt() -> None:
 
 def test_classify_intent_meta_conversation_relevance_summary() -> None:
     assert classify_intent("summarize our conversation") is IntentType.META_CONVERSATION
+
+
+def test_resolve_turn_intent_affirmation_inherits_prior_clarification_intent() -> None:
+    prior_state = PipelineState(
+        user_input="ask something via satellite",
+        final_answer=CLARIFY_ANSWER,
+        resolved_intent=IntentType.CAPABILITIES_HELP.value,
+        prior_unresolved_intent=IntentType.CAPABILITIES_HELP.value,
+    )
+
+    classified, resolved = resolve_turn_intent(utterance="yes", prior_pipeline_state=prior_state)
+
+    assert classified is IntentType.KNOWLEDGE_QUESTION
+    assert resolved is IntentType.CAPABILITIES_HELP
+
+
+def test_resolve_turn_intent_ontology_does_not_inherit_prior_clarification_intent() -> None:
+    prior_state = PipelineState(
+        user_input="ask something via satellite",
+        final_answer=CLARIFY_ANSWER,
+        resolved_intent=IntentType.CAPABILITIES_HELP.value,
+        prior_unresolved_intent=IntentType.CAPABILITIES_HELP.value,
+    )
+
+    classified, resolved = resolve_turn_intent(utterance="what is ontology?", prior_pipeline_state=prior_state)
+
+    assert classified is IntentType.KNOWLEDGE_QUESTION
+    assert resolved is IntentType.KNOWLEDGE_QUESTION

@@ -552,8 +552,43 @@ def stage_rerank(
     return replace(state, reranked_hits=reranked_hits, confidence_decision=confidence_decision), hits
 
 
-def _intent_class_for_policy(user_input: str) -> str:
-    intent = classify_intent(user_input)
+
+_AFFIRMATION_UTTERANCE_PATTERN = re.compile(r"^\s*(yes|yeah|yep|yup|ok|okay|sure|please|yes please|ok please|okay please)\s*[.!?]*\s*$", re.IGNORECASE)
+
+
+def _is_short_affirmation(user_input: str) -> bool:
+    return bool(_AFFIRMATION_UTTERANCE_PATTERN.match((user_input or "").strip()))
+
+
+def _is_clarification_or_capability_confirmation_answer(text: str) -> bool:
+    normalized = (text or "").strip()
+    if not normalized:
+        return False
+    return is_clarification_answer(normalized) or _is_capabilities_help_answer(normalized)
+
+
+def resolve_turn_intent(*, utterance: str, prior_pipeline_state: PipelineState | None) -> tuple[IntentType, IntentType]:
+    classified_intent = classify_intent(utterance)
+    if prior_pipeline_state is None:
+        return classified_intent, classified_intent
+
+    prior_intent_raw = (prior_pipeline_state.prior_unresolved_intent or prior_pipeline_state.resolved_intent or "").strip()
+    if not prior_intent_raw:
+        return classified_intent, classified_intent
+
+    try:
+        prior_intent = IntentType(prior_intent_raw)
+    except ValueError:
+        return classified_intent, classified_intent
+
+    prior_answer = (prior_pipeline_state.final_answer or "").strip()
+    if _is_short_affirmation(utterance) and _is_clarification_or_capability_confirmation_answer(prior_answer):
+        return classified_intent, prior_intent
+
+    return classified_intent, classified_intent
+
+
+def _intent_class_for_policy(intent: IntentType) -> str:
     if intent == IntentType.MEMORY_RECALL:
         return "memory_recall"
     if intent == IntentType.TIME_QUERY:
@@ -561,13 +596,13 @@ def _intent_class_for_policy(user_input: str) -> str:
     return "non_memory"
 
 
-def _is_capabilities_help_request(user_input: str) -> bool:
-    return classify_intent(user_input) == IntentType.CAPABILITIES_HELP
+def _is_capabilities_help_request(intent: IntentType) -> bool:
+    return intent == IntentType.CAPABILITIES_HELP
 
 
 def _is_capabilities_help_answer(text: str) -> bool:
     normalized = (text or "").strip().lower()
-    return normalized.startswith("runtime mode:") and "memory recall:" in normalized and "home assistant actions:" in normalized
+    return normalized.startswith("runtime mode:") and "memory recall:" in normalized and "home assistant" in normalized
 
 
 def _intent_label(intent: IntentType) -> str:
@@ -722,7 +757,7 @@ def stage_answer(
             )
         return ASSIST_ALTERNATIVES_ANSWER
 
-    if _is_capabilities_help_request(state.user_input):
+    if _is_capabilities_help_request(IntentType(state.resolved_intent or classify_intent(state.user_input).value)):
         final_answer = _format_capabilities_help_answer(
             status=runtime_capability_status,
             capability_status=capability_status,
@@ -772,7 +807,7 @@ def stage_answer(
     msgs = ANSWER_PROMPT.format_messages(input=state.user_input, chat_history=history_str, context=context_str)
 
     fallback_action = decide_fallback_action(
-        intent=_intent_class_for_policy(state.user_input),
+        intent=_intent_class_for_policy(IntentType(state.resolved_intent or classify_intent(state.user_input).value)),
         memory_hit=bool(state.confidence_decision.get("context_confident", False)),
         ambiguity=bool(state.confidence_decision.get("ambiguity_detected", False)),
         capability_status=capability_status,
@@ -1293,6 +1328,7 @@ def _run_chat_loop(
     clock: Clock,
 ) -> None:
     last_user_message_ts = ""
+    prior_pipeline_state: PipelineState | None = None
     while True:
         utterance = read_user_utterance()
         if utterance is None:
@@ -1315,7 +1351,23 @@ def _run_chat_loop(
             send_assistant_text("Stopping. Bye.")
             break
 
-        state = PipelineState(user_input=utterance, last_user_message_ts=last_user_message_ts)
+        classified_intent, resolved_intent = resolve_turn_intent(
+            utterance=utterance,
+            prior_pipeline_state=prior_pipeline_state,
+        )
+        intent_label = _intent_label(resolved_intent)
+
+        state = PipelineState(
+            user_input=utterance,
+            last_user_message_ts=last_user_message_ts,
+            classified_intent=classified_intent.value,
+            resolved_intent=resolved_intent.value,
+            prior_unresolved_intent=(
+                prior_pipeline_state.prior_unresolved_intent
+                if prior_pipeline_state is not None
+                else ""
+            ),
+        )
         append_pipeline_snapshot("ingest", state)
 
         _validate_and_log_transition(validate_observe_pre(state))
@@ -1414,14 +1466,14 @@ def _run_chat_loop(
         )
         _validate_and_log_transition(validate_rerank_post(state))
         append_pipeline_snapshot("rerank", state)
-        classified_intent = classify_intent(utterance)
-        intent_label = _intent_label(classified_intent)
         ambiguity_score = _ambiguity_score(state.confidence_decision)
         append_session_log(
             "intent_classified",
             {
                 "utterance": utterance,
                 "intent": intent_label,
+                "intent_classified": classified_intent.value,
+                "intent_resolved": resolved_intent.value,
                 "ambiguity_score": ambiguity_score,
                 "user_followup_signal_proxy": round(ambiguity_score, 4),
             },
@@ -1486,6 +1538,8 @@ def _run_chat_loop(
             {
                 "utterance": utterance,
                 "intent": intent_label,
+                "intent_classified": classified_intent.value,
+                "intent_resolved": resolved_intent.value,
                 "ambiguity_score": ambiguity_score,
                 "chosen_action": chosen_action,
                 "user_followup_signal_proxy": followup_proxy,
@@ -1496,6 +1550,8 @@ def _run_chat_loop(
             {
                 "utterance": utterance,
                 "intent": intent_label,
+                "intent_classified": classified_intent.value,
+                "intent_resolved": resolved_intent.value,
                 "ambiguity_score": ambiguity_score,
                 "chosen_action": chosen_action,
                 "user_followup_signal_proxy": followup_proxy,
@@ -1512,6 +1568,8 @@ def _run_chat_loop(
             {
                 "utterance": utterance,
                 "intent": intent_label,
+                "intent_classified": classified_intent.value,
+                "intent_resolved": resolved_intent.value,
                 "alignment_decision": state.alignment_decision,
                 "alignment_dimension_inputs_raw": state.alignment_decision.get("dimension_inputs", {}).get("raw", {}),
                 "alignment_dimension_inputs_normalized": state.alignment_decision.get("dimension_inputs", {}).get("normalized", {}),
@@ -1534,6 +1592,12 @@ def _run_chat_loop(
             )
             send_assistant_text(debug_trace)
 
+        unresolved_intent = (
+            resolved_intent.value
+            if is_clarification_answer(state.final_answer) or _is_capabilities_help_answer(state.final_answer)
+            else ""
+        )
+        state = replace(state, prior_unresolved_intent=unresolved_intent)
         send_assistant_text(state.final_answer)
 
             # -----------------------
@@ -1542,6 +1606,7 @@ def _run_chat_loop(
         last_user_message_ts = now_iso
         chat_history.append({"role": "user", "content": utterance})
         chat_history.append({"role": "assistant", "content": state.final_answer})
+        prior_pipeline_state = state
 
         a_ts = clock.now().isoformat()
         a_id = str(uuid.uuid4())
