@@ -152,6 +152,12 @@ Add directed tests in `tests/test_time_parse.py` and/or `tests/test_time_parse_d
 Add fixture families in parity/eval tests (`tests/test_eval_runtime_parity.py` and related fixture JSONL files) to ensure ranking behavior remains stable under temporal paraphrase transformations.
 :::
 
+
+## Decision record (2026-03-06): INV-002 fallback contract normalization
+- **Decision:** Keep the progressive fallback contract as canonical for INV-002 across `docs/invariants.md`, `docs/directives/invariants.md`, `docs/testing.md`, and `docs/quickstart.md`.
+- **Contract:** For insufficient memory, require either one targeted clarifier or at least two capability-based alternatives; for partial/ambiguous memory, require a brief summary plus one bridging clarifier; reserve exact `I don't know from memory.` for explicit deny/safety-only cases.
+- **Rationale:** This matches runtime routing in `src/testbot/reflection_policy.py` and existing BDD wording for progressive assist/ambiguity scenarios, removing contradictory exact-string fallback guidance from docs and checklists.
+
 ## Proposed evidence artifact additions
 To make this feedback operational, add two artifacts in future QA runs:
 - `memory-maturity-summary.json`: contract version, runtime version, invariant pass rates, metamorphic pass rates, runtime-vs-BDD parity score, assessed maturity level.
