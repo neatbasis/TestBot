@@ -51,6 +51,8 @@ def test_non_memory_general_knowledge_contract_failure_degrades_to_knowledge_saf
         clock=None,
     )
 
-    assert answer_state.final_answer == "I don't know from memory."
+    lowered = answer_state.final_answer.lower()
+    assert "don't have enough reliable" in lowered
+    assert "i can either" in lowered and " or " in lowered
     assert "Which person, event, or time window should I focus on?" not in answer_state.final_answer
     assert answer_state.invariant_decisions["answer_mode"] != "clarify"

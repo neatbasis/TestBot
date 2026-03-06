@@ -40,6 +40,8 @@ Feature: Intent-specific grounding and provenance behavior
     Given an intent response harness
     When source confidence is insufficient for a knowing answer
     Then the assistant returns a progressive unknowing response
+    And the response should include explicit uncertainty language
+    And the response should include a safe action path
     And the provenance and basis should include "UNKNOWN" and "Trivial fallback"
 
 

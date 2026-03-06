@@ -46,14 +46,24 @@ def test_decide_fallback_action_policy_rows(
     )
 
 
-def test_low_source_confidence_without_memory_hit_returns_unknown_fallback() -> None:
+def test_low_source_confidence_non_memory_returns_unknown_fallback_even_with_memory_hit() -> None:
     assert decide_fallback_action(
         intent="non_memory",
-        memory_hit=False,
+        memory_hit=True,
         ambiguity=False,
         capability_status="ask_unavailable",
         source_confidence=0.2,
     ) == "ANSWER_UNKNOWN"
+
+
+def test_low_source_confidence_does_not_override_memory_recall_policy() -> None:
+    assert decide_fallback_action(
+        intent="memory_recall",
+        memory_hit=False,
+        ambiguity=False,
+        capability_status="ask_unavailable",
+        source_confidence=0.2,
+    ) == "OFFER_CAPABILITY_ALTERNATIVES"
 
 
 def test_source_confidence_does_not_override_time_query() -> None:
