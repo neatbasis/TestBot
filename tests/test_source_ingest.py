@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import json
+
 import pytest
 from langchain_core.documents import Document
 
-from testbot.source_connectors import SourceItem
+from testbot.source_connectors import ArxivSourceConnector, LocalMarkdownSourceConnector, SourceItem, WikipediaSummarySourceConnector
 from testbot.source_ingest import SourceIngestor
 
 
@@ -192,3 +194,90 @@ def test_source_ingestor_respects_negative_limit() -> None:
     assert result.next_cursor is None
     assert connector.cursor_updates == [None]
     assert store.docs == []
+
+
+def test_source_ingestor_local_markdown_connector_integration(tmp_path) -> None:
+    note = tmp_path / "operator.md"
+    note.write_text("# Operator canon\n\nUse explicit provenance.", encoding="utf-8")
+    store = _FakeStore()
+    ingestor = SourceIngestor(connector=LocalMarkdownSourceConnector(markdown_path=str(note)), memory_store=store)
+
+    result = ingestor.ingest_once(cursor=None)
+
+    assert result.fetched_count == 1
+    assert result.stored_count == 2
+    assert result.next_cursor == "1"
+    assert result.evidence_documents[0].metadata["source_type"] == "local_markdown"
+    assert result.evidence_documents[0].metadata["trust_tier"] == "operator"
+
+
+def test_source_ingestor_wikipedia_connector_integration(monkeypatch) -> None:
+    payload = {
+        "title": "OpenAI",
+        "extract": "OpenAI is an AI research lab.",
+        "content_urls": {"desktop": {"page": "https://en.wikipedia.org/wiki/OpenAI"}},
+    }
+
+    class _Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            del exc_type, exc, tb
+            return False
+
+        def read(self) -> bytes:
+            return json.dumps(payload).encode("utf-8")
+
+    monkeypatch.setattr("testbot.source_connectors.urlopen", lambda *args, **kwargs: _Response())
+
+    store = _FakeStore()
+    ingestor = SourceIngestor(connector=WikipediaSummarySourceConnector(topic="OpenAI"), memory_store=store)
+
+    result = ingestor.ingest_once(cursor=None)
+
+    assert result.fetched_count == 1
+    assert result.stored_count == 2
+    assert result.next_cursor == "done"
+    assert result.evidence_documents[0].metadata["source_type"] == "wikipedia"
+    assert result.evidence_documents[0].metadata["source_uri"] == "https://en.wikipedia.org/wiki/OpenAI"
+    assert result.evidence_documents[0].metadata["trust_tier"] == "community"
+
+
+def test_source_ingestor_arxiv_connector_integration(monkeypatch) -> None:
+    xml_payload = """<?xml version='1.0' encoding='UTF-8'?>
+<feed xmlns='http://www.w3.org/2005/Atom'>
+  <entry>
+    <id>http://arxiv.org/abs/1234.5678v1</id>
+    <updated>2026-03-01T12:00:00Z</updated>
+    <title>Useful Paper</title>
+    <summary>We show deterministic testing.</summary>
+    <author><name>Ada Lovelace</name></author>
+  </entry>
+</feed>
+"""
+
+    class _Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            del exc_type, exc, tb
+            return False
+
+        def read(self) -> bytes:
+            return xml_payload.encode("utf-8")
+
+    monkeypatch.setattr("testbot.source_connectors.urlopen", lambda *args, **kwargs: _Response())
+
+    store = _FakeStore()
+    ingestor = SourceIngestor(connector=ArxivSourceConnector(query="cat:cs.AI"), memory_store=store)
+
+    result = ingestor.ingest_once(cursor=None)
+
+    assert result.fetched_count == 1
+    assert result.stored_count == 2
+    assert result.next_cursor == "1"
+    assert result.evidence_documents[0].metadata["source_type"] == "arxiv"
+    assert result.evidence_documents[0].metadata["source_uri"] == "http://arxiv.org/abs/1234.5678v1"
+    assert result.evidence_documents[0].metadata["trust_tier"] == "preprint"
