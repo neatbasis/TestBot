@@ -121,6 +121,16 @@ def build_checks(*, base_ref: str) -> list[GateCheck]:
             ],
         ),
         GateCheck(
+            name="qa_validate_issues",
+            command=[
+                sys.executable,
+                "scripts/validate_issues.py",
+                "--all-issue-files",
+                "--base-ref",
+                base_ref,
+            ],
+        ),
+        GateCheck(
             name="qa_validate_invariant_sync",
             command=[sys.executable, "scripts/validate_invariant_sync.py"],
         ),
