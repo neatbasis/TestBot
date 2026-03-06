@@ -11,7 +11,7 @@ This document answers four operational questions in one place:
 
 ---
 
-## Current status (as of this snapshot)
+## Current status (as of 2026-03-06 00:00 UTC)
 
 Canonical machine-readable/source-of-truth status now lives in:
 
@@ -27,18 +27,26 @@ Canonical machine-readable/source-of-truth status now lives in:
 
 ### What is not yet green
 
-From the latest gate artifact (`artifacts/all-green-gate-summary.json`) and derived feature report (`docs/qa/feature-status-report.md`):
+From the latest validated gate artifact (`artifacts/all-green-gate-summary.json`) and derived feature report (`docs/qa/feature-status-report.md`):
 
-- 5 capabilities are currently partial and 1 is implemented.
-- Blocking checks include:
-  - `product_behave` and `safety_behave_answer_contract_and_memory` (missing `behave` in this environment),
-  - `product_eval_recall_topk4` (`ModuleNotFoundError: No module named 'testbot'`),
-  - `qa_validate_issue_links` (no `origin/main` ref in this local clone).
+- 5 capabilities remain partial and 1 is implemented.
+- **Active blockers in "not yet green" are capability-delivery blockers, not executable gate blockers.**
+- Current executable gate status:
+  - All canonical checks in `python scripts/all_green_gate.py --continue-on-failure --json-output artifacts/all-green-gate-summary.json` are passing.
+  - Governance validators passed using documented fallback base ref (`HEAD~1`) because `origin/main` is unavailable in this clone.
+
+### Historical blockers moved out of active list
+
+The following previously reported blockers are now resolved and retained as historical notes only:
+
+- Missing `behave` in environment (resolved by installing dev dependencies and re-running gate).
+- `product_eval_recall_topk4` import failure (`ModuleNotFoundError: No module named 'testbot'`) resolved in validated environment.
+- `qa_validate_issue_links` base-ref failure for `origin/main` resolved via canonical fallback behavior (`HEAD~1`).
 
 ### Risk interpretation
 
-- **Knowing-mode risk:** BDD/gate failures still block a fully trustworthy contract signal for grounded provenance behavior.
-- **Unknowing-mode risk:** until BDD and recall gate checks are fully green in the canonical environment, fallback confidence remains only partially verified.
+- **Knowing-mode risk:** primarily capability-completeness risk (several features still intentionally tracked as partial), not immediate gate-execution risk.
+- **Unknowing-mode risk:** behavior remains only partially complete per feature contract, though executable deterministic evidence is currently green.
 
 ---
 

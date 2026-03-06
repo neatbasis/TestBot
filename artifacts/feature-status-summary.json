@@ -11,22 +11,8 @@
       "owner_module": "src/testbot/sat_chatbot_memory_v2.py",
       "effective_status": "partial",
       "declared_status": "partial",
-      "failed_gate_checks": [
-        "product_behave",
-        "safety_behave_answer_contract_and_memory"
-      ],
-      "relevant_open_issues": [
-        {
-          "id": "ISSUE-0005",
-          "title": "Eval script logic divergence risk from runtime logic",
-          "path": "docs/issues/ISSUE-0005-eval-runtime-logic-divergence-risk.md"
-        },
-        {
-          "id": "ISSUE-0007",
-          "title": "Behave gate not enforced in PR validation",
-          "path": "docs/issues/ISSUE-0007-behave-gate-not-enforced-in-pr-validation.md"
-        }
-      ],
+      "failed_gate_checks": [],
+      "relevant_open_issues": [],
       "roadmap_priority_refs": [
         "P2",
         "P4"
@@ -59,21 +45,8 @@
       "owner_module": "src/testbot/reflection_policy.py",
       "effective_status": "partial",
       "declared_status": "partial",
-      "failed_gate_checks": [
-        "product_behave"
-      ],
-      "relevant_open_issues": [
-        {
-          "id": "ISSUE-0005",
-          "title": "Eval script logic divergence risk from runtime logic",
-          "path": "docs/issues/ISSUE-0005-eval-runtime-logic-divergence-risk.md"
-        },
-        {
-          "id": "ISSUE-0007",
-          "title": "Behave gate not enforced in PR validation",
-          "path": "docs/issues/ISSUE-0007-behave-gate-not-enforced-in-pr-validation.md"
-        }
-      ],
+      "failed_gate_checks": [],
+      "relevant_open_issues": [],
       "roadmap_priority_refs": [
         "P3"
       ],
@@ -98,21 +71,8 @@
       "owner_module": "src/testbot/intent_router.py",
       "effective_status": "partial",
       "declared_status": "partial",
-      "failed_gate_checks": [
-        "product_behave"
-      ],
-      "relevant_open_issues": [
-        {
-          "id": "ISSUE-0005",
-          "title": "Eval script logic divergence risk from runtime logic",
-          "path": "docs/issues/ISSUE-0005-eval-runtime-logic-divergence-risk.md"
-        },
-        {
-          "id": "ISSUE-0007",
-          "title": "Behave gate not enforced in PR validation",
-          "path": "docs/issues/ISSUE-0007-behave-gate-not-enforced-in-pr-validation.md"
-        }
-      ],
+      "failed_gate_checks": [],
+      "relevant_open_issues": [],
       "roadmap_priority_refs": [
         "P3"
       ],
@@ -137,21 +97,8 @@
       "owner_module": "src/testbot/rerank.py",
       "effective_status": "partial",
       "declared_status": "partial",
-      "failed_gate_checks": [
-        "product_eval_recall_topk4"
-      ],
-      "relevant_open_issues": [
-        {
-          "id": "ISSUE-0005",
-          "title": "Eval script logic divergence risk from runtime logic",
-          "path": "docs/issues/ISSUE-0005-eval-runtime-logic-divergence-risk.md"
-        },
-        {
-          "id": "ISSUE-0007",
-          "title": "Behave gate not enforced in PR validation",
-          "path": "docs/issues/ISSUE-0007-behave-gate-not-enforced-in-pr-validation.md"
-        }
-      ],
+      "failed_gate_checks": [],
+      "relevant_open_issues": [],
       "roadmap_priority_refs": [
         "P2",
         "P5"
@@ -221,21 +168,8 @@
       "owner_module": "scripts/all_green_gate.py",
       "effective_status": "partial",
       "declared_status": "partial",
-      "failed_gate_checks": [
-        "qa_validate_issue_links"
-      ],
-      "relevant_open_issues": [
-        {
-          "id": "ISSUE-0005",
-          "title": "Eval script logic divergence risk from runtime logic",
-          "path": "docs/issues/ISSUE-0005-eval-runtime-logic-divergence-risk.md"
-        },
-        {
-          "id": "ISSUE-0007",
-          "title": "Behave gate not enforced in PR validation",
-          "path": "docs/issues/ISSUE-0007-behave-gate-not-enforced-in-pr-validation.md"
-        }
-      ],
+      "failed_gate_checks": [],
+      "relevant_open_issues": [],
       "roadmap_priority_refs": [
         "P5"
       ],
@@ -255,6 +189,6 @@
       ]
     }
   ],
-  "open_issue_count": 2,
+  "open_issue_count": 0,
   "gate_checks_seen": 13
 }

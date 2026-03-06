@@ -3,7 +3,7 @@
 - **ID:** ISSUE-0007
 - **Title:** Behave gate not enforced in PR validation
 - **Status:** closed
-- **Severity:** amber
+- **Severity:** green
 - **Owner:** platform-qa
 - **Created:** 2026-03-04
 - **Target Sprint:** Sprint 1
@@ -41,7 +41,7 @@ The repository policy expects BDD coverage to be validated with `behave`, but pr
 
 - Command: `python -m pip install -e .[dev]`
   - Expected: exits `0` and installs `behave`.
-- Command: `behave`
+- Command: `python -m behave`
   - Expected: executes feature suite and reports pass/fail scenarios.
 - Command: `behave --tags=@fast`
   - Expected: executes fast contract suite with non-zero exit on regressions.
