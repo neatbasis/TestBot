@@ -57,11 +57,6 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -U pip
 pip install -e .
-```
-
-Development extras (required to run `behave` and other dev checks):
-
-```bash
 pip install -e .[dev]
 ```
 
@@ -110,8 +105,9 @@ python scripts/all_green_gate.py
 
 For non-live code changes, use this offline/deterministic gate:
 
-1. `pip install -e .[dev]`
-2. `python scripts/all_green_gate.py`
+1. `pip install -e .`
+2. `pip install -e .[dev]`
+3. `python scripts/all_green_gate.py`
 
 See [docs/testing.md](docs/testing.md) for test-layer policy and acceptance criteria.
 

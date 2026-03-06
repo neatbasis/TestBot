@@ -9,6 +9,7 @@ and ambiguity outcomes before release.
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import shlex
 import subprocess
@@ -19,6 +20,11 @@ from pathlib import Path
 from typing import Sequence
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+BEHAVE_PREFLIGHT_CHECK_NAME = "preflight_bdd_dependencies"
+BEHAVE_REMEDIATION_MESSAGE = (
+    "Missing required BDD dependency 'behave'. Install development dependencies before running "
+    "the release gate: python -m pip install -e .[dev]"
+)
 
 
 @dataclass
@@ -192,6 +198,22 @@ def run_gate(checks: Sequence[GateCheck], continue_on_failure: bool) -> tuple[li
     return results, exit_code
 
 
+
+
+def preflight_bdd_dependencies() -> CheckResult | None:
+    started = time.monotonic()
+    behave_available = importlib.util.find_spec("behave") is not None
+    duration_s = round(time.monotonic() - started, 3)
+    if behave_available:
+        return None
+    return CheckResult(
+        name=BEHAVE_PREFLIGHT_CHECK_NAME,
+        command=f"{sys.executable} -c 'import behave'",
+        status="failed",
+        exit_code=1,
+        duration_s=duration_s,
+    )
+
 def summarize(results: Sequence[CheckResult], continue_on_failure: bool) -> dict[str, object]:
     has_failure = any(result.status == "failed" for result in results)
     warning_count = sum(1 for result in results if result.status == "warning")
@@ -206,6 +228,18 @@ def summarize(results: Sequence[CheckResult], continue_on_failure: bool) -> dict
 
 def main() -> int:
     args = parse_args()
+    preflight_result = preflight_bdd_dependencies()
+    if preflight_result is not None:
+        summary = summarize(results=[preflight_result], continue_on_failure=args.continue_on_failure)
+        summary_json = json.dumps(summary, indent=2)
+        print(summary_json)
+        print(f"\n{BEHAVE_REMEDIATION_MESSAGE}")
+        if args.json_output:
+            out_path = args.json_output if args.json_output.is_absolute() else REPO_ROOT / args.json_output
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            out_path.write_text(summary_json + "\n", encoding="utf-8")
+        return 1
+
     checks = build_checks(
         replay_report=args.replay_report,
         base_ref=args.base_ref,

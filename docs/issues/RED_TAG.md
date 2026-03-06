@@ -17,9 +17,10 @@ KPI evidence updates are mandatory for red-tag triage. If any KPI guardrail fail
 
 ## Active
 
-- ISSUE-0007 — **Behave gate not enforced in PR validation**: Mandatory BDD gate execution can be skipped when dev dependencies are missing, allowing invariant regressions to pass review until later validation.
 
 ## Resolved
+
+- ISSUE-0007 — **Behave gate not enforced in PR validation**: Gate preflight now fails fast when `behave` is missing and canonical gate execution requires non-skipped BDD checks.
 
 - ISSUE-0008 — **Intent-grounding gate failures block merge readiness**: Canonical merge gate failures were remediated with deterministic intent-routing/reflection/provenance fixes and regression coverage.
 
