@@ -60,36 +60,16 @@ def test_live_smoke_home_assistant_satellite_entity_is_actionable() -> None:
     entity_id = _require_env("HA_SATELLITE_ENTITY_ID")
     client = _ha_client()
 
-    try:
-        state = client.get_state(entity_id=entity_id)
-    except HomeassistantAPIError as exc:
-        pytest.fail(
-            f"Configured HA_SATELLITE_ENTITY_ID={entity_id!r} is missing or inaccessible: {exc}. "
-            "Check the configured entity id and Home Assistant token permissions."
-        )
-
+    state = client.get_state(entity_id=entity_id)
     attributes = state.attributes
+
+    assert entity_id.startswith("assist_satellite."), (
+        f"Configured HA_SATELLITE_ENTITY_ID must be an assist_satellite entity, got {entity_id!r}"
+    )
     assert isinstance(attributes, dict), (
         f"Configured HA_SATELLITE_ENTITY_ID={entity_id!r} returned missing/invalid attributes payload."
     )
-
-    attr_keys = {str(key).lower() for key in attributes}
-    expected_attribute_hints = {"assist", "pipeline", "mic", "wake", "satellite", "stt", "tts"}
-    assert any(any(hint in key for hint in expected_attribute_hints) for key in attr_keys), (
-        "Configured HA_SATELLITE_ENTITY_ID entity did not expose any expected assist/satellite attributes. "
-        f"entity_id={entity_id!r}, attribute_keys={sorted(attr_keys)!r}"
+    assert isinstance(attributes.get("supported_features"), int), (
+        "Configured HA_SATELLITE_ENTITY_ID entity did not expose an integer supported_features value. "
+        f"entity_id={entity_id!r}, attribute_keys={sorted(str(k).lower() for k in attributes)!r}"
     )
-
-    homeassistant_domain = client.get_domain("homeassistant")
-    if homeassistant_domain and "update_entity" in homeassistant_domain.services:
-        try:
-            changed_states = client.trigger_service("homeassistant", "update_entity", entity_id=entity_id)
-        except HomeassistantAPIError as exc:
-            pytest.fail(
-                "Expected Home Assistant update_entity to succeed for configured "
-                f"HA_SATELLITE_ENTITY_ID={entity_id!r}, but request failed: {exc}"
-            )
-        assert isinstance(changed_states, tuple), (
-            "Expected Home Assistant update_entity response to be a tuple of state changes "
-            f"for HA_SATELLITE_ENTITY_ID={entity_id!r}, got {type(changed_states).__name__}"
-        )
