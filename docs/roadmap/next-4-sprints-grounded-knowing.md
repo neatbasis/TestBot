@@ -60,7 +60,7 @@ This roadmap operationalizes the top-5 grounded-knowing priorities over four spr
 ### Measurable exits
 - Policy returns deterministic know/unknown decisions for fixture-defined confidence bands.
 - BDD scenarios pass for both grounded answers and exact fallback (`I don't know from memory.`).
-- Response contract includes citation payload fields (`doc_id`, `ts`, `source_id`, `reasoning_path`/provenance trace).
+- Response contract includes citation/provenance fields aligned to runtime state (`doc_id`, `ts`, `provenance_types`, `used_memory_refs`, `used_source_evidence_refs`, `source_evidence_attribution`, `basis_statement`).
 
 ### Rollback criteria
 - If calibration induces overconfident false-positive “knowing” behavior, raise threshold to conservative default and re-enable strict fallback.
@@ -88,9 +88,11 @@ This roadmap operationalizes the top-5 grounded-knowing priorities over four spr
 
 ## Priority-to-implementation mapping
 
+_Last verified: 2026-03-06_
+
 | Priority | Implementation files (likely `src/testbot/*`) | BDD scenarios (`features/*`) | Deterministic tests (`tests/*`) |
 | --- | --- | --- | --- |
-| **P1** Source connector interface + ingestion pipeline | `src/testbot/source_connectors.py`, `src/testbot/ingestion_pipeline.py`, `src/testbot/pipeline_state.py`, `src/testbot/config.py` | `features/source_ingestion.feature`, `features/capabilities.feature` | `tests/test_source_connectors.py`, `tests/test_ingestion_pipeline.py`, `tests/test_pipeline_state.py` |
+| **P1** Source connector interface + ingestion pipeline | `src/testbot/source_connectors.py`, `src/testbot/source_ingest.py`, `src/testbot/pipeline_state.py`, `src/testbot/config.py` | `features/source_ingestion.feature`, `features/capabilities.feature` | `tests/test_source_connectors.py`, `tests/test_source_ingest.py`, `tests/test_source_fusion.py` |
 | **P2** Evidence normalization/ranking for mixed sources | `src/testbot/rerank.py`, `src/testbot/vector_store.py`, `src/testbot/eval_fixtures.py` | `features/memory_recall.feature`, `features/intent_grounding.feature` | `tests/test_rerank.py`, `tests/test_vector_store.py`, `tests/test_eval_runtime_parity.py` |
 | **P3** Knowing/unknowing decision policy with confidence calibration | `src/testbot/intent_router.py`, `src/testbot/promotion_policy.py`, `src/testbot/reflection_policy.py` | `features/answer_contract.feature`, `features/intent_grounding.feature` | `tests/test_intent_router.py`, `tests/test_promotion_policy.py`, `tests/test_reflection_policy.py` |
 | **P4** Citation UX + provenance explainability output format | `src/testbot/sat_chatbot_memory_v2.py`, `src/testbot/history_packer.py`, `src/testbot/memory_cards.py` | `features/answer_contract.feature`, `features/memory_recall.feature` | `tests/test_history_packer.py`, `tests/test_runtime_logging_events.py`, `tests/test_capabilities_help.py` |
