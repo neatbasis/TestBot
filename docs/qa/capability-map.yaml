@@ -1,0 +1,21 @@
+capabilities:
+  - capability_id: cap-auth-service-availability
+    capability_name: Authentication service availability
+    owning_smoke_checks:
+      - healthz
+    business_impact: Users cannot sign in if authentication health fails.
+    severity_if_broken: critical
+
+  - capability_id: cap-payments-acceptance
+    capability_name: Payments acceptance
+    owning_smoke_checks:
+      - payments-ready
+    business_impact: Revenue is blocked when payment readiness is unavailable.
+    severity_if_broken: critical
+
+  - capability_id: cap-notifications-delivery
+    capability_name: Notification delivery
+    owning_smoke_checks:
+      - notifications-ready
+    business_impact: Time-sensitive customer communications are delayed or lost.
+    severity_if_broken: high
