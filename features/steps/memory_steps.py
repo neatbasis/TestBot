@@ -163,6 +163,21 @@ def _signal_signature(signal: dict[str, object], score_key: str) -> tuple[str, f
     return (str(signal.get("doc_id", "")), float(signal.get(score_key, 0.0) or 0.0))
 
 
+def _assert_intermediate_signal_contract(signals: dict[str, object], fixture_id: str) -> None:
+    scored_candidates = signals["scored_candidates"]
+    ranked_doc_ids = signals["ranked_doc_ids"]
+    scored_doc_ids = [str(candidate.get("doc_id", "")) for candidate in scored_candidates]
+    assert scored_doc_ids == ranked_doc_ids, fixture_id
+
+    near_tie_candidates = signals["near_tie_candidates"]
+    near_tie_doc_ids = [str(candidate.get("doc_id", "")) for candidate in near_tie_candidates]
+    assert all(doc_id in scored_doc_ids for doc_id in near_tie_doc_ids), fixture_id
+
+    if signals["ambiguity_detected"]:
+        assert signals["intent"] == "dont-know", fixture_id
+        assert len(near_tie_candidates) >= 2, fixture_id
+
+
 def _assert_signal_parity(context, *, fixture_id: str, utterance: str, candidates: list[dict[str, str | float]]) -> None:
     runtime = _runtime_memory_signals(utterance, candidates)
     eval_path = _eval_memory_signals(utterance, candidates)
@@ -175,7 +190,10 @@ def _assert_signal_parity(context, *, fixture_id: str, utterance: str, candidate
     runtime_near_tie = [_signal_signature(c, "score") for c in runtime["near_tie_candidates"]]
     eval_near_tie = [_signal_signature(c, "score") for c in eval_path["near_tie_candidates"]]
     assert runtime_near_tie == eval_near_tie, fixture_id
+    _assert_intermediate_signal_contract(runtime, fixture_id)
+    _assert_intermediate_signal_contract(eval_path, fixture_id)
     context.parity_signals = runtime
+    context.eval_parity_signals = eval_path
 
 
 
@@ -203,6 +221,8 @@ def step_when_user_asks_eval_case(context, case_id: str) -> None:
     )
     context.answer = _answer_from_case(case_id, context.eval_cases)
     context.pipeline_state = _build_stage_state(case_id, context.eval_cases, context.answer, context.parity_signals)
+    context.expected_fallback_class = "memory-grounded" if "doc_id:" in context.answer else "dont-know"
+    assert context.parity_signals["intent"] == context.expected_fallback_class, case_id
 
     context.retrieve_pre_check = validate_retrieve_pre(context.pipeline_state)
     context.retrieve_post_check = validate_retrieve_post(context.pipeline_state)
@@ -289,6 +309,8 @@ def step_when_equivalent_candidates_remain(context) -> None:
 @then("the assistant returns a memory-grounded answer")
 def step_then_grounded(context) -> None:
     assert context.answer != FALLBACK
+    assert context.parity_signals["intent"] == "memory-grounded"
+    assert context.parity_signals["ambiguity_detected"] is False
 
 
 @then('the answer includes citation fields "doc_id" and "ts"')
@@ -301,9 +323,14 @@ def step_then_has_citation(context) -> None:
 def step_then_assistive_fallback(context) -> None:
     lowered = context.answer.lower()
     assert "either" in lowered and "or" in lowered
+    assert context.parity_signals["intent"] == "dont-know"
+    assert context.parity_signals["ambiguity_detected"] is False
 
 
 @then("the assistant returns a bridging clarification response")
 def step_then_bridging_clarifier(context) -> None:
     lowered = context.answer.lower()
     assert "which" in lowered and "time window" in lowered
+    assert context.parity_signals["intent"] == "dont-know"
+    assert context.parity_signals["ambiguity_detected"] == context.eval_parity_signals["ambiguity_detected"]
+    assert len(context.parity_signals["near_tie_candidates"]) >= 2
