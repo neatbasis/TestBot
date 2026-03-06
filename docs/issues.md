@@ -76,6 +76,23 @@ Acceptance criteria must be binary/verifiable (pass/fail) and reference concrete
 5. **Verify** against acceptance criteria.
 6. **Close** with evidence and residual risk note.
 
+## Mandatory duplicate-prevention pre-check
+
+Before creating any new issue record, contributors MUST review the current feature status report to avoid opening multiple tickets for the same underlying capability gap.
+
+Required pre-check sequence:
+
+1. Regenerate the report from current gate/issues/roadmap evidence:
+
+   ```bash
+   python scripts/report_feature_status.py --output docs/qa/feature-status-report.md --json-output artifacts/feature-status-summary.json
+   ```
+
+2. Review `docs/qa/feature-status-report.md` and verify whether an existing open issue already covers the underlying failure signal.
+3. Create a new issue only when no existing open issue in the report captures that root cause; otherwise update the existing issue instead of filing a duplicate.
+
+Rationale: `scripts/report_feature_status.py` computes capability status from the contract (`docs/qa/feature-status.yaml`), gate results (`artifacts/all-green-gate-summary.json`), open issue records (`docs/issues/*.md` with open-like statuses), and roadmap priority references. This provides the authoritative duplicate-check surface before issue creation.
+
 ## Principle alignment taxonomy
 
 Use one or more tags:
@@ -126,4 +143,3 @@ If needed, force an explicit detached-friendly base ref:
 python scripts/validate_issue_links.py --all-issue-files --base-ref HEAD~1
 python scripts/validate_issues.py --all-issue-files --base-ref HEAD~1
 ```
-
