@@ -61,6 +61,17 @@ Test retrieval/answer pipeline wiring with deterministic stubs:
 - Use deterministic fake embeddings and in-memory stores
 - Assert stable top-k ordering and progressive fallback behavior (clarifier/alternatives for insufficient memory; exact fallback only for deny/safety-only cases).
 
+### Source-ingestion failure-mode checks (offline, fake-backed)
+
+For source-ingestion reliability checks, prefer monkeypatches/fakes over any live connector or backend:
+
+- Simulate connector fetch failures (for example, `HTTPError`) and assert startup continues while `source_ingest_failed` is logged.
+- Simulate memory-store `add_documents` failures (for example, embedding/backend outage) and assert failure logging plus non-fatal startup behavior at runtime boundary tests.
+- In `SourceIngestor` unit tests, use fake stores/connectors and assert `add_documents` exceptions propagate so the runtime layer can apply the non-fatal handling contract.
+
+These tests are deterministic and do **not** require production Ollama, Home Assistant, or any network connectivity.
+
+
 ### 4) Optional live integration smoke tests
 
 Run separately against real Home Assistant + Ollama for environment confidence. Keep these tests opt-in and out of default quick runs.
