@@ -111,16 +111,40 @@ def _eval_path_result(utterance: str, candidates: list[dict[str, Any]]) -> dict[
     }
 
 
+def _candidate_signal_signature(candidate: dict[str, Any]) -> tuple[str, float]:
+    return (str(candidate.get("doc_id", "")), float(candidate.get("final_score", 0.0) or 0.0))
+
+
+def _near_tie_signature(candidate: dict[str, Any]) -> tuple[str, float]:
+    return (str(candidate.get("doc_id", "")), float(candidate.get("score", 0.0) or 0.0))
+
+
+def _assert_runtime_eval_signal_parity(runtime: dict[str, Any], eval_path: dict[str, Any], fixture_id: str) -> None:
+    assert runtime["ranked_doc_ids"] == eval_path["ranked_doc_ids"], fixture_id
+    assert runtime["top_doc_id"] == eval_path["top_doc_id"], fixture_id
+    assert runtime["intent"] == eval_path["intent"], fixture_id
+    assert runtime["ambiguity_detected"] == eval_path["ambiguity_detected"], fixture_id
+
+    runtime_scored = [_candidate_signal_signature(c) for c in runtime["scored_candidates"]]
+    eval_scored = [_candidate_signal_signature(c) for c in eval_path["scored_candidates"]]
+    assert runtime_scored == eval_scored, fixture_id
+
+    runtime_near_tie = [_near_tie_signature(c) for c in runtime["near_tie_candidates"]]
+    eval_near_tie = [_near_tie_signature(c) for c in eval_path["near_tie_candidates"]]
+    assert runtime_near_tie == eval_near_tie, fixture_id
+
+    assert abs(runtime["top_score"] - eval_path["top_score"]) <= 1e-12, fixture_id
+
+
 def test_eval_runtime_parity_clear_winner_case() -> None:
     case = cases_by_id()["sleep-followup"]
 
     runtime = _runtime_path_result(case.utterance, list(case.candidates))
     eval_path = _eval_path_result(case.utterance, list(case.candidates))
 
-    assert runtime["ranked_doc_ids"] == eval_path["ranked_doc_ids"]
-    assert runtime["top_doc_id"] == eval_path["top_doc_id"] == case.expected_doc_id
-    assert runtime["intent"] == eval_path["intent"] == "memory-grounded"
-    assert abs(runtime["top_score"] - eval_path["top_score"]) <= 1e-12
+    _assert_runtime_eval_signal_parity(runtime, eval_path, fixture_id="sleep-followup")
+    assert runtime["top_doc_id"] == case.expected_doc_id
+    assert runtime["intent"] == "memory-grounded"
 
 
 def test_eval_runtime_parity_near_tie_fixture_case() -> None:
@@ -131,9 +155,8 @@ def test_eval_runtime_parity_near_tie_fixture_case() -> None:
     runtime = _runtime_path_result(fixture["query"], candidates)
     eval_path = _eval_path_result(fixture["query"], candidates)
 
-    assert runtime["ranked_doc_ids"] == eval_path["ranked_doc_ids"]
-    assert runtime["top_doc_id"] == eval_path["top_doc_id"]
-    assert runtime["intent"] == eval_path["intent"] == "dont-know"
+    _assert_runtime_eval_signal_parity(runtime, eval_path, fixture_id=fixture["fixture_id"])
+    assert runtime["intent"] == "dont-know"
     assert len(runtime["near_tie_candidates"]) >= 2
     top_scores = [candidate["score"] for candidate in runtime["near_tie_candidates"]]
     assert max(top_scores) - min(top_scores) <= NEAR_TIE_DELTA
@@ -170,8 +193,36 @@ def test_eval_runtime_parity_high_similarity_but_weak_objective_not_confident() 
     runtime = _runtime_path_result(utterance, candidates)
     eval_path = _eval_path_result(utterance, candidates)
 
-    assert runtime["intent"] == eval_path["intent"] == "dont-know"
+    _assert_runtime_eval_signal_parity(runtime, eval_path, fixture_id="high-sim-weak-objective")
+    assert runtime["intent"] == "dont-know"
     assert runtime["top_score"] < 0.2
+
+
+def test_eval_runtime_parity_confidence_boundary_exact_threshold() -> None:
+    utterance = "What did I say about hydration this morning?"
+    candidates = [
+        {
+            "doc_id": "boundary-top",
+            "text": "I said to drink water after waking.",
+            "type": "user_utterance",
+            "ts": "2026-03-10T09:00:00+00:00",
+            "sim_score": 0.8,
+        },
+        {
+            "doc_id": "boundary-second",
+            "text": "I mentioned tea later.",
+            "type": "user_utterance",
+            "ts": "2026-03-10T09:05:00+00:00",
+            "sim_score": 0.4,
+        },
+    ]
+
+    runtime = _runtime_path_result(utterance, candidates)
+    eval_path = _eval_path_result(utterance, candidates)
+
+    _assert_runtime_eval_signal_parity(runtime, eval_path, fixture_id="confidence-boundary-exact-threshold")
+    assert runtime["top_score"] == 0.2
+    assert runtime["intent"] == "memory-grounded"
 
 def test_eval_runtime_parity_fixture_families() -> None:
     fixture_files = [
@@ -191,14 +242,7 @@ def test_eval_runtime_parity_fixture_families() -> None:
         runtime = _runtime_path_result(fixture["utterance"], candidates)
         eval_path = _eval_path_result(fixture["utterance"], candidates)
 
-        assert runtime["ranked_doc_ids"] == eval_path["ranked_doc_ids"], fixture["fixture_id"]
-        assert runtime["top_doc_id"] == eval_path["top_doc_id"], fixture["fixture_id"]
-        assert runtime["intent"] == eval_path["intent"], fixture["fixture_id"]
-        assert runtime["ambiguity_detected"] == eval_path["ambiguity_detected"], fixture["fixture_id"]
-
-        runtime_scored = [c["doc_id"] for c in runtime["scored_candidates"]]
-        eval_scored = [c["doc_id"] for c in eval_path["scored_candidates"]]
-        assert runtime_scored == eval_scored, fixture["fixture_id"]
+        _assert_runtime_eval_signal_parity(runtime, eval_path, fixture_id=fixture["fixture_id"])
 
         expected = fixture["expected"]
         top_k = int(expected.get("top_k", 1))
