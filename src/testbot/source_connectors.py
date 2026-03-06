@@ -4,16 +4,26 @@ import json
 import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
-from typing import Protocol
+from typing import Any, Callable, Protocol
+from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlencode
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
 import xml.etree.ElementTree as ET
 
 from langchain_core.documents import Document
 
 
 _LOGGER = logging.getLogger(__name__)
+
+
+try:
+    _TESTBOT_VERSION = version("testbot")
+except PackageNotFoundError:
+    _TESTBOT_VERSION = "0.0.0"
+
+_DEFAULT_WIKIPEDIA_USER_AGENT = f"TestBot/{_TESTBOT_VERSION} (+contact)"
 
 
 @dataclass(frozen=True)
@@ -185,6 +195,9 @@ class WikipediaSummarySourceConnector:
     source_type: str = "wikipedia"
     language: str = "en"
     trust_tier: str = "community"
+    user_agent: str = _DEFAULT_WIKIPEDIA_USER_AGENT
+    request_factory: Callable[..., Request] = Request
+    opener: Callable[..., Any] = urlopen
 
     def fetch(self, *, cursor: str | None, limit: int = 50) -> list[SourceItem]:
         if limit <= 0 or cursor is not None:
@@ -194,8 +207,13 @@ class WikipediaSummarySourceConnector:
             return []
         encoded_topic = quote(normalized_topic, safe="")
         url = f"https://{self.language}.wikipedia.org/api/rest_v1/page/summary/{encoded_topic}"
-        with urlopen(url, timeout=5.0) as response:  # noqa: S310
-            payload = json.loads(response.read().decode("utf-8"))
+        request = self.request_factory(url, headers={"User-Agent": self.user_agent})
+        try:
+            with self.opener(request, timeout=5.0) as response:  # noqa: S310
+                payload = json.loads(response.read().decode("utf-8"))
+        except (HTTPError, URLError) as exc:
+            _LOGGER.warning("Wikipedia summary fetch failed for topic=%r: %s", normalized_topic, exc)
+            return []
         title = str(payload.get("title") or normalized_topic)
         extract = str(payload.get("extract") or "").strip()
         if not extract:

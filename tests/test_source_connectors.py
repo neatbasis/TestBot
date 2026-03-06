@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from urllib.error import HTTPError
 
 from testbot.source_connectors import (
     ArxivSourceConnector,
@@ -97,6 +98,8 @@ def test_wikipedia_connector_fetches_summary(monkeypatch) -> None:
         "content_urls": {"desktop": {"page": "https://en.wikipedia.org/wiki/OpenAI"}},
     }
 
+    observed_request = None
+
     class _Response:
         def __enter__(self):
             return self
@@ -108,15 +111,37 @@ def test_wikipedia_connector_fetches_summary(monkeypatch) -> None:
         def read(self) -> bytes:
             return json.dumps(payload).encode("utf-8")
 
-    monkeypatch.setattr("testbot.source_connectors.urlopen", lambda *args, **kwargs: _Response())
+    def _fake_open(request, timeout):
+        del timeout
+        nonlocal observed_request
+        observed_request = request
+        return _Response()
 
-    connector = WikipediaSummarySourceConnector(topic="OpenAI")
+    connector = WikipediaSummarySourceConnector(topic="OpenAI", opener=_fake_open)
     items = connector.fetch(cursor=None, limit=1)
 
     assert len(items) == 1
     assert items[0].item_id == "wiki::OpenAI"
     assert items[0].source_uri == "https://en.wikipedia.org/wiki/OpenAI"
+    assert observed_request is not None
+    assert observed_request.headers["User-agent"].startswith("TestBot/")
     assert connector.fetch(cursor="done", limit=1) == []
+
+
+def test_wikipedia_connector_returns_empty_list_on_http_403() -> None:
+    def _raise_http_error(request, timeout):
+        del request, timeout
+        raise HTTPError(
+            url="https://en.wikipedia.org/wiki/OpenAI",
+            code=403,
+            msg="Forbidden",
+            hdrs=None,
+            fp=None,
+        )
+
+    connector = WikipediaSummarySourceConnector(topic="OpenAI", opener=_raise_http_error)
+
+    assert connector.fetch(cursor=None, limit=1) == []
 
 
 def test_arxiv_connector_parses_feed(monkeypatch) -> None:
