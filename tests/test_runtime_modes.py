@@ -52,6 +52,7 @@ def _patch_main_dependencies(
     ollama_error: str | None,
     calls: dict[str, int],
     startup: dict | None = None,
+    runtime_overrides: dict | None = None,
 ) -> None:
     runtime_env = {
         "ha_api_url": "http://localhost:8123",
@@ -65,6 +66,9 @@ def _patch_main_dependencies(
         "elasticsearch_url": "http://localhost:9200",
         "elasticsearch_index": "testbot_memory_cards",
     }
+
+    if runtime_overrides:
+        runtime_env.update(runtime_overrides)
 
     monkeypatch.setattr(runtime, "_parse_args", lambda _argv=None: args)
     monkeypatch.setattr(runtime, "_read_runtime_env", lambda: runtime_env)
@@ -314,3 +318,99 @@ def test_run_source_ingestion_invalid_cursor_logs_and_falls_back(monkeypatch, tm
     assert logs[0][0] == "source_ingest_cursor_invalid"
     assert logs[0][1]["cursor"] == "bad-cursor"
     assert logs[-1][0] == "source_ingest_completed"
+
+
+def test_run_source_ingestion_failure_logs_and_does_not_raise(monkeypatch, capsys, tmp_path) -> None:
+    fixture_path = tmp_path / "ingest_fixture.json"
+    fixture_path.write_text(
+        json.dumps([
+            {
+                "item_id": "src-1",
+                "content": "Task: utility bill due Friday",
+                "source_uri": "ha://tasks/utility-bill",
+                "retrieved_at": "2026-03-10T09:00:00Z",
+                "trust_tier": "verified",
+                "metadata": {"ts": "2026-03-14T00:00:00Z"},
+            }
+        ]),
+        encoding="utf-8",
+    )
+
+    class _FailingIngestor:
+        def __init__(self, *args, **kwargs):
+            del args, kwargs
+
+        def ingest_once(self, *, cursor, limit):
+            del cursor, limit
+            raise RuntimeError("boom")
+
+    logs = []
+    monkeypatch.setattr(runtime, "SourceIngestor", _FailingIngestor)
+    monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: logs.append((event, payload)))
+
+    runtime._run_source_ingestion(
+        runtime={
+            "source_ingest_enabled": True,
+            "source_connector_type": "fixture",
+            "source_fixture_path": str(fixture_path),
+            "source_ingest_limit": 5,
+            "source_ingest_cursor": "12",
+        },
+        store=object(),
+    )
+
+    captured = capsys.readouterr()
+    assert "continuing without ingested source documents" in captured.err
+    assert logs[-1][0] == "source_ingest_failed"
+    assert logs[-1][1]["source_type"] == "fixture"
+    assert logs[-1][1]["cursor"] == "12"
+    assert logs[-1][1]["limit"] == 5
+    assert logs[-1][1]["exception_class"] == "RuntimeError"
+    assert logs[-1][1]["exception_message"] == "boom"
+
+
+def test_main_reaches_cli_when_source_ingestion_fails(monkeypatch, tmp_path) -> None:
+    class _FailingIngestor:
+        def __init__(self, *args, **kwargs):
+            del args, kwargs
+
+        def ingest_once(self, *, cursor, limit):
+            del cursor, limit
+            raise RuntimeError("ingest failed")
+
+    fixture_path = tmp_path / "ingest_fixture.json"
+    fixture_path.write_text(
+        json.dumps([
+            {
+                "item_id": "src-1",
+                "content": "Task: utility bill due Friday",
+                "source_uri": "ha://tasks/utility-bill",
+                "retrieved_at": "2026-03-10T09:00:00Z",
+                "trust_tier": "verified",
+                "metadata": {"ts": "2026-03-14T00:00:00Z"},
+            }
+        ]),
+        encoding="utf-8",
+    )
+
+    calls = {"cli": 0, "satellite": 0}
+    args = SimpleNamespace(mode="cli", daemon=False)
+    _patch_main_dependencies(
+        monkeypatch,
+        args=args,
+        ha_error=None,
+        ollama_error=None,
+        calls=calls,
+        runtime_overrides={
+            "source_ingest_enabled": True,
+            "source_connector_type": "fixture",
+            "source_fixture_path": str(fixture_path),
+            "source_ingest_limit": 5,
+            "source_ingest_cursor": None,
+        },
+    )
+    monkeypatch.setattr(runtime, "SourceIngestor", _FailingIngestor)
+
+    runtime.main([])
+
+    assert calls == {"cli": 1, "satellite": 0}

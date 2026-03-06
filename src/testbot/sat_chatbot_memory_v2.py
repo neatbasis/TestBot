@@ -404,6 +404,7 @@ def _run_source_ingestion(*, runtime: dict[str, object], store: MemoryStore) -> 
         return
     ingestor = SourceIngestor(connector=connector, memory_store=store)
     cursor = str(runtime.get("source_ingest_cursor")) if runtime.get("source_ingest_cursor") is not None else None
+    limit = int(runtime.get("source_ingest_limit", 50))
     if cursor is not None and not cursor.isdigit():
         append_session_log(
             "source_ingest_cursor_invalid",
@@ -413,10 +414,28 @@ def _run_source_ingestion(*, runtime: dict[str, object], store: MemoryStore) -> 
             },
         )
         cursor = None
-    result = ingestor.ingest_once(
-        cursor=cursor,
-        limit=int(runtime.get("source_ingest_limit", 50)),
-    )
+    try:
+        result = ingestor.ingest_once(
+            cursor=cursor,
+            limit=limit,
+        )
+    except Exception as exc:
+        append_session_log(
+            "source_ingest_failed",
+            {
+                "connector_type": str(runtime.get("source_connector_type", "")).strip().lower(),
+                "source_type": connector.source_type,
+                "cursor": cursor,
+                "limit": limit,
+                "exception_class": exc.__class__.__name__,
+                "exception_message": str(exc),
+            },
+        )
+        print(
+            "Warning: source ingestion failed at startup; continuing without ingested source documents.",
+            file=sys.stderr,
+        )
+        return
     append_session_log(
         "source_ingest_completed",
         {
