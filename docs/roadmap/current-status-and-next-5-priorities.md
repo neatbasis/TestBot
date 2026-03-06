@@ -13,28 +13,40 @@ This document answers four operational questions in one place:
 
 ## Current status (as of this snapshot)
 
+Canonical machine-readable/source-of-truth status now lives in:
+
+- Contract: `docs/qa/feature-status.yaml`
+- Generated report (canonical status view): `docs/qa/feature-status-report.md`
+- Generated JSON summary: `artifacts/feature-status-summary.json`
+
 ### What is working
 
-- Core behavior contracts are in place for:
-  - citation-required factual responses,
-  - progressive fallback behavior, and
-  - deterministic time-aware routing.
-- Deterministic merge gate orchestration exists via `scripts/release_gate.py`.
-- In-repo issue governance and deterministic issue-link validation are implemented.
+- Most deterministic pytest layers are green, including broad non-live smoke coverage and eval/runtime parity tests.
+- External source ingestion capability is currently tracked as implemented in the feature status contract.
+- Deterministic merge/readiness orchestration exists via `scripts/all_green_gate.py`.
 
 ### What is not yet green
 
-- Full `python scripts/release_gate.py` is currently blocked at the BDD layer (`python -m behave`) due to failures in `features/intent_grounding.feature` scenarios.
-- Because the gate is fail-closed, downstream required checks do not run after the first failure.
+From the latest gate artifact (`artifacts/all-green-gate-summary.json`) and derived feature report (`docs/qa/feature-status-report.md`):
+
+- 5 capabilities are currently partial and 1 is implemented.
+- Blocking checks include:
+  - `product_behave` and `safety_behave_answer_contract_and_memory` (missing `behave` in this environment),
+  - `product_eval_recall_topk4` (`ModuleNotFoundError: No module named 'testbot'`),
+  - `qa_validate_issue_links` (no `origin/main` ref in this local clone).
 
 ### Risk interpretation
 
-- **Knowing-mode risk:** intent-grounding failures can produce incorrect or unstable basis/provenance behavior.
-- **Unknowing-mode risk:** policy assertions failing in intent-grounding paths indicate fallback decision quality is not yet reliable enough for merge.
+- **Knowing-mode risk:** BDD/gate failures still block a fully trustworthy contract signal for grounded provenance behavior.
+- **Unknowing-mode risk:** until BDD and recall gate checks are fully green in the canonical environment, fallback confidence remains only partially verified.
 
 ---
 
 ## Test confidence map (what tells us where we are)
+
+For current capability-level status, use the generated feature status report as the canonical view:
+
+- `python scripts/report_feature_status.py --output docs/qa/feature-status-report.md --json-output artifacts/feature-status-summary.json`
 
 Use this exact order for deterministic confidence:
 
@@ -95,7 +107,7 @@ When one required check is missed, do **not merge**. Use this recovery sequence:
 
 1. Re-run full deterministic gate:
    - `python -m pip install -e .[dev]`
-   - `python scripts/release_gate.py`
+   - `python scripts/all_green_gate.py`
 2. If gate fails at `behave`, fix failing scenarios first (especially intent-grounding).
 3. Re-run full gate until all required checks are green.
 4. Ensure PR body includes `Issue: ISSUE-XXXX` and verification evidence.
@@ -103,6 +115,6 @@ When one required check is missed, do **not merge**. Use this recovery sequence:
 
 Definition of done for the missed-check PR:
 
-- all required release-gate checks pass,
+- all required all-green-gate checks pass,
 - issue-link validation passes,
 - issue status/docs updated with closure notes and residual risk.
