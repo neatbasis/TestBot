@@ -92,6 +92,10 @@ For non-live changes, this is the expected offline/deterministic contributor gat
 
 Default behavior is fail-closed (stop on first failure). Use `--continue-on-failure` to run every check and still exit non-zero if any check fails.
 
+### Turn analytics in canonical gate
+
+The canonical gate aligns with `scripts/release_gate.py` rollout controls for KPI checks via `--kpi-guardrail-mode {off,optional,blocking}` (default: `optional`). In `optional`, `scripts/aggregate_turn_analytics.py` and `scripts/validate_kpi_guardrails.py` run as non-blocking warnings; in `blocking`, the same failures block gate success; in `off`, both checks are skipped.
+
 | Test layer | Canonical command | Runtime dependency | CI gate level | Expected runtime | Pass criteria |
 | --- | --- | --- | --- | --- | --- |
 | Single merge/readiness gate | `python scripts/all_green_gate.py` | Python dev extras (`behave`, `pytest`) plus local docs/issues/fixtures and git metadata | **Required (canonical gate)** | ~30-150s depending on test volume | Exit code `0`; every blocking stakeholder obligation command passes (Product, Safety, Ops, QA), including recall eval and invariant/path/schema validators. |
