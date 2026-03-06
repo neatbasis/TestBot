@@ -406,6 +406,11 @@ def _tie_break_key(doc: Document) -> tuple[float, int, str]:
     return (_ts_epoch(doc), -_card_rank(doc), _doc_id(doc))
 
 
+def _stable_rank_key(score: float, doc: Document) -> tuple[float, float, int, str]:
+    # Normalize floating-point noise so ordering is deterministic under near-ties.
+    return (-round(score, 12), -_ts_epoch(doc), _card_rank(doc), _doc_id(doc))
+
+
 def rerank_docs_with_time_and_type(
     docs_and_scores: list[tuple[Document, float]],
     *,
@@ -463,7 +468,7 @@ def rerank_docs_with_time_and_type_outcome(
         )
         scored.append((float(objective_components["final_score"]), doc, objective_components))
 
-    scored.sort(key=lambda x: (-x[0], -_ts_epoch(x[1]), _card_rank(x[1]), _doc_id(x[1])))
+    scored.sort(key=lambda x: _stable_rank_key(x[0], x[1]))
     docs = [d for _, d, _ in scored[:top_k]]
     scored_candidates = [
         {
@@ -479,7 +484,8 @@ def rerank_docs_with_time_and_type_outcome(
     ambiguity_detected = False
     if scored:
         top_score = scored[0][0]
-        near_tie = [(score, doc) for score, doc, _ in scored if (top_score - score) <= near_tie_delta]
+        epsilon = 1e-12
+        near_tie = [(score, doc) for score, doc, _ in scored if (top_score - score) <= (near_tie_delta + epsilon)]
         near_tie_candidates = [
             {
                 "doc_id": _doc_id(doc),

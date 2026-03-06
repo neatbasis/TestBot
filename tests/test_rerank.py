@@ -335,3 +335,25 @@ def test_rerank_scored_candidates_surface_objective_version(tmp_path, monkeypatc
     )
 
     assert outcome.scored_candidates[0]["objective_version"] == "v2"
+
+
+def test_rerank_near_ties_remain_deterministic_by_timestamp_then_doc_id() -> None:
+    now = arrow.get("2026-03-10T12:00:00+00:00")
+    docs_and_scores = [
+        (_doc("b", ts="2026-03-10T11:00:00+00:00", card_type="memory"), 0.5000000000003),
+        (_doc("a", ts="2026-03-10T11:00:00+00:00", card_type="memory"), 0.5000000000002),
+        (_doc("c", ts="2026-03-10T11:01:00+00:00", card_type="memory"), 0.5000000000001),
+    ]
+
+    outcome = rerank_docs_with_time_and_type_outcome(
+        docs_and_scores,
+        now=now,
+        target=now,
+        sigma_seconds=3600,
+        exclude_doc_ids=set(),
+        exclude_source_ids=set(),
+        near_tie_delta=0.001,
+    )
+
+    assert [doc.id for doc in outcome.docs[:3]] == ["c", "a", "b"]
+    assert outcome.ambiguity_detected is False
