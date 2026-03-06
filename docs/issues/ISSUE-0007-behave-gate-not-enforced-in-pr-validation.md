@@ -2,7 +2,7 @@
 
 - **ID:** ISSUE-0007
 - **Title:** Governance readiness gate traceability is partial for capability-linked issue enforcement
-- **Status:** open
+- **Status:** resolved
 - **Severity:** red
 - **Owner:** platform-qa
 - **Created:** 2026-03-04
@@ -30,7 +30,7 @@
 1. `python scripts/report_feature_status.py --output docs/qa/feature-status-report.md --json-output artifacts/feature-status-summary.json` shows at least one linked open issue for `governance_readiness_gate` while the capability remains partial.
 2. `python scripts/validate_issue_links.py --all-issue-files --base-ref HEAD~1` passes with no missing issue-link validation failures.
 3. `python scripts/validate_issues.py --all-issue-files --base-ref HEAD~1` passes with no canonical schema failures.
-4. `docs/issues/RED_TAG.md` includes ISSUE-0007 under Active while severity remains `red`.
+4. `docs/issues/RED_TAG.md` is synchronized with canonical issue state, and ISSUE-0007 is listed under Resolved red-tag issues with closure evidence.
 
 ## Work Plan
 
@@ -54,3 +54,4 @@
 
 - 2026-03-06: Original behave-enforcement scope closed.
 - 2026-03-06: Reopened/rescoped as active red-tag governance traceability gap for capability-linked issue surfacing.
+- 2026-03-06: Closed after regenerating feature-status artifacts, validating deterministic linkage coverage, and passing issue validators under base-ref fallback behavior.
