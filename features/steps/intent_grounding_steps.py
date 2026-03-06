@@ -202,7 +202,7 @@ def step_when_source_confidence_insufficient(context) -> None:
             "answer_contract_valid": True,
             "general_knowledge_contract_valid": True,
             "answer_mode": "assist",
-            "fallback_action": "ANSWER_ASSIST_ALTERNATIVES",
+            "fallback_action": "OFFER_CAPABILITY_ALTERNATIVES",
         },
     )
     _run_contract_checks(context)
@@ -264,6 +264,19 @@ def step_then_explicit_unknowing_fallback(context) -> None:
     lowered = context.pipeline_state.final_answer.lower()
     assert "either" in lowered and "or" in lowered
     assert context.pipeline_state.provenance_types == [ProvenanceType.UNKNOWN]
+
+
+@then("the response should include explicit uncertainty language")
+def step_then_response_includes_explicit_uncertainty_language(context) -> None:
+    lowered = context.pipeline_state.final_answer.lower()
+    assert "don't have enough reliable" in lowered or "don't know" in lowered
+
+
+@then("the response should include a safe action path")
+def step_then_response_includes_safe_action_path(context) -> None:
+    lowered = context.pipeline_state.final_answer.lower()
+    assert "i can either" in lowered
+    assert " or " in lowered
 
 
 @then('the response should include "{expected_substring}"')

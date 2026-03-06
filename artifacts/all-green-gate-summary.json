@@ -1,98 +1,98 @@
 {
-  "status": "failed",
-  "exit_code": 1,
-  "continue_on_failure": true,
+  "status": "passed",
+  "exit_code": 0,
+  "continue_on_failure": false,
   "checks": [
     {
       "name": "product_behave",
-      "command": "/workspace/TestBot/.venv/bin/python -m behave",
+      "command": "/root/.pyenv/versions/3.11.14/bin/python -m behave",
       "status": "passed",
       "exit_code": 0,
-      "duration_s": 3.0
+      "duration_s": 2.138
     },
     {
       "name": "product_eval_runtime_parity",
-      "command": "/workspace/TestBot/.venv/bin/python -m pytest tests/test_eval_runtime_parity.py",
+      "command": "/root/.pyenv/versions/3.11.14/bin/python -m pytest tests/test_eval_runtime_parity.py",
       "status": "passed",
       "exit_code": 0,
-      "duration_s": 3.851
+      "duration_s": 2.627
     },
     {
       "name": "product_eval_recall_topk4",
-      "command": "/workspace/TestBot/.venv/bin/python scripts/eval_recall.py --top-k 4",
+      "command": "/root/.pyenv/versions/3.11.14/bin/python scripts/eval_recall.py --top-k 4",
       "status": "passed",
       "exit_code": 0,
-      "duration_s": 0.652
+      "duration_s": 0.461
     },
     {
       "name": "safety_behave_answer_contract_and_memory",
-      "command": "/workspace/TestBot/.venv/bin/python -m behave features/answer_contract.feature features/memory_recall.feature",
+      "command": "/root/.pyenv/versions/3.11.14/bin/python -m behave features/answer_contract.feature features/memory_recall.feature",
       "status": "passed",
       "exit_code": 0,
-      "duration_s": 2.839
+      "duration_s": 1.981
     },
     {
       "name": "safety_reflection_and_runtime_logging_pytests",
-      "command": "/workspace/TestBot/.venv/bin/python -m pytest tests/test_reflection_policy.py tests/test_runtime_logging_events.py",
+      "command": "/root/.pyenv/versions/3.11.14/bin/python -m pytest tests/test_reflection_policy.py tests/test_runtime_logging_events.py",
       "status": "passed",
       "exit_code": 0,
-      "duration_s": 3.916
+      "duration_s": 2.564
     },
     {
       "name": "safety_validate_log_schema",
-      "command": "/workspace/TestBot/.venv/bin/python scripts/validate_log_schema.py",
+      "command": "/root/.pyenv/versions/3.11.14/bin/python scripts/validate_log_schema.py",
       "status": "passed",
       "exit_code": 0,
-      "duration_s": 0.103
+      "duration_s": 0.074
     },
     {
       "name": "ops_runtime_modes_and_startup_status",
-      "command": "/workspace/TestBot/.venv/bin/python -m pytest tests/test_runtime_modes.py tests/test_startup_status.py",
+      "command": "/root/.pyenv/versions/3.11.14/bin/python -m pytest tests/test_runtime_modes.py tests/test_startup_status.py",
       "status": "passed",
       "exit_code": 0,
-      "duration_s": 3.974
+      "duration_s": 2.475
     },
     {
       "name": "qa_pytest_not_live_smoke",
-      "command": "/workspace/TestBot/.venv/bin/python -m pytest -m 'not live_smoke'",
+      "command": "/root/.pyenv/versions/3.11.14/bin/python -m pytest -m 'not live_smoke'",
       "status": "passed",
       "exit_code": 0,
-      "duration_s": 7.819
+      "duration_s": 5.088
     },
     {
       "name": "qa_eval_fixtures_and_runtime_parity",
-      "command": "/workspace/TestBot/.venv/bin/python -m pytest tests/test_eval_fixtures.py tests/test_eval_runtime_parity.py",
+      "command": "/root/.pyenv/versions/3.11.14/bin/python -m pytest tests/test_eval_fixtures.py tests/test_eval_runtime_parity.py",
       "status": "passed",
       "exit_code": 0,
-      "duration_s": 3.629
+      "duration_s": 2.396
     },
     {
       "name": "qa_validate_issue_links",
-      "command": "/workspace/TestBot/.venv/bin/python scripts/validate_issue_links.py --all-issue-files --base-ref 'HEAD~1'",
+      "command": "/root/.pyenv/versions/3.11.14/bin/python scripts/validate_issue_links.py --all-issue-files --base-ref 'HEAD~1'",
       "status": "passed",
       "exit_code": 0,
-      "duration_s": 0.183
+      "duration_s": 0.142
     },
     {
       "name": "qa_validate_issues",
-      "command": "/workspace/TestBot/.venv/bin/python scripts/validate_issues.py --all-issue-files --base-ref 'HEAD~1'",
+      "command": "/root/.pyenv/versions/3.11.14/bin/python scripts/validate_issues.py --all-issue-files --base-ref 'HEAD~1'",
       "status": "passed",
       "exit_code": 0,
-      "duration_s": 0.14
+      "duration_s": 0.1
     },
     {
       "name": "qa_validate_invariant_sync",
-      "command": "/workspace/TestBot/.venv/bin/python scripts/validate_invariant_sync.py",
+      "command": "/root/.pyenv/versions/3.11.14/bin/python scripts/validate_invariant_sync.py",
       "status": "passed",
       "exit_code": 0,
-      "duration_s": 0.083
+      "duration_s": 0.064
     },
     {
       "name": "qa_validate_markdown_paths",
-      "command": "/workspace/TestBot/.venv/bin/python scripts/validate_markdown_paths.py",
-      "status": "failed",
-      "exit_code": 1,
-      "duration_s": 0.145
+      "command": "/root/.pyenv/versions/3.11.14/bin/python scripts/validate_markdown_paths.py",
+      "status": "passed",
+      "exit_code": 0,
+      "duration_s": 0.063
     }
   ]
 }

@@ -37,7 +37,7 @@ def decide_fallback_action(
     if intent == "time_query":
         return "ANSWER_TIME"
 
-    if source_confidence is not None and source_confidence < source_confidence_floor and not memory_hit and not ambiguity:
+    if source_confidence is not None and source_confidence < source_confidence_floor and intent == "non_memory":
         return "ANSWER_UNKNOWN"
 
     if intent == "non_memory":

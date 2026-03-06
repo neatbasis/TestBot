@@ -10,6 +10,7 @@ from testbot import sat_chatbot_memory_v2 as runtime
 from testbot.intent_router import IntentType
 from testbot.sat_chatbot_memory_v2 import (
     ASSIST_ALTERNATIVES_ANSWER,
+    _derive_response_blocker_reason,
     _ambiguity_score,
     _intent_label,
     _user_followup_signal_proxy,
@@ -236,3 +237,40 @@ def test_stage_answer_non_memory_without_ambiguity_does_not_emit_memory_fragment
     assert answered.final_answer.startswith("General definition (not from your memory):")
     assert not answered.final_answer.startswith("I found related memory fragments (")
     assert answered.confidence_decision.get("ambiguity_detected") is False
+
+
+def test_stage_answer_low_source_confidence_non_memory_uses_safe_unknowing_mode() -> None:
+    state = PipelineState(
+        user_input="What happened in my calendar?",
+        resolved_intent=IntentType.KNOWLEDGE_QUESTION.value,
+        confidence_decision={
+            "context_confident": True,
+            "ambiguity_detected": False,
+            "source_confidence": 0.2,
+        },
+    )
+
+    answered = stage_answer(
+        _StaticLLM("ignored"),
+        state,
+        chat_history=deque(),
+        hits=[],
+        capability_status="ask_unavailable",
+        clock=SystemClock(),
+    )
+
+    lowered = answered.final_answer.lower()
+    assert "don't have enough reliable" in lowered
+    assert "i can either" in lowered and " or " in lowered
+    assert answered.invariant_decisions.get("fallback_action") == "ANSWER_UNKNOWN"
+    assert answered.invariant_decisions.get("answer_mode") == "assist"
+
+
+def test_response_blocker_reason_for_answer_unknown_reports_insufficient_reliable_memory() -> None:
+    assert _derive_response_blocker_reason(
+        answer_mode="assist",
+        fallback_action="ANSWER_UNKNOWN",
+        context_confident=False,
+        hit_count=0,
+        ambiguity_detected=False,
+    ) == "insufficient reliable memory to answer directly"

@@ -795,7 +795,7 @@ def stage_answer(
                 return build_partial_memory_clarifier(hits)
             return FALLBACK_ANSWER
         if action == "ANSWER_UNKNOWN":
-            return FALLBACK_ANSWER
+            return ASSIST_ALTERNATIVES_ANSWER if intent_class == "non_memory" else FALLBACK_ANSWER
         if action == "ANSWER_TIME":
             if clock is None:
                 return "I can answer relative time questions like 'how many minutes ago' or 'what is tomorrow?'."
@@ -896,12 +896,12 @@ def stage_answer(
             return build_partial_memory_clarifier(hits)
         if intent_class == "memory_recall":
             return ASSIST_ALTERNATIVES_ANSWER
-        return FALLBACK_ANSWER
+        return ASSIST_ALTERNATIVES_ANSWER
 
     def _knowledge_safe_fallback() -> str:
         if intent_class == "memory_recall":
             return _clarifier_or_policy_alternative()
-        return FALLBACK_ANSWER
+        return ASSIST_ALTERNATIVES_ANSWER
 
     if is_unsafe_user_request(state.user_input):
         draft_answer = ""
@@ -914,7 +914,7 @@ def stage_answer(
         final_answer = _clarifier_or_policy_alternative()
     elif fallback_action == "ANSWER_UNKNOWN":
         draft_answer = FALLBACK_ANSWER
-        final_answer = FALLBACK_ANSWER
+        final_answer = _fallback_answer_for_action(fallback_action, intent_class=intent_class)
     elif fallback_action == "OFFER_CAPABILITY_ALTERNATIVES":
         draft_answer = ""
         final_answer = ASSIST_ALTERNATIVES_ANSWER

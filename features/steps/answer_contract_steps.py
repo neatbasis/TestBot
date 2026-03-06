@@ -149,8 +149,24 @@ def step_when_stage_answer_enforces_contract(context) -> None:
 
 @then("the final answer should be knowledge-safe fallback")
 def step_then_final_answer_is_knowledge_safe_fallback(context) -> None:
-    assert context.stage_answer_state.final_answer == "I don't know from memory."
+    lowered = context.stage_answer_state.final_answer.lower()
+    assert "don't have enough reliable" in lowered
+    assert "i can either" in lowered and " or " in lowered
 
+
+
+
+@then("the final answer should include explicit uncertainty language")
+def step_then_final_answer_includes_explicit_uncertainty_language(context) -> None:
+    lowered = context.stage_answer_state.final_answer.lower()
+    assert "don't have enough reliable" in lowered or "don't know" in lowered
+
+
+@then("the final answer should include a safe action path")
+def step_then_final_answer_includes_safe_action_path(context) -> None:
+    lowered = context.stage_answer_state.final_answer.lower()
+    assert "i can either" in lowered
+    assert " or " in lowered
 
 @then('the final answer should not ask "{message}"')
 def step_then_final_answer_does_not_ask_message(context, message: str) -> None:
