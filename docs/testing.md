@@ -147,14 +147,6 @@ Run optional live smoke profile:
 python -m pytest -m live_smoke
 ```
 
-Run CI artifact smoke evidence contract:
-
-```bash
-SMOKE_ENVIRONMENT=staging SMOKE_ACTOR=ci-bot scripts/smoke/run_live_smoke.sh
-```
-
-Schema and artifact contract: `docs/qa/smoke-evidence-contract.md`.
-
 Run Ollama live smoke integration tests only (`tests/test_live_smoke_ollama.py`):
 
 ```bash
