@@ -60,6 +60,26 @@ def test_classify_intent_empty_or_none_falls_back_to_knowledge_question() -> Non
     assert classify_intent(None) is IntentType.KNOWLEDGE_QUESTION
 
 
+def test_classify_intent_profile_update_i_am_routes_non_knowledge() -> None:
+    assert classify_intent("I am Alex") is IntentType.META_CONVERSATION
+
+
+def test_classify_intent_profile_update_im_routes_non_knowledge() -> None:
+    assert classify_intent("I'm Sam") is IntentType.META_CONVERSATION
+
+
+def test_classify_intent_profile_update_my_name_is_routes_non_knowledge() -> None:
+    assert classify_intent("my name is Jordan") is IntentType.META_CONVERSATION
+
+
+def test_classify_intent_social_greeting_routes_non_knowledge() -> None:
+    assert classify_intent("hello") is IntentType.META_CONVERSATION
+    assert classify_intent("hi!") is IntentType.META_CONVERSATION
+
+
+def test_classify_intent_say_hello_routes_to_command_intent() -> None:
+    assert classify_intent("say hello") is IntentType.CONTROL
+
 def test_resolve_turn_intent_affirmation_inherits_prior_clarification_intent() -> None:
     prior_state = PipelineState(
         user_input="ask something via satellite",
