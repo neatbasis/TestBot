@@ -180,6 +180,63 @@ python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main
 python scripts/validate_issues.py --all-issue-files --base-ref origin/main
 ```
 
+## Runbook: conflicted PR recovery (PR #78-class re-qualification)
+
+Use this runbook when a PR has merge conflicts and must be re-qualified after a rebase.
+
+### Step 1: Rebase and resolve conflicts
+
+```bash
+git fetch origin
+git rebase origin/main
+```
+
+Resolve conflicts, then continue:
+
+```bash
+git add <resolved-files>
+git rebase --continue
+```
+
+### Step 2: Run the canonical full gate
+
+```bash
+python scripts/all_green_gate.py --json-output artifacts/all-green-gate-summary.json
+```
+
+### Step 3: Run stakeholder-obligation checks explicitly
+
+```bash
+python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main
+python scripts/validate_issues.py --all-issue-files --base-ref origin/main
+```
+
+### Step 4: Record evidence artifact paths in PR body
+
+Add an "Evidence" section to the PR body with exact artifact paths from the re-qualification run.
+
+Required evidence files:
+
+- `artifacts/all-green-gate-summary.json`
+- `artifacts/conflicted-pr-recovery/validate-issue-links.txt`
+- `artifacts/conflicted-pr-recovery/validate-issues.txt`
+
+Recommended command pattern to capture evidence logs:
+
+```bash
+mkdir -p artifacts/conflicted-pr-recovery
+python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main | tee artifacts/conflicted-pr-recovery/validate-issue-links.txt
+python scripts/validate_issues.py --all-issue-files --base-ref origin/main | tee artifacts/conflicted-pr-recovery/validate-issues.txt
+```
+
+### Explicit pass criteria (must all be true)
+
+1. Rebase completes with no remaining conflict markers and branch is linear on top of `origin/main`.
+2. `python scripts/all_green_gate.py --json-output artifacts/all-green-gate-summary.json` exits `0`.
+3. `python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main` exits `0`.
+4. `python scripts/validate_issues.py --all-issue-files --base-ref origin/main` exits `0`.
+5. PR body contains evidence artifact paths and references the run generated after conflict resolution.
+
 
 ## All-systems-green definition
 
