@@ -211,7 +211,7 @@ def test_source_ingestor_local_markdown_connector_integration(tmp_path) -> None:
     assert result.evidence_documents[0].metadata["trust_tier"] == "operator"
 
 
-def test_source_ingestor_wikipedia_connector_integration(monkeypatch) -> None:
+def test_source_ingestor_wikipedia_connector_integration() -> None:
     payload = {
         "title": "OpenAI",
         "extract": "OpenAI is an AI research lab.",
@@ -229,10 +229,11 @@ def test_source_ingestor_wikipedia_connector_integration(monkeypatch) -> None:
         def read(self) -> bytes:
             return json.dumps(payload).encode("utf-8")
 
-    monkeypatch.setattr("testbot.source_connectors.urlopen", lambda *args, **kwargs: _Response())
-
     store = _FakeStore()
-    ingestor = SourceIngestor(connector=WikipediaSummarySourceConnector(topic="OpenAI"), memory_store=store)
+    ingestor = SourceIngestor(
+        connector=WikipediaSummarySourceConnector(topic="OpenAI", opener=lambda *args, **kwargs: _Response()),
+        memory_store=store,
+    )
 
     result = ingestor.ingest_once(cursor=None)
 
