@@ -74,22 +74,15 @@ Use the following canonical commands from repository root.
 For non-live changes, this is the expected offline/deterministic contributor gate:
 
 1. `pip install -e .[dev]`
-2. `python scripts/release_gate.py`
+2. `python scripts/all_green_gate.py`
 
-`scripts/release_gate.py` runs required checks in order:
-
-1. `behave`
-2. `pytest tests/test_vector_store.py tests/test_source_fusion.py tests/test_log_schema_validation.py`
-3. `pytest -m "not live_smoke"`
-4. `pytest tests/test_eval_runtime_parity.py`
-5. `python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main`
-6. `python scripts/validate_issues.py --all-issue-files --base-ref origin/main`
+`scripts/all_green_gate.py` is the authoritative command sequence for merge readiness and executes every blocking obligation listed in `docs/directives/stakeholder-obligations.md`, including recall eval plus invariant/path/schema validators.
 
 Default behavior is fail-closed (stop on first failure). Use `--continue-on-failure` to run every check and still exit non-zero if any check fails.
 
 | Test layer | Canonical command | Runtime dependency | CI gate level | Expected runtime | Pass criteria |
 | --- | --- | --- | --- | --- | --- |
-| Single merge/release gate | `python scripts/release_gate.py` | Python dev extras (`behave`, `pytest`) plus local git metadata/docs issues files | **Required (canonical gate)** | ~20-90s depending on test volume | Exit code `0`; all required deterministic checks pass in sequence (`python -m behave`, targeted source/provenance pytest set, `python -m pytest -m "not live_smoke"`, parity test, issue-link validation). |
+| Single merge/readiness gate | `python scripts/all_green_gate.py` | Python dev extras (`behave`, `pytest`) plus local docs/issues/fixtures and git metadata | **Required (canonical gate)** | ~30-150s depending on test volume | Exit code `0`; every blocking stakeholder obligation command passes (Product, Safety, Ops, QA), including recall eval and invariant/path/schema validators. |
 | BDD acceptance (`behave`) | `python -m behave` _(requires `pip install -e .[dev]` first)_ | Python dev extras (`behave`) and local deterministic fixtures | **Required (merge gate)** | ~10-60s for current feature set | Exit code `0`; no failed/undefined steps; acceptance scenarios for changed behavior pass. |
 | Deterministic unit/component (`pytest`) | `python -m pytest -m "not live_smoke"` | Python dev extras (`pytest`); no network or external services | **Required (merge gate)** | ~5-30s for fast deterministic scope | Exit code `0`; no flaky network-bound failures; logic and wiring tests for changed code pass. |
 | Eval/runtime parity check (`pytest`) | `python -m pytest tests/test_eval_runtime_parity.py` | Python dev extras (`pytest`) and fixed fixtures (`eval/cases.jsonl`, `tests/fixtures/candidate_sets.jsonl`) | **Required (merge gate, deterministic)** | ~1-5s | Exit code `0`; runtime path scoring and eval adapter path stay aligned for ordering, top-1, and fallback intent decisions. |
@@ -108,19 +101,19 @@ Default behavior is fail-closed (stop on first failure). Use `--continue-on-fail
 Run canonical merge/release gate:
 
 ```bash
-python scripts/release_gate.py
+python scripts/all_green_gate.py
 ```
 
 Run gate in run-all mode (returns non-zero if any check failed):
 
 ```bash
-python scripts/release_gate.py --continue-on-failure
+python scripts/all_green_gate.py --continue-on-failure
 ```
 
 Write gate results to a JSON artifact (for CI/log processing):
 
 ```bash
-python scripts/release_gate.py --json-output artifacts/release-gate-summary.json
+python scripts/all_green_gate.py --json-output artifacts/all-green-gate-summary.json
 ```
 
 Run BDD scenarios directly (requires `pip install -e .[dev]` first):
