@@ -71,6 +71,19 @@ def _follows_approved_fallback_path(state: PipelineState) -> bool:
         return final_answer not in {"", FALLBACK_ANSWER, DENY_ANSWER}
     return False
 
+def _answer_mode_respects_intent(state: PipelineState) -> bool:
+    answer_mode = str(state.invariant_decisions.get("answer_mode", ""))
+    if answer_mode != "clarify":
+        return True
+
+    resolved_intent = (state.resolved_intent or "").strip()
+    if resolved_intent == "memory_recall":
+        return True
+
+    allow_non_memory_clarify = bool(state.confidence_decision.get("allow_non_memory_clarify", False))
+    return allow_non_memory_clarify
+
+
 def _run_checks(
     *,
     stage: str,
@@ -229,6 +242,10 @@ def validate_answer_post(state: PipelineState) -> TransitionCheckResult:
                         else True
                     )
                 ),
+            ),
+            (
+                "answer_mode_intent_consistent",
+                lambda s: _answer_mode_respects_intent(s),
             ),
             (
                 "alignment_decision_consistent",

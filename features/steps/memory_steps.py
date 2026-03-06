@@ -69,6 +69,7 @@ def _build_stage_state(case_id: str, loaded_cases, answer: str, parity_signals: 
     return PipelineState(
         user_input=case.utterance,
         rewritten_query=case.utterance,
+        resolved_intent="memory_recall",
         retrieval_candidates=candidates,
         reranked_hits=candidates[:4],
         confidence_decision={"context_confident": context_confident, "ambiguity_detected": ambiguity_detected},
@@ -278,6 +279,7 @@ def step_when_equivalent_candidates_remain(context) -> None:
     context.pipeline_state = PipelineState(
         user_input="ambiguous recall",
         rewritten_query="ambiguous recall",
+        resolved_intent="memory_recall",
         retrieval_candidates=candidates,
         reranked_hits=candidates,
         confidence_decision={"context_confident": False, "ambiguity_detected": True},

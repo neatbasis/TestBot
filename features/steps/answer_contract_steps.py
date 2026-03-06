@@ -4,7 +4,7 @@ from behave import given, then, when
 
 from testbot.eval_fixtures import cases_by_id
 from testbot.pipeline_state import CandidateHit, PipelineState, ProvenanceType
-from testbot.sat_chatbot_memory_v2 import validate_answer_contract, validate_general_knowledge_contract
+from testbot.sat_chatbot_memory_v2 import RuntimeCapabilityStatus, stage_answer, validate_answer_contract, validate_general_knowledge_contract
 from testbot.stage_transitions import validate_answer_post, validate_answer_pre
 
 
@@ -21,6 +21,7 @@ def step_when_validate(context) -> None:
     context.pipeline_state = PipelineState(
         user_input="test question",
         rewritten_query="test question",
+        resolved_intent="memory_recall",
         retrieval_candidates=[CandidateHit(doc_id="doc-1", score=0.8, ts="2024-01-01T00:00:00Z", card_type="memory")],
         reranked_hits=[CandidateHit(doc_id="doc-1", score=0.8, ts="2024-01-01T00:00:00Z", card_type="memory")],
         confidence_decision={"context_confident": True},
@@ -93,3 +94,64 @@ def step_then_general_knowledge_rejected(context) -> None:
 @then("the general-knowledge candidate is accepted")
 def step_then_general_knowledge_accepted(context) -> None:
     assert context.gk_contract_passed is True
+
+
+class _BDDUnlabeledGeneralKnowledgeLLM:
+    class _Response:
+        content = "Ontology is the study of being and existence."
+
+    def invoke(self, _msgs):
+        return self._Response()
+
+
+@given('a non-memory knowledge question "{question}"')
+def step_given_non_memory_knowledge_question(context, question: str) -> None:
+    context.user_question = question
+
+
+@given("an unlabeled general-knowledge draft answer with failed confidence gate")
+def step_given_unlabeled_general_knowledge_with_failed_gate(context) -> None:
+    context.answer_state_input = PipelineState(
+        user_input=context.user_question,
+        confidence_decision={
+            "context_confident": False,
+            "ambiguity_detected": True,
+            "general_knowledge_confidence": 0.1,
+            "general_knowledge_support": 0,
+        },
+        resolved_intent="knowledge_question",
+    )
+
+
+@when("stage answer enforces the general-knowledge contract")
+def step_when_stage_answer_enforces_contract(context) -> None:
+    context.stage_answer_state = stage_answer(
+        _BDDUnlabeledGeneralKnowledgeLLM(),
+        context.answer_state_input,
+        chat_history=[],
+        hits=[],
+        capability_status="ask_unavailable",
+        runtime_capability_status=RuntimeCapabilityStatus(
+            ollama_available=True,
+            ha_available=False,
+            effective_mode="cli",
+            requested_mode="cli",
+            daemon_mode=False,
+            fallback_reason=None,
+            memory_backend="in_memory",
+            debug_enabled=False,
+            text_clarification_available=True,
+            satellite_ask_available=False,
+        ),
+        clock=None,
+    )
+
+
+@then("the final answer should be knowledge-safe fallback")
+def step_then_final_answer_is_knowledge_safe_fallback(context) -> None:
+    assert context.stage_answer_state.final_answer == "I don't know from memory."
+
+
+@then('the final answer should not ask "{message}"')
+def step_then_final_answer_does_not_ask_message(context, message: str) -> None:
+    assert message not in context.stage_answer_state.final_answer

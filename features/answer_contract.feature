@@ -20,3 +20,11 @@ Feature: Answer citation contract enforcement
     And the general-knowledge confidence gate passes
     When the general-knowledge contract validator checks the candidate
     Then the general-knowledge candidate is accepted
+
+  Scenario: non-memory general-knowledge fallback stays knowledge-safe
+    Given a non-memory knowledge question "what is ontology?"
+    And an unlabeled general-knowledge draft answer with failed confidence gate
+    When stage answer enforces the general-knowledge contract
+    Then the final answer should be knowledge-safe fallback
+    And the final answer should not ask "Which person, event, or time window should I focus on?"
+
