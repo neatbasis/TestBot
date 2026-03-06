@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
   "arrow",
-  "homeassistant-api",
+  "HomeAssistant-API>=5.0.0",
   "ha-ask @ git+https://github.com/neatbasis/Ask.git",
   "langchain-core",
   "langchain-ollama",
