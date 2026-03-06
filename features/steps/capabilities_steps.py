@@ -7,7 +7,7 @@ from langchain_core.documents import Document
 
 from testbot.intent_router import IntentType, classify_intent
 from testbot.pipeline_state import PipelineState
-from testbot.sat_chatbot_memory_v2 import stage_answer
+from testbot.sat_chatbot_memory_v2 import RuntimeCapabilityStatus, stage_answer
 
 
 class _FailIfInvokedLLM:
@@ -20,27 +20,56 @@ def step_given_capabilities_prompt(context, prompt: str) -> None:
     context.prompt = prompt
 
 
-@when("the stage answer flow handles the prompt with and without memory hits")
-def step_when_stage_answer_handles(context) -> None:
+@when("the stage answer flow handles capabilities under HA unavailable with CLI fallback")
+def step_when_ha_unavailable_cli(context) -> None:
     context.intent = classify_intent(context.prompt)
-    base_state = PipelineState(
+    state = PipelineState(
         user_input=context.prompt,
         confidence_decision={"context_confident": False, "ambiguity_detected": False},
     )
-    context.empty_memory_state = stage_answer(
+    context.answer_state = stage_answer(
         _FailIfInvokedLLM(),
-        base_state,
-        chat_history=deque(),
-        hits=[],
-        capability_status="ask_unavailable",
-        clock=None,
-    )
-    context.with_memory_state = stage_answer(
-        _FailIfInvokedLLM(),
-        base_state,
+        state,
         chat_history=deque(),
         hits=[Document(page_content="Previous memory detail", metadata={"doc_id": "d1", "ts": "2024-01-01T00:00:00Z"})],
+        capability_status="ask_unavailable",
+        runtime_capability_status=RuntimeCapabilityStatus(
+            ollama_available=True,
+            ha_available=False,
+            effective_mode="cli",
+            requested_mode="auto",
+            daemon_mode=False,
+            fallback_reason="satellite connection is unavailable",
+            memory_backend="in_memory",
+            debug_enabled=False,
+        ),
+        clock=None,
+    )
+
+
+@when("the stage answer flow handles capabilities under HA available with satellite enabled")
+def step_when_ha_available_satellite(context) -> None:
+    context.intent = classify_intent(context.prompt)
+    state = PipelineState(
+        user_input=context.prompt,
+        confidence_decision={"context_confident": False, "ambiguity_detected": False},
+    )
+    context.answer_state = stage_answer(
+        _FailIfInvokedLLM(),
+        state,
+        chat_history=deque(),
+        hits=[],
         capability_status="ask_available",
+        runtime_capability_status=RuntimeCapabilityStatus(
+            ollama_available=True,
+            ha_available=True,
+            effective_mode="satellite",
+            requested_mode="satellite",
+            daemon_mode=False,
+            fallback_reason=None,
+            memory_backend="elasticsearch",
+            debug_enabled=True,
+        ),
         clock=None,
     )
 
@@ -50,11 +79,11 @@ def step_then_classified(context) -> None:
     assert context.intent is IntentType.CAPABILITIES_HELP
 
 
-@then("both answers return the stable capability summary")
-def step_then_stable_summary(context) -> None:
-    assert context.empty_memory_state.final_answer == context.with_memory_state.final_answer
+@then('the answer includes "{expected}"')
+def step_then_answer_includes(context, expected: str) -> None:
+    assert expected in context.answer_state.final_answer
 
 
-@then('the summary includes "{expected}"')
-def step_then_summary_includes(context, expected: str) -> None:
-    assert expected in context.empty_memory_state.final_answer
+@then('the answer excludes "{unexpected}"')
+def step_then_answer_excludes(context, unexpected: str) -> None:
+    assert unexpected not in context.answer_state.final_answer

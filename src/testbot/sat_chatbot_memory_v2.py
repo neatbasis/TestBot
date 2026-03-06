@@ -12,7 +12,7 @@ from urllib.parse import urljoin
 from urllib.request import urlopen
 from argparse import ArgumentParser, Namespace
 from collections import deque
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 import arrow
@@ -92,17 +92,78 @@ ASSIST_ALTERNATIVES_ANSWER = (
     "I can either help you reconstruct the timeline from what you remember, "
     "or suggest where to check next for the missing detail."
 )
-CAPABILITIES_HELP_ANSWER = (
-    "I can help with: memory-grounded recall; general explanation support; clarifying-question support when "
-    "memory is incomplete; Home Assistant actions (with a degraded message when unavailable); and debug visibility "
-    "only when debug mode is enabled."
-)
 GENERAL_KNOWLEDGE_MARKER_PREFIX = "General definition (not from your memory):"
 GENERAL_KNOWLEDGE_CONFIDENCE_MIN = 0.85
 GENERAL_KNOWLEDGE_SUPPORT_MIN = 2
 ALIGNMENT_OBJECTIVE_VERSION = "2026-03-05.v3"
 SESSION_LOG_SCHEMA_VERSION = 2
 _LOGGER = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class RuntimeCapabilityStatus:
+    ollama_available: bool
+    ha_available: bool
+    effective_mode: str
+    requested_mode: str
+    daemon_mode: bool
+    fallback_reason: str | None
+    memory_backend: str
+    debug_enabled: bool
+
+
+def _format_capabilities_help_answer(*, status: RuntimeCapabilityStatus, capability_status: CapabilityStatus) -> str:
+    memory_state = "available"
+    memory_text = (
+        f"- Memory recall: {memory_state}. can recall stored memory cards using the '{status.memory_backend}' backend; "
+        "cannot invent details that are not in memory."
+    )
+
+    general_state = "available" if status.ollama_available else "unavailable"
+    general_text = (
+        f"- General explanations: {general_state}. can provide grounded explanations when Ollama is reachable; "
+        "cannot generate model-based explanations while Ollama is unavailable."
+    )
+
+    if status.ha_available and status.effective_mode == "satellite":
+        ha_state = "available"
+        ha_text = (
+            "- Home Assistant actions: available. can use satellite ask/speak actions; "
+            "cannot act on entities that are missing or unauthorized."
+        )
+    elif status.ha_available:
+        ha_state = "degraded"
+        ha_text = (
+            "- Home Assistant actions: degraded. can connect to Home Assistant, but current mode is CLI; "
+            "cannot run the satellite voice loop until satellite mode is selected."
+        )
+    else:
+        ha_state = "unavailable"
+        mode_note = "daemon mode blocks fallback" if status.daemon_mode else "CLI fallback is active"
+        ha_text = (
+            f"- Home Assistant actions: {ha_state}. can continue in {status.effective_mode} mode ({mode_note}); "
+            "cannot run satellite actions while Home Assistant is unavailable."
+        )
+
+    ask_available = capability_status == "ask_available"
+    ask_state = "available" if ask_available else "degraded"
+    ask_text = (
+        f"- Ask/disambiguation flow: {ask_state}. can ask clarifying follow-ups when memory is incomplete; "
+        f"cannot use the interactive satellite ask flow in '{status.effective_mode}' mode when ask is unavailable."
+    )
+
+    debug_state = "available" if status.debug_enabled else "unavailable"
+    debug_text = (
+        f"- Debug visibility: {debug_state}. can expose debug details when TESTBOT_DEBUG=1; "
+        "cannot show debug-only internals when debug mode is disabled."
+    )
+
+    mode_line = (
+        f"Runtime mode: requested={status.requested_mode}, effective={status.effective_mode}, "
+        f"daemon={status.daemon_mode}, fallback={status.fallback_reason or 'none'}."
+    )
+
+    return "\n".join([mode_line, memory_text, general_text, ha_text, ask_text, debug_text])
 
 
 def _parse_env_float(name: str, default: float) -> float:
@@ -457,6 +518,11 @@ def _is_capabilities_help_request(user_input: str) -> bool:
     return classify_intent(user_input) == IntentType.CAPABILITIES_HELP
 
 
+def _is_capabilities_help_answer(text: str) -> bool:
+    normalized = (text or "").strip().lower()
+    return normalized.startswith("runtime mode:") and "memory recall:" in normalized and "home assistant actions:" in normalized
+
+
 def _intent_label(intent: IntentType) -> str:
     return intent.value
 
@@ -533,9 +599,21 @@ def stage_answer(
     chat_history: deque[ChatMsg],
     hits: list[Document],
     capability_status: CapabilityStatus,
-    clock: Clock,
+    runtime_capability_status: RuntimeCapabilityStatus | None = None,
+    clock: Clock | None = None,
     timezone: str = "Europe/Helsinki",
 ) -> PipelineState:
+    runtime_capability_status = runtime_capability_status or RuntimeCapabilityStatus(
+        ollama_available=True,
+        ha_available=False,
+        effective_mode="cli",
+        requested_mode="cli",
+        daemon_mode=False,
+        fallback_reason=None,
+        memory_backend="in_memory",
+        debug_enabled=False,
+    )
+
     def _fallback_answer_for_action(action: str) -> str:
         if action == "ROUTE_TO_ASK":
             return ROUTE_TO_ASK_ANSWER
@@ -544,6 +622,8 @@ def stage_answer(
         if action == "ANSWER_UNKNOWN":
             return FALLBACK_ANSWER
         if action == "ANSWER_TIME":
+            if clock is None:
+                return "I can answer relative time questions like 'how many minutes ago' or 'what is tomorrow?'."
             return _build_time_answer(
                 user_input=state.user_input,
                 now=clock.now(),
@@ -553,7 +633,10 @@ def stage_answer(
         return ASSIST_ALTERNATIVES_ANSWER
 
     if _is_capabilities_help_request(state.user_input):
-        final_answer = CAPABILITIES_HELP_ANSWER
+        final_answer = _format_capabilities_help_answer(
+            status=runtime_capability_status,
+            capability_status=capability_status,
+        )
         provenance_types, claims, basis_statement, used_memory_refs, used_source_evidence_refs, source_evidence_attribution = build_provenance_metadata(
             final_answer=final_answer,
             hits=hits,
@@ -1014,8 +1097,7 @@ def evaluate_alignment_decision(
 
     contract_exempt_response = is_clarification_answer(final_answer) or final_answer in {
         ASSIST_ALTERNATIVES_ANSWER,
-        CAPABILITIES_HELP_ANSWER,
-    }
+    } or _is_capabilities_help_answer(final_answer)
     has_claims = response_contains_claims(draft_answer)
     has_citation = has_required_memory_citation(draft_answer)
     context_confident = bool(confidence_decision.get("context_confident", False))
@@ -1115,6 +1197,7 @@ def _run_chat_loop(
     near_tie_delta: float,
     io_channel: str,
     capability_status: CapabilityStatus,
+    runtime_capability_status: RuntimeCapabilityStatus,
     read_user_utterance,
     send_assistant_text,
     clock: Clock,
@@ -1282,6 +1365,7 @@ def _run_chat_loop(
             chat_history=chat_history,
             hits=hits,
             capability_status=capability_status,
+            runtime_capability_status=runtime_capability_status,
             clock=clock,
         )
         _validate_and_log_transition(validate_answer_post(state))
@@ -1420,7 +1504,7 @@ def _run_chat_loop(
             )
 
 
-def _run_cli_mode(*, llm: ChatOllama, store: MemoryStore, chat_history: deque[ChatMsg], near_tie_delta: float, clock: Clock) -> None:
+def _run_cli_mode(*, llm: ChatOllama, store: MemoryStore, chat_history: deque[ChatMsg], near_tie_delta: float, runtime_capability_status: RuntimeCapabilityStatus, clock: Clock) -> None:
     print("CLI chat ready. Ask memory-grounded questions; type 'stop' to exit.")
 
     def _read() -> str | None:
@@ -1439,6 +1523,7 @@ def _run_cli_mode(*, llm: ChatOllama, store: MemoryStore, chat_history: deque[Ch
         near_tie_delta=near_tie_delta,
         io_channel="cli",
         capability_status="ask_unavailable",
+        runtime_capability_status=runtime_capability_status,
         read_user_utterance=_read,
         send_assistant_text=_send,
         clock=clock,
@@ -1454,6 +1539,7 @@ def _run_satellite_mode(
     api_url: str,
     token: str,
     entity_id: str,
+    runtime_capability_status: RuntimeCapabilityStatus,
     clock: Clock,
 ) -> None:
     rest = normalize_rest_api_url(api_url)
@@ -1487,10 +1573,33 @@ def _run_satellite_mode(
             near_tie_delta=near_tie_delta,
             io_channel="satellite",
             capability_status="ask_available",
+            runtime_capability_status=runtime_capability_status,
             read_user_utterance=_read,
             send_assistant_text=_send,
             clock=clock,
         )
+
+
+def _build_runtime_capability_status(
+    *,
+    requested_mode: str,
+    effective_mode: str | None,
+    daemon_mode: bool,
+    fallback_reason: str | None,
+    runtime: dict[str, object],
+    ha_error: str | None,
+    ollama_error: str | None,
+) -> RuntimeCapabilityStatus:
+    return RuntimeCapabilityStatus(
+        ollama_available=ollama_error is None,
+        ha_available=ha_error is None,
+        effective_mode=effective_mode or "unavailable",
+        requested_mode=requested_mode,
+        daemon_mode=daemon_mode,
+        fallback_reason=fallback_reason,
+        memory_backend=str(runtime.get("memory_store_backend", "unknown")),
+        debug_enabled=os.getenv("TESTBOT_DEBUG", "0") == "1",
+    )
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -1511,6 +1620,16 @@ def main(argv: list[str] | None = None) -> None:
     effective_mode, fallback_reason, exit_reason = _resolve_effective_mode(
         requested_mode=args.mode,
         daemon_mode=args.daemon,
+        ha_error=ha_error,
+        ollama_error=ollama_error,
+    )
+
+    runtime_capability_status = _build_runtime_capability_status(
+        requested_mode=args.mode,
+        effective_mode=effective_mode,
+        daemon_mode=args.daemon,
+        fallback_reason=fallback_reason,
+        runtime=runtime,
         ha_error=ha_error,
         ollama_error=ollama_error,
     )
@@ -1566,6 +1685,7 @@ def main(argv: list[str] | None = None) -> None:
             store=store,
             chat_history=chat_history,
             near_tie_delta=float(runtime["memory_near_tie_delta"]),
+            runtime_capability_status=runtime_capability_status,
             api_url=str(runtime["ha_api_url"]),
             token=str(runtime["ha_api_secret"]),
             entity_id=str(runtime["ha_satellite_entity_id"]),
@@ -1578,6 +1698,7 @@ def main(argv: list[str] | None = None) -> None:
         store=store,
         chat_history=chat_history,
         near_tie_delta=float(runtime["memory_near_tie_delta"]),
+        runtime_capability_status=runtime_capability_status,
         clock=clock,
     )
 
