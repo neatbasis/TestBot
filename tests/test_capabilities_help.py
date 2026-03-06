@@ -217,3 +217,68 @@ def test_stage_answer_non_memory_without_ambiguity_does_not_force_clarifier() ->
 
     assert answer_state.invariant_decisions["answer_mode"] != "clarify"
     assert not answer_state.final_answer.startswith("I found related memory fragments (")
+
+
+def test_stage_answer_satellite_action_request_cli_returns_capability_structured_alternatives() -> None:
+    state = PipelineState(
+        user_input="start satellite conversation",
+        confidence_decision={"context_confident": False, "ambiguity_detected": True},
+    )
+
+    answer_state = stage_answer(
+        _FailIfInvokedLLM(),
+        state,
+        chat_history=deque(),
+        hits=[],
+        capability_status="ask_unavailable",
+        runtime_capability_status=RuntimeCapabilityStatus(
+            ollama_available=True,
+            ha_available=False,
+            effective_mode="cli",
+            requested_mode="auto",
+            daemon_mode=False,
+            fallback_reason="satellite connection is unavailable",
+            memory_backend="in_memory",
+            debug_enabled=False,
+            text_clarification_available=True,
+            satellite_ask_available=False,
+        ),
+        clock=None,
+    )
+
+    assert "Runtime mode: requested=auto, effective=cli" in answer_state.final_answer
+    assert "satellite_action_request:" in answer_state.final_answer
+    assert "Action alternatives: continue in cli mode for text Q&A right now" in answer_state.final_answer
+    assert "Next step: ask your question directly in this chat" in answer_state.final_answer
+    assert answer_state.final_answer != "Can you clarify which memory and time window you mean?"
+
+
+def test_stage_answer_satellite_action_request_with_ha_available_suggests_satellite_mode_switch() -> None:
+    state = PipelineState(
+        user_input="ask via satellite",
+        confidence_decision={"context_confident": False, "ambiguity_detected": False},
+    )
+
+    answer_state = stage_answer(
+        _FailIfInvokedLLM(),
+        state,
+        chat_history=deque(),
+        hits=[],
+        capability_status="ask_unavailable",
+        runtime_capability_status=RuntimeCapabilityStatus(
+            ollama_available=True,
+            ha_available=True,
+            effective_mode="cli",
+            requested_mode="satellite",
+            daemon_mode=False,
+            fallback_reason="satellite connection is unavailable",
+            memory_backend="in_memory",
+            debug_enabled=False,
+            text_clarification_available=True,
+            satellite_ask_available=False,
+        ),
+        clock=None,
+    )
+
+    assert "satellite_action_request:" in answer_state.final_answer
+    assert "switch to --mode satellite" in answer_state.final_answer

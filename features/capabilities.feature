@@ -32,3 +32,18 @@ Feature: Capabilities help responses
     And the answer includes "Debug visibility: enabled (TESTBOT_DEBUG=1)"
     And the answer includes "Memory recall: available"
     And the answer includes "Grounded explanations: available"
+
+
+  Scenario Outline: Direct satellite-action requests in CLI mode return capability alternatives
+    Given a capabilities help prompt "<prompt>"
+    When the stage answer flow handles capabilities under HA unavailable with CLI fallback
+    Then the prompt is classified as capabilities help intent
+    And the answer includes "Runtime mode: requested=auto, effective=cli"
+    And the answer includes "satellite_action_request:"
+    And the answer includes "Action alternatives: continue in cli mode for text Q&A right now"
+
+    Examples:
+      | prompt                       |
+      | ask via satellite            |
+      | use satellite                |
+      | start satellite conversation |

@@ -46,6 +46,13 @@ _CAPABILITIES_HELP_PATTERNS = (
     r"\bhelp options\b",
 )
 
+_SATELLITE_ACTION_PATTERNS = (
+    r"\bask (?:something\s+)?(?:via|through) satellite\b",
+    r"\buse satellite\b",
+    r"\bstart satellite conversation\b",
+    r"\bsatellite (?:ask|conversation|mode)\b",
+)
+
 _TIME_QUERY_PATTERNS = (
     r"\bhow many (seconds?|minutes?|hours?|days?) ago\b",
     r"\bwhat is (today|tomorrow|yesterday)\b",
@@ -63,6 +70,15 @@ _KNOWLEDGE_CUES = (
 
 def _matches_any(text: str, patterns: tuple[str, ...]) -> bool:
     return any(re.search(pattern, text) for pattern in patterns)
+
+
+def is_satellite_action_request(user_input: str) -> bool:
+    """Return whether an utterance is a direct request for satellite interaction actions."""
+
+    normalized = (user_input or "").strip().lower()
+    if not normalized:
+        return False
+    return _matches_any(normalized, _SATELLITE_ACTION_PATTERNS)
 
 
 def classify_intent(user_input: str) -> IntentType:
@@ -87,6 +103,8 @@ def classify_intent(user_input: str) -> IntentType:
         return IntentType.MEMORY_RECALL
     if _matches_any(normalized, _TIME_QUERY_PATTERNS):
         return IntentType.TIME_QUERY
+    if is_satellite_action_request(normalized):
+        return IntentType.CAPABILITIES_HELP
     if _matches_any(normalized, _CAPABILITIES_HELP_PATTERNS):
         return IntentType.CAPABILITIES_HELP
     if _matches_any(normalized, _META_CONVERSATION_PATTERNS):

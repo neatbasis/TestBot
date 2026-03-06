@@ -73,3 +73,15 @@ def test_resolve_turn_intent_ontology_does_not_inherit_prior_clarification_inten
 
     assert classified is IntentType.KNOWLEDGE_QUESTION
     assert resolved is IntentType.KNOWLEDGE_QUESTION
+
+
+def test_classify_intent_capabilities_help_ask_via_satellite() -> None:
+    assert classify_intent("ask via satellite") is IntentType.CAPABILITIES_HELP
+
+
+def test_classify_intent_capabilities_help_use_satellite() -> None:
+    assert classify_intent("use satellite") is IntentType.CAPABILITIES_HELP
+
+
+def test_classify_intent_capabilities_help_start_satellite_conversation() -> None:
+    assert classify_intent("start satellite conversation") is IntentType.CAPABILITIES_HELP

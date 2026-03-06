@@ -45,7 +45,7 @@ from testbot.stage_transitions import (
     validate_retrieve_pre,
 )
 from testbot.time_parse import parse_target_time
-from testbot.intent_router import IntentType, classify_intent
+from testbot.intent_router import IntentType, classify_intent, is_satellite_action_request
 from testbot.time_reasoning import elapsed_since_last_user_message, resolve_relative_date
 from testbot.source_connectors import (
     ArxivSourceConnector,
@@ -215,6 +215,17 @@ def _format_capabilities_help_answer(*, status: RuntimeCapabilityStatus, capabil
         ]
     )
 
+
+def _format_satellite_action_alternatives(*, status: RuntimeCapabilityStatus) -> str:
+    mode_hint = "switch to --mode satellite" if status.ha_available else "restore Home Assistant connectivity first"
+    return "\n".join(
+        [
+            "satellite_action_request:",
+            "- Requested satellite action: detected.",
+            f"- Action alternatives: continue in {status.effective_mode} mode for text Q&A right now; {mode_hint} to re-enable interactive satellite ask.",
+            "- Next step: ask your question directly in this chat, or request a capability check after changing runtime mode.",
+        ]
+    )
 
 def _parse_env_float(name: str, default: float) -> float:
     raw = os.getenv(name)
@@ -775,11 +786,25 @@ def stage_answer(
             )
         return ASSIST_ALTERNATIVES_ANSWER
 
-    if _is_capabilities_help_request(IntentType(state.resolved_intent or classify_intent(state.user_input).value)):
+    resolved_intent = IntentType(state.resolved_intent or classify_intent(state.user_input).value)
+    satellite_action_request = is_satellite_action_request(state.user_input)
+
+    if _is_capabilities_help_request(resolved_intent):
         final_answer = _format_capabilities_help_answer(
             status=runtime_capability_status,
             capability_status=capability_status,
         )
+        if (
+            satellite_action_request
+            and runtime_capability_status.effective_mode == "cli"
+            and not runtime_capability_status.satellite_ask_available
+        ):
+            final_answer = "\n".join(
+                [
+                    final_answer,
+                    _format_satellite_action_alternatives(status=runtime_capability_status),
+                ]
+            )
         provenance_types, claims, basis_statement, used_memory_refs, used_source_evidence_refs, source_evidence_attribution = build_provenance_metadata(
             final_answer=final_answer,
             hits=hits,
@@ -825,7 +850,7 @@ def stage_answer(
     msgs = ANSWER_PROMPT.format_messages(input=state.user_input, chat_history=history_str, context=context_str)
 
     fallback_action = decide_fallback_action(
-        intent=_intent_class_for_policy(IntentType(state.resolved_intent or classify_intent(state.user_input).value)),
+        intent=_intent_class_for_policy(resolved_intent),
         memory_hit=bool(state.confidence_decision.get("context_confident", False)),
         ambiguity=bool(state.confidence_decision.get("ambiguity_detected", False)),
         capability_status=capability_status,
@@ -835,7 +860,7 @@ def stage_answer(
             else None
         ),
     )
-    intent_class = _intent_class_for_policy(IntentType(state.resolved_intent or classify_intent(state.user_input).value))
+    intent_class = _intent_class_for_policy(resolved_intent)
     ambiguity_detected = bool(state.confidence_decision.get("ambiguity_detected", False))
     memory_hit_count = len(hits)
     route_to_ask_expected = fallback_action == "ROUTE_TO_ASK"
