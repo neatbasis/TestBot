@@ -18,8 +18,12 @@ from typing import Any
 
 ENV_FILE_PATH = Path("~/.testbot/.env").expanduser()
 REQUIRED_ENV_KEYS = (
-    "OPENAI_BASE_URL",
-    "OPENAI_API_KEY",
+    "HA_API_URL",
+    "HA_API_SECRET",
+    "HA_SATELLITE_ENTITY_ID",
+    "OLLAMA_BASE_URL",
+    "OLLAMA_MODEL",
+    "OLLAMA_EMBEDDING_MODEL",
     "SMOKE_CONNECT_TIMEOUT_S",
     "SMOKE_REQUEST_TIMEOUT_S",
 )
@@ -42,7 +46,7 @@ def _load_required_env(path: Path = ENV_FILE_PATH) -> dict[str, str]:
     if not path.exists():
         raise ValueError(
             f"Missing required environment file: {path}. "
-            "Create it with the required OPENAI_* and SMOKE_* keys before running smoke checks."
+            "Create it with the required HA_*, OLLAMA_*, and SMOKE_* keys before running smoke checks."
         )
 
     env_values: dict[str, str] = {}
@@ -70,15 +74,22 @@ def _load_required_env(path: Path = ENV_FILE_PATH) -> dict[str, str]:
             f"{path}: {', '.join(missing)}."
         )
 
-    parsed_base_url = urlparse(env_values["OPENAI_BASE_URL"])
-    if parsed_base_url.scheme not in {"http", "https"} or not parsed_base_url.netloc:
+    parsed_ha_url = urlparse(env_values["HA_API_URL"])
+    if parsed_ha_url.scheme not in {"http", "https"} or not parsed_ha_url.netloc:
         raise ValueError(
-            "Invalid OPENAI_BASE_URL in "
+            "Invalid HA_API_URL in "
             f"{path}: must be a full http(s) URL."
         )
-    if len(env_values["OPENAI_API_KEY"].strip()) < 8:
+
+    parsed_base_url = urlparse(env_values["OLLAMA_BASE_URL"])
+    if parsed_base_url.scheme not in {"http", "https"} or not parsed_base_url.netloc:
         raise ValueError(
-            "Invalid OPENAI_API_KEY in "
+            "Invalid OLLAMA_BASE_URL in "
+            f"{path}: must be a full http(s) URL."
+        )
+    if len(env_values["HA_API_SECRET"].strip()) < 8:
+        raise ValueError(
+            "Invalid HA_API_SECRET in "
             f"{path}: value is too short to be a usable credential/token."
         )
     for key in ("SMOKE_CONNECT_TIMEOUT_S", "SMOKE_REQUEST_TIMEOUT_S"):
@@ -149,12 +160,25 @@ def _load_checks(path: Path) -> list[dict[str, Any]]:
                 "every check requires non-empty capability_id, capability_name, "
                 "business_impact, and severity_if_broken"
             )
+        raw_headers = entry.get("headers", {})
+        headers: dict[str, str] = {}
+        if raw_headers is not None:
+            if not isinstance(raw_headers, dict):
+                raise ValueError("optional 'headers' must be an object of string key/value pairs")
+            for raw_key, raw_value in raw_headers.items():
+                key = str(raw_key).strip()
+                value = os.path.expandvars(str(raw_value).strip())
+                if not key or not value:
+                    raise ValueError("optional 'headers' requires non-empty key/value strings")
+                headers[key] = value
+
         normalized.append(
             {
                 "name": name,
                 "target": target,
                 "method": str(entry.get("method", "GET")).upper(),
                 "expected_status": int(entry.get("expected_status", 200)),
+                "headers": headers,
                 "capability_id": capability_id,
                 "capability_name": capability_name,
                 "business_impact": business_impact,
@@ -166,7 +190,11 @@ def _load_checks(path: Path) -> list[dict[str, Any]]:
 
 
 def _run_check(check: dict[str, Any]) -> dict[str, Any]:
-    request = urllib.request.Request(url=check["target"], method=check["method"])
+    request = urllib.request.Request(
+        url=check["target"],
+        method=check["method"],
+        headers=check.get("headers", {}),
+    )
     started = time.perf_counter()
     status_code: int | None = None
     error_snippet = ""
