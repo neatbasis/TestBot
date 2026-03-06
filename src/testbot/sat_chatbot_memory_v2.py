@@ -112,6 +112,19 @@ class RuntimeCapabilityStatus:
     debug_enabled: bool
 
 
+@dataclass(frozen=True)
+class CapabilitySnapshot:
+    runtime: dict[str, object]
+    requested_mode: str
+    daemon_mode: bool
+    effective_mode: str | None
+    fallback_reason: str | None
+    exit_reason: str | None
+    ha_error: str | None
+    ollama_error: str | None
+    runtime_capability_status: RuntimeCapabilityStatus
+
+
 def _format_capabilities_help_answer(*, status: RuntimeCapabilityStatus, capability_status: CapabilityStatus) -> str:
     memory_state = "available"
     memory_text = (
@@ -368,35 +381,32 @@ def _run_source_ingestion(*, runtime: dict[str, object], store: MemoryStore) -> 
         },
     )
 
-def _print_startup_status(
-    *,
-    requested_mode: str,
-    effective_mode: str,
-    daemon_mode: bool,
-    runtime: dict[str, object],
-    ha_error: str | None,
-    ollama_error: str | None,
-    fallback_reason: str | None = None,
-) -> None:
+def _print_startup_status(*, snapshot: CapabilitySnapshot) -> None:
+    runtime = snapshot.runtime
     print("=== TestBot startup status ===")
-    if fallback_reason:
-        print(f"Selected mode: {effective_mode} (requested={requested_mode}, fallback reason={fallback_reason}, daemon={daemon_mode})")
+    effective_mode = snapshot.effective_mode or "unavailable"
+    if snapshot.fallback_reason:
+        print(
+            "Selected mode: "
+            f"{effective_mode} (requested={snapshot.requested_mode}, "
+            f"fallback reason={snapshot.fallback_reason}, daemon={snapshot.daemon_mode})"
+        )
     else:
-        print(f"Selected mode: {effective_mode} (requested={requested_mode}, daemon={daemon_mode})")
+        print(f"Selected mode: {effective_mode} (requested={snapshot.requested_mode}, daemon={snapshot.daemon_mode})")
     print(
         f"Ollama endpoint: {runtime['ollama_base_url']} "
         f"chat_model={runtime['ollama_model']} embed_model={runtime['ollama_embedding_model']}"
     )
-    if ollama_error:
-        print(f"Ollama: unavailable ({ollama_error})")
+    if snapshot.ollama_error:
+        print(f"Ollama: unavailable ({snapshot.ollama_error})")
         print("Install warning [RED]: Ollama capability is unavailable; verify OLLAMA_BASE_URL and pull required models before restarting.")
         print("Developer note: runtime will exit early because model and embedding checks are required at startup.")
     else:
         print("Ollama: available (chat + embedding models verified)")
         print("Install warning [GREEN]: Ollama capability is active; keep OLLAMA_MODEL and OLLAMA_EMBEDDING_MODEL provisioned.")
     print(f"Memory backend: {runtime['memory_store_backend']}")
-    if ha_error:
-        print(f"Home Assistant: unavailable ({ha_error})")
+    if snapshot.ha_error:
+        print(f"Home Assistant: unavailable ({snapshot.ha_error})")
         print("Install warning [YELLOW]: Home Assistant capability is degraded; configure HA_API_SECRET and HA_SATELLITE_ENTITY_ID to enable satellite mode.")
         print("Developer note: satellite interface disabled; CLI fallback will be used unless --daemon is set.")
     else:
@@ -1197,7 +1207,7 @@ def _run_chat_loop(
     near_tie_delta: float,
     io_channel: str,
     capability_status: CapabilityStatus,
-    runtime_capability_status: RuntimeCapabilityStatus,
+    capability_snapshot: CapabilitySnapshot,
     read_user_utterance,
     send_assistant_text,
     clock: Clock,
@@ -1365,7 +1375,7 @@ def _run_chat_loop(
             chat_history=chat_history,
             hits=hits,
             capability_status=capability_status,
-            runtime_capability_status=runtime_capability_status,
+            runtime_capability_status=capability_snapshot.runtime_capability_status,
             clock=clock,
         )
         _validate_and_log_transition(validate_answer_post(state))
@@ -1504,7 +1514,7 @@ def _run_chat_loop(
             )
 
 
-def _run_cli_mode(*, llm: ChatOllama, store: MemoryStore, chat_history: deque[ChatMsg], near_tie_delta: float, runtime_capability_status: RuntimeCapabilityStatus, clock: Clock) -> None:
+def _run_cli_mode(*, llm: ChatOllama, store: MemoryStore, chat_history: deque[ChatMsg], near_tie_delta: float, capability_snapshot: CapabilitySnapshot, clock: Clock) -> None:
     print("CLI chat ready. Ask memory-grounded questions; type 'stop' to exit.")
 
     def _read() -> str | None:
@@ -1523,7 +1533,7 @@ def _run_cli_mode(*, llm: ChatOllama, store: MemoryStore, chat_history: deque[Ch
         near_tie_delta=near_tie_delta,
         io_channel="cli",
         capability_status="ask_unavailable",
-        runtime_capability_status=runtime_capability_status,
+        capability_snapshot=capability_snapshot,
         read_user_utterance=_read,
         send_assistant_text=_send,
         clock=clock,
@@ -1539,7 +1549,7 @@ def _run_satellite_mode(
     api_url: str,
     token: str,
     entity_id: str,
-    runtime_capability_status: RuntimeCapabilityStatus,
+    capability_snapshot: CapabilitySnapshot,
     clock: Clock,
 ) -> None:
     rest = normalize_rest_api_url(api_url)
@@ -1573,7 +1583,7 @@ def _run_satellite_mode(
             near_tie_delta=near_tie_delta,
             io_channel="satellite",
             capability_status="ask_available",
-            runtime_capability_status=runtime_capability_status,
+            capability_snapshot=capability_snapshot,
             read_user_utterance=_read,
             send_assistant_text=_send,
             clock=clock,
@@ -1602,10 +1612,7 @@ def _build_runtime_capability_status(
     )
 
 
-def main(argv: list[str] | None = None) -> None:
-    args = _parse_args(argv)
-    runtime = _read_runtime_env()
-
+def build_capability_snapshot(*, requested_mode: str, daemon_mode: bool, runtime: dict[str, object]) -> CapabilitySnapshot:
     ha_error = _ha_connection_error(
         str(runtime["ha_api_url"]),
         str(runtime["ha_api_secret"]),
@@ -1618,52 +1625,67 @@ def main(argv: list[str] | None = None) -> None:
     )
 
     effective_mode, fallback_reason, exit_reason = _resolve_effective_mode(
-        requested_mode=args.mode,
-        daemon_mode=args.daemon,
+        requested_mode=requested_mode,
+        daemon_mode=daemon_mode,
         ha_error=ha_error,
         ollama_error=ollama_error,
     )
 
     runtime_capability_status = _build_runtime_capability_status(
-        requested_mode=args.mode,
+        requested_mode=requested_mode,
         effective_mode=effective_mode,
-        daemon_mode=args.daemon,
+        daemon_mode=daemon_mode,
         fallback_reason=fallback_reason,
         runtime=runtime,
         ha_error=ha_error,
         ollama_error=ollama_error,
+    )
+
+    return CapabilitySnapshot(
+        runtime=runtime,
+        requested_mode=requested_mode,
+        daemon_mode=daemon_mode,
+        effective_mode=effective_mode,
+        fallback_reason=fallback_reason,
+        exit_reason=exit_reason,
+        ha_error=ha_error,
+        ollama_error=ollama_error,
+        runtime_capability_status=runtime_capability_status,
+    )
+
+
+def main(argv: list[str] | None = None) -> None:
+    args = _parse_args(argv)
+    runtime = _read_runtime_env()
+
+    capability_snapshot = build_capability_snapshot(
+        requested_mode=args.mode,
+        daemon_mode=args.daemon,
+        runtime=runtime,
     )
 
     append_session_log(
         "startup_mode_resolution",
         {
             "requested_mode": args.mode,
-            "effective_mode": effective_mode,
+            "effective_mode": capability_snapshot.effective_mode,
             "daemon_mode": args.daemon,
-            "ha_available": ha_error is None,
-            "ha_error": ha_error,
-            "ollama_available": ollama_error is None,
-            "ollama_error": ollama_error,
-            "fallback_reason": fallback_reason,
-            "exit_reason": exit_reason,
+            "ha_available": capability_snapshot.ha_error is None,
+            "ha_error": capability_snapshot.ha_error,
+            "ollama_available": capability_snapshot.ollama_error is None,
+            "ollama_error": capability_snapshot.ollama_error,
+            "fallback_reason": capability_snapshot.fallback_reason,
+            "exit_reason": capability_snapshot.exit_reason,
         },
     )
 
-    _print_startup_status(
-        requested_mode=args.mode,
-        effective_mode=effective_mode or "unavailable",
-        daemon_mode=args.daemon,
-        runtime=runtime,
-        ha_error=ha_error,
-        ollama_error=ollama_error,
-        fallback_reason=fallback_reason,
-    )
+    _print_startup_status(snapshot=capability_snapshot)
 
-    if effective_mode is None:
+    if capability_snapshot.effective_mode is None:
         if args.mode == "auto" and args.daemon:
-            print(f"Daemon mode requested in auto mode and {exit_reason}", file=sys.stderr)
+            print(f"Daemon mode requested in auto mode and {capability_snapshot.exit_reason}", file=sys.stderr)
         else:
-            print(f"Startup failed and {exit_reason}", file=sys.stderr)
+            print(f"Startup failed and {capability_snapshot.exit_reason}", file=sys.stderr)
         return
 
     llm = ChatOllama(model=str(runtime["ollama_model"]), base_url=str(runtime["ollama_base_url"]), temperature=0.0)
@@ -1679,13 +1701,13 @@ def main(argv: list[str] | None = None) -> None:
 
     _run_source_ingestion(runtime=runtime, store=store)
 
-    if effective_mode == "satellite":
+    if capability_snapshot.effective_mode == "satellite":
         _run_satellite_mode(
             llm=llm,
             store=store,
             chat_history=chat_history,
             near_tie_delta=float(runtime["memory_near_tie_delta"]),
-            runtime_capability_status=runtime_capability_status,
+            capability_snapshot=capability_snapshot,
             api_url=str(runtime["ha_api_url"]),
             token=str(runtime["ha_api_secret"]),
             entity_id=str(runtime["ha_satellite_entity_id"]),
@@ -1698,7 +1720,7 @@ def main(argv: list[str] | None = None) -> None:
         store=store,
         chat_history=chat_history,
         near_tie_delta=float(runtime["memory_near_tie_delta"]),
-        runtime_capability_status=runtime_capability_status,
+        capability_snapshot=capability_snapshot,
         clock=clock,
     )
 
