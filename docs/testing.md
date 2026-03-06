@@ -169,6 +169,39 @@ Expected outcomes for `tests/test_live_smoke_ollama.py`:
 - If `OLLAMA_BASE_URL`, `OLLAMA_MODEL`, or `OLLAMA_EMBEDDING_MODEL` are missing, tests skip with explicit guidance naming the missing variable.
 - If endpoint/model provisioning is incorrect, tests fail with a live connectivity/model error (intentional signal that environment is not ready).
 
+
+Run degraded-mode live smoke scenarios only (`tests/test_live_smoke_degraded_modes.py`):
+
+```bash
+# Scenario matrix exercised by this module:
+# 1) HA unavailable + Ollama available
+# 2) HA available + Ollama unavailable
+# 3) both unavailable
+#
+# Required baseline live env vars:
+# - TESTBOT_ENABLE_LIVE_SMOKE=1
+# - OLLAMA_BASE_URL / OLLAMA_MODEL / OLLAMA_EMBEDDING_MODEL (for the "Ollama available" scenario)
+# - HA_API_URL / HA_API_SECRET / HA_SATELLITE_ENTITY_ID (for the "HA available" scenario)
+#
+# Failure injection for degraded scenarios is environment-driven only. The test module
+# swaps endpoints to unreachable localhost ports (HA: 127.0.0.1:9, Ollama: 127.0.0.1:1)
+# and does not monkeypatch runtime connectivity helpers.
+TESTBOT_ENABLE_LIVE_SMOKE=1 \
+OLLAMA_BASE_URL=http://localhost:11434 \
+OLLAMA_MODEL=llama3.1:latest \
+OLLAMA_EMBEDDING_MODEL=nomic-embed-text \
+HA_API_URL=http://localhost:8123 \
+HA_API_SECRET=<token> \
+HA_SATELLITE_ENTITY_ID=assist_satellite.kitchen \
+python -m pytest tests/test_live_smoke_degraded_modes.py -m live_smoke -vv
+```
+
+Expected outcomes for `tests/test_live_smoke_degraded_modes.py`:
+
+- Scenario assertions validate effective mode resolution against availability combinations.
+- Runtime capability flags (`ha_available`, `ollama_available`) remain internally consistent with startup output.
+- User-visible capability guidance remains stable across degraded paths (for example, `CLI fallback is active` and degraded Home Assistant guidance strings).
+
 ### Production validation record (live Ollama smoke)
 
 Observed external validation run:
