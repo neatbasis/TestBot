@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Single entrypoint for deterministic merge/release readiness checks."""
+"""Single entrypoint for deterministic merge/release readiness checks.
+
+Parity coverage in ``tests/test_eval_runtime_parity.py`` is an explicit blocking check
+to prevent eval/runtime drift in ordering, fallback class, confidence boundaries,
+and ambiguity outcomes before release.
+"""
 
 from __future__ import annotations
 
@@ -217,10 +222,17 @@ def main() -> int:
     parity_failed = any(r.name == "pytest_eval_runtime_parity" and r.status == "failed" for r in results)
     if parity_failed:
         print(
-            "\nParity gate failed: likely divergence in eval/runtime adapter boundaries "
-            "(scripts/eval_recall.py <-> testbot.rerank or sat_chatbot_memory_v2 confidence/ambiguity handling)."
+            "\nParity gate failed (blocking): runtime/eval behavior drift likely in ordering, "
+            "fallback class, confidence boundaries, or ambiguity outcomes."
         )
-
+        print(
+            "Inspect intermediate signals first: scored_candidates, near_tie_candidates, "
+            "ambiguity_detected (tests/test_eval_runtime_parity.py and features/steps/memory_steps.py)."
+        )
+        print(
+            "Likely boundaries: scripts/eval_recall.py <-> testbot.rerank and "
+            "testbot.sat_chatbot_memory_v2 confidence handling."
+        )
     if args.kpi_guardrail_mode == "optional":
         print("\nKPI guardrail check is running in optional mode. Promote with --kpi-guardrail-mode blocking once rollout criteria are met.")
 
