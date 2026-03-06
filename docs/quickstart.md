@@ -112,3 +112,58 @@ Say `stop` to end the loop.
 - [ ] Satellite utterances are ingested.
 - [ ] Memory-grounded responses include `doc_id` and `ts` citations when memory exists.
 - [ ] Memory-insufficient responses use progressive fallback (targeted clarifier or at least two capability-based alternatives), with exact `I don't know from memory.` reserved for explicit deny/safety cases.
+
+## Optional: source ingestion connectors
+
+Enable one connector at startup with `SOURCE_INGEST_ENABLED=1`.
+
+Prefer connector inputs that encode the system's intended reasoning basis:
+
+- local operator canon (invariants, trust policy, provenance doctrine),
+- stable public ontology references,
+- frontier research signals with explicit preprint trust semantics.
+
+Local markdown file/directory ingestion:
+
+```bash
+SOURCE_INGEST_ENABLED=1 \
+SOURCE_CONNECTOR_TYPE=local_markdown \
+SOURCE_MARKDOWN_PATH=./docs/alignment-canon \
+SOURCE_INGEST_LIMIT=20 \
+testbot --mode cli
+```
+
+Wikipedia summary retrieval:
+
+```bash
+SOURCE_INGEST_ENABLED=1 \
+SOURCE_CONNECTOR_TYPE=wikipedia \
+SOURCE_WIKIPEDIA_TOPIC="Hilbert space" \
+SOURCE_WIKIPEDIA_LANGUAGE=en \
+SOURCE_INGEST_LIMIT=1 \
+testbot --mode cli
+```
+
+Alternative ontology topics: `Category theory`, `Transformer`, `Kernel method`.
+
+arXiv metadata/content extraction:
+
+```bash
+SOURCE_INGEST_ENABLED=1 \
+SOURCE_CONNECTOR_TYPE=arxiv \
+SOURCE_ARXIV_QUERY='all:"category theory" AND cat:cs.LG' \
+SOURCE_INGEST_LIMIT=5 \
+testbot --mode cli
+```
+
+Alternative query:
+
+```bash
+SOURCE_ARXIV_QUERY='all:"reproducing kernel Hilbert space"'
+```
+
+Dry-run validation (deterministic tests):
+
+```bash
+python -m pytest tests/test_source_connectors.py tests/test_source_ingest.py tests/test_runtime_modes.py -k source
+```

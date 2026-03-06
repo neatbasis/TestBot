@@ -47,7 +47,13 @@ from testbot.stage_transitions import (
 from testbot.time_parse import parse_target_time
 from testbot.intent_router import IntentType, classify_intent
 from testbot.time_reasoning import elapsed_since_last_user_message, resolve_relative_date
-from testbot.source_connectors import FixtureSourceConnector, SourceConnector
+from testbot.source_connectors import (
+    ArxivSourceConnector,
+    FixtureSourceConnector,
+    LocalMarkdownSourceConnector,
+    SourceConnector,
+    WikipediaSummarySourceConnector,
+)
 from testbot.source_ingest import SourceIngestor
 from ha_ask import AskSpec, ask_question
 from ha_ask.config import normalize_rest_api_url
@@ -156,6 +162,10 @@ def _read_runtime_env() -> dict[str, object]:
         "source_fixture_path": os.getenv("SOURCE_FIXTURE_PATH", ""),
         "source_ingest_limit": _parse_env_int("SOURCE_INGEST_LIMIT", 50),
         "source_ingest_cursor": os.getenv("SOURCE_INGEST_CURSOR") or None,
+        "source_markdown_path": os.getenv("SOURCE_MARKDOWN_PATH", ""),
+        "source_wikipedia_topic": os.getenv("SOURCE_WIKIPEDIA_TOPIC", ""),
+        "source_wikipedia_language": os.getenv("SOURCE_WIKIPEDIA_LANGUAGE", "en"),
+        "source_arxiv_query": os.getenv("SOURCE_ARXIV_QUERY", ""),
     }
 
 
@@ -231,15 +241,39 @@ def _resolve_effective_mode(
 def _build_source_connector(runtime: dict[str, object]) -> SourceConnector | None:
     if not bool(runtime.get("source_ingest_enabled", False)):
         return None
-    connector_type = str(runtime.get("source_connector_type", "fixture"))
-    if connector_type != "fixture":
-        append_session_log("source_ingest_skipped", {"reason": "unsupported_connector_type", "connector_type": connector_type})
-        return None
-    fixture_path = str(runtime.get("source_fixture_path") or "").strip()
-    if not fixture_path:
-        append_session_log("source_ingest_skipped", {"reason": "missing_fixture_path", "connector_type": connector_type})
-        return None
-    return FixtureSourceConnector.from_json_file(source_type="fixture", fixture_path=fixture_path)
+    connector_type = str(runtime.get("source_connector_type", "fixture")).strip().lower()
+
+    if connector_type == "fixture":
+        fixture_path = str(runtime.get("source_fixture_path") or "").strip()
+        if not fixture_path:
+            append_session_log("source_ingest_skipped", {"reason": "missing_fixture_path", "connector_type": connector_type})
+            return None
+        return FixtureSourceConnector.from_json_file(source_type="fixture", fixture_path=fixture_path)
+
+    if connector_type in {"local_markdown", "markdown"}:
+        markdown_path = str(runtime.get("source_markdown_path") or "").strip()
+        if not markdown_path:
+            append_session_log("source_ingest_skipped", {"reason": "missing_markdown_path", "connector_type": connector_type})
+            return None
+        return LocalMarkdownSourceConnector(markdown_path=markdown_path)
+
+    if connector_type in {"wikipedia", "wiki"}:
+        topic = str(runtime.get("source_wikipedia_topic") or "").strip()
+        language = str(runtime.get("source_wikipedia_language") or "en").strip() or "en"
+        if not topic:
+            append_session_log("source_ingest_skipped", {"reason": "missing_wikipedia_topic", "connector_type": connector_type})
+            return None
+        return WikipediaSummarySourceConnector(topic=topic, language=language)
+
+    if connector_type == "arxiv":
+        query = str(runtime.get("source_arxiv_query") or "").strip()
+        if not query:
+            append_session_log("source_ingest_skipped", {"reason": "missing_arxiv_query", "connector_type": connector_type})
+            return None
+        return ArxivSourceConnector(query=query)
+
+    append_session_log("source_ingest_skipped", {"reason": "unsupported_connector_type", "connector_type": connector_type})
+    return None
 
 
 def _run_source_ingestion(*, runtime: dict[str, object], store: MemoryStore) -> None:

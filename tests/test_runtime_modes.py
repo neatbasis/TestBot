@@ -199,6 +199,59 @@ def test_run_source_ingestion_skips_unsupported_connector(monkeypatch) -> None:
     assert logs[-1][1]["reason"] == "unsupported_connector_type"
 
 
+
+
+def test_build_source_connector_supports_local_markdown(monkeypatch, tmp_path) -> None:
+    logs = []
+    monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: logs.append((event, payload)))
+
+    connector = runtime._build_source_connector(
+        {
+            "source_ingest_enabled": True,
+            "source_connector_type": "local_markdown",
+            "source_markdown_path": str(tmp_path),
+        }
+    )
+
+    assert connector is not None
+    assert connector.source_type == "local_markdown"
+    assert logs == []
+
+
+def test_build_source_connector_supports_wikipedia(monkeypatch) -> None:
+    logs = []
+    monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: logs.append((event, payload)))
+
+    connector = runtime._build_source_connector(
+        {
+            "source_ingest_enabled": True,
+            "source_connector_type": "wikipedia",
+            "source_wikipedia_topic": "OpenAI",
+            "source_wikipedia_language": "en",
+        }
+    )
+
+    assert connector is not None
+    assert connector.source_type == "wikipedia"
+    assert logs == []
+
+
+def test_build_source_connector_supports_arxiv(monkeypatch) -> None:
+    logs = []
+    monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: logs.append((event, payload)))
+
+    connector = runtime._build_source_connector(
+        {
+            "source_ingest_enabled": True,
+            "source_connector_type": "arxiv",
+            "source_arxiv_query": "cat:cs.AI",
+        }
+    )
+
+    assert connector is not None
+    assert connector.source_type == "arxiv"
+    assert logs == []
+
 def test_read_runtime_env_invalid_numerics_fallback(monkeypatch, caplog) -> None:
     monkeypatch.setenv("MEMORY_NEAR_TIE_DELTA", "not-a-float")
     monkeypatch.setenv("SOURCE_INGEST_LIMIT", "not-an-int")

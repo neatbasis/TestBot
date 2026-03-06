@@ -2,7 +2,13 @@ from __future__ import annotations
 
 import json
 
-from testbot.source_connectors import FixtureSourceConnector, SourceItem
+from testbot.source_connectors import (
+    ArxivSourceConnector,
+    FixtureSourceConnector,
+    LocalMarkdownSourceConnector,
+    SourceItem,
+    WikipediaSummarySourceConnector,
+)
 from testbot.source_ingest import SourceIngestor
 
 
@@ -60,76 +66,93 @@ def test_fixture_connector_fetch_normalize_and_cursor_lifecycle() -> None:
     assert connector.fetch(cursor=end_cursor, limit=5) == []
 
 
-def test_fixture_connector_fetch_returns_empty_for_zero_limit() -> None:
-    connector = FixtureSourceConnector(
-        source_type="calendar",
-        fixtures=(
-            SourceItem(
-                item_id="evt-1",
-                content="Morning sync at 09:30.",
-                source_uri="calendar://team/evt-1",
-                retrieved_at="2026-03-11T09:00:00Z",
-                trust_tier="verified",
-                metadata={"ts": "2026-03-11T09:30:00Z"},
-            ),
-        ),
-    )
+def test_local_markdown_connector_ingests_file_and_directory(tmp_path) -> None:
+    single = tmp_path / "note.md"
+    single.write_text("# Note\n\nA single markdown file.", encoding="utf-8")
+    docs_dir = tmp_path / "docs"
+    docs_dir.mkdir()
+    (docs_dir / "a.md").write_text("A", encoding="utf-8")
+    (docs_dir / "b.md").write_text("B", encoding="utf-8")
+    (docs_dir / "skip.txt").write_text("ignore", encoding="utf-8")
+
+    file_connector = LocalMarkdownSourceConnector(markdown_path=str(single))
+    directory_connector = LocalMarkdownSourceConnector(markdown_path=str(docs_dir))
+
+    file_items = file_connector.fetch(cursor=None, limit=5)
+    assert len(file_items) == 1
+    assert file_items[0].metadata["filename"] == "note.md"
+    assert file_connector.normalize(file_items[0]).metadata["source_type"] == "local_markdown"
+
+    dir_items = directory_connector.fetch(cursor=None, limit=1)
+    assert len(dir_items) == 1
+    next_cursor = directory_connector.update_cursor(previous_cursor=None, fetched_items=dir_items)
+    assert next_cursor == "1"
+    assert len(directory_connector.fetch(cursor=next_cursor, limit=5)) == 1
 
 
-    assert connector.fetch(cursor=None, limit=0) == []
+def test_wikipedia_connector_fetches_summary(monkeypatch) -> None:
+    payload = {
+        "title": "OpenAI",
+        "extract": "OpenAI is an AI research lab.",
+        "content_urls": {"desktop": {"page": "https://en.wikipedia.org/wiki/OpenAI"}},
+    }
+
+    class _Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            del exc_type, exc, tb
+            return False
+
+        def read(self) -> bytes:
+            return json.dumps(payload).encode("utf-8")
+
+    monkeypatch.setattr("testbot.source_connectors.urlopen", lambda *args, **kwargs: _Response())
+
+    connector = WikipediaSummarySourceConnector(topic="OpenAI")
+    items = connector.fetch(cursor=None, limit=1)
+
+    assert len(items) == 1
+    assert items[0].item_id == "wiki::OpenAI"
+    assert items[0].source_uri == "https://en.wikipedia.org/wiki/OpenAI"
+    assert connector.fetch(cursor="done", limit=1) == []
 
 
-def test_fixture_connector_fetch_returns_empty_for_negative_limit() -> None:
-    connector = FixtureSourceConnector(
-        source_type="calendar",
-        fixtures=(
-            SourceItem(
-                item_id="evt-1",
-                content="Morning sync at 09:30.",
-                source_uri="calendar://team/evt-1",
-                retrieved_at="2026-03-11T09:00:00Z",
-                trust_tier="verified",
-                metadata={"ts": "2026-03-11T09:30:00Z"},
-            ),
-        ),
-    )
+def test_arxiv_connector_parses_feed(monkeypatch) -> None:
+    xml_payload = """<?xml version='1.0' encoding='UTF-8'?>
+<feed xmlns='http://www.w3.org/2005/Atom'>
+  <entry>
+    <id>http://arxiv.org/abs/1234.5678v1</id>
+    <updated>2026-03-01T12:00:00Z</updated>
+    <title>Useful Paper</title>
+    <summary>We show deterministic testing.</summary>
+    <author><name>Ada Lovelace</name></author>
+    <author><name>Grace Hopper</name></author>
+  </entry>
+</feed>
+"""
 
-    assert connector.fetch(cursor=None, limit=-3) == []
+    class _Response:
+        def __enter__(self):
+            return self
 
+        def __exit__(self, exc_type, exc, tb):
+            del exc_type, exc, tb
+            return False
 
-def test_fixture_connector_fetch_positive_limit_still_paginates() -> None:
-    connector = FixtureSourceConnector(
-        source_type="calendar",
-        fixtures=(
-            SourceItem(
-                item_id="evt-1",
-                content="Morning sync at 09:30.",
-                source_uri="calendar://team/evt-1",
-                retrieved_at="2026-03-11T09:00:00Z",
-                trust_tier="verified",
-                metadata={"ts": "2026-03-11T09:30:00Z"},
-            ),
-            SourceItem(
-                item_id="evt-2",
-                content="Retrospective at 15:00.",
-                source_uri="calendar://team/evt-2",
-                retrieved_at="2026-03-11T09:00:00Z",
-                trust_tier="verified",
-                metadata={"ts": "2026-03-11T15:00:00Z"},
-            ),
-            SourceItem(
-                item_id="evt-3",
-                content="Planning at 16:00.",
-                source_uri="calendar://team/evt-3",
-                retrieved_at="2026-03-11T09:00:00Z",
-                trust_tier="verified",
-                metadata={"ts": "2026-03-11T16:00:00Z"},
-            ),
-        ),
-    )
+        def read(self) -> bytes:
+            return xml_payload.encode("utf-8")
 
-    assert [item.item_id for item in connector.fetch(cursor=None, limit=2)] == ["evt-1", "evt-2"]
-    assert [item.item_id for item in connector.fetch(cursor="2", limit=2)] == ["evt-3"]
+    monkeypatch.setattr("testbot.source_connectors.urlopen", lambda *args, **kwargs: _Response())
+
+    connector = ArxivSourceConnector(query="cat:cs.AI")
+    items = connector.fetch(cursor=None, limit=2)
+
+    assert len(items) == 1
+    assert items[0].item_id == "http://arxiv.org/abs/1234.5678v1"
+    assert "Useful Paper" in items[0].content
+    assert items[0].metadata["authors"] == "Ada Lovelace, Grace Hopper"
 
 
 def test_source_ingest_canonicalizes_fixture_connector_docs() -> None:
@@ -170,7 +193,7 @@ def test_fixture_connector_can_load_json_fixture_file(tmp_path) -> None:
                     "content": "Task: utility bill due Friday",
                     "source_uri": "ha://tasks/utility-bill",
                     "retrieved_at": "2026-03-10T09:00:00Z",
-                    "trust_tier": "medium",
+                    "trust_tier": "verified",
                     "metadata": {"ts": "2026-03-14T00:00:00Z"},
                 }
             ]

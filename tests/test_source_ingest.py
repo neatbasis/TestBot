@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import pytest
 from langchain_core.documents import Document
 
 from testbot.source_connectors import SourceItem
@@ -131,6 +132,38 @@ def test_source_ingestor_derives_stable_ids_when_normalized_id_and_doc_id_are_mi
     assert evidence_id == second.evidence_documents[0].id
     assert evidence_id == f"evidence::{memory_id}"
     assert len(store.docs) == 4
+
+
+def test_source_item_requires_mandatory_provenance_fields() -> None:
+    with pytest.raises(ValueError):
+        SourceItem(
+            item_id="evt-1",
+            content="Project review",
+            source_uri="",
+            retrieved_at="2026-03-05T09:00:00Z",
+            trust_tier="verified",
+            metadata={},
+        )
+
+    with pytest.raises(ValueError):
+        SourceItem(
+            item_id="evt-1",
+            content="Project review",
+            source_uri="calendar://work/evt-1",
+            retrieved_at="",
+            trust_tier="verified",
+            metadata={},
+        )
+
+    with pytest.raises(ValueError):
+        SourceItem(
+            item_id="evt-1",
+            content="Project review",
+            source_uri="calendar://work/evt-1",
+            retrieved_at="2026-03-05T09:00:00Z",
+            trust_tier="",
+            metadata={},
+        )
 
 
 def test_source_ingestor_respects_zero_limit() -> None:
