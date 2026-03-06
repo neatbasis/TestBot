@@ -47,7 +47,7 @@ def test_stage_answer_capabilities_help_reflects_ha_unavailable_cli_fallback() -
     assert "Satellite ask loop: unavailable" in answer_state.final_answer
     assert "Home Assistant satellite actions: unavailable" in answer_state.final_answer
     assert "can continue in cli mode (CLI fallback is active)" in answer_state.final_answer
-    assert "Debug visibility: unavailable" in answer_state.final_answer
+    assert "Debug visibility: disabled (set TESTBOT_DEBUG=1 to enable)" in answer_state.final_answer
     assert answer_state.draft_answer == ""
 
 
@@ -77,7 +77,7 @@ def test_stage_answer_capabilities_help_reflects_ha_satellite_available() -> Non
     assert "can use satellite speak/start-conversation actions" in answer_state.final_answer
     assert "Clarification/disambiguation: available" in answer_state.final_answer
     assert "Satellite ask loop: available" in answer_state.final_answer
-    assert "Debug visibility: available" in answer_state.final_answer
+    assert "Debug visibility: enabled (TESTBOT_DEBUG=1)" in answer_state.final_answer
     assert "Memory recall: available" in answer_state.final_answer
     assert answer_state.draft_answer == ""
 
