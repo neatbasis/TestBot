@@ -94,16 +94,16 @@ python src/testbot/sat_chatbot_memory_v2.py
 
 ## Required before merge
 
-Run this governance gate locally before requesting review or merge:
+Run the single authoritative all-systems-green gate locally before requesting review or merge:
 
 ```bash
-python scripts/release_gate.py
+python scripts/all_green_gate.py
 ```
 
 ## Validate
-- Canonical merge/release gate: `python scripts/release_gate.py`
-- Optional run-all mode (collect every failure before exiting non-zero): `python scripts/release_gate.py --continue-on-failure`
-- Machine-readable summary artifact: `python scripts/release_gate.py --json-output artifacts/release-gate-summary.json`
+- Canonical merge/readiness gate: `python scripts/all_green_gate.py`
+- Optional run-all mode (collect every failure before exiting non-zero): `python scripts/all_green_gate.py --continue-on-failure`
+- Machine-readable summary artifact: `python scripts/all_green_gate.py --json-output artifacts/all-green-gate-summary.json`
 - Run optional live smoke profile: `pytest -m live_smoke`
 - Optional docs path validation: `python scripts/validate_markdown_paths.py`
 
@@ -112,7 +112,7 @@ python scripts/release_gate.py
 For non-live code changes, use this offline/deterministic gate:
 
 1. `pip install -e .[dev]`
-2. `python scripts/release_gate.py`
+2. `python scripts/all_green_gate.py`
 
 See [docs/testing.md](docs/testing.md) for test-layer policy and acceptance criteria.
 
