@@ -65,6 +65,7 @@ def test_shared_snapshot_keeps_cli_fallback_truth_consistent(monkeypatch, capsys
     assert "Clarification/disambiguation: available" in help_answer
     assert "text clarification still available in CLI" in help_answer
     assert "interactive satellite ask flow unavailable in CLI mode" in help_answer
+    assert "Debug visibility: disabled (set TESTBOT_DEBUG=1 to enable)" in help_answer
 
 
 def test_shared_snapshot_keeps_satellite_truth_consistent(monkeypatch, capsys) -> None:
@@ -86,3 +87,4 @@ def test_shared_snapshot_keeps_satellite_truth_consistent(monkeypatch, capsys) -
     assert "Runtime mode: requested=satellite, effective=satellite" in help_answer
     assert "Home Assistant satellite actions: available" in help_answer
     assert "can use satellite speak/start-conversation actions" in help_answer
+    assert "Debug visibility: disabled (set TESTBOT_DEBUG=1 to enable)" in help_answer

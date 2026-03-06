@@ -15,7 +15,7 @@ Feature: Capabilities help responses
     And the answer includes "text clarification still available in CLI"
     And the answer includes "interactive satellite ask flow unavailable in CLI mode"
     And the answer includes "Satellite ask loop: unavailable"
-    And the answer includes "Debug visibility: unavailable"
+    And the answer includes "Debug visibility: disabled (set TESTBOT_DEBUG=1 to enable)"
 
     Examples:
       | prompt          |
@@ -29,6 +29,6 @@ Feature: Capabilities help responses
     And the answer includes "Home Assistant satellite actions: available"
     And the answer includes "can use satellite speak/start-conversation actions"
     And the answer includes "Satellite ask loop: available"
-    And the answer includes "Debug visibility: available"
+    And the answer includes "Debug visibility: enabled (TESTBOT_DEBUG=1)"
     And the answer includes "Memory recall: available"
     And the answer includes "Grounded explanations: available"

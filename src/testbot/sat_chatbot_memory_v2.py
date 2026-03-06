@@ -193,11 +193,10 @@ def _format_capabilities_help_answer(*, status: RuntimeCapabilityStatus, capabil
         return ["integrations:", ha_text]
 
     def _derive_diagnostics_lines() -> list[str]:
-        debug_state = "available" if status.debug_enabled else "unavailable"
-        debug_text = (
-            f"- Debug visibility: {debug_state}. can expose debug details when TESTBOT_DEBUG=1; "
-            "cannot show debug-only internals when debug mode is disabled."
-        )
+        if status.debug_enabled:
+            debug_text = "- Debug visibility: enabled (TESTBOT_DEBUG=1)."
+        else:
+            debug_text = "- Debug visibility: disabled (set TESTBOT_DEBUG=1 to enable)."
         return ["diagnostics:", debug_text]
 
     mode_line = (
