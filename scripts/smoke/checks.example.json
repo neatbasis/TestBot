@@ -1,36 +1,55 @@
 {
   "checks": [
     {
-      "name": "healthz",
-      "target": "http://127.0.0.1:8000/healthz",
+      "name": "ha-api-health",
+      "target": "${HA_API_URL}/api/",
       "method": "GET",
       "expected_status": 200,
       "timeout_s": 5,
-      "capability_id": "cap-auth-service-availability",
-      "capability_name": "Authentication service availability",
-      "business_impact": "Users cannot sign in if authentication health fails.",
+      "capability_id": "cap-ha-control-plane-reachable",
+      "capability_name": "Home Assistant control plane reachability",
+      "business_impact": "TestBot cannot read or influence the home runtime if the HA API is unavailable.",
+      "severity_if_broken": "critical",
+      "headers": {
+        "Authorization": "Bearer ${HA_API_SECRET}",
+        "Content-Type": "application/json"
+      }
+    },
+    {
+      "name": "ha-api-readiness",
+      "target": "${HA_API_URL}/api/config",
+      "method": "GET",
+      "expected_status": 200,
+      "timeout_s": 5,
+      "capability_id": "cap-ha-context-readiness",
+      "capability_name": "Home Assistant context readiness",
+      "business_impact": "Automation context and entity metadata are unavailable, degrading grounded responses and control actions.",
+      "severity_if_broken": "high",
+      "headers": {
+        "Authorization": "Bearer ${HA_API_SECRET}",
+        "Content-Type": "application/json"
+      }
+    },
+    {
+      "name": "ollama-api-ready",
+      "target": "${OLLAMA_BASE_URL}/api/tags",
+      "method": "GET",
+      "expected_status": 200,
+      "timeout_s": 5,
+      "capability_id": "cap-ollama-model-runtime-ready",
+      "capability_name": "Ollama model runtime readiness",
+      "business_impact": "Knowing-mode responses cannot be generated when model serving is unavailable.",
       "severity_if_broken": "critical"
     },
     {
-      "name": "payments-ready",
-      "target": "http://127.0.0.1:8000/payments/ready",
+      "name": "ollama-embedding-ready",
+      "target": "${OLLAMA_BASE_URL}/api/tags",
       "method": "GET",
       "expected_status": 200,
       "timeout_s": 5,
-      "capability_id": "cap-payments-acceptance",
-      "capability_name": "Payments acceptance",
-      "business_impact": "Revenue is blocked when payment readiness is unavailable.",
-      "severity_if_broken": "critical"
-    },
-    {
-      "name": "notifications-ready",
-      "target": "http://127.0.0.1:8000/notifications/ready",
-      "method": "GET",
-      "expected_status": 200,
-      "timeout_s": 5,
-      "capability_id": "cap-notifications-delivery",
-      "capability_name": "Notification delivery",
-      "business_impact": "Time-sensitive customer communications are delayed or lost.",
+      "capability_id": "cap-ollama-embedding-runtime-ready",
+      "capability_name": "Ollama embedding runtime readiness",
+      "business_impact": "Retrieval and grounding pipelines cannot build semantic context when embeddings are unavailable.",
       "severity_if_broken": "high"
     }
   ]

@@ -39,6 +39,7 @@ Optional fields:
 - `method` (defaults to `GET`)
 - `expected_status` (defaults to `200`)
 - `timeout_s` (defaults to `10`)
+- `headers` (object of HTTP headers, values support `${ENV_VAR}` expansion)
 
 ## Output artifacts
 

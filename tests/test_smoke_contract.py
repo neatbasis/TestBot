@@ -42,8 +42,12 @@ def _write_env_file(home: Path) -> Path:
     env_path.write_text(
         "\n".join(
             [
-                "OPENAI_BASE_URL=https://api.openai.test/v1",
-                "OPENAI_API_KEY=sk-test-supersecret-token",
+                "HA_API_URL=http://127.0.0.1:8123",
+                "HA_API_SECRET=ha-test-supersecret-token",
+                "HA_SATELLITE_ENTITY_ID=assist_satellite.test",
+                "OLLAMA_BASE_URL=http://127.0.0.1:11434",
+                "OLLAMA_MODEL=llama3.1:latest",
+                "OLLAMA_EMBEDDING_MODEL=nomic-embed-text",
                 "SMOKE_CONNECT_TIMEOUT_S=2",
                 "SMOKE_REQUEST_TIMEOUT_S=3",
             ]
