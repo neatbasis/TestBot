@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from collections import deque
 
+from langchain_core.documents import Document
+
 from testbot.pipeline_state import PipelineState
 from testbot.sat_chatbot_memory_v2 import RuntimeCapabilityStatus, stage_answer
 
@@ -107,3 +109,67 @@ def test_stage_answer_capabilities_help_reports_unavailable_when_no_clarificatio
     assert "Clarification/disambiguation: unavailable" in answer_state.final_answer
     assert "no clarification path is active in the current runtime" in answer_state.final_answer
     assert "interactive satellite ask flow unavailable" in answer_state.final_answer
+
+
+def test_debug_flag_does_not_change_non_capabilities_fallback_answer() -> None:
+    state = PipelineState(
+        user_input="what did I say about ontology",
+        confidence_decision={"context_confident": False, "ambiguity_detected": True},
+    )
+    hits = [
+        Document(
+            page_content=(
+                "type: assistant_utterance\n"
+                "ts: 2026-03-06T16:58:55.519389+00:00\n"
+                "speaker: assistant\n"
+                "channel: cli"
+            ),
+            metadata={"type": "assistant_utterance", "doc_id": "assist-1"},
+            id="assist-1",
+        )
+    ]
+
+    disabled_answer = stage_answer(
+        _FailIfInvokedLLM(),
+        state,
+        chat_history=deque(),
+        hits=hits,
+        capability_status="ask_unavailable",
+        runtime_capability_status=RuntimeCapabilityStatus(
+            ollama_available=True,
+            ha_available=False,
+            effective_mode="cli",
+            requested_mode="cli",
+            daemon_mode=False,
+            fallback_reason=None,
+            memory_backend="in_memory",
+            debug_enabled=False,
+            text_clarification_available=True,
+            satellite_ask_available=False,
+        ),
+        clock=None,
+    )
+
+    enabled_answer = stage_answer(
+        _FailIfInvokedLLM(),
+        state,
+        chat_history=deque(),
+        hits=hits,
+        capability_status="ask_unavailable",
+        runtime_capability_status=RuntimeCapabilityStatus(
+            ollama_available=True,
+            ha_available=False,
+            effective_mode="cli",
+            requested_mode="cli",
+            daemon_mode=False,
+            fallback_reason=None,
+            memory_backend="in_memory",
+            debug_enabled=True,
+            text_clarification_available=True,
+            satellite_ask_available=False,
+        ),
+        clock=None,
+    )
+
+    assert disabled_answer.final_answer == enabled_answer.final_answer
+    assert enabled_answer.final_answer.startswith("I found related memory fragments (")
