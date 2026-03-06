@@ -79,6 +79,33 @@ Per-turn dataset fields:
 
 These KPIs are emitted to `logs/turn_analytics_summary.json` for release-review and drift tracking.
 
+### Analytics row validation behavior
+
+`scripts/aggregate_turn_analytics.py` performs a lightweight normalization + validation pass before
+building per-turn rows:
+
+- `schema_version` defaults to `1` when omitted (legacy compatibility).
+- Validation is applied only to analytics-driving events:
+  - `user_utterance_ingest`
+  - `intent_classified`
+  - `fallback_action_selected`
+  - `provenance_summary`
+- For supported schemas (`v1`, `v2`, `v3`), required keys and basic value types are validated by event.
+
+Invalid analytics event rows are **skipped** (not fail-fast) and accounted for in
+`logs/turn_analytics_summary.json` via:
+
+- `invalid_rows`: total invalid analytics rows encountered.
+- `skipped_rows`: rows skipped from aggregation (currently equal to `invalid_rows`).
+- `per_event_validation_failures`: per-event failure counters.
+
+When invalid-row counts are non-zero:
+
+1. Treat KPI output as potentially biased due to dropped evidence.
+2. Inspect offending rows in `logs/session.jsonl` and align emitters with the event schema contract.
+3. Re-run `python scripts/validate_log_schema.py` and `python scripts/aggregate_turn_analytics.py`.
+4. Only use KPI outputs for release review when invalid/skipped counts return to zero (or are explicitly triaged).
+
 ### KPI guardrails (release thresholds)
 
 Machine-readable guardrails live in `config/kpi_guardrails.json` and are validated by

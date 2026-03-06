@@ -22,6 +22,31 @@ class TurnAnalytics:
     provenance_completeness: float
 
 
+SUPPORTED_SCHEMA_VERSIONS = {1, 2, 3}
+ANALYTICS_EVENTS = {
+    "user_utterance_ingest",
+    "intent_classified",
+    "fallback_action_selected",
+    "provenance_summary",
+}
+
+
+@dataclass
+class ValidationSummary:
+    invalid_rows: int = 0
+    skipped_rows: int = 0
+    per_event_validation_failures: dict[str, int] | None = None
+
+    def __post_init__(self) -> None:
+        if self.per_event_validation_failures is None:
+            self.per_event_validation_failures = {}
+
+    def register_failure(self, event: str) -> None:
+        self.invalid_rows += 1
+        self.skipped_rows += 1
+        self.per_event_validation_failures[event] = self.per_event_validation_failures.get(event, 0) + 1
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input", type=Path, default=Path("logs/session.jsonl"), help="Input JSONL event log path.")
@@ -49,6 +74,72 @@ def _read_jsonl(path: Path) -> list[dict[str, Any]]:
             continue
         rows.append(json.loads(line))
     return rows
+
+
+def _validate_analytics_row(row: dict[str, Any]) -> list[str]:
+    errors: list[str] = []
+
+    event = row.get("event")
+    if not isinstance(event, str):
+        return ["key 'event' must be str"]
+
+    schema_version = row.get("schema_version", 1)
+    if not isinstance(schema_version, int):
+        errors.append("key 'schema_version' expected int when present")
+    elif schema_version not in SUPPORTED_SCHEMA_VERSIONS:
+        errors.append(f"unsupported schema_version '{schema_version}'")
+
+    if event not in ANALYTICS_EVENTS:
+        return errors
+
+    required_by_event: dict[str, dict[str, tuple[type, ...]]] = {
+        "user_utterance_ingest": {
+            "utterance": (str,),
+        },
+        "intent_classified": {
+            "intent": (str,),
+            "ambiguity_score": (int, float),
+            "user_followup_signal_proxy": (int, float),
+        },
+        "fallback_action_selected": {
+            "intent": (str,),
+            "ambiguity_score": (int, float),
+            "chosen_action": (str,),
+            "user_followup_signal_proxy": (int, float),
+        },
+        "provenance_summary": {
+            "provenance_types": (list,),
+            "used_memory_refs": (list,),
+            "basis_statement": (str,),
+        },
+    }
+
+    for key, expected_types in required_by_event[event].items():
+        if key not in row:
+            errors.append(f"missing required key '{key}'")
+            continue
+        if not isinstance(row[key], expected_types):
+            expected_names = "|".join(t.__name__ for t in expected_types)
+            errors.append(f"key '{key}' expected {expected_names}, got {type(row[key]).__name__}")
+
+    return errors
+
+
+def normalize_and_validate_rows(rows: Iterable[dict[str, Any]]) -> tuple[list[dict[str, Any]], ValidationSummary]:
+    normalized_rows: list[dict[str, Any]] = []
+    summary = ValidationSummary()
+    for row in rows:
+        normalized = dict(row)
+        if "schema_version" not in normalized:
+            normalized["schema_version"] = 1
+
+        errors = _validate_analytics_row(normalized)
+        if errors and isinstance(normalized.get("event"), str) and normalized["event"] in ANALYTICS_EVENTS:
+            summary.register_failure(normalized["event"])
+            continue
+        normalized_rows.append(normalized)
+
+    return normalized_rows, summary
 
 
 def _first_float(*values: object, default: float = 0.0) -> float:
@@ -181,13 +272,20 @@ def main() -> int:
     summary_path = _resolve_path(args.summary_output)
 
     rows = _read_jsonl(input_path)
-    dataset = aggregate_turn_dataset(rows)
+    normalized_rows, validation_summary = normalize_and_validate_rows(rows)
+    dataset = aggregate_turn_dataset(normalized_rows)
     kpis = compute_kpis(dataset)
+    summary_payload = {
+        **kpis,
+        "invalid_rows": validation_summary.invalid_rows,
+        "skipped_rows": validation_summary.skipped_rows,
+        "per_event_validation_failures": validation_summary.per_event_validation_failures,
+    }
 
     _write_jsonl(output_path, [turn.__dict__ for turn in dataset])
-    _write_json(summary_path, kpis)
+    _write_json(summary_path, summary_payload)
 
-    print(json.dumps({"dataset_path": str(output_path), "summary_path": str(summary_path), "kpis": kpis}, indent=2))
+    print(json.dumps({"dataset_path": str(output_path), "summary_path": str(summary_path), "kpis": summary_payload}, indent=2))
     return 0
 
 
