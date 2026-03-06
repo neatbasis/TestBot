@@ -42,6 +42,8 @@ def step_when_ha_unavailable_cli(context) -> None:
             fallback_reason="satellite connection is unavailable",
             memory_backend="in_memory",
             debug_enabled=False,
+            text_clarification_available=True,
+            satellite_ask_available=False,
         ),
         clock=None,
     )
@@ -69,6 +71,8 @@ def step_when_ha_available_satellite(context) -> None:
             fallback_reason=None,
             memory_backend="elasticsearch",
             debug_enabled=True,
+            text_clarification_available=True,
+            satellite_ask_available=True,
         ),
         clock=None,
     )
