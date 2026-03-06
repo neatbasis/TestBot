@@ -145,3 +145,21 @@ def test_validate_red_severity_consistency_catches_owner_and_sprint_placeholders
 
     assert any("concrete Owner" in f.message for f in failures)
     assert any("concrete Target Sprint" in f.message for f in failures)
+
+
+def test_resolve_base_ref_prefers_requested_when_available(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(validate_issue_links, "git_ref_exists", lambda ref: ref == "origin/main")
+
+    resolved, notes = validate_issue_links.resolve_base_ref("origin/main")
+
+    assert resolved == "origin/main"
+    assert notes == []
+
+
+def test_resolve_base_ref_falls_back_when_origin_main_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(validate_issue_links, "git_ref_exists", lambda ref: ref == "HEAD~1")
+
+    resolved, notes = validate_issue_links.resolve_base_ref("origin/main")
+
+    assert resolved == "HEAD~1"
+    assert any("falling back to 'HEAD~1'" in note for note in notes)

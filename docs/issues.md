@@ -105,3 +105,25 @@ Example:
 
 - `docs/issues/ISSUE-0002-behave-dev-deps-reminders.md`
 
+## Governance validator base-ref fallback workflow
+
+When running governance validators from shallow or detached environments, use this supported flow:
+
+1. Run validators with default base ref (`origin/main`).
+2. If `origin/main` is unavailable, validators automatically fall back to `HEAD~1`, then `HEAD`.
+3. For explicit control, pass `--base-ref <ref>`.
+
+Canonical commands:
+
+```bash
+python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main
+python scripts/validate_issues.py --all-issue-files --base-ref origin/main
+```
+
+If needed, force an explicit detached-friendly base ref:
+
+```bash
+python scripts/validate_issue_links.py --all-issue-files --base-ref HEAD~1
+python scripts/validate_issues.py --all-issue-files --base-ref HEAD~1
+```
+

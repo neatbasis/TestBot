@@ -47,7 +47,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--base-ref",
         default="origin/main",
-        help="Git base ref passed to issue-link validation (default: origin/main).",
+        help=(
+            "Git base ref passed to governance validators (default: origin/main). "
+            "If origin/main is unavailable in shallow/detached environments, "
+            "the gate falls back to HEAD~1, then HEAD. Override with --base-ref."
+        ),
     )
     parser.add_argument(
         "--json-output",
@@ -57,7 +61,46 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def build_checks(*, base_ref: str) -> list[GateCheck]:
+
+
+def git_ref_exists(ref: str) -> bool:
+    completed = subprocess.run(
+        ["git", "rev-parse", "--verify", "--quiet", ref],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+    )
+    return completed.returncode == 0
+
+
+def resolve_base_ref(base_ref: str) -> tuple[str | None, list[str]]:
+    notes: list[str] = []
+    if git_ref_exists(base_ref):
+        return base_ref, notes
+
+    if base_ref != "origin/main":
+        return None, [
+            (
+                f"Base ref '{base_ref}' does not exist. "
+                "Use --base-ref with an available ref (for example origin/main, HEAD~1, or HEAD)."
+            )
+        ]
+
+    for fallback in ("HEAD~1", "HEAD"):
+        if git_ref_exists(fallback):
+            notes.append(
+                f"Base ref 'origin/main' is unavailable; using fallback '{fallback}' for governance validators."
+            )
+            return fallback, notes
+
+    notes.append(
+        "Could not resolve origin/main or fallback refs (HEAD~1, HEAD). "
+        "Governance validators will run with --all-issue-files but commit-range linkage checks may be skipped. "
+        "Hint: fetch main history (git fetch origin main) or pass --base-ref HEAD explicitly."
+    )
+    return None, notes
+
+def build_checks(*, base_ref: str | None) -> list[GateCheck]:
     return [
         GateCheck(name="product_behave", command=[sys.executable, "-m", "behave"]),
         GateCheck(
@@ -123,7 +166,7 @@ def build_checks(*, base_ref: str) -> list[GateCheck]:
                 "scripts/validate_issue_links.py",
                 "--all-issue-files",
                 "--base-ref",
-                base_ref,
+                base_ref or "HEAD",
             ],
         ),
         GateCheck(
@@ -133,7 +176,7 @@ def build_checks(*, base_ref: str) -> list[GateCheck]:
                 "scripts/validate_issues.py",
                 "--all-issue-files",
                 "--base-ref",
-                base_ref,
+                base_ref or "HEAD",
             ],
         ),
         GateCheck(
@@ -227,7 +270,11 @@ def main() -> int:
             out_path.write_text(summary_json + "\n", encoding="utf-8")
         return 1
 
-    checks = build_checks(base_ref=args.base_ref)
+    effective_base_ref, base_ref_notes = resolve_base_ref(args.base_ref)
+    for note in base_ref_notes:
+        print(f"[WARN] {note}")
+
+    checks = build_checks(base_ref=effective_base_ref)
     results, exit_code = run_gate(checks=checks, continue_on_failure=args.continue_on_failure)
     summary = summarize(results=results, continue_on_failure=args.continue_on_failure)
 
