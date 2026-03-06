@@ -199,6 +199,35 @@ def test_non_blocking_check_is_warning(monkeypatch: pytest.MonkeyPatch) -> None:
     assert exit_code == 0
 
 
+
+
+def test_main_fails_fast_when_behave_dependency_missing(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+    monkeypatch.setattr(release_gate, "parse_args", lambda: release_gate.argparse.Namespace(
+        continue_on_failure=False,
+        json_output=None,
+        base_ref="origin/main",
+        replay_report=False,
+        kpi_guardrail_mode="optional",
+    ))
+    monkeypatch.setattr(release_gate.importlib.util, "find_spec", lambda _name: None)
+
+    run_gate_called = False
+
+    def fake_run_gate(*_args: object, **_kwargs: object) -> tuple[list[release_gate.CheckResult], int]:
+        nonlocal run_gate_called
+        run_gate_called = True
+        return [], 0
+
+    monkeypatch.setattr(release_gate, "run_gate", fake_run_gate)
+
+    exit_code = release_gate.main()
+    output = capsys.readouterr().out
+
+    assert exit_code == 1
+    assert run_gate_called is False
+    assert release_gate.BEHAVE_PREFLIGHT_CHECK_NAME in output
+    assert "python -m pip install -e .[dev]" in output
+
 def test_main_prints_parity_divergence_hint(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
     monkeypatch.setattr(release_gate, "parse_args", lambda: release_gate.argparse.Namespace(
         continue_on_failure=False,
@@ -207,6 +236,7 @@ def test_main_prints_parity_divergence_hint(monkeypatch: pytest.MonkeyPatch, cap
         replay_report=False,
         kpi_guardrail_mode="optional",
     ))
+    monkeypatch.setattr(release_gate.importlib.util, "find_spec", lambda _name: object())
     monkeypatch.setattr(release_gate, "build_checks", lambda **_kwargs: [])
     monkeypatch.setattr(
         release_gate,

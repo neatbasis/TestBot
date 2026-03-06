@@ -84,8 +84,9 @@ Use the following canonical commands from repository root.
 
 For non-live changes, this is the expected offline/deterministic contributor gate:
 
-1. `pip install -e .[dev]`
-2. `python scripts/all_green_gate.py`
+1. `pip install -e .`
+2. `pip install -e .[dev]`
+3. `python scripts/all_green_gate.py`
 
 `scripts/all_green_gate.py` is the only authoritative command sequence for merge readiness and executes every blocking obligation listed in `docs/directives/stakeholder-obligations.md`, including recall eval plus invariant/path/schema validators.
 
