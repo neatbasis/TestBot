@@ -101,6 +101,14 @@ python scripts/all_green_gate.py
 - Machine-readable summary artifact for the same sequence: `python scripts/all_green_gate.py --json-output artifacts/all-green-gate-summary.json`
 - Optional post-merge live smoke profile: `pytest -m live_smoke`
 
+### Turn analytics in canonical gate
+
+`scripts/all_green_gate.py` now mirrors release-gate rollout behavior for turn analytics KPI checks via `--kpi-guardrail-mode {off,optional,blocking}` (default `optional`).
+
+- `off`: skips turn analytics aggregation and KPI guardrail validation.
+- `optional`: runs `scripts/aggregate_turn_analytics.py` and `scripts/validate_kpi_guardrails.py` as non-blocking warnings.
+- `blocking`: runs the same commands as hard failures that block gate success.
+
 ### Quick contributor validation
 
 For non-live code changes, use this offline/deterministic gate:

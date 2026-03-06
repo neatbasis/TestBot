@@ -26,6 +26,7 @@ BEHAVE_REMEDIATION_MESSAGE = (
 class GateCheck:
     name: str
     command: list[str]
+    blocking: bool = True
 
 
 @dataclass
@@ -57,6 +58,12 @@ def parse_args() -> argparse.Namespace:
         "--json-output",
         type=Path,
         help="Optional path to write the JSON summary.",
+    )
+    parser.add_argument(
+        "--kpi-guardrail-mode",
+        choices=("off", "optional", "blocking"),
+        default="optional",
+        help="Rollout mode for turn analytics + KPI guardrail checks (default: optional).",
     )
     return parser.parse_args()
 
@@ -100,8 +107,8 @@ def resolve_base_ref(base_ref: str) -> tuple[str | None, list[str]]:
     )
     return None, notes
 
-def build_checks(*, base_ref: str | None) -> list[GateCheck]:
-    return [
+def build_checks(*, base_ref: str | None, kpi_guardrail_mode: str = "optional") -> list[GateCheck]:
+    checks = [
         GateCheck(name="product_behave", command=[sys.executable, "-m", "behave"]),
         GateCheck(
             name="product_eval_runtime_parity",
@@ -189,6 +196,41 @@ def build_checks(*, base_ref: str | None) -> list[GateCheck]:
         ),
     ]
 
+    if kpi_guardrail_mode != "off":
+        kpi_blocking = kpi_guardrail_mode == "blocking"
+        checks.extend(
+            [
+                GateCheck(
+                    name="qa_aggregate_turn_analytics",
+                    command=[
+                        sys.executable,
+                        "scripts/aggregate_turn_analytics.py",
+                        "--input",
+                        "logs/session.jsonl",
+                        "--output",
+                        "logs/turn_analytics.jsonl",
+                        "--summary-output",
+                        "logs/turn_analytics_summary.json",
+                    ],
+                    blocking=kpi_blocking,
+                ),
+                GateCheck(
+                    name="qa_validate_kpi_guardrails",
+                    command=[
+                        sys.executable,
+                        "scripts/validate_kpi_guardrails.py",
+                        "--summary",
+                        "logs/turn_analytics_summary.json",
+                        "--config",
+                        "config/kpi_guardrails.json",
+                    ],
+                    blocking=kpi_blocking,
+                ),
+            ]
+        )
+
+    return checks
+
 
 def run_check(check: GateCheck) -> CheckResult:
     started = time.monotonic()
@@ -214,8 +256,10 @@ def run_gate(checks: Sequence[GateCheck], continue_on_failure: bool) -> tuple[li
     results: list[CheckResult] = []
     for idx, check in enumerate(checks):
         result = run_check(check)
+        if result.status == "failed" and not check.blocking:
+            result.status = "warning"
         results.append(result)
-        if result.status == "failed" and not continue_on_failure:
+        if result.status == "failed" and check.blocking and not continue_on_failure:
             for remaining in checks[idx + 1 :]:
                 results.append(
                     CheckResult(
@@ -248,10 +292,12 @@ def preflight_bdd_dependencies() -> CheckResult | None:
 
 def summarize(results: Sequence[CheckResult], continue_on_failure: bool) -> dict[str, object]:
     has_failure = any(result.status == "failed" for result in results)
+    warning_count = sum(1 for result in results if result.status == "warning")
     return {
         "status": "failed" if has_failure else "passed",
         "exit_code": 1 if has_failure else 0,
         "continue_on_failure": continue_on_failure,
+        "warning_count": warning_count,
         "checks": [asdict(result) for result in results],
     }
 
@@ -279,7 +325,7 @@ def main() -> int:
             f"origin/main -> HEAD~1 -> HEAD (using {effective_base_ref!r})."
         )
 
-    checks = build_checks(base_ref=effective_base_ref)
+    checks = build_checks(base_ref=effective_base_ref, kpi_guardrail_mode=args.kpi_guardrail_mode)
     results, exit_code = run_gate(checks=checks, continue_on_failure=args.continue_on_failure)
     summary = summarize(results=results, continue_on_failure=args.continue_on_failure)
 
@@ -290,6 +336,12 @@ def main() -> int:
         print(
             "\nIf checks failed because test tooling is missing, install development dependencies first: "
             "python -m pip install -e .[dev]"
+        )
+
+    if args.kpi_guardrail_mode == "optional":
+        print(
+            "\nTurn analytics and KPI guardrail checks are running in optional mode. "
+            "Promote with --kpi-guardrail-mode blocking once rollout criteria are met."
         )
 
     if args.json_output:

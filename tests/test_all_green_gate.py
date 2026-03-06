@@ -20,6 +20,7 @@ def test_main_fails_fast_when_behave_dependency_missing(monkeypatch: pytest.Monk
         continue_on_failure=False,
         base_ref="origin/main",
         json_output=None,
+        kpi_guardrail_mode="optional",
     ))
     monkeypatch.setattr(all_green_gate.importlib.util, "find_spec", lambda _name: None)
 
@@ -65,6 +66,7 @@ def test_main_propagates_effective_base_ref_to_governance_checks(
             continue_on_failure=False,
             base_ref="origin/main",
             json_output=None,
+            kpi_guardrail_mode="optional",
         ),
     )
     monkeypatch.setattr(all_green_gate.importlib.util, "find_spec", lambda _name: object())
@@ -86,3 +88,80 @@ def test_main_propagates_effective_base_ref_to_governance_checks(
     issue_cmd = next(c.command for c in captured_checks if c.name == "qa_validate_issues")
     assert issue_link_cmd[-1] == "HEAD~1"
     assert issue_cmd[-1] == "HEAD~1"
+
+
+def test_build_checks_disables_turn_analytics_when_mode_off() -> None:
+    checks = all_green_gate.build_checks(base_ref="origin/main", kpi_guardrail_mode="off")
+
+    check_names = [check.name for check in checks]
+    assert "qa_aggregate_turn_analytics" not in check_names
+    assert "qa_validate_kpi_guardrails" not in check_names
+
+
+def test_build_checks_adds_optional_turn_analytics_checks() -> None:
+    checks = all_green_gate.build_checks(base_ref="origin/main", kpi_guardrail_mode="optional")
+
+    aggregate_check = next(check for check in checks if check.name == "qa_aggregate_turn_analytics")
+    kpi_check = next(check for check in checks if check.name == "qa_validate_kpi_guardrails")
+
+    assert aggregate_check.command[1:] == [
+        "scripts/aggregate_turn_analytics.py",
+        "--input",
+        "logs/session.jsonl",
+        "--output",
+        "logs/turn_analytics.jsonl",
+        "--summary-output",
+        "logs/turn_analytics_summary.json",
+    ]
+    assert kpi_check.command[1:] == [
+        "scripts/validate_kpi_guardrails.py",
+        "--summary",
+        "logs/turn_analytics_summary.json",
+        "--config",
+        "config/kpi_guardrails.json",
+    ]
+    assert aggregate_check.blocking is False
+    assert kpi_check.blocking is False
+
+
+def test_run_gate_marks_optional_failure_as_warning(monkeypatch: pytest.MonkeyPatch) -> None:
+    checks = [all_green_gate.GateCheck(name="optional", command=["optional"], blocking=False)]
+
+    def fake_run_check(_check: all_green_gate.GateCheck) -> all_green_gate.CheckResult:
+        return all_green_gate.CheckResult(
+            name="optional",
+            command="optional",
+            status="failed",
+            exit_code=2,
+            duration_s=0.01,
+        )
+
+    monkeypatch.setattr(all_green_gate, "run_check", fake_run_check)
+
+    results, exit_code = all_green_gate.run_gate(checks=checks, continue_on_failure=False)
+
+    assert results[0].status == "warning"
+    assert exit_code == 0
+
+
+def test_run_gate_enforces_blocking_turn_analytics_checks(monkeypatch: pytest.MonkeyPatch) -> None:
+    checks = [
+        all_green_gate.GateCheck(name="qa_aggregate_turn_analytics", command=["aggregate"], blocking=True),
+        all_green_gate.GateCheck(name="later_blocking", command=["later"], blocking=True),
+    ]
+
+    def fake_run_check(_check: all_green_gate.GateCheck) -> all_green_gate.CheckResult:
+        return all_green_gate.CheckResult(
+            name="qa_aggregate_turn_analytics",
+            command="aggregate",
+            status="failed",
+            exit_code=1,
+            duration_s=0.01,
+        )
+
+    monkeypatch.setattr(all_green_gate, "run_check", fake_run_check)
+
+    results, exit_code = all_green_gate.run_gate(checks=checks, continue_on_failure=False)
+
+    assert [result.status for result in results] == ["failed", "not_run"]
+    assert exit_code == 1
