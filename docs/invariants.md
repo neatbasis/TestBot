@@ -2,6 +2,8 @@
 
 This registry defines contract-level invariants for answer behavior. Each invariant has a stable ID and traceability links to implementation and verification coverage.
 
+`docs/invariants.md` is the canonical source of truth; directive mirrors (for example `docs/directives/invariants.md`) must remain synchronized with this contract.
+
 ## Invariants
 
 | Invariant ID | Invariant statement | Runtime enforcement (code location) | Test/BDD coverage |
