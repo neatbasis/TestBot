@@ -99,3 +99,19 @@ def test_eval_compare_objective_versions_reports_deltas(tmp_path) -> None:
     assert len(comparisons) == 1
     assert comparisons[0]["objective_version"] == "v2"
     assert "hit_at_k_delta_vs_baseline" in comparisons[0]
+
+
+def test_eval_parse_target_time_supports_ambiguous_phrase_boundaries() -> None:
+    now = arrow.get("2026-03-10T11:00:00+00:00")
+
+    assert eval_recall.parse_target_time("What did I mention earlier this week?", now=now) == now.floor("week")
+    assert eval_recall.parse_target_time("What did I mention this morning?", now=now) == now.floor("day").shift(hours=+9)
+    assert eval_recall.parse_target_time("What did I mention recently?", now=now) == now.shift(hours=-6)
+
+
+def test_eval_recall_fixtures_include_temporal_boundary_cases() -> None:
+    cases = eval_recall.load_eval_cases(Path("eval/cases.jsonl"))
+    case_ids = {case.case_id for case in cases}
+
+    assert "morning-hydration-boundary" in case_ids
+    assert "recently-symptom-note" in case_ids

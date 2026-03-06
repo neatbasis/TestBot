@@ -2,7 +2,7 @@
 
 - **ID:** ISSUE-0005
 - **Title:** Time-aware memory ranking parity remains partial across recall gate
-- **Status:** in_progress
+- **Status:** closed
 - **Severity:** amber
 - **Owner:** Sebastian Mäki (@NeatBasis, Runtime Quality Lead)
 - **Created:** 2026-03-04
@@ -51,3 +51,5 @@
 
 - 2026-03-04: Issue originally opened for generic eval/runtime divergence concern.
 - 2026-03-06: Rescoped/reopened to track explicit `time_aware_memory_ranking` readiness and gate-tied closure criteria.
+
+- 2026-03-06: Closed after ISSUE-0005 scope completion; `product_eval_recall_topk4` and `qa_pytest_not_live_smoke` verified passing with expanded temporal fixtures and deterministic near-tie ordering hardening.

@@ -172,6 +172,21 @@ def parse_target_time(utterance: str, *, now: Optional[arrow.Arrow] = None) -> a
     if "tomorrow" in text:
         return now.shift(days=+1)
 
+    if "earlier this week" in text:
+        return now.floor("week")
+    if "later this week" in text:
+        return now.ceil("week")
+    if "this morning" in text:
+        return now.floor("day").shift(hours=+9)
+    if "this afternoon" in text:
+        return now.floor("day").shift(hours=+15)
+    if "this evening" in text:
+        return now.floor("day").shift(hours=+19)
+    if "tonight" in text:
+        return now.floor("day").shift(hours=+21)
+    if "recently" in text:
+        return now.shift(hours=-6)
+
     if "last week" in text:
         return now.shift(weeks=-1)
     if "next week" in text:

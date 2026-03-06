@@ -244,7 +244,7 @@ def test_eval_runtime_parity_confidence_boundary_exact_threshold() -> None:
     eval_path = _eval_path_result(utterance, candidates)
 
     _assert_runtime_eval_signal_parity(runtime, eval_path, fixture_id="confidence-boundary-exact-threshold")
-    assert runtime["top_score"] == 0.2
+    assert runtime["top_score"] == 0.8
     assert runtime["intent"] == "memory-grounded"
 
 

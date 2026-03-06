@@ -6,6 +6,7 @@ import arrow
 
 from testbot.pipeline_state import PipelineState
 from testbot.sat_chatbot_memory_v2 import stage_answer, stage_rerank
+from testbot.time_parse import parse_target_time
 from testbot.time_reasoning import elapsed_since_last_user_message, resolve_relative_date
 
 
@@ -70,3 +71,11 @@ def test_stage_answer_time_query_uses_fake_clock_and_helsinki() -> None:
 
     assert updated.final_answer == "Tomorrow is 2026-03-12 in Europe/Helsinki."
     assert updated.invariant_decisions["fallback_action"] == "ANSWER_TIME"
+
+
+def test_parse_target_time_maps_ambiguous_temporal_phrases_deterministically() -> None:
+    now = arrow.get("2026-03-10T11:00:00+00:00")
+
+    assert parse_target_time("What did I mention earlier this week?", now=now) == now.floor("week")
+    assert parse_target_time("What did I mention this morning?", now=now) == now.floor("day").shift(hours=+9)
+    assert parse_target_time("What did I mention recently?", now=now) == now.shift(hours=-6)
