@@ -119,6 +119,18 @@ def _near_tie_signature(candidate: dict[str, Any]) -> tuple[str, float]:
     return (str(candidate.get("doc_id", "")), float(candidate.get("score", 0.0) or 0.0))
 
 
+def _assert_intermediate_signal_contract(signals: dict[str, Any], fixture_id: str) -> None:
+    scored_doc_ids = [str(candidate.get("doc_id", "")) for candidate in signals["scored_candidates"]]
+    assert scored_doc_ids == signals["ranked_doc_ids"], fixture_id
+
+    near_tie_doc_ids = [str(candidate.get("doc_id", "")) for candidate in signals["near_tie_candidates"]]
+    assert all(doc_id in scored_doc_ids for doc_id in near_tie_doc_ids), fixture_id
+
+    if signals["ambiguity_detected"]:
+        assert signals["intent"] == "dont-know", fixture_id
+        assert len(signals["near_tie_candidates"]) >= 2, fixture_id
+
+
 def _assert_runtime_eval_signal_parity(runtime: dict[str, Any], eval_path: dict[str, Any], fixture_id: str) -> None:
     assert runtime["ranked_doc_ids"] == eval_path["ranked_doc_ids"], fixture_id
     assert runtime["top_doc_id"] == eval_path["top_doc_id"], fixture_id
@@ -134,6 +146,9 @@ def _assert_runtime_eval_signal_parity(runtime: dict[str, Any], eval_path: dict[
     assert runtime_near_tie == eval_near_tie, fixture_id
 
     assert abs(runtime["top_score"] - eval_path["top_score"]) <= 1e-12, fixture_id
+
+    _assert_intermediate_signal_contract(runtime, fixture_id)
+    _assert_intermediate_signal_contract(eval_path, fixture_id)
 
 
 def test_eval_runtime_parity_clear_winner_case() -> None:
@@ -223,6 +238,7 @@ def test_eval_runtime_parity_confidence_boundary_exact_threshold() -> None:
     _assert_runtime_eval_signal_parity(runtime, eval_path, fixture_id="confidence-boundary-exact-threshold")
     assert runtime["top_score"] == 0.2
     assert runtime["intent"] == "memory-grounded"
+
 
 def test_eval_runtime_parity_fixture_families() -> None:
     fixture_files = [

@@ -83,7 +83,11 @@ def build_checks(*, replay_report: bool = False, base_ref: str = "origin/main", 
             ],
         ),
         GateCheck(name="pytest_non_live_smoke", command=[sys.executable, "-m", "pytest", "-m", "not live_smoke"]),
-        GateCheck(name="pytest_eval_runtime_parity", command=[sys.executable, "-m", "pytest", "tests/test_eval_runtime_parity.py"]),
+        GateCheck(
+            name="pytest_eval_runtime_parity",
+            command=[sys.executable, "-m", "pytest", "tests/test_eval_runtime_parity.py"],
+            blocking=True,
+        ),
         GateCheck(
             name="validate_issue_links",
             command=[
@@ -222,7 +226,7 @@ def main() -> int:
     parity_failed = any(r.name == "pytest_eval_runtime_parity" and r.status == "failed" for r in results)
     if parity_failed:
         print(
-            "\nParity gate failed (blocking): runtime/eval behavior drift likely in ordering, "
+            "\nParity gate failed (blocking release gate): runtime/eval behavior drift likely in ordering, "
             "fallback class, confidence boundaries, or ambiguity outcomes."
         )
         print(
