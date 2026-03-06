@@ -24,7 +24,7 @@ capabilities:
   runtime_dependency_flags:
   - SOURCE_INGEST_ENABLED
   - TESTBOT_RERANK_OBJECTIVE_CONFIG
-  current_status: partial
+  current_status: implemented
   roadmap_priority_refs:
   - P2
   - P4

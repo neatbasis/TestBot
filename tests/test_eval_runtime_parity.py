@@ -71,6 +71,7 @@ def _runtime_path_result(utterance: str, candidates: list[dict[str, Any]]) -> di
     intent = "memory-grounded" if context_confident else "dont-know"
 
     return {
+        "context_confident": context_confident,
         "ranked_doc_ids": [str(doc.id or "") for doc in outcome.docs],
         "top_doc_id": str(outcome.docs[0].id or "") if outcome.docs else "",
         "intent": intent,
@@ -98,9 +99,11 @@ def _eval_path_result(utterance: str, candidates: list[dict[str, Any]]) -> dict[
         if ranked
         else 0.0
     )
-    intent = "memory-grounded" if eval_signals["context_confident"] and not eval_signals["ambiguity_detected"] else "dont-know"
+    context_confident = bool(eval_signals["context_confident"])
+    intent = "memory-grounded" if context_confident and not eval_signals["ambiguity_detected"] else "dont-know"
 
     return {
+        "context_confident": context_confident,
         "ranked_doc_ids": [candidate.get("doc_id", "") for candidate in ranked],
         "top_doc_id": ranked[0].get("doc_id", "") if ranked else "",
         "intent": intent,
@@ -135,6 +138,7 @@ def _assert_runtime_eval_signal_parity(runtime: dict[str, Any], eval_path: dict[
     assert runtime["ranked_doc_ids"] == eval_path["ranked_doc_ids"], fixture_id
     assert runtime["top_doc_id"] == eval_path["top_doc_id"], fixture_id
     assert runtime["intent"] == eval_path["intent"], fixture_id
+    assert runtime["context_confident"] == eval_path["context_confident"], fixture_id
     assert runtime["ambiguity_detected"] == eval_path["ambiguity_detected"], fixture_id
 
     runtime_scored = [_candidate_signal_signature(c) for c in runtime["scored_candidates"]]
@@ -148,6 +152,10 @@ def _assert_runtime_eval_signal_parity(runtime: dict[str, Any], eval_path: dict[
     assert abs(runtime["top_score"] - eval_path["top_score"]) <= 1e-12, fixture_id
 
     _assert_intermediate_signal_contract(runtime, fixture_id)
+
+    if runtime["intent"] == "memory-grounded":
+        assert runtime["context_confident"] is True, fixture_id
+        assert runtime["ambiguity_detected"] is False, fixture_id
     _assert_intermediate_signal_contract(eval_path, fixture_id)
 
 

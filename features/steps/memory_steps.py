@@ -321,6 +321,20 @@ def step_then_has_citation(context) -> None:
     assert "ts:" in context.answer
 
 
+@then("the response includes memory provenance transparency fields")
+def step_then_memory_provenance_fields(context) -> None:
+    assert context.pipeline_state.provenance_types
+    assert ProvenanceType.MEMORY in context.pipeline_state.provenance_types
+    assert context.pipeline_state.used_memory_refs
+    assert "@" in context.pipeline_state.used_memory_refs[0]
+
+
+@then("the response includes a grounding basis statement")
+def step_then_grounding_basis_statement(context) -> None:
+    assert context.pipeline_state.basis_statement.strip()
+    assert "memory context" in context.pipeline_state.basis_statement.lower()
+
+
 @then("the assistant returns an assistive fallback response")
 def step_then_assistive_fallback(context) -> None:
     lowered = context.answer.lower()
