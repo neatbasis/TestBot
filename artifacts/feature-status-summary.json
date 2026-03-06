@@ -12,7 +12,13 @@
       "effective_status": "partial",
       "declared_status": "partial",
       "failed_gate_checks": [],
-      "relevant_open_issues": [],
+      "relevant_open_issues": [
+        {
+          "id": "ISSUE-0009",
+          "title": "Knowing grounded answers remain partial due to provenance/recall gate debt",
+          "path": "docs/issues/ISSUE-0009-knowing-grounded-answers-partial-provenance-gap.md"
+        }
+      ],
       "roadmap_priority_refs": [
         "P2",
         "P4"
@@ -46,7 +52,13 @@
       "effective_status": "partial",
       "declared_status": "partial",
       "failed_gate_checks": [],
-      "relevant_open_issues": [],
+      "relevant_open_issues": [
+        {
+          "id": "ISSUE-0010",
+          "title": "Unknowing safe fallback remains partial for explicit uncertainty contract completeness",
+          "path": "docs/issues/ISSUE-0010-unknowing-safe-fallback-partial-contract-gap.md"
+        }
+      ],
       "roadmap_priority_refs": [
         "P3"
       ],
@@ -72,7 +84,13 @@
       "effective_status": "partial",
       "declared_status": "partial",
       "failed_gate_checks": [],
-      "relevant_open_issues": [],
+      "relevant_open_issues": [
+        {
+          "id": "ISSUE-0008",
+          "title": "Intent-grounding router remains partial for deterministic route confidence",
+          "path": "docs/issues/ISSUE-0008-intent-grounding-gate-failures-block-merge.md"
+        }
+      ],
       "roadmap_priority_refs": [
         "P3"
       ],
@@ -98,7 +116,13 @@
       "effective_status": "partial",
       "declared_status": "partial",
       "failed_gate_checks": [],
-      "relevant_open_issues": [],
+      "relevant_open_issues": [
+        {
+          "id": "ISSUE-0005",
+          "title": "Time-aware memory ranking parity remains partial across recall gate",
+          "path": "docs/issues/ISSUE-0005-eval-runtime-logic-divergence-risk.md"
+        }
+      ],
       "roadmap_priority_refs": [
         "P2",
         "P5"
@@ -169,7 +193,13 @@
       "effective_status": "partial",
       "declared_status": "partial",
       "failed_gate_checks": [],
-      "relevant_open_issues": [],
+      "relevant_open_issues": [
+        {
+          "id": "ISSUE-0007",
+          "title": "Governance readiness gate traceability is partial for capability-linked issue enforcement",
+          "path": "docs/issues/ISSUE-0007-behave-gate-not-enforced-in-pr-validation.md"
+        }
+      ],
       "roadmap_priority_refs": [
         "P5"
       ],
@@ -189,6 +219,6 @@
       ]
     }
   ],
-  "open_issue_count": 0,
+  "open_issue_count": 5,
   "gate_checks_seen": 13
 }
