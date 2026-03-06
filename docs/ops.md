@@ -147,3 +147,52 @@ Link this evidence from `docs/issues/RED_TAG.md` triage updates.
 - `OLLAMA_BASE_URL` is the canonical Ollama endpoint variable.
 - `OLLAMA_HOST` may be accepted as a legacy fallback in some setups.
 - Keep runtime and test environments separate so deterministic tests stay offline.
+
+## Source ingestion connectors
+
+TestBot can ingest external sources before the chat loop starts when `SOURCE_INGEST_ENABLED=1`.
+
+### Local markdown connector
+
+```bash
+SOURCE_INGEST_ENABLED=1 \
+SOURCE_CONNECTOR_TYPE=local_markdown \
+SOURCE_MARKDOWN_PATH=./docs \
+SOURCE_INGEST_LIMIT=20 \
+python src/testbot/sat_chatbot_memory_v2.py --mode cli
+```
+
+### Wikipedia summary connector
+
+```bash
+SOURCE_INGEST_ENABLED=1 \
+SOURCE_CONNECTOR_TYPE=wikipedia \
+SOURCE_WIKIPEDIA_TOPIC="OpenAI" \
+SOURCE_WIKIPEDIA_LANGUAGE=en \
+SOURCE_INGEST_LIMIT=1 \
+python src/testbot/sat_chatbot_memory_v2.py --mode cli
+```
+
+### arXiv connector
+
+```bash
+SOURCE_INGEST_ENABLED=1 \
+SOURCE_CONNECTOR_TYPE=arxiv \
+SOURCE_ARXIV_QUERY="cat:cs.AI" \
+SOURCE_INGEST_LIMIT=5 \
+python src/testbot/sat_chatbot_memory_v2.py --mode cli
+```
+
+### Dry-run validation commands
+
+Use deterministic test-only checks to validate connector behavior without running live operator flows:
+
+```bash
+python -m pytest tests/test_source_connectors.py tests/test_source_ingest.py tests/test_runtime_modes.py -k source
+```
+
+Canonical gate before merge:
+
+```bash
+python scripts/all_green_gate.py
+```

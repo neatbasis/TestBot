@@ -55,6 +55,10 @@ class Config:
     SOURCE_FIXTURE_PATH: str
     SOURCE_INGEST_LIMIT: int
     SOURCE_INGEST_CURSOR: str | None
+    SOURCE_MARKDOWN_PATH: str
+    SOURCE_WIKIPEDIA_TOPIC: str
+    SOURCE_WIKIPEDIA_LANGUAGE: str
+    SOURCE_ARXIV_QUERY: str
 
     @classmethod
     def from_env(cls) -> "Config":
@@ -71,4 +75,8 @@ class Config:
             SOURCE_FIXTURE_PATH=os.getenv("SOURCE_FIXTURE_PATH", ""),
             SOURCE_INGEST_LIMIT=_int_from_env("SOURCE_INGEST_LIMIT", 50),
             SOURCE_INGEST_CURSOR=os.getenv("SOURCE_INGEST_CURSOR") or None,
+            SOURCE_MARKDOWN_PATH=os.getenv("SOURCE_MARKDOWN_PATH", ""),
+            SOURCE_WIKIPEDIA_TOPIC=os.getenv("SOURCE_WIKIPEDIA_TOPIC", ""),
+            SOURCE_WIKIPEDIA_LANGUAGE=os.getenv("SOURCE_WIKIPEDIA_LANGUAGE", "en"),
+            SOURCE_ARXIV_QUERY=os.getenv("SOURCE_ARXIV_QUERY", ""),
         )
