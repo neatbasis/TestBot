@@ -28,7 +28,11 @@ Common events include:
 `logs/session.jsonl` now carries an explicit `schema_version` per row for new emitters.
 
 - **v1 (legacy):** rows may omit `schema_version`.
-- **v2 (current):** rows include `schema_version: 2`.
+- **v2 (compatibility):** rows include `schema_version: 2`.
+- **v3 (authoritative current schema):** rows include `schema_version: 3`.
+
+Runtime emitters set this field via `append_session_log(...)` in
+`src/testbot/sat_chatbot_memory_v2.py`.
 
 Compatibility rules for replay/analytics tooling:
 
@@ -38,7 +42,8 @@ Compatibility rules for replay/analytics tooling:
 4. Bump `schema_version` only for breaking changes (rename/remove/type changes).
 5. Keep at least one previous schema version readable during migrations.
 
-Current event contracts validated by `scripts/validate_log_schema.py`:
+Current event contracts are validated by `scripts/validate_log_schema.py`, with canonical
+`v3` fixtures in `tests/fixtures/log_schema/current_schema_v3.jsonl`:
 
 - Common required keys: `ts` (`str`), `event` (`str`)
 - `pipeline_state_snapshot`: `stage` (`str`), `state` (`dict`)
