@@ -297,3 +297,40 @@ def step_then_followup_preserves_capabilities_intent(context) -> None:
     assert context.followup_classified is IntentType.KNOWLEDGE_QUESTION
     assert context.followup_resolved is IntentType.CAPABILITIES_HELP
 
+
+
+@when("a non-memory knowledge question has no ambiguity")
+def step_when_non_memory_direct_answer(context) -> None:
+    context.intent = classify_intent("What is ontology?")
+    answer = "General definition (not from your memory): Ontology organizes concepts and relations."
+    context.pipeline_state = _build_base_state(
+        user_input="What is ontology?",
+        final_answer=answer,
+        draft_answer=answer,
+        confidence_decision={
+            "context_confident": False,
+            "ambiguity_detected": False,
+            "retrieval_branch": "direct_answer",
+            "general_knowledge_confidence": 0.96,
+            "general_knowledge_support": 3,
+        },
+    )
+    context.pipeline_state = replace(
+        context.pipeline_state,
+        provenance_types=[ProvenanceType.GENERAL_KNOWLEDGE, ProvenanceType.INFERENCE],
+        basis_statement="General-knowledge basis: no supporting memory references were retrieved.",
+        invariant_decisions={
+            "answer_contract_valid": True,
+            "general_knowledge_contract_valid": True,
+            "answer_mode": "assist",
+            "fallback_action": "ANSWER_GENERAL_KNOWLEDGE",
+        },
+    )
+    _run_contract_checks(context)
+
+
+@then("the response should remain in direct knowledge-answer flow")
+def step_then_non_memory_direct_answer_flow(context) -> None:
+    assert context.intent is IntentType.KNOWLEDGE_QUESTION
+    assert context.pipeline_state.confidence_decision.get("retrieval_branch") == "direct_answer"
+    assert not context.pipeline_state.final_answer.startswith("I found related memory fragments (")

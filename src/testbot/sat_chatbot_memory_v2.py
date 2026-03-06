@@ -609,6 +609,22 @@ def _intent_label(intent: IntentType) -> str:
     return intent.value
 
 
+def _uses_memory_retrieval(intent: IntentType) -> bool:
+    return intent == IntentType.MEMORY_RECALL
+
+
+def _minimal_confidence_decision_for_direct_answer(*, branch: str) -> dict[str, object]:
+    return {
+        "context_confident": False,
+        "ambiguity_detected": False,
+        "ambiguous_candidates": [],
+        "scored_candidates": [],
+        "objective": "",
+        "objective_version": "",
+        "retrieval_branch": branch,
+    }
+
+
 def _ambiguity_score(confidence_decision: dict[str, object]) -> float:
     scored_candidates = confidence_decision.get("scored_candidates", [])
     if not isinstance(scored_candidates, list) or len(scored_candidates) < 2:
@@ -650,6 +666,7 @@ def _derive_response_blocker_reason(*, answer_mode: str, fallback_action: str, c
 
 def _format_debug_turn_trace(*, state: PipelineState, intent_label: str, hits: list[Document]) -> str:
     fallback_action = str(state.invariant_decisions.get("fallback_action", "NONE"))
+    retrieval_branch = str(state.confidence_decision.get("retrieval_branch", "memory_retrieval"))
     answer_mode = str(state.invariant_decisions.get("answer_mode", "dont-know"))
     context_confident = bool(state.confidence_decision.get("context_confident", False))
     ambiguity_detected = bool(state.confidence_decision.get("ambiguity_detected", False))
@@ -666,6 +683,7 @@ def _format_debug_turn_trace(*, state: PipelineState, intent_label: str, hits: l
         f"intent={intent_label}; "
         f"answer_mode={answer_mode}; "
         f"fallback_action={fallback_action}; "
+        f"retrieval_branch={retrieval_branch}; "
         f"context_confident={context_confident}; "
         f"ambiguity_detected={ambiguity_detected}; "
         f"rewritten_query={state.rewritten_query!r}; "
@@ -1429,43 +1447,83 @@ def _run_chat_loop(
             # -----------------------
             # 2) Retrieve + time-aware rerank (FIXED: handle tuples)
             # -----------------------
-        _validate_and_log_transition(validate_encode_pre(state))
-        state = encode_stage(llm, state)
-        _validate_and_log_transition(validate_encode_post(state))
-        append_pipeline_snapshot("rewrite", state)
-        append_session_log("query_rewrite_output", {"utterance": utterance, "query": state.rewritten_query})
-
-        _validate_and_log_transition(validate_retrieve_pre(state))
-        state, docs_and_scores = stage_retrieve(store, state)
-        _validate_and_log_transition(validate_retrieve_post(state))
-        append_pipeline_snapshot("retrieve", state)
+        retrieval_branch = "memory_retrieval" if _uses_memory_retrieval(resolved_intent) else "direct_answer"
         append_session_log(
-            "retrieval_candidates",
+            "retrieval_branch_selected",
             {
-                "query": state.rewritten_query,
-                "candidate_count": len(docs_and_scores),
-                "top_candidates": [
-                    {
-                        "doc_id": (doc.id or doc.metadata.get("doc_id") or ""),
-                        "score": float(score),
-                    }
-                    for doc, score in docs_and_scores[:4]
-                ],
+                "utterance": utterance,
+                "intent": intent_label,
+                "intent_classified": classified_intent.value,
+                "intent_resolved": resolved_intent.value,
+                "retrieval_branch": retrieval_branch,
             },
         )
 
-        _validate_and_log_transition(validate_rerank_pre(state))
-        state, hits = stage_rerank(
-            state,
-            docs_and_scores,
-            utterance=utterance,
-            user_doc_id=u_id,
-            user_reflection_doc_id=u_ref_id,
-            near_tie_delta=near_tie_delta,
-            clock=clock,
-        )
-        _validate_and_log_transition(validate_rerank_post(state))
-        append_pipeline_snapshot("rerank", state)
+        if retrieval_branch == "memory_retrieval":
+            _validate_and_log_transition(validate_encode_pre(state))
+            state = encode_stage(llm, state)
+            _validate_and_log_transition(validate_encode_post(state))
+            append_pipeline_snapshot("rewrite", state)
+            append_session_log("query_rewrite_output", {"utterance": utterance, "query": state.rewritten_query})
+
+            _validate_and_log_transition(validate_retrieve_pre(state))
+            state, docs_and_scores = stage_retrieve(store, state)
+            _validate_and_log_transition(validate_retrieve_post(state))
+            append_pipeline_snapshot("retrieve", state)
+            append_session_log(
+                "retrieval_candidates",
+                {
+                    "query": state.rewritten_query,
+                    "candidate_count": len(docs_and_scores),
+                    "top_candidates": [
+                        {
+                            "doc_id": (doc.id or doc.metadata.get("doc_id") or ""),
+                            "score": float(score),
+                        }
+                        for doc, score in docs_and_scores[:4]
+                    ],
+                },
+            )
+
+            _validate_and_log_transition(validate_rerank_pre(state))
+            state, hits = stage_rerank(
+                state,
+                docs_and_scores,
+                utterance=utterance,
+                user_doc_id=u_id,
+                user_reflection_doc_id=u_ref_id,
+                near_tie_delta=near_tie_delta,
+                clock=clock,
+            )
+            _validate_and_log_transition(validate_rerank_post(state))
+            append_pipeline_snapshot("rerank", state)
+        else:
+            minimal_confidence = _minimal_confidence_decision_for_direct_answer(branch=retrieval_branch)
+            state = replace(state, rewritten_query=state.user_input, retrieval_candidates=[], reranked_hits=[], confidence_decision=minimal_confidence)
+            append_pipeline_snapshot("rewrite", state)
+            append_pipeline_snapshot("retrieve", state)
+            append_pipeline_snapshot("rerank", state)
+            append_session_log("query_rewrite_output", {"utterance": utterance, "query": state.rewritten_query, "skipped": True})
+            append_session_log(
+                "retrieval_candidates",
+                {
+                    "query": state.rewritten_query,
+                    "candidate_count": 0,
+                    "top_candidates": [],
+                    "skipped": True,
+                },
+            )
+            append_session_log(
+                "rerank_skipped",
+                {
+                    "utterance": utterance,
+                    "reason": "intent_routed_to_direct_answer",
+                    "intent": intent_label,
+                    "retrieval_branch": retrieval_branch,
+                },
+            )
+            hits = []
+
         ambiguity_score = _ambiguity_score(state.confidence_decision)
         append_session_log(
             "intent_classified",

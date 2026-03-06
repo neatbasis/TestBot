@@ -48,3 +48,10 @@ Feature: Intent-specific grounding and provenance behavior
     When the user asks to ask something via satellite and follows up with "yes"
     Then the resolved follow-up intent should preserve capabilities help continuity
 
+
+
+  Scenario: non-memory question stays on direct knowledge-answer flow
+    Given an intent response harness
+    When a non-memory knowledge question has no ambiguity
+    Then the response should remain in direct knowledge-answer flow
+    And the response should include "General definition (not from your memory):"

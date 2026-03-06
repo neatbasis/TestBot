@@ -25,6 +25,14 @@ class _ExplodingLLM:
         raise RuntimeError(self._message)
 
 
+class _StaticLLM:
+    def __init__(self, content: str) -> None:
+        self.content = content
+
+    def invoke(self, _msgs):
+        return type("_Resp", (), {"content": self.content})()
+
+
 def test_stage_rewrite_query_invoke_failure_falls_back_and_logs(monkeypatch) -> None:
     events: list[tuple[str, dict]] = []
     monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: events.append((event, payload)))
@@ -160,3 +168,32 @@ def test_provenance_summary_log_contains_bandit_and_provenance_fields() -> None:
     assert row["used_memory_refs"][0]["doc_id"] == "abc"
     assert row["used_source_evidence_refs"] == ["src-1"]
     assert row["source_evidence_attribution"][0]["source_uri"] == "calendar://work/event-1"
+
+
+def test_stage_answer_non_memory_without_ambiguity_does_not_emit_memory_fragment_clarifier(monkeypatch) -> None:
+    monkeypatch.setattr(runtime, "decide_fallback_action", lambda **_: "ANSWER_GENERAL_KNOWLEDGE")
+
+    state = PipelineState(
+        user_input="What is ontology?",
+        resolved_intent=IntentType.KNOWLEDGE_QUESTION.value,
+        confidence_decision={
+            "context_confident": False,
+            "ambiguity_detected": False,
+            "general_knowledge_confidence": 0.95,
+            "general_knowledge_support": 3,
+            "retrieval_branch": "direct_answer",
+        },
+    )
+
+    answered = stage_answer(
+        _StaticLLM("General definition (not from your memory): Ontology is a model of concepts and relations (doc_id: gk-1, ts: 2026-01-01T00:00:00Z)."),
+        state,
+        chat_history=deque(),
+        hits=[],
+        capability_status="ask_unavailable",
+        clock=SystemClock(),
+    )
+
+    assert answered.final_answer.startswith("General definition (not from your memory):")
+    assert not answered.final_answer.startswith("I found related memory fragments (")
+    assert answered.confidence_decision.get("ambiguity_detected") is False
