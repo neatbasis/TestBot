@@ -1,61 +1,53 @@
-# ISSUE-0005: Eval script logic divergence risk from runtime logic
+# ISSUE-0005: Time-aware memory ranking parity remains partial across recall gate
 
 - **ID:** ISSUE-0005
-- **Title:** Eval script logic divergence risk from runtime logic
-- **Status:** closed
-- **Severity:** green
+- **Title:** Time-aware memory ranking parity remains partial across recall gate
+- **Status:** in_progress
+- **Severity:** amber
 - **Owner:** Sebastian Mäki (@NeatBasis, Runtime Quality Lead)
 - **Created:** 2026-03-04
 - **Target Sprint:** Sprint 3
-- **Principle Alignment:** deterministic, traceable, invariant-driven
+- **Principle Alignment:** deterministic, traceable, invariant-driven, ci-enforced
 
 ## Problem Statement
 
-The original concern was potential divergence between eval ranking behavior and runtime ranking behavior.
-That gap has now been closed by deterministic parity coverage and by keeping parity checks in the canonical gate.
+`time_aware_memory_ranking` is still declared `partial` in `docs/qa/feature-status.yaml`, but the previously closed issue focused on generic eval/runtime divergence rather than explicit capability-level readiness for `product_eval_recall_topk4` and `qa_pytest_not_live_smoke`. The issue is rescoped and reopened so capability-level gaps remain traceable until both gate checks and deterministic time-aware ranking expectations are satisfied.
 
 ## Evidence
 
-- Eval script imports `parse_target_time` from `testbot.time_parse` and rerank/score functions from `testbot.rerank`.
-- `tests/test_eval_runtime_parity.py` now provides explicit parity checks for ordering, fallback, ambiguity, and intermediate ranking signals.
-- `scripts/all_green_gate.py` includes `product_eval_runtime_parity` as a blocking check.
+- Capability contract `time_aware_memory_ranking` is currently `partial`.
+- The feature status report should surface at least one open issue for this capability while it remains partial.
+- Existing tests (`tests/test_rerank.py`, `tests/test_time_reasoning.py`, `tests/test_eval_recall.py`) provide baseline coverage but not yet complete closure evidence tied to gate-level thresholds.
 
 ## Impact
 
-Residual risk is now low and limited to future policy/schema changes that intentionally alter expected parity behavior.
+- Ranking drift can reappear at temporal boundaries (near ties, ambiguous target-time extraction).
+- Eval recall confidence can be overstated if parity checks pass on narrow fixtures but miss time-aware edge classes.
+- Product decisions using reranked context may degrade grounded answer quality.
 
 ## Acceptance Criteria
 
-1. ✅ Eval script reuses production parse/rerank logic where possible.
-2. ✅ Intentional deviations are documented explicitly.
-3. ✅ Add deterministic parity regression checks that compare eval ordering + intent decisions against runtime outputs across fixture families:
-   - ordering
-   - top-1 to top-x stability
-   - fallback
-   - confidence boundary
-   - edge-time
-   - ambiguous-intent
-   - observation-making-processes
-4. ✅ Parity checks must assert comparable intermediate signals (`scored_candidates`, `near_tie_candidates`, `ambiguity_detected`) so adapter-level drift is visible before final metric drift.
-5. ✅ Release gate keeps parity check as a blocking check and emits a dedicated divergence hint that points to likely boundary modules.
+1. `python scripts/eval_recall.py --top-k 4` completes with deterministic output and meets the agreed minimum recall threshold for the maintained fixture set used by `product_eval_recall_topk4`.
+2. `python -m pytest -m "not live_smoke"` passes with no failures in `tests/test_rerank.py`, `tests/test_time_reasoning.py`, and `tests/test_eval_recall.py`.
+3. `python scripts/all_green_gate.py --continue-on-failure --json-output artifacts/all-green-gate-summary.json` reports `product_eval_recall_topk4` and `qa_pytest_not_live_smoke` as `passed`.
+4. `docs/qa/feature-status.yaml` is updated to `implemented` for `time_aware_memory_ranking` only after criteria 1-3 are met.
 
 ## Work Plan
 
-- Maintain parity pytest coverage with explicit fixture sets for required families and scenarios.
-- Keep eval adapter path aligned with runtime intermediate ranking signals.
-- Keep parity command and gate wiring current in testing/gate docs.
+- Expand time-aware fixture families for boundary dates and ambiguous temporal language.
+- Add deterministic assertions for top-k ordering stability and fallback behavior under ambiguous time signals.
+- Keep capability/issue linkage explicit in `docs/qa/feature-status.yaml` and regenerate status artifacts on each milestone.
 
 ## Verification
 
 - Command: `python scripts/eval_recall.py --top-k 4`
-  - Observed 2026-03-06: exits `0`; deterministic summary emitted.
-- Command: `python -m pytest tests/test_eval_runtime_parity.py`
-  - Observed 2026-03-06: exits `0`; confirms ranking, top-k stability, intent parity, ambiguity parity, and scored candidate parity across fixture families.
+  - Expected: deterministic summary emitted and threshold satisfied.
+- Command: `python -m pytest -m "not live_smoke"`
+  - Expected: passes including all time-aware ranking suites.
 - Command: `python scripts/all_green_gate.py --continue-on-failure --json-output artifacts/all-green-gate-summary.json`
-  - Observed 2026-03-06: exits `0`; `product_eval_runtime_parity` check passed.
+  - Expected: both capability gate checks pass.
 
 ## Closure Notes
 
-- 2026-03-04: Partially mitigated by shared imports and documented eval non-goals.
-- 2026-03-06: Closed after validating parity coverage and canonical gate enforcement in a dependency-complete environment.
-- Residual risk: low; revisit if intentional runtime ranking contract changes are introduced.
+- 2026-03-04: Issue originally opened for generic eval/runtime divergence concern.
+- 2026-03-06: Rescoped/reopened to track explicit `time_aware_memory_ranking` readiness and gate-tied closure criteria.

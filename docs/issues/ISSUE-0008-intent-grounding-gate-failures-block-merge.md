@@ -1,70 +1,53 @@
-# ISSUE-0008: Intent-grounding gate failures block merge readiness
+# ISSUE-0008: Intent-grounding router remains partial for deterministic route confidence
 
 - **ID:** ISSUE-0008
-- **Title:** Intent-grounding gate failures block merge readiness
-- **Status:** closed
-- **Severity:** red
+- **Title:** Intent-grounding router remains partial for deterministic route confidence
+- **Status:** in_progress
+- **Severity:** amber
 - **Owner:** platform-qa
 - **Created:** 2026-03-05
-- **Target Sprint:** Sprint 1
+- **Target Sprint:** Sprint 2
 - **Principle Alignment:** contract-first, deterministic, ci-enforced, traceable
 
 ## Problem Statement
 
-The canonical deterministic merge gate currently fails at the BDD stage because `features/intent_grounding.feature` scenarios are failing/errored. This prevents a trustworthy signal for knowing/unknowing behavior and blocks safe merge decisions for related PRs (including the current missed-check case).
+The initial merge-blocking failures were remediated, but `intent_grounding_router` is still declared `partial`. This issue is reopened/rescoped to track remaining deterministic confidence and route-selection quality needed to move the capability to `implemented`.
 
 ## Evidence
 
-- `python scripts/release_gate.py` fails at `python -m behave`.
-- Failing/errored scenarios are concentrated in `features/intent_grounding.feature` (knowing-path, history-grounding path, relevance path, source-confidence fallback path).
-- Because release gate is fail-closed, downstream required checks are not executed after the BDD failure.
+- Capability contract still marks `intent_grounding_router` as `partial`.
+- Route selection quality depends on consistent `features/intent_grounding.feature` behavior and deterministic policy tests.
+- Existing closure notes addressed acute gate failures but did not close all roadmap-aligned quality gaps for this capability.
 
 ## Impact
 
-- PRs can appear partially validated while critical knowing/unknowing behavior remains unverified.
-- Grounding confidence is reduced because source/basis behavior is not contract-stable.
-- Merge velocity drops due to repeated revalidation cycles without a focused stabilization plan.
+- Router misclassification at edge phrasing can trigger incorrect knowing/unknowing pathways.
+- Behavior appears stable in core paths while remaining edge-case drift can still impact user trust.
+- Downstream fallback/provenance decisions inherit routing uncertainty.
 
 ## Acceptance Criteria
 
-1. `python -m behave` passes with no failed/errored `features/intent_grounding.feature` scenarios.
-2. `python scripts/release_gate.py` executes all required checks successfully end-to-end.
-3. At least one deterministic regression test is added/updated per previously failing intent-grounding branch.
+1. `python -m behave features/intent_grounding.feature` passes with no flaky scenario outcomes across two consecutive local runs.
+2. `python -m pytest tests/test_intent_router.py tests/test_promotion_policy.py` passes and includes deterministic coverage for all route branches currently marked partial.
+3. `python scripts/all_green_gate.py --continue-on-failure --json-output artifacts/all-green-gate-summary.json` reports `product_behave` and `qa_pytest_not_live_smoke` as `passed`.
+4. `docs/qa/feature-status.yaml` is updated to `implemented` for `intent_grounding_router` only after criteria 1-3 are met.
 
 ## Work Plan
 
-- Isolate failing intent-grounding branches and map each scenario to responsible policy/runtime function.
-- Implement minimal deterministic fixes for fallback/action/provenance expectation mismatches.
-- Add or update fixture-backed regression tests for each fixed branch.
-- Re-run canonical gate and record pass evidence in closure notes.
+- Identify residual ambiguous-intent phrase classes and add deterministic fixture coverage.
+- Tighten router threshold/rule handling where near-tie or fallback branch ambiguity remains.
+- Regenerate feature-status artifacts after each iteration to keep governance traceability current.
 
 ## Verification
 
-- Command: `python -m pip install -e .[dev]`
-  - Expected: dev dependencies install, including `behave`.
-- Command: `python -m behave`
-  - Expected: all scenarios pass, especially `features/intent_grounding.feature`.
-- Command: `python scripts/release_gate.py`
-  - Expected: all required deterministic checks pass in sequence.
+- Command: `python -m behave features/intent_grounding.feature`
+  - Expected: all intent-grounding scenarios pass consistently.
+- Command: `python -m pytest tests/test_intent_router.py tests/test_promotion_policy.py`
+  - Expected: exits `0` with deterministic branch coverage.
+- Command: `python scripts/all_green_gate.py --continue-on-failure --json-output artifacts/all-green-gate-summary.json`
+  - Expected: required gate checks pass.
 
 ## Closure Notes
 
-- Implemented deterministic intent-grounding fixes across runtime routing/policy and provenance shaping:
-  - intent routing now classifies "when is/was" questions as knowledge questions for predictable knowing-path handling.
-  - reflection fallback policy now supports an explicit `ANSWER_UNKNOWN` action for low-confidence source-backed turns when no confident memory hit is available.
-  - provenance basis shaping now emits chat-history basis statements (including relevance-summary basis) when answers are grounded in recent conversation without memory/source hits.
-- Reconciled BDD harness contracts in `features/steps/intent_grounding_steps.py`:
-  - alignment dimensions now include `provenance_transparency`;
-  - fallback scenario now uses canonical invariant/alignment fields;
-  - source-backed fixture now uses valid `CandidateHit` schema.
-- Added deterministic regression tests for each stabilized branch in:
-  - `tests/test_intent_router.py`
-  - `tests/test_promotion_policy.py`
-  - `tests/test_reflection_policy.py`
-
-### Verification Evidence
-
-- `pytest -q tests/test_intent_router.py tests/test_promotion_policy.py tests/test_reflection_policy.py` ✅
-- `python -m behave features/intent_grounding.feature` ✅
-- `python scripts/release_gate.py` ⚠️ partial pass: all runtime checks passed except governance issue-link validation due missing `origin/main` in this local environment (`validate_issue_links --base-ref origin/main`).
-
+- 2026-03-06: Original issue closed after fixing immediate gate-blocking failures.
+- 2026-03-06: Reopened/rescoped to track residual capability-level partial status and deterministic route confidence work.
