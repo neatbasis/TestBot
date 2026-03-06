@@ -33,6 +33,19 @@ class OpenIssue:
     content_lower: str
 
 
+def issue_matches_keyword(issue: OpenIssue, keyword: str) -> bool:
+    normalized = keyword.strip().lower()
+    if not normalized:
+        return False
+    searchable_fields = (
+        issue.issue_id.lower(),
+        issue.title.lower(),
+        issue.path.stem.lower(),
+        issue.content_lower,
+    )
+    return any(normalized in field for field in searchable_fields)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -188,7 +201,7 @@ def build_report(
         relevant_issues = []
         if keywords:
             for issue in open_issues:
-                if any(kw in issue.content_lower for kw in keywords):
+                if any(issue_matches_keyword(issue, kw) for kw in keywords):
                     relevant_issues.append(issue)
 
         priority_refs = capability.get("roadmap_priority_refs", [])

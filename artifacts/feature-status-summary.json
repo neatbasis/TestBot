@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-03-06T21:45:48Z",
+  "generated_at_utc": "2026-03-06T22:11:50Z",
   "inputs": {
     "contract_path": "docs/qa/feature-status.yaml",
     "gate_summary_path": "artifacts/all-green-gate-summary.json",
@@ -9,53 +9,47 @@
   "source_file_metadata": {
     "contract": {
       "path": "docs/qa/feature-status.yaml",
-      "size_bytes": 4191,
-      "mtime_utc": "2026-03-06T21:44:38Z",
-      "sha256": "a021048959695b65aaf0cec38f528d24464e27fbb8aeb6dd7402e9a71b302008"
+      "size_bytes": 4195,
+      "mtime_utc": "2026-03-06T22:10:19Z",
+      "sha256": "042b161b448da1737799d239dbab335f79c27e8643f1f49ab626a16b2d257b5f"
     },
     "gate_summary": {
       "path": "artifacts/all-green-gate-summary.json",
       "size_bytes": 3259,
-      "mtime_utc": "2026-03-06T21:45:44Z",
-      "sha256": "a97eedd4e7131d4b963d82925c6cd849ed055a9bd793b99064440a502bfae8d3"
+      "mtime_utc": "2026-03-06T22:11:45Z",
+      "sha256": "228f0c072e3ccdb1a7651764b7d5f8bcee65b7c5b162990d64d8d4b3d3c74e55"
     },
     "open_issues": [
       {
         "path": "docs/issues/ISSUE-0005-eval-runtime-logic-divergence-risk.md",
         "size_bytes": 3288,
-        "mtime_utc": "2026-03-06T21:43:44Z",
+        "mtime_utc": "2026-03-06T21:14:46Z",
         "sha256": "429d00a2169276451dfbabe74e41b89676723a50c5da382a2cbc3b425fde0959"
-      },
-      {
-        "path": "docs/issues/ISSUE-0007-behave-gate-not-enforced-in-pr-validation.md",
-        "size_bytes": 4162,
-        "mtime_utc": "2026-03-06T21:43:44Z",
-        "sha256": "fbd2f4609d629bc614006989c74034697e5a9e9869219acf9737866e0d89142d"
       },
       {
         "path": "docs/issues/ISSUE-0008-intent-grounding-gate-failures-block-merge.md",
         "size_bytes": 2930,
-        "mtime_utc": "2026-03-06T21:43:44Z",
+        "mtime_utc": "2026-03-06T21:14:46Z",
         "sha256": "d848db4ba2244dd191de3a7f68cbf8603865104b6f0d49f8aba1b1c12c0174e6"
       },
       {
         "path": "docs/issues/ISSUE-0009-knowing-grounded-answers-partial-provenance-gap.md",
         "size_bytes": 2755,
-        "mtime_utc": "2026-03-06T21:43:44Z",
+        "mtime_utc": "2026-03-06T21:14:46Z",
         "sha256": "f4eba3c4be0b603db98f5603605a0fd1ed6a262eb9d0eafd7040f5a1b2a4bd29"
       },
       {
         "path": "docs/issues/ISSUE-0010-unknowing-safe-fallback-partial-contract-gap.md",
         "size_bytes": 2799,
-        "mtime_utc": "2026-03-06T21:43:44Z",
+        "mtime_utc": "2026-03-06T21:14:46Z",
         "sha256": "753f9b654e91878e3f58379ad1ba0513e8bdcd105268ec2d3ef5fcae06b02bb1"
       }
     ]
   },
   "warnings": [],
   "summary": {
-    "implemented": 1,
-    "partial": 5,
+    "implemented": 2,
+    "partial": 4,
     "missing": 0
   },
   "capabilities": [
@@ -244,16 +238,10 @@
       "capability_id": "governance_readiness_gate",
       "capability_name": "Canonical all-green merge gate and issue governance checks",
       "owner_module": "scripts/all_green_gate.py",
-      "effective_status": "partial",
-      "declared_status": "partial",
+      "effective_status": "implemented",
+      "declared_status": "implemented",
       "failed_gate_checks": [],
-      "relevant_open_issues": [
-        {
-          "id": "ISSUE-0007",
-          "title": "Governance readiness gate traceability is partial for capability-linked issue enforcement",
-          "path": "docs/issues/ISSUE-0007-behave-gate-not-enforced-in-pr-validation.md"
-        }
-      ],
+      "relevant_open_issues": [],
       "roadmap_priority_refs": [
         "P5"
       ],
@@ -273,6 +261,6 @@
       ]
     }
   ],
-  "open_issue_count": 5,
+  "open_issue_count": 4,
   "gate_checks_seen": 13
 }

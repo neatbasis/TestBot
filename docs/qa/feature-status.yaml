@@ -124,7 +124,7 @@ capabilities:
   - qa_validate_markdown_paths
   runtime_dependency_flags:
   - base_ref_policy:default_origin/main_with_canonical_fallback_HEAD~1_then_HEAD
-  current_status: partial
+  current_status: implemented
   roadmap_priority_refs:
   - P5
   issue_keywords:
