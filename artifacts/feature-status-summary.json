@@ -1,0 +1,260 @@
+{
+  "summary": {
+    "implemented": 1,
+    "partial": 5,
+    "missing": 0
+  },
+  "capabilities": [
+    {
+      "capability_id": "knowing_grounded_answers",
+      "capability_name": "Knowing-mode grounded answer with provenance",
+      "owner_module": "src/testbot/sat_chatbot_memory_v2.py",
+      "effective_status": "partial",
+      "declared_status": "partial",
+      "failed_gate_checks": [
+        "product_behave",
+        "safety_behave_answer_contract_and_memory"
+      ],
+      "relevant_open_issues": [
+        {
+          "id": "ISSUE-0005",
+          "title": "Eval script logic divergence risk from runtime logic",
+          "path": "docs/issues/ISSUE-0005-eval-runtime-logic-divergence-risk.md"
+        },
+        {
+          "id": "ISSUE-0007",
+          "title": "Behave gate not enforced in PR validation",
+          "path": "docs/issues/ISSUE-0007-behave-gate-not-enforced-in-pr-validation.md"
+        }
+      ],
+      "roadmap_priority_refs": [
+        "P2",
+        "P4"
+      ],
+      "roadmap_priority_sources": {
+        "P2": [
+          "docs/roadmap/alignment-drift-technical-debt-2026-03-05.md",
+          "docs/roadmap/current-status-and-next-5-priorities.md",
+          "docs/roadmap/next-4-sprints-grounded-knowing.md"
+        ],
+        "P4": [
+          "docs/roadmap/current-status-and-next-5-priorities.md",
+          "docs/roadmap/next-4-sprints-grounded-knowing.md"
+        ]
+      },
+      "acceptance_tests": [
+        "features/answer_contract.feature",
+        "features/memory_recall.feature",
+        "tests/test_runtime_logging_events.py",
+        "tests/test_eval_runtime_parity.py"
+      ],
+      "runtime_dependency_flags": [
+        "SOURCE_INGEST_ENABLED",
+        "TESTBOT_RERANK_OBJECTIVE_CONFIG"
+      ]
+    },
+    {
+      "capability_id": "unknowing_safe_fallback",
+      "capability_name": "Unknowing-mode explicit uncertainty and safe fallback",
+      "owner_module": "src/testbot/reflection_policy.py",
+      "effective_status": "partial",
+      "declared_status": "partial",
+      "failed_gate_checks": [
+        "product_behave"
+      ],
+      "relevant_open_issues": [
+        {
+          "id": "ISSUE-0005",
+          "title": "Eval script logic divergence risk from runtime logic",
+          "path": "docs/issues/ISSUE-0005-eval-runtime-logic-divergence-risk.md"
+        },
+        {
+          "id": "ISSUE-0007",
+          "title": "Behave gate not enforced in PR validation",
+          "path": "docs/issues/ISSUE-0007-behave-gate-not-enforced-in-pr-validation.md"
+        }
+      ],
+      "roadmap_priority_refs": [
+        "P3"
+      ],
+      "roadmap_priority_sources": {
+        "P3": [
+          "docs/roadmap/current-status-and-next-5-priorities.md",
+          "docs/roadmap/next-4-sprints-grounded-knowing.md"
+        ]
+      },
+      "acceptance_tests": [
+        "features/answer_contract.feature",
+        "features/intent_grounding.feature",
+        "tests/test_reflection_policy.py"
+      ],
+      "runtime_dependency_flags": [
+        "TESTBOT_DEBUG"
+      ]
+    },
+    {
+      "capability_id": "intent_grounding_router",
+      "capability_name": "Deterministic intent grounding and route selection",
+      "owner_module": "src/testbot/intent_router.py",
+      "effective_status": "partial",
+      "declared_status": "partial",
+      "failed_gate_checks": [
+        "product_behave"
+      ],
+      "relevant_open_issues": [
+        {
+          "id": "ISSUE-0005",
+          "title": "Eval script logic divergence risk from runtime logic",
+          "path": "docs/issues/ISSUE-0005-eval-runtime-logic-divergence-risk.md"
+        },
+        {
+          "id": "ISSUE-0007",
+          "title": "Behave gate not enforced in PR validation",
+          "path": "docs/issues/ISSUE-0007-behave-gate-not-enforced-in-pr-validation.md"
+        }
+      ],
+      "roadmap_priority_refs": [
+        "P3"
+      ],
+      "roadmap_priority_sources": {
+        "P3": [
+          "docs/roadmap/current-status-and-next-5-priorities.md",
+          "docs/roadmap/next-4-sprints-grounded-knowing.md"
+        ]
+      },
+      "acceptance_tests": [
+        "features/intent_grounding.feature",
+        "tests/test_intent_router.py",
+        "tests/test_promotion_policy.py"
+      ],
+      "runtime_dependency_flags": [
+        "TESTBOT_DEBUG"
+      ]
+    },
+    {
+      "capability_id": "time_aware_memory_ranking",
+      "capability_name": "Time-aware memory retrieval and reranking",
+      "owner_module": "src/testbot/rerank.py",
+      "effective_status": "partial",
+      "declared_status": "partial",
+      "failed_gate_checks": [
+        "product_eval_recall_topk4"
+      ],
+      "relevant_open_issues": [
+        {
+          "id": "ISSUE-0005",
+          "title": "Eval script logic divergence risk from runtime logic",
+          "path": "docs/issues/ISSUE-0005-eval-runtime-logic-divergence-risk.md"
+        },
+        {
+          "id": "ISSUE-0007",
+          "title": "Behave gate not enforced in PR validation",
+          "path": "docs/issues/ISSUE-0007-behave-gate-not-enforced-in-pr-validation.md"
+        }
+      ],
+      "roadmap_priority_refs": [
+        "P2",
+        "P5"
+      ],
+      "roadmap_priority_sources": {
+        "P2": [
+          "docs/roadmap/alignment-drift-technical-debt-2026-03-05.md",
+          "docs/roadmap/current-status-and-next-5-priorities.md",
+          "docs/roadmap/next-4-sprints-grounded-knowing.md"
+        ],
+        "P5": [
+          "docs/roadmap/current-status-and-next-5-priorities.md",
+          "docs/roadmap/next-4-sprints-grounded-knowing.md"
+        ]
+      },
+      "acceptance_tests": [
+        "features/time_awareness.feature",
+        "tests/test_rerank.py",
+        "tests/test_time_reasoning.py",
+        "tests/test_eval_recall.py"
+      ],
+      "runtime_dependency_flags": [
+        "TESTBOT_RERANK_OBJECTIVE_CONFIG"
+      ]
+    },
+    {
+      "capability_id": "external_source_ingestion",
+      "capability_name": "External source ingestion connectors for grounding",
+      "owner_module": "src/testbot/source_connectors.py",
+      "effective_status": "implemented",
+      "declared_status": "implemented",
+      "failed_gate_checks": [],
+      "relevant_open_issues": [],
+      "roadmap_priority_refs": [
+        "P1",
+        "P2"
+      ],
+      "roadmap_priority_sources": {
+        "P1": [
+          "docs/roadmap/alignment-drift-technical-debt-2026-03-05.md",
+          "docs/roadmap/current-status-and-next-5-priorities.md",
+          "docs/roadmap/next-4-sprints-grounded-knowing.md"
+        ],
+        "P2": [
+          "docs/roadmap/alignment-drift-technical-debt-2026-03-05.md",
+          "docs/roadmap/current-status-and-next-5-priorities.md",
+          "docs/roadmap/next-4-sprints-grounded-knowing.md"
+        ]
+      },
+      "acceptance_tests": [
+        "features/source_ingestion.feature",
+        "tests/test_source_connectors.py",
+        "tests/test_source_ingest.py"
+      ],
+      "runtime_dependency_flags": [
+        "SOURCE_INGEST_ENABLED",
+        "SOURCE_CONNECTOR_TYPE",
+        "SOURCE_FIXTURE_PATH",
+        "SOURCE_MARKDOWN_PATH",
+        "SOURCE_WIKIPEDIA_TOPIC",
+        "SOURCE_ARXIV_QUERY"
+      ]
+    },
+    {
+      "capability_id": "governance_readiness_gate",
+      "capability_name": "Canonical all-green merge gate and issue governance checks",
+      "owner_module": "scripts/all_green_gate.py",
+      "effective_status": "partial",
+      "declared_status": "partial",
+      "failed_gate_checks": [
+        "qa_validate_issue_links"
+      ],
+      "relevant_open_issues": [
+        {
+          "id": "ISSUE-0005",
+          "title": "Eval script logic divergence risk from runtime logic",
+          "path": "docs/issues/ISSUE-0005-eval-runtime-logic-divergence-risk.md"
+        },
+        {
+          "id": "ISSUE-0007",
+          "title": "Behave gate not enforced in PR validation",
+          "path": "docs/issues/ISSUE-0007-behave-gate-not-enforced-in-pr-validation.md"
+        }
+      ],
+      "roadmap_priority_refs": [
+        "P5"
+      ],
+      "roadmap_priority_sources": {
+        "P5": [
+          "docs/roadmap/current-status-and-next-5-priorities.md",
+          "docs/roadmap/next-4-sprints-grounded-knowing.md"
+        ]
+      },
+      "acceptance_tests": [
+        "tests/test_release_gate.py",
+        "tests/test_validate_issue_links.py",
+        "tests/test_validate_kpi_guardrails.py"
+      ],
+      "runtime_dependency_flags": [
+        "base_ref:origin/main"
+      ]
+    }
+  ],
+  "open_issue_count": 2,
+  "gate_checks_seen": 13
+}
