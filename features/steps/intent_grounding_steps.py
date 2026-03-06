@@ -340,3 +340,32 @@ def step_then_non_memory_direct_answer_flow(context) -> None:
 def step_then_response_should_not_use_clarifier_mode(context) -> None:
     assert context.pipeline_state.invariant_decisions.get("answer_mode") != "clarify"
     assert "Can you clarify" not in context.pipeline_state.final_answer
+
+@when("the user asks an ambiguous control-help-memory phrase")
+def step_when_ambiguous_control_help_memory_phrase(context) -> None:
+    context.ambiguous_intent = classify_intent("stop, can you help me remember what did I ask?")
+
+
+@then("the utterance should route to control intent deterministically")
+def step_then_ambiguous_control_help_memory_phrase(context) -> None:
+    assert context.ambiguous_intent is IntentType.CONTROL
+
+
+@when("the user asks an ambiguous satellite-versus-meta phrase")
+def step_when_ambiguous_satellite_meta_phrase(context) -> None:
+    context.ambiguous_intent = classify_intent("use satellite about this chat")
+
+
+@then("the utterance should route to capabilities help intent deterministically")
+def step_then_ambiguous_satellite_meta_phrase(context) -> None:
+    assert context.ambiguous_intent is IntentType.CAPABILITIES_HELP
+
+
+@when("the user asks an unmatched ambiguous phrase")
+def step_when_unmatched_ambiguous_phrase(context) -> None:
+    context.ambiguous_intent = classify_intent("this seems mixed and maybe relevant")
+
+
+@then("the utterance should route to knowledge-question fallback deterministically")
+def step_then_unmatched_ambiguous_phrase(context) -> None:
+    assert context.ambiguous_intent is IntentType.KNOWLEDGE_QUESTION

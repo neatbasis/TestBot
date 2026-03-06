@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from testbot.promotion_policy import evaluate_promotion_policy, persist_promoted_context
 from dataclasses import dataclass
 
 from langchain_core.documents import Document
+
+from testbot.promotion_policy import evaluate_promotion_policy, persist_promoted_context
 
 
 @dataclass
@@ -98,3 +99,53 @@ def test_relevance_and_source_evidence_claims_promote_as_accepted_context() -> N
 
     assert len(decision.items) == 2
     assert {item.category for item in decision.items} == {"accepted_context"}
+
+
+def test_uncertain_or_conflicting_claim_is_rejected_even_with_high_confidence() -> None:
+    reflection_yaml = (
+        "claims:\n"
+        "  - User intent: might want reminders on weekdays\n"
+        "uncertainties: []\n"
+        "confidence: 0.99"
+    )
+
+    decision = evaluate_promotion_policy(reflection_yaml=reflection_yaml)
+
+    assert not decision.items
+    assert "claim_uncertain_or_conflicting" in decision.rejected_reasons
+
+
+def test_invalid_confidence_value_deterministically_rejects_promotion() -> None:
+    reflection_yaml = (
+        "claims:\n"
+        "  - User intent: wants reminders after dinner\n"
+        "uncertainties: []\n"
+        "confidence: not-a-number"
+    )
+
+    decision = evaluate_promotion_policy(reflection_yaml=reflection_yaml)
+
+    assert not decision.items
+    assert decision.rejected_reasons == ["confidence_below_threshold"]
+
+
+def test_persist_promoted_context_returns_empty_ids_when_policy_rejects() -> None:
+    store = FakeMemoryStore(docs=[])
+    reflection_yaml = (
+        "claims:\n"
+        "  - Internal debug: route confidence tie\n"
+        "uncertainties: []\n"
+        "confidence: 0.95"
+    )
+
+    promoted_ids = persist_promoted_context(
+        store=store,
+        ts_iso="2026-03-05T12:00:00+00:00",
+        source_doc_id="assistant-doc-2",
+        source_reflection_id="assistant-ref-2",
+        reflection_yaml=reflection_yaml,
+        channel="cli",
+    )
+
+    assert promoted_ids == []
+    assert store.docs == []
