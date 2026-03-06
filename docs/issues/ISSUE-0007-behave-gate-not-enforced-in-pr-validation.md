@@ -37,6 +37,9 @@
 - Maintain explicit capability-to-issue linkage metadata in `docs/qa/feature-status.yaml`.
 - Keep issue index and red-tag state synchronized with issue severity and status updates.
 - Add deterministic regression coverage for feature-status report linkage resolution if not already present.
+- **Rollback/Escalation Trigger:** If generated artifacts (for example, `artifacts/feature-status-summary.json` or `docs/qa/feature-status-report.md`) show `governance_readiness_gate` as `partial` while linked open issue reporting is missing or `open_issue_count` is inconsistent with active partial capability risk (“partial capability linkage not surfaced in generated artifacts”), treat as an active Red-Tag escalation condition.
+- **Immediate Mitigation Action:** Immediately halt merge/readiness progression for affected changes, update `docs/issues/RED_TAG.md` to keep ISSUE-0007 visible as active, and rerun `python scripts/report_feature_status.py --output docs/qa/feature-status-report.md --json-output artifacts/feature-status-summary.json` plus governance validators to restore auditable linkage before resuming.
+- **Owner / Response Window:** `platform-qa` is the accountable owner and must acknowledge and start mitigation within **1 business day** of trigger detection, with status/evidence updates recorded in issue artifacts for reviewer verification.
 
 ## Verification
 
