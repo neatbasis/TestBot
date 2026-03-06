@@ -44,3 +44,45 @@ def test_main_fails_fast_when_behave_dependency_missing(monkeypatch: pytest.Monk
     assert summary["status"] == "failed"
     assert summary["checks"][0]["name"] == all_green_gate.BEHAVE_PREFLIGHT_CHECK_NAME
 
+
+
+def test_resolve_base_ref_falls_back_when_origin_main_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(all_green_gate, "git_ref_exists", lambda ref: ref == "HEAD~1")
+
+    resolved, notes = all_green_gate.resolve_base_ref("origin/main")
+
+    assert resolved == "HEAD~1"
+    assert any("using fallback 'HEAD~1'" in note for note in notes)
+
+
+def test_main_propagates_effective_base_ref_to_governance_checks(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        all_green_gate,
+        "parse_args",
+        lambda: all_green_gate.argparse.Namespace(
+            continue_on_failure=False,
+            base_ref="origin/main",
+            json_output=None,
+        ),
+    )
+    monkeypatch.setattr(all_green_gate.importlib.util, "find_spec", lambda _name: object())
+    monkeypatch.setattr(all_green_gate, "resolve_base_ref", lambda _ref: ("HEAD~1", []))
+
+    captured_checks: list[all_green_gate.GateCheck] = []
+
+    def fake_run_gate(*, checks: list[all_green_gate.GateCheck], continue_on_failure: bool) -> tuple[list[all_green_gate.CheckResult], int]:
+        del continue_on_failure
+        captured_checks.extend(checks)
+        return [], 0
+
+    monkeypatch.setattr(all_green_gate, "run_gate", fake_run_gate)
+
+    exit_code = all_green_gate.main()
+
+    assert exit_code == 0
+    issue_link_cmd = next(c.command for c in captured_checks if c.name == "qa_validate_issue_links")
+    issue_cmd = next(c.command for c in captured_checks if c.name == "qa_validate_issues")
+    assert issue_link_cmd[-1] == "HEAD~1"
+    assert issue_cmd[-1] == "HEAD~1"

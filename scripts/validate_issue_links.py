@@ -67,8 +67,12 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--base-ref",
-        default="HEAD~1",
-        help="Git base ref used to inspect commit metadata (default: HEAD~1).",
+        default="origin/main",
+        help=(
+            "Git base ref used to inspect commit metadata (default: origin/main). "
+            "If origin/main is unavailable (for example in shallow/detached environments), "
+            "the validator automatically falls back to HEAD~1, then HEAD."
+        ),
     )
     parser.add_argument(
         "--all-issue-files",
@@ -84,6 +88,43 @@ def run_git(args: list[str]) -> str:
         stderr = result.stderr.strip() or "git command failed"
         raise RuntimeError(stderr)
     return result.stdout
+
+
+def git_ref_exists(ref: str) -> bool:
+    result = subprocess.run(
+        ["git", "rev-parse", "--verify", "--quiet", ref],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+    )
+    return result.returncode == 0
+
+
+def resolve_base_ref(base_ref: str) -> tuple[str | None, list[str]]:
+    notes: list[str] = []
+    if git_ref_exists(base_ref):
+        return base_ref, notes
+
+    if base_ref != "origin/main":
+        return None, [
+            (
+                f"Base ref '{base_ref}' does not exist. "
+                "Provide a valid --base-ref (for example origin/main, HEAD~1, or HEAD)."
+            )
+        ]
+
+    for fallback in ("HEAD~1", "HEAD"):
+        if git_ref_exists(fallback):
+            notes.append(
+                f"Base ref 'origin/main' is unavailable; falling back to '{fallback}'."
+            )
+            return fallback, notes
+
+    notes.append(
+        "Could not resolve base ref 'origin/main' or fallbacks (HEAD~1, HEAD). "
+        "Commit-range checks will be skipped and all issue files will be validated."
+    )
+    return None, notes
 
 
 def load_canonical_sections() -> list[str]:
@@ -420,19 +461,28 @@ def validate_red_severity_consistency(all_issue_files: list[Path], failures: lis
 def main() -> int:
     args = parse_args()
     failures: list[ValidationFailure] = []
+    effective_base_ref, resolution_notes = resolve_base_ref(args.base_ref)
+    for note in resolution_notes:
+        print(f"[WARN] {note}")
 
-    validate_pr_and_commit_metadata(args.pr_body_file, args.base_ref, failures)
+    if effective_base_ref:
+        validate_pr_and_commit_metadata(args.pr_body_file, effective_base_ref, failures)
+    else:
+        print("[INFO] Skipping commit-range metadata inspection because no base ref could be resolved.")
 
     canonical_sections = load_canonical_sections()
 
     if args.all_issue_files:
         issue_files = list_all_issue_files()
     else:
-        try:
-            issue_files = list_new_issue_files(args.base_ref)
-        except RuntimeError as exc:
-            print(f"[WARN] Could not detect newly added issue files ({exc}); validating all issue files.")
+        if not effective_base_ref:
             issue_files = list_all_issue_files()
+        else:
+            try:
+                issue_files = list_new_issue_files(effective_base_ref)
+            except RuntimeError as exc:
+                print(f"[WARN] Could not detect newly added issue files ({exc}); validating all issue files.")
+                issue_files = list_all_issue_files()
 
     if issue_files:
         validate_issue_schema(issue_files, canonical_sections, failures)

@@ -25,8 +25,12 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--base-ref",
-        default="HEAD~1",
-        help="Git base ref used to detect newly added issue files.",
+        default="origin/main",
+        help=(
+            "Git base ref used to detect newly added issue files (default: origin/main). "
+            "If origin/main is unavailable (for example in shallow/detached environments), "
+            "the validator automatically falls back to HEAD~1, then HEAD."
+        ),
     )
     parser.add_argument(
         "--all-issue-files",
@@ -60,6 +64,44 @@ def load_canonical_sections() -> list[str]:
 
     return sections
 
+
+
+
+def git_ref_exists(ref: str) -> bool:
+    result = subprocess.run(
+        ["git", "rev-parse", "--verify", "--quiet", ref],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+    )
+    return result.returncode == 0
+
+
+def resolve_base_ref(base_ref: str) -> tuple[str | None, list[str]]:
+    notes: list[str] = []
+    if git_ref_exists(base_ref):
+        return base_ref, notes
+
+    if base_ref != "origin/main":
+        return None, [
+            (
+                f"Base ref '{base_ref}' does not exist. "
+                "Provide a valid --base-ref (for example origin/main, HEAD~1, or HEAD)."
+            )
+        ]
+
+    for fallback in ("HEAD~1", "HEAD"):
+        if git_ref_exists(fallback):
+            notes.append(
+                f"Base ref 'origin/main' is unavailable; falling back to '{fallback}'."
+            )
+            return fallback, notes
+
+    notes.append(
+        "Could not resolve base ref 'origin/main' or fallbacks (HEAD~1, HEAD). "
+        "New-file diff checks will be skipped and all issue files will be validated."
+    )
+    return None, notes
 
 def run_git_diff_for_added_files(base_ref: str) -> list[Path]:
     cmd = ["git", "diff", "--name-only", "--diff-filter=A", f"{base_ref}...HEAD", "--", "docs/issues/*.md"]
@@ -151,15 +193,22 @@ def main() -> int:
 
     validate_pr_body(args.pr_body_file, failures)
 
+    effective_base_ref, resolution_notes = resolve_base_ref(args.base_ref)
+    for note in resolution_notes:
+        print(f"[WARN] {note}")
+
     canonical_sections = load_canonical_sections()
     if args.all_issue_files:
         issue_files = list_all_issue_files()
     else:
-        try:
-            issue_files = run_git_diff_for_added_files(args.base_ref)
-        except RuntimeError as exc:
-            print(f"[WARN] Could not detect newly added issue files ({exc}); validating all issue files.")
+        if not effective_base_ref:
             issue_files = list_all_issue_files()
+        else:
+            try:
+                issue_files = run_git_diff_for_added_files(effective_base_ref)
+            except RuntimeError as exc:
+                print(f"[WARN] Could not detect newly added issue files ({exc}); validating all issue files.")
+                issue_files = list_all_issue_files()
 
     if issue_files:
         validate_issue_files(issue_files, canonical_sections, failures)

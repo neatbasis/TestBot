@@ -192,6 +192,12 @@ python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main
 python scripts/validate_issues.py --all-issue-files --base-ref origin/main
 ```
 
+Both validators now support resilient base-ref resolution for shallow/detached environments:
+
+- Default `--base-ref` is `origin/main`.
+- If `origin/main` is unavailable, validators automatically fall back to `HEAD~1`, then `HEAD`.
+- You can override explicitly with `--base-ref <ref>` when validating against a different branch point.
+
 ## Runbook: conflicted PR recovery (PR #78-class re-qualification)
 
 Use this runbook when a PR has merge conflicts and must be re-qualified after a rebase.
@@ -221,6 +227,15 @@ python scripts/all_green_gate.py --json-output artifacts/all-green-gate-summary.
 ```bash
 python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main
 python scripts/validate_issues.py --all-issue-files --base-ref origin/main
+```
+
+If `origin/main` is not present locally (common in shallow CI clones), either fetch it or override:
+
+```bash
+git fetch origin main
+# or
+python scripts/validate_issue_links.py --all-issue-files --base-ref HEAD~1
+python scripts/validate_issues.py --all-issue-files --base-ref HEAD~1
 ```
 
 ### Step 4: Record evidence artifact paths in PR body
