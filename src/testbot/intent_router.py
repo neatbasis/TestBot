@@ -81,28 +81,28 @@ def is_satellite_action_request(user_input: str) -> bool:
     return _matches_any(normalized, _SATELLITE_ACTION_PATTERNS)
 
 
-def classify_intent(user_input: str) -> IntentType:
+def classify_intent(user_input: str | None) -> IntentType:
     """Classify user intent using deterministic rule precedence.
 
     Precedence is intentional:
     1. Control commands override all other categories.
-    2. Memory recall requests win over conversation-meta language.
-    3. Time queries use a dedicated path.
+    2. Time queries use a dedicated path (even when memory language is present).
+    3. Memory recall requests win over conversation-meta language.
     4. Capabilities/help requests use a stable responder path.
     5. Meta-conversation requests are routed separately from factual Q&A.
     6. Knowledge questions and the fallback default are KNOWLEDGE_QUESTION.
     """
 
-    normalized = user_input.strip().lower()
+    normalized = (user_input or "").strip().lower()
     if not normalized:
         return IntentType.KNOWLEDGE_QUESTION
 
     if _matches_any(normalized, _CONTROL_PATTERNS):
         return IntentType.CONTROL
-    if _matches_any(normalized, _MEMORY_RECALL_PATTERNS):
-        return IntentType.MEMORY_RECALL
     if _matches_any(normalized, _TIME_QUERY_PATTERNS):
         return IntentType.TIME_QUERY
+    if _matches_any(normalized, _MEMORY_RECALL_PATTERNS):
+        return IntentType.MEMORY_RECALL
     if is_satellite_action_request(normalized):
         return IntentType.CAPABILITIES_HELP
     if _matches_any(normalized, _CAPABILITIES_HELP_PATTERNS):

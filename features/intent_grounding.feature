@@ -56,3 +56,19 @@ Feature: Intent-specific grounding and provenance behavior
     Then the response should remain in direct knowledge-answer flow
     And the response should not use clarifier mode
     And the response should include "General definition (not from your memory):"
+
+  Scenario: control phrasing wins over ambiguous help and memory language
+    Given an intent response harness
+    When the user asks an ambiguous control-help-memory phrase
+    Then the utterance should route to control intent deterministically
+
+  Scenario: capabilities satellite phrasing wins over meta-conversation cue
+    Given an intent response harness
+    When the user asks an ambiguous satellite-versus-meta phrase
+    Then the utterance should route to capabilities help intent deterministically
+
+  Scenario: unmatched ambiguous phrasing falls back to knowledge question
+    Given an intent response harness
+    When the user asks an unmatched ambiguous phrase
+    Then the utterance should route to knowledge-question fallback deterministically
+
