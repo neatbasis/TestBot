@@ -48,3 +48,18 @@ def test_format_debug_turn_trace_reports_direct_answer_branch() -> None:
 
     assert "intent=non_memory" in trace
     assert "retrieval_branch=direct_answer" in trace
+
+
+def test_format_debug_turn_trace_non_memory_no_ambiguity_does_not_report_clarify() -> None:
+    state = PipelineState(
+        user_input="what is topology",
+        rewritten_query="what is topology",
+        confidence_decision={"context_confident": False, "ambiguity_detected": False, "retrieval_branch": "direct_answer"},
+        invariant_decisions={"answer_mode": "memory-grounded", "fallback_action": "ANSWER_GENERAL_KNOWLEDGE"},
+    )
+
+    trace = _format_debug_turn_trace(state=state, intent_label="non_memory", hits=[])
+
+    assert "intent=non_memory" in trace
+    assert "ambiguity_detected=False" in trace
+    assert "answer_mode=clarify" not in trace

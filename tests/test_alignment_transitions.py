@@ -171,7 +171,7 @@ class _InvalidContractLLM:
         return self._Response()
 
 
-def test_stage_answer_partial_memory_clarifier_is_classified_as_clarify_mode() -> None:
+def test_stage_answer_memory_hit_without_ambiguity_does_not_force_clarifier_mode() -> None:
     state = PipelineState(
         user_input="what did i say yesterday",
         confidence_decision={"context_confident": True, "ambiguity_detected": False},
@@ -192,8 +192,8 @@ def test_stage_answer_partial_memory_clarifier_is_classified_as_clarify_mode() -
         clock=None,
     )
 
-    assert answered.final_answer.startswith("I found related memory fragments (")
-    assert answered.invariant_decisions["answer_mode"] == "clarify"
+    assert answered.final_answer == ASSIST_ALTERNATIVES_ANSWER
+    assert answered.invariant_decisions["answer_mode"] == "assist"
     assert answered.alignment_decision["final_alignment_decision"] == "allow"
     assert validate_answer_post(answered).passed
 

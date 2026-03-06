@@ -50,8 +50,9 @@ Feature: Intent-specific grounding and provenance behavior
 
 
 
-  Scenario: non-memory question stays on direct knowledge-answer flow
+  Scenario: non-memory question with no ambiguity does not trigger clarifier
     Given an intent response harness
     When a non-memory knowledge question has no ambiguity
     Then the response should remain in direct knowledge-answer flow
+    And the response should not use clarifier mode
     And the response should include "General definition (not from your memory):"

@@ -173,3 +173,47 @@ def test_debug_flag_does_not_change_non_capabilities_fallback_answer() -> None:
 
     assert disabled_answer.final_answer == enabled_answer.final_answer
     assert enabled_answer.final_answer.startswith("I found related memory fragments (")
+
+
+class _GeneralKnowledgeLLM:
+    class _Response:
+        content = "Topology studies properties preserved through deformation."
+
+    def invoke(self, _msgs):
+        return self._Response()
+
+
+def test_stage_answer_non_memory_without_ambiguity_does_not_force_clarifier() -> None:
+    state = PipelineState(
+        user_input="what is topology",
+        confidence_decision={
+            "context_confident": False,
+            "ambiguity_detected": False,
+            "general_knowledge_confidence": 0.95,
+            "general_knowledge_support": 3,
+        },
+    )
+
+    answer_state = stage_answer(
+        _GeneralKnowledgeLLM(),
+        state,
+        chat_history=deque(),
+        hits=[],
+        capability_status="ask_unavailable",
+        runtime_capability_status=RuntimeCapabilityStatus(
+            ollama_available=True,
+            ha_available=False,
+            effective_mode="cli",
+            requested_mode="cli",
+            daemon_mode=False,
+            fallback_reason=None,
+            memory_backend="in_memory",
+            debug_enabled=False,
+            text_clarification_available=True,
+            satellite_ask_available=False,
+        ),
+        clock=None,
+    )
+
+    assert answer_state.invariant_decisions["answer_mode"] != "clarify"
+    assert not answer_state.final_answer.startswith("I found related memory fragments (")

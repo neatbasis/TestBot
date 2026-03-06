@@ -334,3 +334,9 @@ def step_then_non_memory_direct_answer_flow(context) -> None:
     assert context.intent is IntentType.KNOWLEDGE_QUESTION
     assert context.pipeline_state.confidence_decision.get("retrieval_branch") == "direct_answer"
     assert not context.pipeline_state.final_answer.startswith("I found related memory fragments (")
+
+
+@then("the response should not use clarifier mode")
+def step_then_response_should_not_use_clarifier_mode(context) -> None:
+    assert context.pipeline_state.invariant_decisions.get("answer_mode") != "clarify"
+    assert "Can you clarify" not in context.pipeline_state.final_answer
