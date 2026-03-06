@@ -598,6 +598,47 @@ def _user_followup_signal_proxy(*, final_answer: str, fallback_action: str, ambi
     return round(max(0.0, ambiguity_score * 0.5), 4)
 
 
+def _derive_response_blocker_reason(*, answer_mode: str, fallback_action: str, context_confident: bool, hit_count: int, ambiguity_detected: bool) -> str:
+    if answer_mode == "clarify" or fallback_action in {"ASK_CLARIFYING_QUESTION", "ROUTE_TO_ASK"}:
+        if hit_count > 0 and (ambiguity_detected or not context_confident):
+            return "retrieved memory fragments were ambiguous or low-confidence"
+        if hit_count == 0:
+            return "no memory fragments were retrieved for this request"
+    if answer_mode == "dont-know" or fallback_action == "ANSWER_UNKNOWN":
+        return "insufficient reliable memory to answer directly"
+    if answer_mode == "assist" or fallback_action == "OFFER_CAPABILITY_ALTERNATIVES":
+        return "insufficient confidence for a direct answer; offered capability alternatives"
+    if answer_mode == "deny":
+        return "request blocked by safety or policy checks"
+    return "none"
+
+
+def _format_debug_turn_trace(*, state: PipelineState, intent_label: str, hits: list[Document]) -> str:
+    fallback_action = str(state.invariant_decisions.get("fallback_action", "NONE"))
+    answer_mode = str(state.invariant_decisions.get("answer_mode", "dont-know"))
+    context_confident = bool(state.confidence_decision.get("context_confident", False))
+    ambiguity_detected = bool(state.confidence_decision.get("ambiguity_detected", False))
+    reason = _derive_response_blocker_reason(
+        answer_mode=answer_mode,
+        fallback_action=fallback_action,
+        context_confident=context_confident,
+        hit_count=len(hits),
+        ambiguity_detected=ambiguity_detected,
+    )
+    doc_ids = [(doc.id or doc.metadata.get("doc_id") or "") for doc in hits[:3]]
+    return (
+        "[debug] "
+        f"intent={intent_label}; "
+        f"answer_mode={answer_mode}; "
+        f"fallback_action={fallback_action}; "
+        f"context_confident={context_confident}; "
+        f"ambiguity_detected={ambiguity_detected}; "
+        f"rewritten_query={state.rewritten_query!r}; "
+        f"retrieved_doc_ids={doc_ids}; "
+        f"blocker_reason={reason}."
+    )
+
+
 def build_partial_memory_clarifier(hits: list[Document], *, max_items: int = 2) -> str:
     snippets: list[str] = []
     for doc in hits[:max_items]:
@@ -1477,6 +1518,21 @@ def _run_chat_loop(
                 "alignment_dimensions": state.alignment_decision.get("dimensions", {}),
             },
         )
+
+        if capability_snapshot.runtime_capability_status.debug_enabled:
+            debug_trace = _format_debug_turn_trace(
+                state=state,
+                intent_label=intent_label,
+                hits=hits,
+            )
+            append_session_log(
+                "debug_turn_trace",
+                {
+                    "utterance": utterance,
+                    "trace": debug_trace,
+                },
+            )
+            send_assistant_text(debug_trace)
 
         send_assistant_text(state.final_answer)
 
