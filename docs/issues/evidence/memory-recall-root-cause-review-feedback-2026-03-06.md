@@ -154,6 +154,10 @@ Add fixture families in parity/eval tests (`tests/test_eval_runtime_parity.py` a
 
 
 ## Decision record (2026-03-06): INV-002 fallback contract normalization
+
+### Implementation follow-up (2026-03-06)
+- Normalized wording across `docs/invariants.md`, `docs/directives/invariants.md`, `docs/testing.md`, and `docs/quickstart.md` to use the same INV-002 behavior text and deny/safety-only reservation for exact fallback.
+- Updated BDD/test documentation wording to remove insufficient-memory expectations that required only the exact fallback string, replacing them with progressive fallback assertions aligned to INV-002.
 - **Decision:** Keep the progressive fallback contract as canonical for INV-002 across `docs/invariants.md`, `docs/directives/invariants.md`, `docs/testing.md`, and `docs/quickstart.md`.
 - **Contract:** For insufficient memory, require either one targeted clarifier or at least two capability-based alternatives; for partial/ambiguous memory, require a brief summary plus one bridging clarifier; reserve exact `I don't know from memory.` for explicit deny/safety-only cases.
 - **Rationale:** This matches runtime routing in `src/testbot/reflection_policy.py` and existing BDD wording for progressive assist/ambiguity scenarios, removing contradictory exact-string fallback guidance from docs and checklists.

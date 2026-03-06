@@ -9,7 +9,7 @@ from langchain_core.documents import Document
 from testbot.history_packer import PackedHistory
 from testbot.intent_router import IntentType, classify_intent
 from testbot.pipeline_state import CandidateHit, PipelineState, ProvenanceType
-from testbot.sat_chatbot_memory_v2 import FALLBACK_ANSWER, build_provenance_metadata, validate_general_knowledge_contract
+from testbot.sat_chatbot_memory_v2 import build_provenance_metadata, validate_general_knowledge_contract
 from testbot.stage_transitions import validate_answer_post, validate_answer_pre
 
 GENERAL_MARKER = "General definition (not from your memory):"
@@ -174,8 +174,8 @@ def step_when_source_backed_knowing_question(context) -> None:
 def step_when_source_confidence_insufficient(context) -> None:
     context.pipeline_state = _build_base_state(
         user_input="What happened in my calendar?",
-        final_answer=FALLBACK_ANSWER,
-        draft_answer=FALLBACK_ANSWER,
+        final_answer="I don't have enough reliable context to answer directly. I can either help you narrow the source or suggest where to verify the detail.",
+        draft_answer="",
         confidence_decision={"context_confident": True, "source_confidence": 0.35},
     )
     context.pipeline_state = replace(
@@ -191,13 +191,13 @@ def step_when_source_confidence_insufficient(context) -> None:
                 "cost_latency_budget": 1.0,
                 "provenance_transparency": 1.0,
             },
-            "final_alignment_decision": "fallback",
+            "final_alignment_decision": "allow",
         },
         invariant_decisions={
             "answer_contract_valid": True,
             "general_knowledge_contract_valid": True,
-            "answer_mode": "dont-know",
-            "fallback_action": "ANSWER_UNKNOWN",
+            "answer_mode": "assist",
+            "fallback_action": "ANSWER_ASSIST_ALTERNATIVES",
         },
     )
     _run_contract_checks(context)
@@ -254,9 +254,10 @@ def step_then_source_provenance_includes_fields(context, source_uri: str, source
     assert attribution["source_type"] == source_type
 
 
-@then("the assistant returns explicit unknowing fallback")
+@then("the assistant returns a progressive unknowing response")
 def step_then_explicit_unknowing_fallback(context) -> None:
-    assert context.pipeline_state.final_answer == FALLBACK_ANSWER
+    lowered = context.pipeline_state.final_answer.lower()
+    assert "either" in lowered and "or" in lowered
     assert context.pipeline_state.provenance_types == [ProvenanceType.UNKNOWN]
 
 

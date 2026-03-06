@@ -89,7 +89,7 @@ Feature: <capability in stakeholder terms>
 - Prefer outcome-centric names over technical names.
 - Examples:
   - `Cited memory answer when context is sufficient`
-  - `Exact fallback when context is insufficient`
+  - `Progressive fallback when context is insufficient`
 
 ### Step wording
 
@@ -197,17 +197,17 @@ Feature: Memory-grounded answer contract
 ```gherkin
 @Rule:FallbackContract @Role:Resident @Priority:High @fast
 # Descriptor (mandatory)
-Feature: Exact fallback contract when context is missing
+Feature: Progressive fallback contract when memory is insufficient
   In order to avoid fabricated answers
   As a resident
-  I want the assistant to return an exact fallback when memory is insufficient
+  I want the assistant to return a targeted clarifier or alternatives when memory is insufficient
 
   # Grain: one scenario per fallback contract behavior
-  Scenario: Exact fallback when context is insufficient
+  Scenario: Progressive fallback when context is insufficient
     Given the clock is fixed at "2024-10-01T09:00:00Z"
     And the memory store has no relevant fact for "What is the HOA gate code?"
     When the user asks "What is the HOA gate code?"
-    Then the assistant responds exactly "I don't know from memory."
+    Then the assistant asks one targeted clarifier or offers at least two capability-based alternatives
 ```
 
 ---
@@ -230,7 +230,7 @@ Fast local loops with scenario-name filters:
 
 ```bash
 behave -n "Cited memory answer when context is sufficient"
-behave -n "Exact fallback when context is insufficient"
+behave -n "Progressive fallback when context is insufficient"
 ```
 
 Fast local loops with tags:
@@ -276,7 +276,7 @@ The key rule is to keep the Gherkin phrase stakeholder-readable while preserving
 - [ ] Deterministic fixtures are used (fixed time + fixed candidate set).
 - [ ] Rule/role/priority tags are applied where relevant.
 - [ ] `behave` passes with no undefined steps.
-- [ ] Exact fallback contract is preserved: `I don't know from memory.`
+- [ ] Progressive fallback contract is preserved for insufficient-memory paths (targeted clarifier or at least two capability-based alternatives); exact `I don't know from memory.` remains deny/safety-only.
 - [ ] Every new docs section answers all of the following:
   - [ ] Who is this for?
   - [ ] What action/decision does it support?
