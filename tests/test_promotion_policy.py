@@ -86,11 +86,17 @@ def test_no_debug_or_internal_leakage_promoted() -> None:
     assert "contains_internal_debug" in decision.rejected_reasons
 
 
-def test_relevance_and_source_evidence_claims_promote_as_accepted_context() -> None:
+def test_structured_claims_route_by_category_not_legacy_phrasing() -> None:
     reflection_yaml = (
         "claims:\n"
-        "  - Relevant summary: the user is focused on ontology follow-ups\n"
-        "  - Source evidence confirms next event is from calendar feed\n"
+        "  - text: The user hopes to get a reminder after dinner\n"
+        "    category: clarified_intent\n"
+        "    reliability: reliable\n"
+        "    source: llm_structured_reflection\n"
+        "  - text: Calendar feed confirms weekly recurring event\n"
+        "    category: accepted_context\n"
+        "    reliability: reliable\n"
+        "    source: source_evidence\n"
         "uncertainties: []\n"
         "confidence: 0.89"
     )
@@ -98,13 +104,16 @@ def test_relevance_and_source_evidence_claims_promote_as_accepted_context() -> N
     decision = evaluate_promotion_policy(reflection_yaml=reflection_yaml)
 
     assert len(decision.items) == 2
-    assert {item.category for item in decision.items} == {"accepted_context"}
+    assert {item.category for item in decision.items} == {"clarified_intent", "accepted_context"}
 
 
 def test_uncertain_or_conflicting_claim_is_rejected_even_with_high_confidence() -> None:
     reflection_yaml = (
         "claims:\n"
-        "  - User intent: might want reminders on weekdays\n"
+        "  - text: We should send reminders weekdays\n"
+        "    category: clarified_intent\n"
+        "    reliability: uncertain\n"
+        "    source: reflection\n"
         "uncertainties: []\n"
         "confidence: 0.99"
     )
@@ -127,6 +136,32 @@ def test_invalid_confidence_value_deterministically_rejects_promotion() -> None:
 
     assert not decision.items
     assert decision.rejected_reasons == ["confidence_below_threshold"]
+
+
+def test_malformed_yaml_deterministically_rejects_promotion() -> None:
+    malformed_yaml = "claims: [\nuncertainties: []\nconfidence: 0.98"
+
+    decision = evaluate_promotion_policy(reflection_yaml=malformed_yaml)
+
+    assert not decision.items
+    assert decision.rejected_reasons == ["confidence_below_threshold"]
+
+
+def test_reordered_fields_are_parsed_and_promoted() -> None:
+    reflection_yaml = (
+        "confidence: 0.93\n"
+        "uncertainties: []\n"
+        "claims:\n"
+        "  - text: Please capture thermostat schedule preference\n"
+        "    source: reflection\n"
+        "    reliability: reliable\n"
+        "    category: clarified_intent\n"
+    )
+
+    decision = evaluate_promotion_policy(reflection_yaml=reflection_yaml)
+
+    assert len(decision.items) == 1
+    assert decision.items[0].category == "clarified_intent"
 
 
 def test_persist_promoted_context_returns_empty_ids_when_policy_rejects() -> None:

@@ -3,6 +3,8 @@ from __future__ import annotations
 import uuid
 from dataclasses import dataclass
 
+import yaml
+
 from testbot.memory_cards import make_reflection_card, store_doc
 from testbot.vector_store import MemoryStore
 
@@ -20,58 +22,123 @@ class PromotionDecision:
     rejected_reasons: list[str]
 
 
-def _parse_reflection_yaml(reflection_yaml: str) -> dict[str, object]:
-    parsed: dict[str, object] = {"claims": [], "uncertainties": [], "confidence": 0.0}
-    current_list: str | None = None
-
-    for raw_line in (reflection_yaml or "").splitlines():
-        line = raw_line.strip()
-        if not line:
-            continue
-        if line.startswith("claims:"):
-            current_list = "claims"
-            if line.endswith("[]"):
-                parsed["claims"] = []
-            continue
-        if line.startswith("uncertainties:"):
-            current_list = "uncertainties"
-            if line.endswith("[]"):
-                parsed["uncertainties"] = []
-            continue
-        if line.startswith("confidence:"):
-            current_list = None
-            try:
-                parsed["confidence"] = float(line.split(":", 1)[1].strip())
-            except ValueError:
-                parsed["confidence"] = 0.0
-            continue
-        if line.startswith("-") and current_list in {"claims", "uncertainties"}:
-            value = line[1:].strip()
-            parsed[current_list] = [*parsed[current_list], value]  # type: ignore[index]
-
-    return parsed
+@dataclass(frozen=True)
+class ReflectionClaimRecord:
+    text: str
+    category: str
+    reliability: str
+    source: str
 
 
-def _is_clarified_intent(claim: str) -> bool:
-    lowered = claim.lower()
-    return any(token in lowered for token in ("intent", "wants to", "goal is", "asking for"))
+@dataclass(frozen=True)
+class ReflectionPayload:
+    claims: list[ReflectionClaimRecord]
+    uncertainties: list[str]
+    confidence: float
 
 
-def _is_definition_or_domain_context(claim: str) -> bool:
-    lowered = claim.lower()
-    return any(
+def _safe_float(value: object) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def _safe_str_list(value: object) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return [str(item).strip() for item in value if str(item).strip()]
+
+
+def _infer_claim_category(text: str) -> str:
+    lowered = text.lower()
+    if any(token in lowered for token in ("intent", "goal", "objective", "asking for", "requesting")):
+        return "clarified_intent"
+    if any(
         token in lowered
-        for token in ("definition", "means", "refers to", "domain context", "relevant summary", "source evidence")
+        for token in (
+            "definition",
+            "means",
+            "refers to",
+            "domain context",
+            "relevant summary",
+            "source evidence",
+            "evidence from",
+            "context",
+        )
+    ):
+        return "accepted_context"
+    return "other"
+
+
+def _infer_claim_reliability(text: str) -> str:
+    lowered = text.lower()
+    if any(token in lowered for token in ("maybe", "might", "unsure", "conflict", "contradict")):
+        return "uncertain"
+    return "reliable"
+
+
+def _normalize_claim_record(raw_claim: object) -> ReflectionClaimRecord | None:
+    if isinstance(raw_claim, str):
+        text = raw_claim.strip()
+        if not text:
+            return None
+        return ReflectionClaimRecord(
+            text=text,
+            category=_infer_claim_category(text),
+            reliability=_infer_claim_reliability(text),
+            source="reflection_text",
+        )
+
+    if not isinstance(raw_claim, dict):
+        return None
+
+    text = str(raw_claim.get("text") or raw_claim.get("claim") or "").strip()
+    if not text and len(raw_claim) == 1:
+        key, value = next(iter(raw_claim.items()))
+        key_text = str(key).strip()
+        value_text = str(value).strip()
+        text = f"{key_text}: {value_text}" if value_text else key_text
+    if not text:
+        return None
+
+    category = str(raw_claim.get("category") or _infer_claim_category(text)).strip().lower()
+    reliability = str(raw_claim.get("reliability") or _infer_claim_reliability(text)).strip().lower()
+    source = str(raw_claim.get("source") or "reflection_structured").strip().lower()
+
+    return ReflectionClaimRecord(
+        text=text,
+        category=category or "other",
+        reliability=reliability or "unknown",
+        source=source or "unknown",
     )
 
 
-def _is_uncertain_or_conflicting(claim: str) -> bool:
-    lowered = claim.lower()
-    return any(token in lowered for token in ("maybe", "might", "unsure", "conflict", "contradict"))
+def _parse_reflection_yaml(reflection_yaml: str) -> ReflectionPayload:
+    try:
+        payload = yaml.safe_load(reflection_yaml or "")
+    except yaml.YAMLError:
+        return ReflectionPayload(claims=[], uncertainties=[], confidence=0.0)
+    if not isinstance(payload, dict):
+        return ReflectionPayload(claims=[], uncertainties=[], confidence=0.0)
+
+    raw_claims = payload.get("claims")
+    claims: list[ReflectionClaimRecord] = []
+    if isinstance(raw_claims, list):
+        for raw_claim in raw_claims:
+            normalized = _normalize_claim_record(raw_claim)
+            if normalized is not None:
+                claims.append(normalized)
+
+    return ReflectionPayload(
+        claims=claims,
+        uncertainties=_safe_str_list(payload.get("uncertainties")),
+        confidence=_safe_float(payload.get("confidence", 0.0)),
+    )
 
 
-def _contains_internal_debug(claim: str) -> bool:
-    lowered = claim.lower()
+def _contains_internal_debug(claim: ReflectionClaimRecord) -> bool:
+    lowered = f"{claim.text} {claim.category} {claim.source}".lower()
     return any(token in lowered for token in ("debug", "internal", "trace", "stack"))
 
 
@@ -81,9 +148,9 @@ def evaluate_promotion_policy(
     min_confidence: float = 0.75,
 ) -> PromotionDecision:
     parsed = _parse_reflection_yaml(reflection_yaml)
-    claims = [str(c).strip() for c in parsed.get("claims", []) if str(c).strip()]
-    uncertainties = [str(c).strip() for c in parsed.get("uncertainties", []) if str(c).strip()]
-    confidence = float(parsed.get("confidence", 0.0) or 0.0)
+    claims = parsed.claims
+    uncertainties = parsed.uncertainties
+    confidence = parsed.confidence
 
     rejected: list[str] = []
     if confidence < min_confidence:
@@ -96,15 +163,22 @@ def evaluate_promotion_policy(
         if _contains_internal_debug(claim):
             rejected.append("contains_internal_debug")
             continue
-        if _is_uncertain_or_conflicting(claim):
+        if claim.reliability in {"uncertain", "conflicting", "unknown", "low"}:
             rejected.append("claim_uncertain_or_conflicting")
             continue
 
-        if _is_clarified_intent(claim):
-            items.append(PromotionItem(text=claim, category="clarified_intent", confidence=confidence))
+        if claim.category in {"clarified_intent", "intent", "user_intent", "goal", "objective"}:
+            items.append(PromotionItem(text=claim.text, category="clarified_intent", confidence=confidence))
             continue
-        if _is_definition_or_domain_context(claim):
-            items.append(PromotionItem(text=claim, category="accepted_context", confidence=confidence))
+        if claim.category in {
+            "accepted_context",
+            "definition",
+            "domain_context",
+            "source_evidence",
+            "context",
+            "relevant_summary",
+        }:
+            items.append(PromotionItem(text=claim.text, category="accepted_context", confidence=confidence))
 
     if rejected:
         items = []

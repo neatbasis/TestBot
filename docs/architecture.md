@@ -104,6 +104,8 @@ confidence: 0.0..1.0
 
 Design rule: reflection cards are hypotheses and must stay linked to source utterances.
 
+Promotion-policy note: reflection promotion consumes a structured payload with `claims`, `uncertainties`, and `confidence`. Claims are normalized into typed records (`text`, `category`, `reliability`, `source`) before evaluation so promotion routing is based on normalized claim metadata rather than brittle phrase matching.
+
 ## Rerank overview
 
 Time-aware reranking biases retrieval toward memories near an inferred target time.
