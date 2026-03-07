@@ -53,5 +53,5 @@ The project lacks a canonical, measurable, and auditable issue workflow inside t
 
 ## Closure Notes
 
-- Resolved after validator-backed enforcement landed: `scripts/validate_issue_links.py` now enforces non-trivial `ISSUE-XXXX` linkage plus canonical field completeness, and `scripts/release_gate.py` runs governance validators in the canonical gate.
+- Resolved after validator-backed enforcement landed: `scripts/validate_issue_links.py` now enforces non-trivial `ISSUE-XXXX` linkage plus canonical field completeness, and `scripts/all_green_gate.py` runs governance validators in the canonical gate.
 

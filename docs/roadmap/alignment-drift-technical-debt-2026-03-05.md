@@ -15,7 +15,7 @@ This assessment compares current implementation, tests, and governance behavior 
 
 ## Evidence snapshot
 
-- `python scripts/release_gate.py` (after `python -m pip install -e .[dev]`) executed BDD and deterministic pytest checks successfully, then failed in governance validation because `origin/main` was not available in local git metadata.
+- `python scripts/all_green_gate.py` (after `python -m pip install -e .[dev]`) executed BDD and deterministic pytest checks successfully, then failed in governance validation because `origin/main` was not available in local git metadata.
 - Roadmap mapping points to `src/testbot/ingestion_pipeline.py` and `tests/test_ingestion_pipeline.py`, but repository implementation uses `src/testbot/source_ingest.py` and `tests/test_source_ingest.py`.
 - Current-status roadmap notes claim merge gate is blocked by intent-grounding BDD failures, while current observed run shows those scenarios passing.
 - `ISSUE-0005` states parity regression checks are missing, but parity tests exist and are wired into the release gate.
@@ -116,7 +116,7 @@ This assessment compares current implementation, tests, and governance behavior 
 
 ```bash
 python -m pip install -e .[dev]
-python scripts/release_gate.py
+python scripts/all_green_gate.py
 rg -n "ingestion_pipeline|test_ingestion_pipeline|reasoning_path" docs src tests
 rg --files src/testbot tests | rg 'pipeline_state|source_ingest|ingestion_pipeline'
 ```

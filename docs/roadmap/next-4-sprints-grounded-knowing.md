@@ -119,4 +119,4 @@ _Last verified: 2026-03-06_
 | BDD acceptance scenarios pass for changed behavior | `python -m behave` | No failed/undefined steps for affected features. |
 | Deterministic unit/component checks pass | `python -m pytest -m "not live_smoke"` | Exit code `0`; no network-bound flakes. |
 | Eval/runtime parity remains aligned after roadmap changes | `python -m pytest tests/test_eval_runtime_parity.py` | Ordering/top-1/fallback parity preserved. |
-| Canonical contributor gate is green | `python scripts/release_gate.py` | Full deterministic merge gate passes in required order. |
+| Canonical contributor gate is green | `python scripts/all_green_gate.py` | Full deterministic merge gate passes in required order. |
