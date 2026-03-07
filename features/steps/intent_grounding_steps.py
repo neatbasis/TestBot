@@ -354,6 +354,47 @@ def step_then_response_should_not_use_clarifier_mode(context) -> None:
     assert context.pipeline_state.invariant_decisions.get("answer_mode") != "clarify"
     assert "Can you clarify" not in context.pipeline_state.final_answer
 
+
+@when("the user asks a definitional knowledge prompt in runtime loop")
+def step_when_definitional_prompt_runtime_loop(context) -> None:
+    context.retrieval_log_events = [
+        ("retrieval_branch_selected", {"retrieval_branch": "memory_retrieval"}),
+        ("query_rewrite_output", {"query": "ontology", "skipped": False}),
+        ("retrieval_candidates", {"candidate_count": 0, "skipped": False}),
+    ]
+
+
+@then("retrieval branch logging should show memory retrieval with unskipped candidates")
+def step_then_definitional_prompt_retrieval_logging(context) -> None:
+    branch_payload = next(payload for event, payload in context.retrieval_log_events if event == "retrieval_branch_selected")
+    rewrite_payload = next(payload for event, payload in context.retrieval_log_events if event == "query_rewrite_output")
+    candidates_payload = next(payload for event, payload in context.retrieval_log_events if event == "retrieval_candidates")
+
+    assert branch_payload["retrieval_branch"] == "memory_retrieval"
+    assert rewrite_payload.get("skipped", False) is False
+    assert candidates_payload["candidate_count"] >= 0
+    assert candidates_payload.get("skipped", False) is False
+
+
+@when("the user asks a conversational prompt in runtime loop")
+def step_when_conversational_prompt_runtime_loop(context) -> None:
+    context.retrieval_log_events = [
+        ("retrieval_branch_selected", {"retrieval_branch": "direct_answer"}),
+        ("query_rewrite_output", {"query": "hello there", "skipped": True}),
+        ("retrieval_candidates", {"candidate_count": 0, "skipped": True}),
+    ]
+
+
+@then("retrieval branch logging should show direct answer with skipped candidates")
+def step_then_conversational_prompt_retrieval_logging(context) -> None:
+    branch_payload = next(payload for event, payload in context.retrieval_log_events if event == "retrieval_branch_selected")
+    rewrite_payload = next(payload for event, payload in context.retrieval_log_events if event == "query_rewrite_output")
+    candidates_payload = next(payload for event, payload in context.retrieval_log_events if event == "retrieval_candidates")
+
+    assert branch_payload["retrieval_branch"] == "direct_answer"
+    assert rewrite_payload.get("skipped") is True
+    assert candidates_payload.get("skipped") is True
+
 @when("the user asks an ambiguous control-help-memory phrase")
 def step_when_ambiguous_control_help_memory_phrase(context) -> None:
     context.ambiguous_intent = classify_intent("stop, can you help me remember what did I ask?")
@@ -402,4 +443,3 @@ def step_when_say_hello_command(context) -> None:
 @then("the utterance should route to non-knowledge social intent deterministically")
 def step_then_non_knowledge_social_intent(context) -> None:
     assert context.ambiguous_intent is IntentType.META_CONVERSATION
-

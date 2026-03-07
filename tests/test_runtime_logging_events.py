@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import deque
+from dataclasses import replace
 
 from langchain_core.documents import Document
 
@@ -10,9 +11,13 @@ from testbot import sat_chatbot_memory_v2 as runtime
 from testbot.intent_router import IntentType
 from testbot.sat_chatbot_memory_v2 import (
     ASSIST_ALTERNATIVES_ANSWER,
+    CapabilitySnapshot,
+    RuntimeCapabilityStatus,
     _derive_response_blocker_reason,
     _ambiguity_score,
     _intent_label,
+    _run_chat_loop,
+    _select_retrieval_branch,
     _user_followup_signal_proxy,
     build_provenance_metadata,
     generate_reflection_yaml,
@@ -40,6 +45,7 @@ class _StaticLLM:
 def test_stage_rewrite_query_invoke_failure_falls_back_and_logs(monkeypatch) -> None:
     events: list[tuple[str, dict]] = []
     monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: events.append((event, payload)))
+    monkeypatch.setattr(runtime, "_validate_and_log_transition", lambda _result: None)
 
     state = PipelineState(user_input="what did i say last week?")
 
@@ -55,6 +61,7 @@ def test_stage_rewrite_query_invoke_failure_falls_back_and_logs(monkeypatch) -> 
 def test_stage_answer_invoke_failure_uses_deterministic_fallback_and_logs(monkeypatch) -> None:
     events: list[tuple[str, dict]] = []
     monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: events.append((event, payload)))
+    monkeypatch.setattr(runtime, "_validate_and_log_transition", lambda _result: None)
     monkeypatch.setattr(runtime, "decide_fallback_action", lambda **_: "ANSWER_GENERAL_KNOWLEDGE")
 
     state = PipelineState(
@@ -237,6 +244,155 @@ def test_stage_answer_non_memory_without_ambiguity_does_not_emit_memory_fragment
     assert answered.final_answer.startswith("General definition (not from your memory):")
     assert not answered.final_answer.startswith("I found related memory fragments (")
     assert answered.confidence_decision.get("ambiguity_detected") is False
+
+
+def test_select_retrieval_branch_routes_definitional_knowledge_question_to_memory_retrieval() -> None:
+    branch = _select_retrieval_branch(utterance="What is ontology?", intent=IntentType.KNOWLEDGE_QUESTION)
+
+    assert branch == "memory_retrieval"
+
+
+def test_select_retrieval_branch_routes_conversational_prompt_to_direct_answer() -> None:
+    branch = _select_retrieval_branch(utterance="hello there", intent=IntentType.META_CONVERSATION)
+
+    assert branch == "direct_answer"
+
+
+def test_chat_loop_definitional_question_attempts_retrieval_and_does_not_mark_skipped(monkeypatch) -> None:
+    events: list[tuple[str, dict[str, object]]] = []
+
+    monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: events.append((event, payload)))
+    monkeypatch.setattr(runtime, "_validate_and_log_transition", lambda _result: None)
+    monkeypatch.setattr(runtime, "store_doc", lambda *args, **kwargs: None)
+    monkeypatch.setattr(runtime, "generate_reflection_yaml", lambda *args, **kwargs: "claims: []")
+    monkeypatch.setattr(runtime, "persist_promoted_context", lambda *args, **kwargs: [])
+    monkeypatch.setattr(runtime, "encode_stage", lambda _llm, state: replace(state, rewritten_query="ontology definition"))
+    monkeypatch.setattr(runtime, "stage_retrieve", lambda _store, state: (replace(state, retrieval_candidates=[]), []))
+    monkeypatch.setattr(
+        runtime,
+        "stage_rerank",
+        lambda state, docs_and_scores, **kwargs: (  # noqa: ARG005
+            replace(state, reranked_hits=[], confidence_decision={"context_confident": False, "ambiguity_detected": False}),
+            [],
+        ),
+    )
+    monkeypatch.setattr(
+        runtime,
+        "stage_answer",
+        lambda _llm, state, **kwargs: replace(  # noqa: ARG005
+            state,
+            final_answer="General definition (not from your memory): Ontology is a model of concepts and relationships.",
+            invariant_decisions={"fallback_action": "ANSWER_GENERAL_KNOWLEDGE", "answer_mode": "assist"},
+            provenance_types=[],
+            basis_statement="General-knowledge basis",
+            claims=[],
+        ),
+    )
+
+    prompts = iter(["What is ontology?", "stop"])
+    _run_chat_loop(
+        llm=_StaticLLM("ignored"),
+        store=object(),
+        chat_history=deque(),
+        near_tie_delta=0.05,
+        io_channel="cli",
+        capability_status="ask_unavailable",
+        capability_snapshot=CapabilitySnapshot(
+            runtime={},
+            requested_mode="cli",
+            daemon_mode=False,
+            effective_mode="cli",
+            fallback_reason=None,
+            exit_reason=None,
+            ha_error=None,
+            ollama_error=None,
+            runtime_capability_status=RuntimeCapabilityStatus(
+                ollama_available=True,
+                ha_available=False,
+                effective_mode="cli",
+                requested_mode="cli",
+                daemon_mode=False,
+                fallback_reason=None,
+                memory_backend="inmemory",
+                debug_enabled=False,
+                text_clarification_available=True,
+                satellite_ask_available=False,
+            ),
+        ),
+        read_user_utterance=lambda: next(prompts, None),
+        send_assistant_text=lambda _text: None,
+        clock=SystemClock(),
+    )
+
+    branch_payload = next(payload for event, payload in events if event == "retrieval_branch_selected")
+    retrieval_payload = next(payload for event, payload in events if event == "retrieval_candidates")
+
+    assert branch_payload["retrieval_branch"] == "memory_retrieval"
+    assert retrieval_payload["candidate_count"] >= 0
+    assert retrieval_payload.get("skipped", False) is False
+
+
+def test_chat_loop_conversational_prompt_skips_knowledge_retrieval_path(monkeypatch) -> None:
+    events: list[tuple[str, dict[str, object]]] = []
+
+    monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: events.append((event, payload)))
+    monkeypatch.setattr(runtime, "_validate_and_log_transition", lambda _result: None)
+    monkeypatch.setattr(runtime, "store_doc", lambda *args, **kwargs: None)
+    monkeypatch.setattr(runtime, "generate_reflection_yaml", lambda *args, **kwargs: "claims: []")
+    monkeypatch.setattr(runtime, "persist_promoted_context", lambda *args, **kwargs: [])
+    monkeypatch.setattr(
+        runtime,
+        "stage_answer",
+        lambda _llm, state, **kwargs: replace(  # noqa: ARG005
+            state,
+            final_answer="Hi!",
+            invariant_decisions={"fallback_action": "NONE", "answer_mode": "assist"},
+            provenance_types=[],
+            basis_statement="none",
+            claims=[],
+        ),
+    )
+
+    prompts = iter(["hello there", "stop"])
+    _run_chat_loop(
+        llm=_StaticLLM("ignored"),
+        store=object(),
+        chat_history=deque(),
+        near_tie_delta=0.05,
+        io_channel="cli",
+        capability_status="ask_unavailable",
+        capability_snapshot=CapabilitySnapshot(
+            runtime={},
+            requested_mode="cli",
+            daemon_mode=False,
+            effective_mode="cli",
+            fallback_reason=None,
+            exit_reason=None,
+            ha_error=None,
+            ollama_error=None,
+            runtime_capability_status=RuntimeCapabilityStatus(
+                ollama_available=True,
+                ha_available=False,
+                effective_mode="cli",
+                requested_mode="cli",
+                daemon_mode=False,
+                fallback_reason=None,
+                memory_backend="inmemory",
+                debug_enabled=False,
+                text_clarification_available=True,
+                satellite_ask_available=False,
+            ),
+        ),
+        read_user_utterance=lambda: next(prompts, None),
+        send_assistant_text=lambda _text: None,
+        clock=SystemClock(),
+    )
+
+    branch_payload = next(payload for event, payload in events if event == "retrieval_branch_selected")
+    retrieval_payload = next(payload for event, payload in events if event == "retrieval_candidates")
+
+    assert branch_payload["retrieval_branch"] == "direct_answer"
+    assert retrieval_payload.get("skipped") is True
 
 
 def test_stage_answer_low_source_confidence_non_memory_uses_safe_unknowing_mode() -> None:
