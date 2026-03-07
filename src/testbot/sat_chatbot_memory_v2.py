@@ -1029,6 +1029,9 @@ def stage_answer(
                 final_answer = draft_answer
             elif intent_class == "memory_recall" and bool(state.confidence_decision.get("context_confident", False)):
                 final_answer = _memory_recall_recovery_or_alternative()
+                # Keep downstream invariant/alignment checks consistent with the deterministic
+                # recovery answer chosen for memory recall turns.
+                draft_answer = final_answer
             elif social_or_non_knowledge_intent and fallback_action == "ANSWER_GENERAL_KNOWLEDGE":
                 final_answer = draft_answer
             else:

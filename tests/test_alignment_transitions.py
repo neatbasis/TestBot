@@ -347,7 +347,7 @@ def test_validate_answer_post_rejects_non_fallback_factual_answer_when_gk_contra
     assert "inv_003_general_knowledge_contract_enforced" in result.failures
 
 
-def test_stage_answer_memory_hit_without_ambiguity_does_not_force_clarifier_mode() -> None:
+def test_stage_answer_memory_hit_without_ambiguity_uses_contract_safe_recovery_answer() -> None:
     state = PipelineState(
         user_input="what did i say yesterday",
         confidence_decision={"context_confident": True, "ambiguity_detected": False},
@@ -371,8 +371,8 @@ def test_stage_answer_memory_hit_without_ambiguity_does_not_force_clarifier_mode
     assert answered.final_answer.startswith("From memory, I found:")
     assert "doc_id: d-1" in answered.final_answer
     assert answered.invariant_decisions["answer_mode"] == "memory-grounded"
-    assert answered.alignment_decision["final_alignment_decision"] == "fallback"
-    assert not validate_answer_post(answered).passed
+    assert answered.alignment_decision["final_alignment_decision"] == "allow"
+    assert validate_answer_post(answered).passed
 
 
 
