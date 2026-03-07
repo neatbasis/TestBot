@@ -52,3 +52,27 @@ def test_validate_log_schema_rejects_provenance_summary_missing_source_fields() 
 
     assert "test-row: missing required key 'used_source_evidence_refs'" in errors
     assert "test-row: missing required key 'source_evidence_attribution'" in errors
+
+
+def test_validate_log_schema_requires_debug_turn_trace_payload() -> None:
+    row = {
+        "ts": "2026-03-03T00:00:00Z",
+        "event": "debug_turn_trace",
+        "schema_version": 3,
+        "trace": "[debug] compact",
+    }
+
+    errors = validate_row(row, row_label="test-row")
+
+    assert "test-row: missing required key 'payload'" in errors
+
+
+def test_validate_log_schema_accepts_debug_turn_trace_without_legacy_trace() -> None:
+    row = {
+        "ts": "2026-03-03T00:00:00Z",
+        "event": "debug_turn_trace",
+        "schema_version": 3,
+        "payload": {"debug.policy": {"reject_code": "CONTEXT_CONF_BELOW_THRESHOLD"}},
+    }
+
+    assert validate_row(row, row_label="test-row") == []

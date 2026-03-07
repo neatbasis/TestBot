@@ -12,6 +12,9 @@ COMMON_FIELDS: dict[str, type] = {
 }
 
 EVENT_FIELDS: dict[str, dict[str, type]] = {
+    "debug_turn_trace": {
+        "payload": dict,
+    },
     "pipeline_state_snapshot": {
         "stage": str,
         "state": dict,
@@ -32,6 +35,12 @@ EVENT_FIELDS: dict[str, dict[str, type]] = {
     },
 }
 
+OPTIONAL_EVENT_FIELDS: dict[str, dict[str, type]] = {
+    "debug_turn_trace": {
+        "trace": str,
+    },
+}
+
 
 def _check_fields(row: dict[str, Any], expected: dict[str, type], *, row_label: str) -> list[str]:
     errors: list[str] = []
@@ -42,6 +51,19 @@ def _check_fields(row: dict[str, Any], expected: dict[str, type], *, row_label: 
         if not isinstance(row[key], expected_type):
             errors.append(
                 f"{row_label}: key '{key}' expected {expected_type.__name__}, "
+                f"got {type(row[key]).__name__}"
+            )
+    return errors
+
+
+def _check_optional_fields(row: dict[str, Any], expected: dict[str, type], *, row_label: str) -> list[str]:
+    errors: list[str] = []
+    for key, expected_type in expected.items():
+        if key not in row:
+            continue
+        if not isinstance(row[key], expected_type):
+            errors.append(
+                f"{row_label}: key '{key}' expected {expected_type.__name__} when present, "
                 f"got {type(row[key]).__name__}"
             )
     return errors
@@ -59,6 +81,8 @@ def validate_row(row: dict[str, Any], *, row_label: str = "row") -> list[str]:
     event = row.get("event")
     if isinstance(event, str) and event in EVENT_FIELDS:
         errors.extend(_check_fields(row, EVENT_FIELDS[event], row_label=row_label))
+    if isinstance(event, str) and event in OPTIONAL_EVENT_FIELDS:
+        errors.extend(_check_optional_fields(row, OPTIONAL_EVENT_FIELDS[event], row_label=row_label))
 
     return errors
 
