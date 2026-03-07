@@ -11,6 +11,7 @@ from testbot import sat_chatbot_memory_v2 as runtime
 from testbot.intent_router import IntentType
 from testbot.sat_chatbot_memory_v2 import (
     ASSIST_ALTERNATIVES_ANSWER,
+    NON_KNOWLEDGE_UNCERTAINTY_ANSWER,
     CapabilitySnapshot,
     RuntimeCapabilityStatus,
     _derive_response_blocker_reason,
@@ -395,7 +396,7 @@ def test_chat_loop_conversational_prompt_skips_knowledge_retrieval_path(monkeypa
     assert retrieval_payload.get("skipped") is True
 
 
-def test_stage_answer_low_source_confidence_non_memory_uses_safe_unknowing_mode() -> None:
+def test_stage_answer_low_source_confidence_non_memory_uses_safe_unknowing_mode_legacy_assertions() -> None:
     state = PipelineState(
         user_input="What happened in my calendar?",
         resolved_intent=IntentType.KNOWLEDGE_QUESTION.value,
@@ -415,12 +416,111 @@ def test_stage_answer_low_source_confidence_non_memory_uses_safe_unknowing_mode(
         clock=SystemClock(),
     )
 
-    lowered = answered.final_answer.lower()
-    assert "don't have enough reliable" in lowered
-    assert "i can either" in lowered and " or " in lowered
+    assert answered.final_answer == NON_KNOWLEDGE_UNCERTAINTY_ANSWER
     assert answered.invariant_decisions.get("fallback_action") == "ANSWER_UNKNOWN"
+    assert answered.invariant_decisions.get("answer_mode") == "dont-know"
+
+
+
+
+def test_stage_answer_greeting_command_preserves_social_draft_answer() -> None:
+    state = PipelineState(
+        user_input="say hello",
+        resolved_intent=IntentType.CONTROL.value,
+        confidence_decision={
+            "context_confident": False,
+            "ambiguity_detected": False,
+            "general_knowledge_confidence": 0.0,
+            "general_knowledge_support": 0,
+        },
+    )
+
+    answered = stage_answer(
+        _StaticLLM("Hello! Nice to meet you."),
+        state,
+        chat_history=deque(),
+        hits=[],
+        capability_status="ask_unavailable",
+        clock=SystemClock(),
+    )
+
+    assert answered.final_answer == "Hello! Nice to meet you."
     assert answered.invariant_decisions.get("answer_mode") == "assist"
 
+
+def test_stage_answer_low_source_confidence_non_memory_uses_uncertainty_response() -> None:
+    state = PipelineState(
+        user_input="What happened in my calendar?",
+        resolved_intent=IntentType.KNOWLEDGE_QUESTION.value,
+        confidence_decision={
+            "context_confident": True,
+            "ambiguity_detected": False,
+            "source_confidence": 0.2,
+        },
+    )
+
+    answered = stage_answer(
+        _StaticLLM("ignored"),
+        state,
+        chat_history=deque(),
+        hits=[],
+        capability_status="ask_unavailable",
+        clock=SystemClock(),
+    )
+
+    assert answered.final_answer == NON_KNOWLEDGE_UNCERTAINTY_ANSWER
+    assert answered.invariant_decisions.get("fallback_action") == "ANSWER_UNKNOWN"
+    assert answered.invariant_decisions.get("answer_mode") == "dont-know"
+
+
+def test_stage_answer_self_introduction_preserves_acknowledgement_draft() -> None:
+    state = PipelineState(
+        user_input="my name is taylor",
+        resolved_intent=IntentType.META_CONVERSATION.value,
+        confidence_decision={
+            "context_confident": False,
+            "ambiguity_detected": False,
+            "general_knowledge_confidence": 0.0,
+            "general_knowledge_support": 0,
+        },
+    )
+
+    answered = stage_answer(
+        _StaticLLM("Thanks, Taylor — I'll remember that for this conversation."),
+        state,
+        chat_history=deque(),
+        hits=[],
+        capability_status="ask_unavailable",
+        clock=SystemClock(),
+    )
+
+    assert answered.final_answer == "Thanks, Taylor — I'll remember that for this conversation."
+    assert answered.invariant_decisions.get("answer_mode") == "assist"
+
+
+def test_stage_answer_regression_say_hello_keeps_greeting_instead_of_memory_fallback() -> None:
+    state = PipelineState(
+        user_input="say hello",
+        resolved_intent=IntentType.CONTROL.value,
+        confidence_decision={
+            "context_confident": False,
+            "ambiguity_detected": False,
+            "general_knowledge_confidence": 0.0,
+            "general_knowledge_support": 0,
+        },
+    )
+
+    answered = stage_answer(
+        _StaticLLM("hello"),
+        state,
+        chat_history=deque(),
+        hits=[],
+        capability_status="ask_unavailable",
+        clock=SystemClock(),
+    )
+
+    assert answered.final_answer == "hello"
+    assert "reliable memory" not in answered.final_answer.lower()
 
 def test_response_blocker_reason_for_answer_unknown_reports_insufficient_reliable_memory() -> None:
     assert _derive_response_blocker_reason(

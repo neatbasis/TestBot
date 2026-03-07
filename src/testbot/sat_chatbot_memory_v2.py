@@ -92,6 +92,10 @@ ASSIST_ALTERNATIVES_ANSWER = (
     "I can either help you reconstruct the timeline from what you remember, "
     "or suggest where to check next for the missing detail."
 )
+NON_KNOWLEDGE_UNCERTAINTY_ANSWER = (
+    "I'm not fully confident in a reliable answer right now. "
+    "I can offer a best-effort response and suggest a quick way to verify it."
+)
 GENERAL_KNOWLEDGE_MARKER_PREFIX = "General definition (not from your memory):"
 GENERAL_KNOWLEDGE_CONFIDENCE_MIN = 0.85
 GENERAL_KNOWLEDGE_SUPPORT_MIN = 2
@@ -630,6 +634,10 @@ def _intent_class_for_policy(intent: IntentType) -> str:
     return "non_memory"
 
 
+def _is_social_or_non_knowledge_intent(intent: IntentType) -> bool:
+    return intent in {IntentType.META_CONVERSATION, IntentType.CONTROL, IntentType.CAPABILITIES_HELP}
+
+
 def _is_capabilities_help_request(intent: IntentType) -> bool:
     return intent == IntentType.CAPABILITIES_HELP
 
@@ -811,7 +819,7 @@ def stage_answer(
                 return build_partial_memory_clarifier(hits)
             return FALLBACK_ANSWER
         if action == "ANSWER_UNKNOWN":
-            return ASSIST_ALTERNATIVES_ANSWER if intent_class == "non_memory" else FALLBACK_ANSWER
+            return NON_KNOWLEDGE_UNCERTAINTY_ANSWER if intent_class == "non_memory" else FALLBACK_ANSWER
         if action == "ANSWER_TIME":
             if clock is None:
                 return "I can answer relative time questions like 'how many minutes ago' or 'what is tomorrow?'."
@@ -825,6 +833,7 @@ def stage_answer(
 
     resolved_intent = IntentType(state.resolved_intent or classify_intent(state.user_input).value)
     intent_class = _intent_class_for_policy(resolved_intent)
+    social_or_non_knowledge_intent = _is_social_or_non_knowledge_intent(resolved_intent)
     satellite_action_request = is_satellite_action_request(state.user_input)
 
     if _is_capabilities_help_request(resolved_intent):
@@ -915,9 +924,11 @@ def stage_answer(
         return ASSIST_ALTERNATIVES_ANSWER
 
     def _knowledge_safe_fallback() -> str:
+        if fallback_action in {"ANSWER_UNKNOWN", "OFFER_CAPABILITY_ALTERNATIVES", "ANSWER_TIME"}:
+            return _fallback_answer_for_action(fallback_action, intent_class=intent_class)
         if intent_class == "memory_recall":
             return _clarifier_or_policy_alternative()
-        return ASSIST_ALTERNATIVES_ANSWER
+        return _fallback_answer_for_action(fallback_action, intent_class=intent_class)
 
     if is_unsafe_user_request(state.user_input):
         draft_answer = ""
@@ -956,6 +967,8 @@ def stage_answer(
                 final_answer = ASSIST_ALTERNATIVES_ANSWER
             elif validate_answer_contract(draft_answer):
                 final_answer = draft_answer
+            elif social_or_non_knowledge_intent and fallback_action == "ANSWER_GENERAL_KNOWLEDGE":
+                final_answer = draft_answer
             else:
                 final_answer = _clarifier_or_policy_alternative()
 
@@ -976,13 +989,20 @@ def stage_answer(
         )
     )
     if final_answer != FALLBACK_ANSWER and not general_knowledge_contract_valid:
-        final_answer = _knowledge_safe_fallback()
-        provenance_types, claims, basis_statement, used_memory_refs, used_source_evidence_refs, source_evidence_attribution = build_provenance_metadata(
-            final_answer=final_answer,
-            hits=hits,
-            chat_history=chat_history,
-            packed_history=packed_history,
+        preserve_social_draft = (
+            social_or_non_knowledge_intent
+            and bool(draft_answer)
+            and final_answer == draft_answer
+            and fallback_action == "ANSWER_GENERAL_KNOWLEDGE"
         )
+        if not preserve_social_draft:
+            final_answer = _knowledge_safe_fallback()
+            provenance_types, claims, basis_statement, used_memory_refs, used_source_evidence_refs, source_evidence_attribution = build_provenance_metadata(
+                final_answer=final_answer,
+                hits=hits,
+                chat_history=chat_history,
+                packed_history=packed_history,
+            )
 
     alignment_decision = evaluate_alignment_decision(
         user_input=state.user_input,
@@ -1001,9 +1021,13 @@ def stage_answer(
             "clarify"
             if is_clarification_answer(final_answer)
             else (
-                "assist"
-                if final_answer == ASSIST_ALTERNATIVES_ANSWER
-                else ("dont-know" if final_answer == FALLBACK_ANSWER else "memory-grounded")
+                "dont-know"
+                if fallback_action == "ANSWER_UNKNOWN" or final_answer in {FALLBACK_ANSWER, NON_KNOWLEDGE_UNCERTAINTY_ANSWER}
+                else (
+                    "assist"
+                    if final_answer == ASSIST_ALTERNATIVES_ANSWER or social_or_non_knowledge_intent
+                    else "memory-grounded"
+                )
             )
         )
     )
