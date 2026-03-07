@@ -67,6 +67,7 @@ from ha_ask.config import normalize_rest_api_url
 from testbot.history_packer import PackedHistory, labeled_history_claims, pack_chat_history, render_packed_history
 from testbot.response_planner import build_response_plan, plan_to_dict, render_response_plan_block
 from testbot.reject_taxonomy import RejectSignal, derive_reject_signal
+from testbot.canonical_turn_orchestrator import CanonicalStage, CanonicalTurnContext, CanonicalTurnOrchestrator
 
 from langchain_core.documents import Document
 from langchain_core.prompts import ChatPromptTemplate
@@ -2277,6 +2278,232 @@ def evaluate_alignment_decision(
     }
 
 
+
+def _run_canonical_turn_pipeline(
+    *,
+    llm: ChatOllama,
+    store: MemoryStore,
+    state: PipelineState,
+    utterance: str,
+    classified_intent: IntentType,
+    resolved_intent: IntentType,
+    intent_label: str,
+    u_id: str,
+    u_ref_id: str,
+    near_tie_delta: float,
+    chat_history: deque[ChatMsg],
+    capability_status: CapabilityStatus,
+    capability_snapshot: CapabilitySnapshot,
+    clock: Clock,
+) -> tuple[PipelineState, list[Document]]:
+    retrieval_branch = _select_retrieval_branch(utterance=utterance, intent=resolved_intent)
+    context = CanonicalTurnContext(
+        state=state,
+        artifacts={
+            "utterance": utterance,
+            "intent_label": intent_label,
+            "intent_classified": classified_intent.value,
+            "intent_resolved": resolved_intent.value,
+            "retrieval_branch": retrieval_branch,
+            "u_id": u_id,
+            "u_ref_id": u_ref_id,
+            "docs_and_scores": [],
+            "hits": [],
+            "ambiguity_score": 0.0,
+        },
+    )
+
+    def _observe_turn(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        _validate_and_log_transition(validate_observe_pre(ctx.state))
+        ctx.state = observe_stage(ctx.state)
+        _validate_and_log_transition(validate_observe_post(ctx.state))
+        append_pipeline_snapshot("observe", ctx.state)
+        return ctx
+
+    def _encode_candidates(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        if ctx.artifacts["retrieval_branch"] == "memory_retrieval":
+            _validate_and_log_transition(validate_encode_pre(ctx.state))
+            ctx.state = encode_stage(llm, ctx.state)
+            _validate_and_log_transition(validate_encode_post(ctx.state))
+            append_session_log("query_rewrite_output", {"utterance": utterance, "query": ctx.state.rewritten_query})
+        else:
+            ctx.state = replace(ctx.state, rewritten_query=ctx.state.user_input)
+            append_session_log(
+                "query_rewrite_output",
+                {"utterance": utterance, "query": ctx.state.rewritten_query, "skipped": True},
+            )
+        append_pipeline_snapshot("rewrite", ctx.state)
+        return ctx
+
+    def _stabilize_pre_route(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        planning_descriptor = planning_pathway_for_intent(resolved_intent, extract_intent_facets(utterance))
+        response_plan = build_response_plan(descriptor=planning_descriptor, user_input=utterance)
+        ctx.state = replace(ctx.state, response_plan=plan_to_dict(response_plan))
+        append_pipeline_snapshot("stabilize", ctx.state)
+        return ctx
+
+    def _context_resolve(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        append_pipeline_snapshot("context", ctx.state)
+        return ctx
+
+    def _intent_resolve(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        append_session_log(
+            "retrieval_branch_selected",
+            {
+                "utterance": utterance,
+                "intent": intent_label,
+                "intent_classified": classified_intent.value,
+                "intent_resolved": resolved_intent.value,
+                "retrieval_branch": ctx.artifacts["retrieval_branch"],
+            },
+        )
+        append_pipeline_snapshot("intent", ctx.state)
+        return ctx
+
+    def _retrieve_evidence(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        if ctx.artifacts["retrieval_branch"] == "memory_retrieval":
+            _validate_and_log_transition(validate_retrieve_pre(ctx.state))
+            ctx.state, docs_and_scores = stage_retrieve(store, ctx.state)
+            _validate_and_log_transition(validate_retrieve_post(ctx.state))
+            ctx.artifacts["docs_and_scores"] = docs_and_scores
+            append_session_log(
+                "retrieval_candidates",
+                {
+                    "query": ctx.state.rewritten_query,
+                    "candidate_count": len(docs_and_scores),
+                    "top_candidates": [
+                        {"doc_id": (doc.id or doc.metadata.get("doc_id") or ""), "score": float(score)}
+                        for doc, score in docs_and_scores[:4]
+                    ],
+                },
+            )
+        else:
+            append_session_log(
+                "retrieval_candidates",
+                {"query": ctx.state.rewritten_query, "candidate_count": 0, "top_candidates": [], "skipped": True},
+            )
+        append_pipeline_snapshot("retrieve", ctx.state)
+        return ctx
+
+    def _policy_decide(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        if ctx.artifacts["retrieval_branch"] == "memory_retrieval":
+            _validate_and_log_transition(validate_rerank_pre(ctx.state))
+            ctx.state, hits = stage_rerank(
+                ctx.state,
+                ctx.artifacts["docs_and_scores"],
+                utterance=utterance,
+                user_doc_id=u_id,
+                user_reflection_doc_id=u_ref_id,
+                near_tie_delta=near_tie_delta,
+                clock=clock,
+            )
+            _validate_and_log_transition(validate_rerank_post(ctx.state))
+            ctx.artifacts["hits"] = hits
+        else:
+            minimal_confidence = _minimal_confidence_decision_for_direct_answer(
+                branch=ctx.artifacts["retrieval_branch"],
+                base_confidence_decision=ctx.state.confidence_decision,
+            )
+            ctx.state = replace(
+                ctx.state,
+                retrieval_candidates=[],
+                reranked_hits=[],
+                confidence_decision=minimal_confidence,
+            )
+            append_session_log(
+                "rerank_skipped",
+                {
+                    "utterance": utterance,
+                    "reason": "intent_routed_to_direct_answer",
+                    "intent": intent_label,
+                    "retrieval_branch": ctx.artifacts["retrieval_branch"],
+                },
+            )
+        append_pipeline_snapshot("rerank", ctx.state)
+        return ctx
+
+    def _answer_assemble(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        _validate_and_log_transition(validate_answer_pre(ctx.state))
+        ctx.state = stage_answer(
+            llm,
+            ctx.state,
+            chat_history=chat_history,
+            hits=ctx.artifacts["hits"],
+            capability_status=capability_status,
+            runtime_capability_status=capability_snapshot.runtime_capability_status,
+            clock=clock,
+        )
+        append_pipeline_snapshot("answer.assemble", ctx.state)
+        return ctx
+
+    def _answer_validate(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        _validate_and_log_transition(validate_answer_post(ctx.state))
+        append_pipeline_snapshot("answer.validate", ctx.state)
+        return ctx
+
+    def _answer_render(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        append_pipeline_snapshot("answer.render", ctx.state)
+        return ctx
+
+    def _answer_commit(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        append_pipeline_snapshot("answer", ctx.state)
+        ambiguity_score = _ambiguity_score(ctx.state.confidence_decision)
+        ctx.artifacts["ambiguity_score"] = ambiguity_score
+        append_session_log(
+            "intent_classified",
+            {
+                "utterance": utterance,
+                "intent": intent_label,
+                "intent_classified": classified_intent.value,
+                "intent_resolved": resolved_intent.value,
+                "ambiguity_score": ambiguity_score,
+                "user_followup_signal_proxy": round(ambiguity_score, 4),
+            },
+        )
+        append_session_log(
+            "final_answer_mode",
+            {
+                "mode": ctx.state.invariant_decisions.get("answer_mode", "dont-know"),
+                "query": ctx.state.rewritten_query,
+                "context_confident": ctx.state.confidence_decision.get("context_confident", False),
+                "retrieved_docs": [(d.id or d.metadata.get("doc_id") or "") for d in ctx.artifacts["hits"]],
+                "claims": ctx.state.claims,
+                "provenance_types": [p.value for p in ctx.state.provenance_types],
+                "used_memory_refs": ctx.state.used_memory_refs,
+                "used_source_evidence_refs": ctx.state.used_source_evidence_refs,
+                "source_evidence_attribution": ctx.state.source_evidence_attribution,
+                "basis_statement": ctx.state.basis_statement,
+                "stage_audit_trail": list(ctx.stage_audit_trail),
+            },
+        )
+        append_pipeline_snapshot("answer.commit", ctx.state)
+        return ctx
+
+    orchestrator = CanonicalTurnOrchestrator(
+        stages=[
+            CanonicalStage("observe.turn", _observe_turn),
+            CanonicalStage("encode.candidates", _encode_candidates),
+            CanonicalStage("stabilize.pre_route", _stabilize_pre_route),
+            CanonicalStage("context.resolve", _context_resolve),
+            CanonicalStage("intent.resolve", _intent_resolve),
+            CanonicalStage("retrieve.evidence", _retrieve_evidence),
+            CanonicalStage("policy.decide", _policy_decide),
+            CanonicalStage("answer.assemble", _answer_assemble),
+            CanonicalStage("answer.validate", _answer_validate),
+            CanonicalStage("answer.render", _answer_render),
+            CanonicalStage("answer.commit", _answer_commit),
+        ]
+    )
+    final_context = orchestrator.run(context)
+    final_state = replace(
+        final_context.state,
+        confidence_decision={
+            **final_context.state.confidence_decision,
+            "stage_audit_trail": list(final_context.stage_audit_trail),
+        },
+    )
+    return final_state, list(final_context.artifacts["hits"])
+
 def _run_chat_loop(
     *,
     llm: ChatOllama,
@@ -2342,11 +2569,6 @@ def _run_chat_loop(
         )
         append_pipeline_snapshot("ingest", state)
 
-        _validate_and_log_transition(validate_observe_pre(state))
-        state = observe_stage(state)
-        _validate_and_log_transition(validate_observe_post(state))
-        append_pipeline_snapshot("observe", state)
-
             # -----------------------
             # 1) Store user utterance card + reflection card
             # -----------------------
@@ -2398,157 +2620,24 @@ def _run_chat_loop(
             },
         )
 
-            # -----------------------
-            # 2) Retrieve + time-aware rerank (FIXED: handle tuples)
-            # -----------------------
-        retrieval_branch = _select_retrieval_branch(utterance=utterance, intent=resolved_intent)
-        append_session_log(
-            "retrieval_branch_selected",
-            {
-                "utterance": utterance,
-                "intent": intent_label,
-                "intent_classified": classified_intent.value,
-                "intent_resolved": resolved_intent.value,
-                "retrieval_branch": retrieval_branch,
-            },
-        )
-
-        planning_descriptor = planning_pathway_for_intent(resolved_intent, extract_intent_facets(utterance))
-        response_plan = build_response_plan(
-            descriptor=planning_descriptor,
-            user_input=utterance,
-        )
-        state = replace(state, response_plan=plan_to_dict(response_plan))
-
-        if retrieval_branch == "memory_retrieval":
-            _validate_and_log_transition(validate_encode_pre(state))
-            state = encode_stage(llm, state)
-            _validate_and_log_transition(validate_encode_post(state))
-            append_pipeline_snapshot("rewrite", state)
-            append_session_log("query_rewrite_output", {"utterance": utterance, "query": state.rewritten_query})
-
-            _validate_and_log_transition(validate_retrieve_pre(state))
-            state, docs_and_scores = stage_retrieve(store, state)
-            _validate_and_log_transition(validate_retrieve_post(state))
-            append_pipeline_snapshot("retrieve", state)
-            append_session_log(
-                "retrieval_candidates",
-                {
-                    "query": state.rewritten_query,
-                    "candidate_count": len(docs_and_scores),
-                    "top_candidates": [
-                        {
-                            "doc_id": (doc.id or doc.metadata.get("doc_id") or ""),
-                            "score": float(score),
-                        }
-                        for doc, score in docs_and_scores[:4]
-                    ],
-                },
-            )
-
-            _validate_and_log_transition(validate_rerank_pre(state))
-            state, hits = stage_rerank(
-                state,
-                docs_and_scores,
-                utterance=utterance,
-                user_doc_id=u_id,
-                user_reflection_doc_id=u_ref_id,
-                near_tie_delta=near_tie_delta,
-                clock=clock,
-            )
-            _validate_and_log_transition(validate_rerank_post(state))
-            append_pipeline_snapshot("rerank", state)
-        else:
-            minimal_confidence = _minimal_confidence_decision_for_direct_answer(
-                branch=retrieval_branch,
-                base_confidence_decision=state.confidence_decision,
-            )
-            state = replace(state, rewritten_query=state.user_input, retrieval_candidates=[], reranked_hits=[], confidence_decision=minimal_confidence)
-            append_pipeline_snapshot("rewrite", state)
-            append_pipeline_snapshot("retrieve", state)
-            append_pipeline_snapshot("rerank", state)
-            append_session_log("query_rewrite_output", {"utterance": utterance, "query": state.rewritten_query, "skipped": True})
-            append_session_log(
-                "retrieval_candidates",
-                {
-                    "query": state.rewritten_query,
-                    "candidate_count": 0,
-                    "top_candidates": [],
-                    "skipped": True,
-                },
-            )
-            append_session_log(
-                "rerank_skipped",
-                {
-                    "utterance": utterance,
-                    "reason": "intent_routed_to_direct_answer",
-                    "intent": intent_label,
-                    "retrieval_branch": retrieval_branch,
-                },
-            )
-            hits = []
-
-        ambiguity_score = _ambiguity_score(state.confidence_decision)
-        append_session_log(
-            "intent_classified",
-            {
-                "utterance": utterance,
-                "intent": intent_label,
-                "intent_classified": classified_intent.value,
-                "intent_resolved": resolved_intent.value,
-                "ambiguity_score": ambiguity_score,
-                "user_followup_signal_proxy": round(ambiguity_score, 4),
-            },
-        )
-        append_session_log(
-            "time_target_parse",
-            {
-                "utterance": utterance,
-                "now_ts": state.confidence_decision.get("now_ts", ""),
-                "target_ts": state.confidence_decision.get("target_ts", ""),
-                "sigma_seconds": state.confidence_decision.get("sigma_seconds", 0.0),
-                "objective_candidates": state.confidence_decision.get("scored_candidates", []),
-            },
-        )
-        if state.confidence_decision.get("ambiguity_detected", False):
-            append_session_log(
-                "ambiguity_detected",
-                {
-                    "query": state.rewritten_query,
-                    "candidates": state.confidence_decision.get("ambiguous_candidates", []),
-                },
-            )
-
-            # -----------------------
-            # 3) Answer using ONLY memory + recent chat
-            # -----------------------
-        _validate_and_log_transition(validate_answer_pre(state))
-        state = stage_answer(
-            llm,
-            state,
+        state, hits = _run_canonical_turn_pipeline(
+            llm=llm,
+            store=store,
+            state=state,
+            utterance=utterance,
+            classified_intent=classified_intent,
+            resolved_intent=resolved_intent,
+            intent_label=intent_label,
+            u_id=u_id,
+            u_ref_id=u_ref_id,
+            near_tie_delta=near_tie_delta,
             chat_history=chat_history,
-            hits=hits,
             capability_status=capability_status,
-            runtime_capability_status=capability_snapshot.runtime_capability_status,
+            capability_snapshot=capability_snapshot,
             clock=clock,
         )
-        _validate_and_log_transition(validate_answer_post(state))
-        append_pipeline_snapshot("answer", state)
-        append_session_log(
-            "final_answer_mode",
-            {
-                "mode": state.invariant_decisions.get("answer_mode", "dont-know"),
-                "query": state.rewritten_query,
-                "context_confident": state.confidence_decision.get("context_confident", False),
-                "retrieved_docs": [(d.id or d.metadata.get("doc_id") or "") for d in hits],
-                "claims": state.claims,
-                "provenance_types": [p.value for p in state.provenance_types],
-                "used_memory_refs": state.used_memory_refs,
-                "used_source_evidence_refs": state.used_source_evidence_refs,
-                "source_evidence_attribution": state.source_evidence_attribution,
-                "basis_statement": state.basis_statement,
-            },
-        )
+
+        ambiguity_score = _ambiguity_score(state.confidence_decision)
         chosen_action = str(state.invariant_decisions.get("fallback_action", "NONE"))
         followup_proxy = _user_followup_signal_proxy(
             final_answer=state.final_answer,
