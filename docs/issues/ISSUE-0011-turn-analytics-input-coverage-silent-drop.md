@@ -45,6 +45,8 @@
 - Add focused unit tests for mixed-event logs and malformed/non-turn-heavy inputs.
 - Document the input contract and operator interpretation guidance in testing/analytics docs.
 
+- Land analytics coverage diagnostics in alignment with ISSUE-0012 Sprint 5 auditability checkpoint to preserve post-turn observability requirements.
+
 ## Verification
 
 - Command: `python scripts/aggregate_turn_analytics.py --input logs/session.jsonl`

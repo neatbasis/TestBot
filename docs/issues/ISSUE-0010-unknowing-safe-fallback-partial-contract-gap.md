@@ -40,6 +40,8 @@ The `unknowing_safe_fallback` capability is still marked `partial`. ISSUE-0010 i
 - [ ] **Remaining delta: debug reason accuracy** — reconcile debug/trace reason strings so low-confidence and unknown branches report accurate reasons for fallback decisions.
 - [ ] Regenerate report/status artifacts with existing scripts only after acceptance criteria 1-3 are fully implemented and validated as passing.
 
+- Track fallback-contract completion as a dependency of ISSUE-0012 Sprint 4/5 review checkpoints for decision-answer alignment and commit-state consistency.
+
 ## Verification
 
 - Command: `python -m behave features/answer_contract.feature features/intent_grounding.feature`

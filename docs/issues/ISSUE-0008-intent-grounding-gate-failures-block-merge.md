@@ -38,6 +38,8 @@ The initial merge-blocking failures were remediated, but `intent_grounding_route
 - Tighten router threshold/rule handling where near-tie or fallback branch ambiguity remains.
 - Regenerate feature-status artifacts after each iteration to keep governance traceability current.
 
+- Align remaining route-confidence hardening tasks with the staged canonical pipeline plan tracked in ISSUE-0012 (Sprint 4 decisioning checkpoint).
+
 ## Verification
 
 - Command: `python -m behave features/intent_grounding.feature`

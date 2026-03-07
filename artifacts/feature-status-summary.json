@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-03-07T01:40:55Z",
+  "generated_at_utc": "2026-03-07T15:52:26Z",
   "inputs": {
     "contract_path": "docs/qa/feature-status.yaml",
     "gate_summary_path": "artifacts/all-green-gate-summary.json",
@@ -9,40 +9,46 @@
   "source_file_metadata": {
     "contract": {
       "path": "docs/qa/feature-status.yaml",
-      "size_bytes": 4195,
-      "mtime_utc": "2026-03-07T01:40:41Z",
-      "sha256": "b1d9ffae9c8651b1a8d9f5442755fcba2d055cf10c786a264a4140cba37857d4"
+      "size_bytes": 5949,
+      "mtime_utc": "2026-03-07T15:52:11Z",
+      "sha256": "bd91a78c1200ce076a0c6a5816a53e49208c0ca5e52e1d3c662a5de79ef9e5dc"
     },
     "gate_summary": {
       "path": "artifacts/all-green-gate-summary.json",
       "size_bytes": 3259,
-      "mtime_utc": "2026-03-07T01:01:07Z",
+      "mtime_utc": "2026-03-07T13:43:34Z",
       "sha256": "8d57084a798ed0278fe04ddc515e0bfee3b3468487eeab4306c6212661c5b3b6"
     },
     "open_issues": [
       {
         "path": "docs/issues/ISSUE-0008-intent-grounding-gate-failures-block-merge.md",
-        "size_bytes": 2930,
-        "mtime_utc": "2026-03-07T01:01:07Z",
-        "sha256": "d848db4ba2244dd191de3a7f68cbf8603865104b6f0d49f8aba1b1c12c0174e6"
+        "size_bytes": 3079,
+        "mtime_utc": "2026-03-07T15:52:11Z",
+        "sha256": "a03e2e1c0a698fa3c91161429fa8149406bb70b5c67f929c1601bd4f7e33a4f3"
       },
       {
         "path": "docs/issues/ISSUE-0009-knowing-grounded-answers-partial-provenance-gap.md",
-        "size_bytes": 3692,
-        "mtime_utc": "2026-03-07T01:40:41Z",
-        "sha256": "56144bd065bfa44d7f8e716b8161fdfe73ba83913daa3b6c9ca111deb3f9115f"
+        "size_bytes": 3999,
+        "mtime_utc": "2026-03-07T15:52:11Z",
+        "sha256": "5c6f7210c282b91d7b83d22baebedf4f7e28436222ab66f2a8aa6a644076c1bd"
       },
       {
         "path": "docs/issues/ISSUE-0010-unknowing-safe-fallback-partial-contract-gap.md",
-        "size_bytes": 3579,
-        "mtime_utc": "2026-03-07T01:40:41Z",
-        "sha256": "a60c8021ff011d19c89ef7ee6e0a11f43db73ef11b9869474f053662aa986251"
+        "size_bytes": 3879,
+        "mtime_utc": "2026-03-07T15:52:11Z",
+        "sha256": "23c8e3d10194d3f911594b45b54277f96efee032c6543155f0a885b1ea38ab18"
       },
       {
         "path": "docs/issues/ISSUE-0011-turn-analytics-input-coverage-silent-drop.md",
-        "size_bytes": 3980,
-        "mtime_utc": "2026-03-07T01:01:07Z",
-        "sha256": "890a2f0e7cd701987ca1366d8006281d955599ded1bb2356c3088e459a90d37b"
+        "size_bytes": 4131,
+        "mtime_utc": "2026-03-07T15:52:11Z",
+        "sha256": "afe335214740c02bee77a56ab3d9d27da62dd7946e0dcefda9079d7013ebe740"
+      },
+      {
+        "path": "docs/issues/ISSUE-0012-canonical-turn-pipeline-delivery-plan.md",
+        "size_bytes": 4440,
+        "mtime_utc": "2026-03-07T15:51:22Z",
+        "sha256": "65b8cdacf926eab7620b5192281dccdb95b3db56dc44b3623b4f66fc315df511"
       }
     ]
   },
@@ -52,7 +58,7 @@
   "summary": {
     "implemented": 2,
     "partial": 4,
-    "missing": 0
+    "missing": 3
   },
   "capabilities": [
     {
@@ -75,6 +81,11 @@
           "id": "ISSUE-0010",
           "title": "Unknowing safe fallback remains partial for explicit uncertainty contract completeness",
           "path": "docs/issues/ISSUE-0010-unknowing-safe-fallback-partial-contract-gap.md"
+        },
+        {
+          "id": "ISSUE-0012",
+          "title": "Canonical turn pipeline delivery plan requires staged implementation and mandatory code review checkpoints",
+          "path": "docs/issues/ISSUE-0012-canonical-turn-pipeline-delivery-plan.md"
         }
       ],
       "roadmap_priority_refs": [
@@ -122,6 +133,11 @@
           "id": "ISSUE-0010",
           "title": "Unknowing safe fallback remains partial for explicit uncertainty contract completeness",
           "path": "docs/issues/ISSUE-0010-unknowing-safe-fallback-partial-contract-gap.md"
+        },
+        {
+          "id": "ISSUE-0012",
+          "title": "Canonical turn pipeline delivery plan requires staged implementation and mandatory code review checkpoints",
+          "path": "docs/issues/ISSUE-0012-canonical-turn-pipeline-delivery-plan.md"
         }
       ],
       "roadmap_priority_refs": [
@@ -156,6 +172,11 @@
           "id": "ISSUE-0008",
           "title": "Intent-grounding router remains partial for deterministic route confidence",
           "path": "docs/issues/ISSUE-0008-intent-grounding-gate-failures-block-merge.md"
+        },
+        {
+          "id": "ISSUE-0012",
+          "title": "Canonical turn pipeline delivery plan requires staged implementation and mandatory code review checkpoints",
+          "path": "docs/issues/ISSUE-0012-canonical-turn-pipeline-delivery-plan.md"
         }
       ],
       "roadmap_priority_refs": [
@@ -254,6 +275,185 @@
       ]
     },
     {
+      "capability_id": "canonical_turn_pipeline_foundation",
+      "capability_name": "Canonical turn pipeline foundation (observe/encode/stabilize)",
+      "owner_module": "src/testbot/sat_chatbot_memory_v2.py",
+      "effective_status": "missing",
+      "declared_status": "planned",
+      "failed_gate_checks": [
+        "product_behave"
+      ],
+      "relevant_open_issues": [
+        {
+          "id": "ISSUE-0008",
+          "title": "Intent-grounding router remains partial for deterministic route confidence",
+          "path": "docs/issues/ISSUE-0008-intent-grounding-gate-failures-block-merge.md"
+        },
+        {
+          "id": "ISSUE-0009",
+          "title": "Knowing grounded answers remain partial due to provenance/recall gate debt",
+          "path": "docs/issues/ISSUE-0009-knowing-grounded-answers-partial-provenance-gap.md"
+        },
+        {
+          "id": "ISSUE-0010",
+          "title": "Unknowing safe fallback remains partial for explicit uncertainty contract completeness",
+          "path": "docs/issues/ISSUE-0010-unknowing-safe-fallback-partial-contract-gap.md"
+        },
+        {
+          "id": "ISSUE-0011",
+          "title": "Turn analytics aggregation silently drops non-analytics session events without operator coverage diagnostics",
+          "path": "docs/issues/ISSUE-0011-turn-analytics-input-coverage-silent-drop.md"
+        },
+        {
+          "id": "ISSUE-0012",
+          "title": "Canonical turn pipeline delivery plan requires staged implementation and mandatory code review checkpoints",
+          "path": "docs/issues/ISSUE-0012-canonical-turn-pipeline-delivery-plan.md"
+        }
+      ],
+      "roadmap_priority_refs": [
+        "P3",
+        "P4"
+      ],
+      "roadmap_priority_sources": {
+        "P3": [
+          "docs/roadmap/current-status-and-next-5-priorities.md",
+          "docs/roadmap/next-4-sprints-grounded-knowing.md"
+        ],
+        "P4": [
+          "docs/roadmap/current-status-and-next-5-priorities.md",
+          "docs/roadmap/next-4-sprints-grounded-knowing.md"
+        ]
+      },
+      "acceptance_tests": [
+        "features/memory_recall.feature",
+        "features/answer_contract.feature",
+        "tests/test_runtime_logging_events.py",
+        "tests/test_debug_turn_trace.py"
+      ],
+      "runtime_dependency_flags": [
+        "TESTBOT_DEBUG"
+      ]
+    },
+    {
+      "capability_id": "canonical_turn_pipeline_decisioning",
+      "capability_name": "Canonical turn pipeline decisioning (context/intent/retrieve/policy)",
+      "owner_module": "src/testbot/intent_router.py",
+      "effective_status": "missing",
+      "declared_status": "planned",
+      "failed_gate_checks": [
+        "product_behave"
+      ],
+      "relevant_open_issues": [
+        {
+          "id": "ISSUE-0008",
+          "title": "Intent-grounding router remains partial for deterministic route confidence",
+          "path": "docs/issues/ISSUE-0008-intent-grounding-gate-failures-block-merge.md"
+        },
+        {
+          "id": "ISSUE-0009",
+          "title": "Knowing grounded answers remain partial due to provenance/recall gate debt",
+          "path": "docs/issues/ISSUE-0009-knowing-grounded-answers-partial-provenance-gap.md"
+        },
+        {
+          "id": "ISSUE-0010",
+          "title": "Unknowing safe fallback remains partial for explicit uncertainty contract completeness",
+          "path": "docs/issues/ISSUE-0010-unknowing-safe-fallback-partial-contract-gap.md"
+        },
+        {
+          "id": "ISSUE-0011",
+          "title": "Turn analytics aggregation silently drops non-analytics session events without operator coverage diagnostics",
+          "path": "docs/issues/ISSUE-0011-turn-analytics-input-coverage-silent-drop.md"
+        },
+        {
+          "id": "ISSUE-0012",
+          "title": "Canonical turn pipeline delivery plan requires staged implementation and mandatory code review checkpoints",
+          "path": "docs/issues/ISSUE-0012-canonical-turn-pipeline-delivery-plan.md"
+        }
+      ],
+      "roadmap_priority_refs": [
+        "P3",
+        "P4"
+      ],
+      "roadmap_priority_sources": {
+        "P3": [
+          "docs/roadmap/current-status-and-next-5-priorities.md",
+          "docs/roadmap/next-4-sprints-grounded-knowing.md"
+        ],
+        "P4": [
+          "docs/roadmap/current-status-and-next-5-priorities.md",
+          "docs/roadmap/next-4-sprints-grounded-knowing.md"
+        ]
+      },
+      "acceptance_tests": [
+        "features/intent_grounding.feature",
+        "features/answer_contract.feature",
+        "tests/test_intent_router.py",
+        "tests/test_promotion_policy.py"
+      ],
+      "runtime_dependency_flags": [
+        "TESTBOT_DEBUG"
+      ]
+    },
+    {
+      "capability_id": "canonical_turn_pipeline_commit_and_audit",
+      "capability_name": "Canonical turn pipeline commit and auditability (assemble/validate/render/commit)",
+      "owner_module": "src/testbot/pipeline_state.py",
+      "effective_status": "missing",
+      "declared_status": "planned",
+      "failed_gate_checks": [
+        "product_behave"
+      ],
+      "relevant_open_issues": [
+        {
+          "id": "ISSUE-0008",
+          "title": "Intent-grounding router remains partial for deterministic route confidence",
+          "path": "docs/issues/ISSUE-0008-intent-grounding-gate-failures-block-merge.md"
+        },
+        {
+          "id": "ISSUE-0009",
+          "title": "Knowing grounded answers remain partial due to provenance/recall gate debt",
+          "path": "docs/issues/ISSUE-0009-knowing-grounded-answers-partial-provenance-gap.md"
+        },
+        {
+          "id": "ISSUE-0010",
+          "title": "Unknowing safe fallback remains partial for explicit uncertainty contract completeness",
+          "path": "docs/issues/ISSUE-0010-unknowing-safe-fallback-partial-contract-gap.md"
+        },
+        {
+          "id": "ISSUE-0011",
+          "title": "Turn analytics aggregation silently drops non-analytics session events without operator coverage diagnostics",
+          "path": "docs/issues/ISSUE-0011-turn-analytics-input-coverage-silent-drop.md"
+        },
+        {
+          "id": "ISSUE-0012",
+          "title": "Canonical turn pipeline delivery plan requires staged implementation and mandatory code review checkpoints",
+          "path": "docs/issues/ISSUE-0012-canonical-turn-pipeline-delivery-plan.md"
+        }
+      ],
+      "roadmap_priority_refs": [
+        "P4",
+        "P5"
+      ],
+      "roadmap_priority_sources": {
+        "P4": [
+          "docs/roadmap/current-status-and-next-5-priorities.md",
+          "docs/roadmap/next-4-sprints-grounded-knowing.md"
+        ],
+        "P5": [
+          "docs/roadmap/current-status-and-next-5-priorities.md",
+          "docs/roadmap/next-4-sprints-grounded-knowing.md"
+        ]
+      },
+      "acceptance_tests": [
+        "features/answer_contract.feature",
+        "tests/test_runtime_logging_events.py",
+        "tests/test_turn_analytics_aggregator.py"
+      ],
+      "runtime_dependency_flags": [
+        "TESTBOT_DEBUG"
+      ]
+    },
+    {
       "capability_id": "governance_readiness_gate",
       "capability_name": "Canonical all-green merge gate and issue governance checks",
       "owner_module": "scripts/all_green_gate.py",
@@ -280,6 +480,6 @@
       ]
     }
   ],
-  "open_issue_count": 4,
+  "open_issue_count": 5,
   "gate_checks_seen": 13
 }
