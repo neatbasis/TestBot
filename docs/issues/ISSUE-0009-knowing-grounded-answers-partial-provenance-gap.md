@@ -11,12 +11,12 @@
 
 ## Problem Statement
 
-The `knowing_grounded_answers` capability remains `partial`. ISSUE-0009 now serves as the dedicated traceability record for this capability and tracks the remaining measurable deltas against `product_behave`, `safety_behave_answer_contract_and_memory`, and `qa_eval_fixtures_and_runtime_parity`.
+The `knowing_grounded_answers` capability remains `partial`. ISSUE-0009 is the primary traceability record for this capability and tracks the remaining measurable deltas against `product_behave`, `safety_behave_answer_contract_and_memory`, and `qa_eval_fixtures_and_runtime_parity`, while preserving explicit cross-capability linkage with ISSUE-0010 in generated status reporting.
 
 ## Evidence
 
 - `docs/qa/feature-status.yaml` marks `knowing_grounded_answers` as `partial`.
-- `docs/qa/feature-status-report.md` and `artifacts/feature-status-summary.json` list ISSUE-0009 as a relevant open issue for this partial capability and still report failing checks (`product_behave`, `safety_behave_answer_contract_and_memory`).
+- `docs/qa/feature-status-report.md` and `artifacts/feature-status-summary.json` list ISSUE-0009 and ISSUE-0010 as relevant open issues for this partial capability and still report failing checks (`product_behave`, `safety_behave_answer_contract_and_memory`).
 - Capability acceptance tests span contract behavior, memory recall, runtime logging, and eval/runtime parity; closure requires cross-check consistency.
 
 ## Impact
@@ -24,7 +24,7 @@ The `knowing_grounded_answers` capability remains `partial`. ISSUE-0009 now serv
 - Knowing-mode outputs may regress in provenance transparency or memory-grounding quality without immediate governance visibility.
 - Remaining failing gate checks keep this capability in partial state and continue to block readiness signals for knowing-mode quality.
 - Stakeholder confidence in grounded answers can drift from actual runtime behavior.
-- QA report consumers rely on ISSUE-0009 as the accountable work tracker for closure sequencing and delta burn-down.
+- QA report consumers rely on ISSUE-0009 as the accountable primary tracker and on explicit ISSUE-0010 linkage for closure sequencing and delta burn-down.
 
 ## Acceptance Criteria
 

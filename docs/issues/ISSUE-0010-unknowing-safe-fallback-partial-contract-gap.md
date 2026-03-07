@@ -11,19 +11,19 @@
 
 ## Problem Statement
 
-The `unknowing_safe_fallback` capability is still marked `partial`. ISSUE-0010 now provides dedicated traceability for this capability and tracks the remaining measurable deltas tied to its gate checks (`product_behave`, `safety_reflection_and_runtime_logging_pytests`).
+The `unknowing_safe_fallback` capability is still marked `partial`. ISSUE-0010 is the primary traceability record for this capability and tracks the remaining measurable deltas tied to its gate checks (`product_behave`, `safety_reflection_and_runtime_logging_pytests`), while preserving explicit cross-capability linkage with ISSUE-0009 in generated status reporting.
 
 ## Evidence
 
 - `docs/qa/feature-status.yaml` marks `unknowing_safe_fallback` as `partial`.
-- `docs/qa/feature-status-report.md` and `artifacts/feature-status-summary.json` list ISSUE-0010 as a relevant open issue for this partial capability while `product_behave` remains failed for the capability's evidence profile.
+- `docs/qa/feature-status-report.md` and `artifacts/feature-status-summary.json` list ISSUE-0009 and ISSUE-0010 as relevant open issues for this partial capability while `product_behave` remains failed for the capability's evidence profile.
 - Contract behavior spans both BDD intent scenarios and deterministic reflection-policy/runtime-logging tests.
 
 ## Impact
 
 - Incorrectly confident responses may leak into turns that should be explicit-uncertainty fallbacks.
 - Safety posture can degrade if fallback messaging/action routing drifts from tested expectations.
-- Stakeholders use ISSUE-0010 as the accountable mitigation tracker while remaining deltas are burned down to closure.
+- Stakeholders use ISSUE-0010 as the accountable primary mitigation tracker while ISSUE-0009 linkage remains visible for shared closure dependencies.
 
 ## Acceptance Criteria
 
