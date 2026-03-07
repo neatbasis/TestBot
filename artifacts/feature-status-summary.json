@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-03-07T01:26:56Z",
+  "generated_at_utc": "2026-03-07T01:40:55Z",
   "inputs": {
     "contract_path": "docs/qa/feature-status.yaml",
     "gate_summary_path": "artifacts/all-green-gate-summary.json",
@@ -10,38 +10,38 @@
     "contract": {
       "path": "docs/qa/feature-status.yaml",
       "size_bytes": 4195,
-      "mtime_utc": "2026-03-07T01:26:52Z",
+      "mtime_utc": "2026-03-07T01:40:41Z",
       "sha256": "b1d9ffae9c8651b1a8d9f5442755fcba2d055cf10c786a264a4140cba37857d4"
     },
     "gate_summary": {
       "path": "artifacts/all-green-gate-summary.json",
       "size_bytes": 3259,
-      "mtime_utc": "2026-03-07T00:33:32Z",
+      "mtime_utc": "2026-03-07T01:01:07Z",
       "sha256": "8d57084a798ed0278fe04ddc515e0bfee3b3468487eeab4306c6212661c5b3b6"
     },
     "open_issues": [
       {
         "path": "docs/issues/ISSUE-0008-intent-grounding-gate-failures-block-merge.md",
         "size_bytes": 2930,
-        "mtime_utc": "2026-03-07T00:33:32Z",
+        "mtime_utc": "2026-03-07T01:01:07Z",
         "sha256": "d848db4ba2244dd191de3a7f68cbf8603865104b6f0d49f8aba1b1c12c0174e6"
       },
       {
         "path": "docs/issues/ISSUE-0009-knowing-grounded-answers-partial-provenance-gap.md",
-        "size_bytes": 3351,
-        "mtime_utc": "2026-03-07T01:26:26Z",
-        "sha256": "8da01e34dd952ea83487ac92f178d3743b945cc49ce9ec15c1b47f1e8e0a4cc1"
+        "size_bytes": 3692,
+        "mtime_utc": "2026-03-07T01:40:41Z",
+        "sha256": "56144bd065bfa44d7f8e716b8161fdfe73ba83913daa3b6c9ca111deb3f9115f"
       },
       {
         "path": "docs/issues/ISSUE-0010-unknowing-safe-fallback-partial-contract-gap.md",
-        "size_bytes": 3444,
-        "mtime_utc": "2026-03-07T01:26:26Z",
-        "sha256": "a567c450d61f181043b4e1491514bdc1ef35a140a988a25a7e344cb5f8f70d9d"
+        "size_bytes": 3579,
+        "mtime_utc": "2026-03-07T01:40:41Z",
+        "sha256": "a60c8021ff011d19c89ef7ee6e0a11f43db73ef11b9869474f053662aa986251"
       },
       {
         "path": "docs/issues/ISSUE-0011-turn-analytics-input-coverage-silent-drop.md",
         "size_bytes": 3980,
-        "mtime_utc": "2026-03-07T00:33:32Z",
+        "mtime_utc": "2026-03-07T01:01:07Z",
         "sha256": "890a2f0e7cd701987ca1366d8006281d955599ded1bb2356c3088e459a90d37b"
       }
     ]
