@@ -49,6 +49,7 @@ class PipelineState:
     classified_intent: str = ""
     resolved_intent: str = ""
     prior_unresolved_intent: str = ""
+    response_plan: dict[str, Any] = field(default_factory=dict)
 
 
 def pipeline_state_to_dict(state: PipelineState) -> dict[str, Any]:
