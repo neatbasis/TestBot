@@ -11,19 +11,20 @@
 
 ## Problem Statement
 
-The `knowing_grounded_answers` capability remains `partial`. There is no active issue explicitly tying this partial state to measurable gate evidence for `product_behave`, `safety_behave_answer_contract_and_memory`, and `qa_eval_fixtures_and_runtime_parity`.
+The `knowing_grounded_answers` capability remains `partial`. ISSUE-0009 now serves as the dedicated traceability record for this capability and tracks the remaining measurable deltas against `product_behave`, `safety_behave_answer_contract_and_memory`, and `qa_eval_fixtures_and_runtime_parity`.
 
 ## Evidence
 
 - `docs/qa/feature-status.yaml` marks `knowing_grounded_answers` as `partial`.
-- Existing issue set does not currently provide a dedicated open issue scoped to this capability.
+- `docs/qa/feature-status-report.md` and `artifacts/feature-status-summary.json` list ISSUE-0009 as a relevant open issue for this partial capability and still report failing checks (`product_behave`, `safety_behave_answer_contract_and_memory`).
 - Capability acceptance tests span contract behavior, memory recall, runtime logging, and eval/runtime parity; closure requires cross-check consistency.
 
 ## Impact
 
 - Knowing-mode outputs may regress in provenance transparency or memory-grounding quality without immediate governance visibility.
+- Remaining failing gate checks keep this capability in partial state and continue to block readiness signals for knowing-mode quality.
 - Stakeholder confidence in grounded answers can drift from actual runtime behavior.
-- QA report consumers cannot quickly map partial status to an accountable issue owner/work plan.
+- QA report consumers rely on ISSUE-0009 as the accountable work tracker for closure sequencing and delta burn-down.
 
 ## Acceptance Criteria
 

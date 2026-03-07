@@ -11,19 +11,19 @@
 
 ## Problem Statement
 
-The `unknowing_safe_fallback` capability is still marked `partial`, but there is no dedicated open issue that maps this partial state to measurable acceptance criteria tied to its gate checks (`product_behave`, `safety_reflection_and_runtime_logging_pytests`).
+The `unknowing_safe_fallback` capability is still marked `partial`. ISSUE-0010 now provides dedicated traceability for this capability and tracks the remaining measurable deltas tied to its gate checks (`product_behave`, `safety_reflection_and_runtime_logging_pytests`).
 
 ## Evidence
 
 - `docs/qa/feature-status.yaml` marks `unknowing_safe_fallback` as `partial`.
-- Existing closed issues only partially overlap with fallback behavior and do not provide active accountability for current residual gaps.
+- `docs/qa/feature-status-report.md` and `artifacts/feature-status-summary.json` list ISSUE-0010 as a relevant open issue for this partial capability while `product_behave` remains failed for the capability's evidence profile.
 - Contract behavior spans both BDD intent scenarios and deterministic reflection-policy/runtime-logging tests.
 
 ## Impact
 
 - Incorrectly confident responses may leak into turns that should be explicit-uncertainty fallbacks.
 - Safety posture can degrade if fallback messaging/action routing drifts from tested expectations.
-- Stakeholders cannot easily trace partial status to accountable mitigation work.
+- Stakeholders use ISSUE-0010 as the accountable mitigation tracker while remaining deltas are burned down to closure.
 
 ## Acceptance Criteria
 
