@@ -98,6 +98,21 @@ Feature: Intent-specific grounding and provenance behavior
     When the user asks an unmatched ambiguous phrase
     Then the utterance should route to knowledge-question fallback deterministically
 
+  Scenario: ambiguous prompt enumerates explanation space before convergence
+    Given an intent response harness
+    When the user asks an ambiguous prompt requiring divergent analysis
+    Then the assistant enumerates plausible explanation spaces before converging
+    And the response should include "Possible explanations:"
+    And the response should include "Converged recommendation:"
+
+  Scenario: multi-framework prompt switches perspectives before final synthesis
+    Given an intent response harness
+    When the user asks for a multi-framework perspective switch
+    Then the assistant presents multiple frameworks and a synthesized conclusion
+    And the response should include "Framework: systems"
+    And the response should include "Framework: behavioral"
+    And the response should include "Synthesis:"
+
 
   Scenario: self-identification utterance routes to non-knowledge intent
     Given an intent response harness
