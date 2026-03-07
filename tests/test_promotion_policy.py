@@ -5,6 +5,9 @@ from dataclasses import dataclass
 from langchain_core.documents import Document
 
 from testbot.promotion_policy import evaluate_promotion_policy, persist_promoted_context
+from testbot.evidence_retrieval import EvidenceBundle, EvidenceRecord, retrieval_result
+from testbot.intent_router import IntentType
+from testbot.policy_decision import DecisionClass, decide_from_evidence
 
 
 @dataclass
@@ -184,3 +187,26 @@ def test_persist_promoted_context_returns_empty_ids_when_policy_rejects() -> Non
 
     assert promoted_ids == []
     assert store.docs == []
+
+
+def test_evidence_bundle_channels_remain_class_separated_for_policy() -> None:
+    bundle = EvidenceBundle(
+        structured_facts=(EvidenceRecord(ref_id="fact-1", score=0.8, content="name=sebastian"),),
+        episodic_utterances=(EvidenceRecord(ref_id="utt-1", score=0.7, content="what did I ask"),),
+        repair_anchors_offers=(EvidenceRecord(ref_id="repair-1", score=0.6, content="Can you clarify"),),
+        reflections_hypotheses=(EvidenceRecord(ref_id="reflection-1", score=0.5, content="possible ambiguity"),),
+        source_evidence=(EvidenceRecord(ref_id="src-1", score=0.9, content="calendar event", source_type="calendar"),),
+    )
+
+    retrieval = retrieval_result(evidence_bundle=bundle, retrieval_candidates_considered=5, hit_count=3)
+
+    assert retrieval.reasoning["channel_sizes"]["structured_facts"] == 1
+    assert retrieval.reasoning["channel_sizes"]["source_evidence"] == 1
+
+
+def test_decision_object_supports_repair_reconstruction_outcome() -> None:
+    retrieval = retrieval_result(evidence_bundle=EvidenceBundle(), retrieval_candidates_considered=2, hit_count=0)
+
+    decision = decide_from_evidence(intent=IntentType.MEMORY_RECALL, retrieval=retrieval, repair_required=True)
+
+    assert decision.decision_class is DecisionClass.CONTINUE_REPAIR_RECONSTRUCTION

@@ -74,7 +74,8 @@ from testbot.candidate_encoding import encode_turn_candidates
 from testbot.stabilization import StabilizedTurnState, stabilize_pre_route
 from testbot.context_resolution import resolve as resolve_context
 from testbot.intent_resolution import resolve as resolve_intent
-from testbot.policy_decision import decide as decide_policy
+from testbot.evidence_retrieval import EvidenceBundle, retrieval_result
+from testbot.policy_decision import decide as decide_policy, decide_from_evidence
 
 from langchain_core.documents import Document
 from langchain_core.prompts import ChatPromptTemplate
@@ -2636,6 +2637,11 @@ def _run_canonical_turn_pipeline(
                 retrieval_candidates_considered=considered,
                 hit_count=0,
             )
+            ctx.artifacts["retrieval_result"] = retrieval_result(
+                evidence_bundle=EvidenceBundle(),
+                retrieval_candidates_considered=considered,
+                hit_count=0,
+            )
             append_session_log(
                 "retrieval_candidates",
                 {
@@ -2655,6 +2661,11 @@ def _run_canonical_turn_pipeline(
                 },
             )
         else:
+            ctx.artifacts["retrieval_result"] = retrieval_result(
+                evidence_bundle=EvidenceBundle(),
+                retrieval_candidates_considered=0,
+                hit_count=0,
+            )
             append_session_log(
                 "retrieval_candidates",
                 {"query": ctx.state.rewritten_query, "candidate_count": 0, "top_candidates": [], "skipped": True},
@@ -2684,7 +2695,20 @@ def _run_canonical_turn_pipeline(
                 retrieval_candidates_considered=considered,
                 hit_count=len(hits),
             )
+            ctx.artifacts["retrieval_result"] = retrieval_result(
+                evidence_bundle=EvidenceBundle(),
+                retrieval_candidates_considered=considered,
+                hit_count=len(hits),
+            )
+            ctx.artifacts["decision_object"] = decide_from_evidence(
+                intent=resolved_intent,
+                retrieval=ctx.artifacts["retrieval_result"],
+            )
         else:
+            ctx.artifacts["decision_object"] = decide_from_evidence(
+                intent=resolved_intent,
+                retrieval=ctx.artifacts["retrieval_result"],
+            )
             minimal_confidence = _minimal_confidence_decision_for_direct_answer(
                 branch=ctx.artifacts["policy_decision"].retrieval_branch,
                 base_confidence_decision=ctx.state.confidence_decision,

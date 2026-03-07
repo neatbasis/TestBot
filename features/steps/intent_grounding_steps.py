@@ -7,10 +7,11 @@ from behave import given, then, when
 from langchain_core.documents import Document
 
 from testbot.history_packer import PackedHistory
+from testbot.evidence_retrieval import EvidenceBundle, EvidenceRecord, retrieval_result
 from testbot.context_resolution import resolve as resolve_context
 from testbot.intent_resolution import resolve as resolve_intent
 from testbot.intent_router import IntentType, classify_intent, extract_intent_facets
-from testbot.policy_decision import EvidencePosture, decide
+from testbot.policy_decision import EvidencePosture, decide, decide_from_evidence
 from testbot.pipeline_state import CandidateHit, PipelineState, ProvenanceType
 from testbot.sat_chatbot_memory_v2 import (
     ROUTE_TO_ASK_ANSWER,
@@ -624,3 +625,46 @@ def step_when_intent_continuity_evaluated_for_followups(context) -> None:
 def step_then_continuity_routing_preserves_only_affirmative(context) -> None:
     assert context.affirmative_resolution.resolved_intent is IntentType.CAPABILITIES_HELP
     assert context.non_affirmative_resolution.resolved_intent is context.non_affirmative_resolution.classified_intent
+
+
+
+@when("policy decision objects are resolved from typed evidence states")
+def step_when_policy_decision_objects_typed(context) -> None:
+    memory_retrieval = retrieval_result(
+        evidence_bundle=EvidenceBundle(
+            structured_facts=(EvidenceRecord(ref_id="fact-1", score=0.9, content="user_name=Sebastian"),),
+        ),
+        retrieval_candidates_considered=3,
+        hit_count=1,
+    )
+    scored_empty = retrieval_result(
+        evidence_bundle=EvidenceBundle(),
+        retrieval_candidates_considered=3,
+        hit_count=0,
+    )
+    no_retrieval = retrieval_result(
+        evidence_bundle=EvidenceBundle(),
+        retrieval_candidates_considered=0,
+        hit_count=0,
+    )
+
+    context.typed_decisions = [
+        decide_from_evidence(intent=IntentType.MEMORY_RECALL, retrieval=memory_retrieval),
+        decide_from_evidence(intent=IntentType.KNOWLEDGE_QUESTION, retrieval=scored_empty),
+        decide_from_evidence(intent=IntentType.META_CONVERSATION, retrieval=no_retrieval),
+        decide_from_evidence(intent=IntentType.MEMORY_RECALL, retrieval=scored_empty, repair_required=True),
+    ]
+
+
+@then('the decision outcomes should include "answer_from_memory" and "answer_general_knowledge_labeled"')
+def step_then_decision_outcomes_include_memory_and_general(context) -> None:
+    decisions = {decision.decision_class.value for decision in context.typed_decisions}
+    assert "answer_from_memory" in decisions
+    assert "answer_general_knowledge_labeled" in decisions
+
+
+@then('the decision outcomes should include "ask_for_clarification" and "continue_repair_reconstruction"')
+def step_then_decision_outcomes_include_clarify_and_repair(context) -> None:
+    decisions = {decision.decision_class.value for decision in context.typed_decisions}
+    assert "ask_for_clarification" in decisions
+    assert "continue_repair_reconstruction" in decisions

@@ -1,6 +1,8 @@
 from testbot.pipeline_state import PipelineState
 from testbot.sat_chatbot_memory_v2 import CLARIFY_ANSWER, ROUTE_TO_ASK_ANSWER, resolve_turn_intent
 from testbot.intent_router import IntentType, classify_intent, extract_intent_facets
+from testbot.evidence_retrieval import EvidenceBundle, EvidenceRecord, retrieval_result
+from testbot.policy_decision import DecisionClass, decide_from_evidence
 
 
 def test_classify_intent_memory_recall_ambiguous_what_did_i_ask() -> None:
@@ -175,3 +177,28 @@ def test_extract_intent_facets_for_memory_and_capability_mixed_utterance() -> No
 
     assert facets.memory is True
     assert facets.capability is True
+
+
+def test_policy_decision_object_general_knowledge_for_scored_empty() -> None:
+    retrieval = retrieval_result(
+        evidence_bundle=EvidenceBundle(),
+        retrieval_candidates_considered=3,
+        hit_count=0,
+    )
+
+    decision = decide_from_evidence(intent=IntentType.KNOWLEDGE_QUESTION, retrieval=retrieval)
+
+    assert decision.decision_class is DecisionClass.ANSWER_GENERAL_KNOWLEDGE_LABELED
+    assert decision.reasoning["scored_empty"] is True
+
+
+def test_policy_decision_object_memory_answer_for_scored_non_empty() -> None:
+    bundle = EvidenceBundle(structured_facts=(EvidenceRecord(ref_id="fact-1", score=0.9, content="user_name=Sam"),))
+    retrieval = retrieval_result(
+        evidence_bundle=bundle,
+        retrieval_candidates_considered=2,
+        hit_count=1,
+    )
+    decision = decide_from_evidence(intent=IntentType.MEMORY_RECALL, retrieval=retrieval)
+
+    assert decision.decision_class is DecisionClass.ANSWER_FROM_MEMORY
