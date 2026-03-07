@@ -46,6 +46,7 @@ Feature: Answer citation contract enforcement
     Then the fallback action should be "ANSWER_UNKNOWN"
     And the canonical response token should be "NON_KNOWLEDGE_UNCERTAINTY_ANSWER"
     And the policy rationale includes considered alternatives with rejection reasons
+    And the policy rationale fallback reason should be "non_memory_low_source_confidence"
 
   Scenario: memory recall without confident hit offers assist alternatives
     Given an answer policy input with intent "memory_recall", context confidence false, ambiguity false, and memory hit count 0

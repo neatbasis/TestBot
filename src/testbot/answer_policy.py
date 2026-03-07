@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable, Literal, Mapping, Any
 
-from testbot.reflection_policy import CapabilityStatus, FallbackAction, IntentClass, decide_fallback_action
+from testbot.reflection_policy import CapabilityStatus, FallbackAction, IntentClass, decide_fallback_action, fallback_reason
 
 CanonicalResponseToken = Literal[
     "ROUTE_TO_ASK_ANSWER",
@@ -141,6 +141,13 @@ def resolve_answer_routing(
         "memory_hit_count": memory_hit_count,
         "capability_status": policy_input.capability_status,
         "source_confidence": policy_input.source_confidence,
+        "fallback_reason": fallback_reason(
+            intent=policy_input.intent,
+            fallback_action=fallback_action,
+            memory_hit=memory_hit,
+            ambiguity=ambiguity,
+            source_confidence=policy_input.source_confidence,
+        ),
         "considered_alternatives": _policy_alternatives(
             intent=policy_input.intent,
             chosen=fallback_action,

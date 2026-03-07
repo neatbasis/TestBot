@@ -52,3 +52,30 @@ def decide_fallback_action(
         return "OFFER_CAPABILITY_ALTERNATIVES"
 
     return "ANSWER_GENERAL_KNOWLEDGE"
+
+
+def fallback_reason(
+    *,
+    intent: IntentClass,
+    fallback_action: FallbackAction,
+    memory_hit: bool,
+    ambiguity: bool,
+    source_confidence: float | None = None,
+) -> str:
+    """Return deterministic reason code for selected fallback branch."""
+
+    if fallback_action == "ROUTE_TO_ASK":
+        return "ambiguous_memory_candidates_with_ask_available"
+    if fallback_action == "ASK_CLARIFYING_QUESTION":
+        return "ambiguous_memory_candidates_without_ask"
+    if fallback_action == "ANSWER_UNKNOWN":
+        if intent == "non_memory" and source_confidence is not None:
+            return "non_memory_low_source_confidence"
+        return "insufficient_reliable_memory"
+    if fallback_action == "OFFER_CAPABILITY_ALTERNATIVES":
+        if intent == "memory_recall" and not memory_hit and not ambiguity:
+            return "memory_recall_no_confident_hit"
+        return "capability_alternatives_required"
+    if fallback_action == "ANSWER_TIME":
+        return "time_query_direct_answer"
+    return "direct_answer_path"

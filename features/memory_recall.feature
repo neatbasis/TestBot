@@ -12,6 +12,7 @@ Feature: Memory recall behavior
     And the answer includes citation fields "doc_id" and "ts"
     And the response includes memory provenance transparency fields
     And the response includes a grounding basis statement
+    And the response includes deterministic citation-context formatting
 
   Scenario: progressive assist fallback path
     Given a deterministic in-memory recall harness

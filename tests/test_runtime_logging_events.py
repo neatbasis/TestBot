@@ -987,3 +987,23 @@ def test_chat_loop_logs_commit_stage_record_with_durable_commit_state(tmp_path, 
     assert isinstance(commit_row["resolved_obligations"], list)
     assert isinstance(commit_row["remaining_obligations"], list)
     assert isinstance(commit_row["confirmed_user_facts"], list)
+
+
+def test_build_provenance_metadata_sorts_memory_and_source_references_deterministically() -> None:
+    hits = [
+        Document(id="mem-b", page_content="b", metadata={"doc_id": "mem-b", "ts": "2026-03-10T10:00:00Z", "type": "user_utterance"}),
+        Document(id="mem-a", page_content="a", metadata={"doc_id": "mem-a", "ts": "2026-03-10T09:00:00Z", "type": "user_utterance"}),
+        Document(id="src-b", page_content="s2", metadata={"doc_id": "src-b", "type": "source_evidence", "source_uri": "calendar://work/event-2", "source_type": "calendar", "retrieved_at": "2026-03-10T11:00:00Z", "trust_tier": "high"}),
+        Document(id="src-a", page_content="s1", metadata={"doc_id": "src-a", "type": "source_evidence", "source_uri": "calendar://work/event-1", "source_type": "calendar", "retrieved_at": "2026-03-10T10:30:00Z", "trust_tier": "high"}),
+    ]
+
+    _types, _claims, _basis, used_memory_refs, used_source_refs, source_attr = build_provenance_metadata(
+        final_answer="Memory-backed answer (doc_id: mem-a, ts: 2026-03-10T09:00:00Z)",
+        hits=hits,
+        chat_history=deque(),
+        packed_history=runtime.pack_chat_history([]),
+    )
+
+    assert used_memory_refs == ["mem-a@2026-03-10T09:00:00Z", "mem-b@2026-03-10T10:00:00Z"]
+    assert used_source_refs == ["src-a", "src-b"]
+    assert [item["doc_id"] for item in source_attr] == ["src-a", "src-b"]
