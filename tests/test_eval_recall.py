@@ -29,7 +29,7 @@ def test_eval_reports_objective_component_attribution() -> None:
     )
     metrics = json.loads(out.stdout)
 
-    assert metrics["objective_version"] == "v1"
+    assert metrics["objective_version"] == "v2"
     attribution = metrics["objective_component_attribution"]
     assert "average_top_candidate_components" in attribution
     assert "per_case" in attribution
@@ -66,6 +66,18 @@ def test_eval_compare_objective_versions_reports_deltas(tmp_path) -> None:
                     "gaussian_temporal_blend": 0.5,
                     "reflection_type_prior": 0.8,
                     "default_type_prior": 1.0,
+                    "lane_coefficients": {
+                        "utterance_memory": 1.0,
+                        "reflection_hypothesis": 0.8,
+                        "promoted_context": 1.0,
+                        "source_evidence": 1.1
+                    }
+                },
+                "lane_fusion": {
+                    "source_evidence": 2,
+                    "promoted_context": 1,
+                    "utterance_memory": 4,
+                    "reflection_hypothesis": 0
                 },
                 "confidence_thresholds": {
                     "top_final_score_min": 0.2,
@@ -98,7 +110,7 @@ def test_eval_compare_objective_versions_reports_deltas(tmp_path) -> None:
     )
     metrics = json.loads(out.stdout)
 
-    assert metrics["objective"] == "semantic_temporal_type_v1"
+    assert metrics["objective"] == "semantic_temporal_type_v2"
     comparisons = metrics["objective_version_comparison"]
     assert len(comparisons) == 1
     assert comparisons[0]["objective_version"] == "v2"

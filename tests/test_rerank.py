@@ -107,7 +107,7 @@ def test_rerank_includes_objective_component_breakdown() -> None:
     assert len(outcome.scored_candidates) == 1
     scored = outcome.scored_candidates[0]
     assert scored["doc_id"] == "winner"
-    assert scored["objective"] == "semantic_temporal_type_v1"
+    assert scored["objective"] == "semantic_temporal_type_v2"
     assert scored["timestamp_quality"] == "valid"
     assert float(scored["final_score"]) > 0.0
 
@@ -247,6 +247,18 @@ def test_rerank_objective_config_loader_parses_valid_artifact(tmp_path, monkeypa
                     "gaussian_temporal_blend": 0.7,
                     "reflection_type_prior": 0.6,
                     "default_type_prior": 1.1,
+                    "lane_coefficients": {
+                        "utterance_memory": 1.0,
+                        "reflection_hypothesis": 0.6,
+                        "promoted_context": 1.0,
+                        "source_evidence": 1.2
+                    }
+                },
+                "lane_fusion": {
+                    "source_evidence": 2,
+                    "promoted_context": 1,
+                    "utterance_memory": 4,
+                    "reflection_hypothesis": 0
                 },
                 "confidence_thresholds": {
                     "top_final_score_min": 0.25,
@@ -286,6 +298,7 @@ def test_rerank_objective_config_loader_falls_back_when_config_invalid(tmp_path,
                 "coefficients": {
                     "base_temporal_blend": -0.1
                 },
+                "lane_fusion": {},
                 "confidence_thresholds": {},
             }
         ),
@@ -328,6 +341,18 @@ def test_rerank_scored_candidates_surface_objective_version(tmp_path, monkeypatc
                     "gaussian_temporal_blend": 0.75,
                     "reflection_type_prior": 0.7,
                     "default_type_prior": 1.0,
+                    "lane_coefficients": {
+                        "utterance_memory": 1.0,
+                        "reflection_hypothesis": 0.7,
+                        "promoted_context": 1.05,
+                        "source_evidence": 1.1
+                    }
+                },
+                "lane_fusion": {
+                    "source_evidence": 2,
+                    "promoted_context": 1,
+                    "utterance_memory": 4,
+                    "reflection_hypothesis": 0
                 },
                 "confidence_thresholds": {
                     "top_final_score_min": 0.2,
@@ -375,3 +400,43 @@ def test_rerank_near_ties_remain_deterministic_by_timestamp_then_doc_id() -> Non
 
     assert [doc.id for doc in outcome.docs[:3]] == ["c", "a", "b"]
     assert outcome.ambiguity_detected is False
+
+
+def test_rerank_lane_fusion_suppresses_reflection_until_other_lanes_exhausted() -> None:
+    now = arrow.get("2026-03-10T12:00:00+00:00")
+    docs_and_scores = [
+        (_doc("r1", ts="2026-03-10T12:00:00+00:00", card_type="reflection"), 0.99),
+        (_doc("m1", ts="2026-03-10T12:00:00+00:00", card_type="memory"), 0.7),
+        (_doc("s1", ts="2026-03-10T12:00:00+00:00", card_type="source_evidence"), 0.69),
+    ]
+
+    outcome = rerank_docs_with_time_and_type_outcome(
+        docs_and_scores,
+        now=now,
+        target=now,
+        sigma_seconds=3600,
+        exclude_doc_ids=set(),
+        exclude_source_ids=set(),
+        top_k=2,
+    )
+
+    assert [doc.id for doc in outcome.docs] == ["s1", "m1"]
+
+
+def test_rerank_uses_lane_fallback_when_primary_quotas_do_not_fill_top_k() -> None:
+    now = arrow.get("2026-03-10T12:00:00+00:00")
+    docs_and_scores = [
+        (_doc("r1", ts="2026-03-10T12:00:00+00:00", card_type="reflection"), 0.9),
+    ]
+
+    outcome = rerank_docs_with_time_and_type_outcome(
+        docs_and_scores,
+        now=now,
+        target=now,
+        sigma_seconds=3600,
+        exclude_doc_ids=set(),
+        exclude_source_ids=set(),
+        top_k=1,
+    )
+
+    assert [doc.id for doc in outcome.docs] == ["r1"]

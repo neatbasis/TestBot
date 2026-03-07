@@ -16,6 +16,44 @@ class MemoryStore(Protocol):
 
 
 MemoryBackend = Literal["in_memory", "elasticsearch", "hybrid"]
+RecordKind = Literal["utterance_memory", "reflection_hypothesis", "promoted_context", "source_evidence"]
+RecordType = RecordKind
+
+RECORD_KIND_UTTERANCE_MEMORY: RecordKind = "utterance_memory"
+RECORD_KIND_REFLECTION_HYPOTHESIS: RecordKind = "reflection_hypothesis"
+RECORD_KIND_PROMOTED_CONTEXT: RecordKind = "promoted_context"
+RECORD_KIND_SOURCE_EVIDENCE: RecordKind = "source_evidence"
+
+RECORD_KINDS: tuple[RecordKind, ...] = (
+    RECORD_KIND_UTTERANCE_MEMORY,
+    RECORD_KIND_REFLECTION_HYPOTHESIS,
+    RECORD_KIND_PROMOTED_CONTEXT,
+    RECORD_KIND_SOURCE_EVIDENCE,
+)
+
+
+@dataclass(frozen=True)
+class RecordLane:
+    record_kind: RecordKind
+    record_type: RecordType
+
+
+UTTERANCE_MEMORY_LANE = RecordLane(RECORD_KIND_UTTERANCE_MEMORY, RECORD_KIND_UTTERANCE_MEMORY)
+REFLECTION_HYPOTHESIS_LANE = RecordLane(RECORD_KIND_REFLECTION_HYPOTHESIS, RECORD_KIND_REFLECTION_HYPOTHESIS)
+PROMOTED_CONTEXT_LANE = RecordLane(RECORD_KIND_PROMOTED_CONTEXT, RECORD_KIND_PROMOTED_CONTEXT)
+SOURCE_EVIDENCE_LANE = RecordLane(RECORD_KIND_SOURCE_EVIDENCE, RECORD_KIND_SOURCE_EVIDENCE)
+
+
+def is_valid_record_kind(value: str) -> bool:
+    return value in RECORD_KINDS
+
+
+def with_record_lane_metadata(metadata: dict[str, object], *, lane: RecordLane) -> dict[str, object]:
+    return {
+        **metadata,
+        "record_kind": lane.record_kind,
+        "type": lane.record_type,
+    }
 
 
 def normalize_memory_store_mode(mode: str) -> MemoryBackend:

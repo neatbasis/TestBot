@@ -6,7 +6,22 @@ import hashlib
 from langchain_core.documents import Document
 
 from testbot.source_connectors import SourceConnector, SourceItem
-from testbot.vector_store import MemoryStore
+from testbot.vector_store import (
+    MemoryStore,
+    SOURCE_EVIDENCE_LANE,
+    UTTERANCE_MEMORY_LANE,
+    with_record_lane_metadata,
+)
+
+
+@dataclass(frozen=True)
+class UtteranceMemoryRecord:
+    document: Document
+
+
+@dataclass(frozen=True)
+class SourceEvidenceRecord:
+    document: Document
 
 
 @dataclass(frozen=True)
@@ -29,12 +44,13 @@ def _provenance_metadata(*, connector: SourceConnector, item: SourceItem) -> dic
 
 def _canonical_memory_doc(normalized_doc: Document, *, provenance: dict[str, str]) -> Document:
     source_item_type = normalized_doc.metadata.get("type")
-    metadata = {
+    metadata = with_record_lane_metadata(
+        {
         **dict(normalized_doc.metadata),
         **provenance,
-        "type": "memory",
-        "record_kind": "source_memory",
-    }
+        },
+        lane=UTTERANCE_MEMORY_LANE,
+    )
     if source_item_type is not None:
         metadata["source_item_type"] = str(source_item_type)
     doc_id = _resolve_source_document_id(normalized_doc, provenance=provenance)
@@ -42,12 +58,13 @@ def _canonical_memory_doc(normalized_doc: Document, *, provenance: dict[str, str
 
 
 def _canonical_evidence_doc(normalized_doc: Document, *, provenance: dict[str, str]) -> Document:
-    metadata = {
+    metadata = with_record_lane_metadata(
+        {
         **dict(normalized_doc.metadata),
         **provenance,
-        "type": "source_evidence",
-        "record_kind": "source_evidence",
-    }
+        },
+        lane=SOURCE_EVIDENCE_LANE,
+    )
     base_id = _resolve_source_document_id(normalized_doc, provenance=provenance)
     return Document(id=f"evidence::{base_id}", page_content=normalized_doc.page_content, metadata=metadata)
 
@@ -84,8 +101,8 @@ class SourceIngestor:
         for item in fetched_items:
             normalized_doc = self._connector.normalize(item)
             provenance = _provenance_metadata(connector=self._connector, item=item)
-            memory_documents.append(_canonical_memory_doc(normalized_doc, provenance=provenance))
-            evidence_documents.append(_canonical_evidence_doc(normalized_doc, provenance=provenance))
+            memory_documents.append(UtteranceMemoryRecord(_canonical_memory_doc(normalized_doc, provenance=provenance)).document)
+            evidence_documents.append(SourceEvidenceRecord(_canonical_evidence_doc(normalized_doc, provenance=provenance)).document)
 
         documents_to_store = [*memory_documents, *evidence_documents]
         if documents_to_store:

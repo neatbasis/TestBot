@@ -132,7 +132,7 @@ def test_source_ingestor_stores_memory_and_evidence_with_provenance() -> None:
     assert result.next_cursor == "end"
     assert len(result.memory_documents) == 1
     assert len(result.evidence_documents) == 1
-    assert result.memory_documents[0].metadata["type"] == "memory"
+    assert result.memory_documents[0].metadata["type"] == "utterance_memory"
     assert result.evidence_documents[0].metadata["record_kind"] == "source_evidence"
     assert result.evidence_documents[0].metadata["type"] == "source_evidence"
     assert result.evidence_documents[0].metadata["source_type"] == "calendar"
@@ -148,12 +148,12 @@ def test_source_ingestor_memory_type_is_not_overridden_by_connector_item_type() 
 
     assert len(result.memory_documents) == 1
     assert len(result.evidence_documents) == 1
-    assert result.memory_documents[0].metadata["type"] == "memory"
+    assert result.memory_documents[0].metadata["type"] == "utterance_memory"
     assert result.memory_documents[0].metadata["source_item_type"] == "calendar_event"
     assert result.evidence_documents[0].metadata["type"] == "source_evidence"
-    assert result.memory_documents[0].metadata["record_kind"] == "source_memory"
+    assert result.memory_documents[0].metadata["record_kind"] == "utterance_memory"
     assert result.evidence_documents[0].metadata["record_kind"] == "source_evidence"
-    assert [doc.metadata["record_kind"] for doc in store.docs] == ["source_memory", "source_evidence"]
+    assert [doc.metadata["record_kind"] for doc in store.docs] == ["utterance_memory", "source_evidence"]
 
 
 def test_source_ingestor_derives_stable_ids_when_normalized_id_and_doc_id_are_missing() -> None:
@@ -334,3 +334,19 @@ def test_source_ingestor_arxiv_connector_integration(monkeypatch) -> None:
     assert result.evidence_documents[0].metadata["source_type"] == "arxiv"
     assert result.evidence_documents[0].metadata["source_uri"] == "http://arxiv.org/abs/1234.5678v1"
     assert result.evidence_documents[0].metadata["trust_tier"] == "preprint"
+
+
+def test_source_ingestor_uses_strict_record_kind_type_enums() -> None:
+    connector = _FakeConnector()
+    store = _FakeStore()
+    ingestor = SourceIngestor(connector=connector, memory_store=store)
+
+    result = ingestor.ingest_once(cursor=None)
+
+    memory = result.memory_documents[0]
+    evidence = result.evidence_documents[0]
+
+    assert memory.metadata["record_kind"] == "utterance_memory"
+    assert memory.metadata["type"] == "utterance_memory"
+    assert evidence.metadata["record_kind"] == "source_evidence"
+    assert evidence.metadata["type"] == "source_evidence"
