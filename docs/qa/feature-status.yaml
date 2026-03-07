@@ -5,9 +5,11 @@ report:
   default_gate_summary: artifacts/all-green-gate-summary.json
   provenance_contract:
   - JSON summary includes generated_at_utc plus inputs.{contract_path,gate_summary_path,issues_dir,roadmap_dir}.
-  - JSON summary includes source_file_metadata with mtime_utc and sha256 for contract, gate summary, and open issue source files.
+  - JSON summary includes source_file_metadata with mtime_utc and sha256 for contract,
+    gate summary, and open issue source files.
   - Markdown report includes header/footer Generated at (UTC) and input file paths.
-  - Markdown may emit a warning when gate summary evidence is older than contract or open issue files.
+  - Markdown may emit a warning when gate summary evidence is older than contract
+    or open issue files.
 capabilities:
 - capability_id: knowing_grounded_answers
   capability_name: Knowing-mode grounded answer with provenance
@@ -112,7 +114,7 @@ capabilities:
   - ingestion
 - capability_id: canonical_turn_pipeline_foundation
   capability_name: Canonical turn pipeline foundation (observe/encode/stabilize)
-  owner_module: src/testbot/sat_chatbot_memory_v2.py::observe_stage|encode_stage
+  owner_module: src/testbot/turn_observation.py|src/testbot/candidate_encoding.py|src/testbot/stabilization.py
   acceptance_tests:
   - features/memory_recall.feature
   - features/answer_contract.feature
@@ -134,7 +136,7 @@ capabilities:
   - ISSUE-0013
 - capability_id: canonical_turn_pipeline_decisioning
   capability_name: Canonical turn pipeline decisioning (context/intent/retrieve/policy)
-  owner_module: src/testbot/intent_router.py
+  owner_module: src/testbot/context_resolution.py|src/testbot/intent_resolution.py|src/testbot/evidence_retrieval.py|src/testbot/policy_decision.py
   acceptance_tests:
   - features/intent_grounding.feature
   - features/answer_contract.feature
@@ -155,7 +157,7 @@ capabilities:
   - ISSUE-0013
 - capability_id: canonical_turn_pipeline_commit_and_audit
   capability_name: Canonical turn pipeline commit and auditability (assemble/validate/render/commit)
-  owner_module: src/testbot/sat_chatbot_memory_v2.py::answer_assemble|answer_validate|answer_render|answer_commit|answer_commit_persistence
+  owner_module: src/testbot/answer_assembly.py|src/testbot/answer_validation.py|src/testbot/answer_rendering.py|src/testbot/answer_commit.py
   acceptance_tests:
   - features/answer_contract.feature
   - tests/test_runtime_logging_events.py

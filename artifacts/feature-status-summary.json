@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-03-07T19:13:19Z",
+  "generated_at_utc": "2026-03-07T22:24:33Z",
   "inputs": {
     "contract_path": "docs/qa/feature-status.yaml",
     "gate_summary_path": "artifacts/all-green-gate-summary.json",
@@ -9,66 +9,66 @@
   "source_file_metadata": {
     "contract": {
       "path": "docs/qa/feature-status.yaml",
-      "size_bytes": 5955,
-      "mtime_utc": "2026-03-07T19:10:38Z",
-      "sha256": "251a3ba5648b1c73b66b8686bb1002e1390d39d199d33bda265f8664d18f5a50"
+      "size_bytes": 6343,
+      "mtime_utc": "2026-03-07T22:23:20Z",
+      "sha256": "03b1803f081bb84872414c2b597c5506052b184f5fb5eef0c2e02f2d4b621bbd"
     },
     "gate_summary": {
       "path": "artifacts/all-green-gate-summary.json",
-      "size_bytes": 3765,
-      "mtime_utc": "2026-03-07T19:13:16Z",
-      "sha256": "c867e03a39409e6826e18c524d14449cd786c927c7b4420b5ece2cb14a63a331"
+      "size_bytes": 3769,
+      "mtime_utc": "2026-03-07T22:24:28Z",
+      "sha256": "7bb02eb7193d2f047c0db08e10cb18f37fffae4003ffe9579b4cbcbfcc055ae3"
     },
     "open_issues": [
       {
         "path": "docs/issues/ISSUE-0008-intent-grounding-gate-failures-block-merge.md",
         "size_bytes": 3235,
-        "mtime_utc": "2026-03-07T19:10:38Z",
+        "mtime_utc": "2026-03-07T20:58:24Z",
         "sha256": "8b1e1371a464108442cb985281b490001bb94336de7bcbac9a3fb68abdf9fa06"
       },
       {
         "path": "docs/issues/ISSUE-0009-knowing-grounded-answers-partial-provenance-gap.md",
-        "size_bytes": 4155,
-        "mtime_utc": "2026-03-07T19:10:38Z",
-        "sha256": "767871d1d4c2b9fbde88bc53b3208c19ace0513c6a3e0ee13d142fca2e7fd91f"
+        "size_bytes": 4803,
+        "mtime_utc": "2026-03-07T22:22:56Z",
+        "sha256": "a465708daef99a0e38d79a283c6cf9483d393c30265560abfede469c2e22a1ed"
       },
       {
         "path": "docs/issues/ISSUE-0010-unknowing-safe-fallback-partial-contract-gap.md",
-        "size_bytes": 4035,
-        "mtime_utc": "2026-03-07T19:10:38Z",
-        "sha256": "508d09c2c73ff4853e794645925a9afd22379d84f51c1df66b5c2ba922944fa6"
+        "size_bytes": 4673,
+        "mtime_utc": "2026-03-07T22:22:56Z",
+        "sha256": "7e5017cb505bd0e384650142e0b1326946149abec8c430b1b9a0cca34eda303d"
       },
       {
         "path": "docs/issues/ISSUE-0011-turn-analytics-input-coverage-silent-drop.md",
         "size_bytes": 4287,
-        "mtime_utc": "2026-03-07T19:10:38Z",
+        "mtime_utc": "2026-03-07T20:58:24Z",
         "sha256": "86162dd0afeba256f0340815ec62d9cfcf45283360a95cbb2712ba700857d981"
       },
       {
         "path": "docs/issues/ISSUE-0012-canonical-turn-pipeline-delivery-plan.md",
         "size_bytes": 4596,
-        "mtime_utc": "2026-03-07T19:10:38Z",
+        "mtime_utc": "2026-03-07T20:58:24Z",
         "sha256": "d73f54eda8811870fd3ce738037bf78654b50eb4b60c4a5af138d1cf1804ce28"
       },
       {
         "path": "docs/issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md",
-        "size_bytes": 9193,
-        "mtime_utc": "2026-03-07T19:10:38Z",
-        "sha256": "12d940af245c9ed77906e89347bc0afd21ba8ef1983a39c28d0f4aff20414a90"
+        "size_bytes": 10793,
+        "mtime_utc": "2026-03-07T22:23:32Z",
+        "sha256": "4925221f0ec2d4b641f4fccfa870abc51aa3763e8397da59cbd68546c903b8e4"
       }
     ]
   },
   "warnings": [],
   "summary": {
     "implemented": 2,
-    "partial": 4,
-    "missing": 3
+    "partial": 7,
+    "missing": 0
   },
   "capabilities": [
     {
       "capability_id": "knowing_grounded_answers",
       "capability_name": "Knowing-mode grounded answer with provenance",
-      "owner_module": "src/testbot/sat_chatbot_memory_v2.py",
+      "owner_module": "src/testbot/canonical_turn_orchestrator.py",
       "effective_status": "partial",
       "declared_status": "partial",
       "failed_gate_checks": [],
@@ -87,6 +87,11 @@
           "id": "ISSUE-0012",
           "title": "Canonical turn pipeline delivery plan requires staged implementation and mandatory code review checkpoints",
           "path": "docs/issues/ISSUE-0012-canonical-turn-pipeline-delivery-plan.md"
+        },
+        {
+          "id": "ISSUE-0013",
+          "title": "Implement canonical turn pipeline as the primary bug-elimination program",
+          "path": "docs/issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md"
         }
       ],
       "roadmap_priority_refs": [
@@ -137,6 +142,11 @@
           "id": "ISSUE-0012",
           "title": "Canonical turn pipeline delivery plan requires staged implementation and mandatory code review checkpoints",
           "path": "docs/issues/ISSUE-0012-canonical-turn-pipeline-delivery-plan.md"
+        },
+        {
+          "id": "ISSUE-0013",
+          "title": "Implement canonical turn pipeline as the primary bug-elimination program",
+          "path": "docs/issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md"
         }
       ],
       "roadmap_priority_refs": [
@@ -160,7 +170,7 @@
     {
       "capability_id": "intent_grounding_router",
       "capability_name": "Deterministic intent grounding and route selection",
-      "owner_module": "src/testbot/intent_router.py",
+      "owner_module": "src/testbot/sat_chatbot_memory_v2.py::context.resolve|intent.resolve|retrieve.evidence|policy.decide",
       "effective_status": "partial",
       "declared_status": "partial",
       "failed_gate_checks": [],
@@ -174,6 +184,11 @@
           "id": "ISSUE-0012",
           "title": "Canonical turn pipeline delivery plan requires staged implementation and mandatory code review checkpoints",
           "path": "docs/issues/ISSUE-0012-canonical-turn-pipeline-delivery-plan.md"
+        },
+        {
+          "id": "ISSUE-0013",
+          "title": "Implement canonical turn pipeline as the primary bug-elimination program",
+          "path": "docs/issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md"
         }
       ],
       "roadmap_priority_refs": [
@@ -279,9 +294,9 @@
     {
       "capability_id": "canonical_turn_pipeline_foundation",
       "capability_name": "Canonical turn pipeline foundation (observe/encode/stabilize)",
-      "owner_module": "src/testbot/sat_chatbot_memory_v2.py",
-      "effective_status": "missing",
-      "declared_status": "planned",
+      "owner_module": "src/testbot/turn_observation.py|src/testbot/candidate_encoding.py|src/testbot/stabilization.py",
+      "effective_status": "partial",
+      "declared_status": "partial",
       "failed_gate_checks": [],
       "relevant_open_issues": [
         {
@@ -333,7 +348,8 @@
         "features/memory_recall.feature",
         "features/answer_contract.feature",
         "tests/test_runtime_logging_events.py",
-        "tests/test_debug_turn_trace.py"
+        "tests/test_debug_turn_trace.py",
+        "tests/test_canonical_turn_orchestrator.py"
       ],
       "runtime_dependency_flags": [
         "TESTBOT_DEBUG"
@@ -342,9 +358,9 @@
     {
       "capability_id": "canonical_turn_pipeline_decisioning",
       "capability_name": "Canonical turn pipeline decisioning (context/intent/retrieve/policy)",
-      "owner_module": "src/testbot/intent_router.py",
-      "effective_status": "missing",
-      "declared_status": "planned",
+      "owner_module": "src/testbot/context_resolution.py|src/testbot/intent_resolution.py|src/testbot/evidence_retrieval.py|src/testbot/policy_decision.py",
+      "effective_status": "partial",
+      "declared_status": "partial",
       "failed_gate_checks": [],
       "relevant_open_issues": [
         {
@@ -405,9 +421,9 @@
     {
       "capability_id": "canonical_turn_pipeline_commit_and_audit",
       "capability_name": "Canonical turn pipeline commit and auditability (assemble/validate/render/commit)",
-      "owner_module": "src/testbot/pipeline_state.py",
-      "effective_status": "missing",
-      "declared_status": "planned",
+      "owner_module": "src/testbot/answer_assembly.py|src/testbot/answer_validation.py|src/testbot/answer_rendering.py|src/testbot/answer_commit.py",
+      "effective_status": "partial",
+      "declared_status": "partial",
       "failed_gate_checks": [],
       "relevant_open_issues": [
         {
