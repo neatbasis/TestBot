@@ -761,6 +761,26 @@ def build_partial_memory_clarifier(hits: list[Document], *, max_items: int = 2) 
     return CLARIFY_ANSWER
 
 
+def _select_memory_recovery_hit(hits: list[Document]) -> Document | None:
+    for hit in hits:
+        metadata = hit.metadata if isinstance(hit.metadata, dict) else {}
+        doc_id = str(metadata.get("doc_id", "")).strip()
+        ts = str(metadata.get("ts", "")).strip()
+        snippet = (hit.page_content or "").strip()
+        if doc_id and ts and snippet:
+            return hit
+    return None
+
+
+def _build_memory_recall_recovery_answer(hit: Document) -> str:
+    metadata = hit.metadata if isinstance(hit.metadata, dict) else {}
+    doc_id = str(metadata.get("doc_id", "")).strip()
+    ts = str(metadata.get("ts", "")).strip()
+    snippet = " ".join((hit.page_content or "").split())
+    trimmed_snippet = snippet[:180].rstrip()
+    return f"From memory, I found: {trimmed_snippet}. doc_id: {doc_id}, ts: {ts}"
+
+
 def is_clarification_answer(text: str) -> bool:
     normalized = (text or "").strip()
     return normalized in {CLARIFY_ANSWER, ROUTE_TO_ASK_ANSWER} or normalized.startswith(
@@ -923,6 +943,12 @@ def stage_answer(
             return ASSIST_ALTERNATIVES_ANSWER
         return ASSIST_ALTERNATIVES_ANSWER
 
+    def _memory_recall_recovery_or_alternative() -> str:
+        selected_hit = _select_memory_recovery_hit(hits)
+        if selected_hit is not None:
+            return _build_memory_recall_recovery_answer(selected_hit)
+        return _clarifier_or_policy_alternative()
+
     def _knowledge_safe_fallback() -> str:
         if fallback_action in {"ANSWER_UNKNOWN", "OFFER_CAPABILITY_ALTERNATIVES", "ANSWER_TIME"}:
             return _fallback_answer_for_action(fallback_action, intent_class=intent_class)
@@ -967,6 +993,8 @@ def stage_answer(
                 final_answer = ASSIST_ALTERNATIVES_ANSWER
             elif validate_answer_contract(draft_answer):
                 final_answer = draft_answer
+            elif intent_class == "memory_recall" and bool(state.confidence_decision.get("context_confident", False)):
+                final_answer = _memory_recall_recovery_or_alternative()
             elif social_or_non_knowledge_intent and fallback_action == "ANSWER_GENERAL_KNOWLEDGE":
                 final_answer = draft_answer
             else:
