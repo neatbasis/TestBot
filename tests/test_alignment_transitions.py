@@ -9,7 +9,7 @@ from testbot.sat_chatbot_memory_v2 import (
     evaluate_alignment_decision,
     stage_answer,
 )
-from testbot.stage_transitions import DENY_ANSWER, FALLBACK_ANSWER, validate_answer_post
+from testbot.stage_transitions import DENY_ANSWER, NON_KNOWLEDGE_UNCERTAINTY_ANSWER, validate_answer_post
 
 
 def _base_state() -> PipelineState:
@@ -81,7 +81,7 @@ def test_validate_answer_post_allows_progressive_clarifier_when_factual_groundin
     assert result.passed
 
 
-def test_validate_answer_post_progressive_fallback_enforced_allows_fallback_when_low_confidence() -> None:
+def test_validate_answer_post_progressive_fallback_enforced_allows_explicit_uncertainty_when_low_confidence() -> None:
     invariant_decisions = {
         **_base_state().invariant_decisions,
         "answer_contract_valid": False,
@@ -89,13 +89,13 @@ def test_validate_answer_post_progressive_fallback_enforced_allows_fallback_when
     }
     alignment_decision = {
         **_base_state().alignment_decision,
-        "final_alignment_decision": "fallback",
+        "final_alignment_decision": "allow",
     }
     state = replace(
         _base_state(),
         confidence_decision={"context_confident": False},
         draft_answer="",
-        final_answer=FALLBACK_ANSWER,
+        final_answer=NON_KNOWLEDGE_UNCERTAINTY_ANSWER,
         invariant_decisions=invariant_decisions,
         alignment_decision=alignment_decision,
     )
@@ -202,13 +202,13 @@ def test_validate_answer_post_rejects_unknowing_mode_without_explicit_uncertaint
     assert "unknowing_mode_requires_explicit_uncertainty_fallback" in result.failures
 
 
-def test_validate_answer_post_allows_unknowing_mode_with_explicit_uncertainty_fallback() -> None:
+def test_validate_answer_post_allows_unknowing_mode_with_explicit_uncertainty_response() -> None:
     state = replace(
         _base_state(),
         confidence_decision={"context_confident": False},
         invariant_decisions={**_base_state().invariant_decisions, "answer_mode": "dont-know", "answer_contract_valid": False},
-        final_answer=FALLBACK_ANSWER,
-        alignment_decision={**_base_state().alignment_decision, "final_alignment_decision": "fallback"},
+        final_answer=NON_KNOWLEDGE_UNCERTAINTY_ANSWER,
+        alignment_decision={**_base_state().alignment_decision, "final_alignment_decision": "allow"},
     )
 
     result = validate_answer_post(state)
@@ -290,7 +290,7 @@ def test_evaluate_alignment_decision_no_claims_fallback_does_not_inflate_citatio
     decision = evaluate_alignment_decision(
         user_input="what did i say yesterday",
         draft_answer="",
-        final_answer=FALLBACK_ANSWER,
+        final_answer=NON_KNOWLEDGE_UNCERTAINTY_ANSWER,
         confidence_decision={"context_confident": False},
         claims=[],
         provenance_types=[ProvenanceType.UNKNOWN],
@@ -302,7 +302,7 @@ def test_evaluate_alignment_decision_no_claims_fallback_does_not_inflate_citatio
     assert raw["citation_required_for_mode"] is False
     assert raw["citation_check_applicable"] is False
     assert normalized["citation_validity"] == 0.0
-    assert decision["dimensions"]["provenance_transparency"] == 0.0
+    assert decision["dimensions"]["provenance_transparency"] == 0.3333
     assert decision["final_alignment_decision"] == "fallback"
 
 

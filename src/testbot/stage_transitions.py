@@ -70,7 +70,7 @@ def _follows_approved_fallback_path(state: PipelineState) -> bool:
     final_answer = (state.final_answer or "").strip()
 
     if answer_mode == "dont-know":
-        return final_answer == FALLBACK_ANSWER
+        return final_answer == NON_KNOWLEDGE_UNCERTAINTY_ANSWER
     if answer_mode in {"clarify", "assist"}:
         return final_answer not in {"", FALLBACK_ANSWER, DENY_ANSWER}
     return False

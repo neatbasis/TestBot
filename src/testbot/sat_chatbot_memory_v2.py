@@ -861,9 +861,9 @@ def stage_answer(
         if action == "ASK_CLARIFYING_QUESTION":
             if intent_class == "memory_recall":
                 return build_partial_memory_clarifier(hits)
-            return FALLBACK_ANSWER
+            return ASSIST_ALTERNATIVES_ANSWER
         if action == "ANSWER_UNKNOWN":
-            return NON_KNOWLEDGE_UNCERTAINTY_ANSWER if intent_class == "non_memory" else FALLBACK_ANSWER
+            return NON_KNOWLEDGE_UNCERTAINTY_ANSWER
         if action == "ANSWER_TIME":
             if clock is None:
                 return "I can answer relative time questions like 'how many minutes ago' or 'what is tomorrow?'."
