@@ -11,6 +11,10 @@ from testbot.pipeline_state import CandidateHit, PipelineState, ProvenanceType
 
 FALLBACK_ANSWER = "I don't know from memory."
 DENY_ANSWER = "I can't comply with that request."
+NON_KNOWLEDGE_UNCERTAINTY_ANSWER = (
+    "I'm not fully confident in a reliable answer right now. "
+    "I can offer a best-effort response and suggest a quick way to verify it."
+)
 TRANSITION_VALIDATION_SCHEMA_VERSION = 2
 
 REQUIRED_ALIGNMENT_DIMENSIONS = (
@@ -70,6 +74,30 @@ def _follows_approved_fallback_path(state: PipelineState) -> bool:
     if answer_mode in {"clarify", "assist"}:
         return final_answer not in {"", FALLBACK_ANSWER, DENY_ANSWER}
     return False
+
+
+def _has_knowing_mode_provenance_metadata(state: PipelineState) -> bool:
+    answer_mode = str(state.invariant_decisions.get("answer_mode", ""))
+    if answer_mode in {"deny", "clarify", "dont-know", "assist"}:
+        return True
+
+    has_provenance_types = bool(state.provenance_types)
+    has_basis_statement = bool((state.basis_statement or "").strip())
+    if not (has_provenance_types and has_basis_statement):
+        return False
+
+    if ProvenanceType.MEMORY in state.provenance_types:
+        return bool(state.used_memory_refs or state.used_source_evidence_refs)
+    return True
+
+
+def _has_explicit_unknowing_uncertainty_fallback(state: PipelineState) -> bool:
+    answer_mode = str(state.invariant_decisions.get("answer_mode", ""))
+    if answer_mode != "dont-know":
+        return True
+
+    final_answer = (state.final_answer or "").strip()
+    return final_answer in {FALLBACK_ANSWER, NON_KNOWLEDGE_UNCERTAINTY_ANSWER}
 
 def _answer_mode_respects_intent(state: PipelineState) -> bool:
     answer_mode = str(state.invariant_decisions.get("answer_mode", ""))
@@ -269,6 +297,14 @@ def validate_answer_post(state: PipelineState) -> TransitionCheckResult:
                     and bool(s.provenance_types)
                     and bool((s.basis_statement or "").strip())
                 ),
+            ),
+            (
+                "knowing_mode_requires_provenance_metadata",
+                lambda s: _has_knowing_mode_provenance_metadata(s),
+            ),
+            (
+                "unknowing_mode_requires_explicit_uncertainty_fallback",
+                lambda s: _has_explicit_unknowing_uncertainty_fallback(s),
             ),
         ],
         state=state,

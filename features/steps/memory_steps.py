@@ -240,14 +240,14 @@ def step_when_user_asks_eval_case(context, case_id: str) -> None:
 def step_when_equivalent_candidates_remain(context) -> None:
     parity_candidates = [
         {
-            "doc_id": "ambiguous_a",
+            "doc_id": "",
             "text": "Fragment A",
             "type": "user_utterance",
             "ts": "2026-03-10T09:00:00+00:00",
             "sim_score": 0.62,
         },
         {
-            "doc_id": "ambiguous_b",
+            "doc_id": "",
             "text": "Fragment B",
             "type": "user_utterance",
             "ts": "2026-03-10T09:00:00+00:00",
