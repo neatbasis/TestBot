@@ -7,7 +7,7 @@ from behave import given, then, when
 from langchain_core.documents import Document
 
 from testbot.history_packer import PackedHistory
-from testbot.intent_router import IntentType, classify_intent
+from testbot.intent_router import IntentType, classify_intent, extract_intent_facets
 from testbot.pipeline_state import CandidateHit, PipelineState, ProvenanceType
 from testbot.sat_chatbot_memory_v2 import (
     ROUTE_TO_ASK_ANSWER,
@@ -549,3 +549,30 @@ def step_then_non_knowledge_social_intent(context) -> None:
 @then('the response should not include "{unexpected_substring}"')
 def step_then_response_excludes_substring(context, unexpected_substring: str) -> None:
     assert unexpected_substring not in context.pipeline_state.final_answer
+
+@when("the user asks a mixed temporal-memory phrase")
+def step_when_mixed_temporal_memory_phrase(context) -> None:
+    utterance = "how many minutes ago did we talk before?"
+    context.ambiguous_intent = classify_intent(utterance)
+    context.intent_facets = extract_intent_facets(utterance)
+
+
+@then("the utterance should route to time-query intent with temporal and memory facets")
+def step_then_mixed_temporal_memory_phrase(context) -> None:
+    assert context.ambiguous_intent is IntentType.TIME_QUERY
+    assert context.intent_facets.temporal is True
+    assert context.intent_facets.memory is True
+
+
+@when("the user asks a capabilities-in-context phrase")
+def step_when_capabilities_in_context_phrase(context) -> None:
+    utterance = "what is ontology with satellite context?"
+    context.ambiguous_intent = classify_intent(utterance)
+    context.intent_facets = extract_intent_facets(utterance)
+
+
+@then("the utterance should route to knowledge intent with capability facet")
+def step_then_capabilities_in_context_phrase(context) -> None:
+    assert context.ambiguous_intent is IntentType.KNOWLEDGE_QUESTION
+    assert context.intent_facets.capability is True
+

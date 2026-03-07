@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 from enum import Enum
 
 
@@ -15,6 +16,25 @@ class IntentType(str, Enum):
     MEMORY_RECALL = "memory_recall"
     TIME_QUERY = "time_query"
     CONTROL = "control"
+
+
+@dataclass(frozen=True)
+class IntentFacets:
+    """Secondary intent signals that can co-exist with top-level intent routing."""
+
+    temporal: bool = False
+    memory: bool = False
+    capability: bool = False
+    control: bool = False
+
+
+@dataclass(frozen=True)
+class PlanningDescriptor:
+    """Structured planning descriptor derived from top-level intent + facets."""
+
+    pathway: str
+    top_level_intent: IntentType
+    facets: IntentFacets
 
 
 _CONTROL_PATTERNS = (
@@ -65,6 +85,12 @@ _SATELLITE_ACTION_PATTERNS = (
     r"\buse satellite\b",
     r"\bstart satellite conversation\b",
     r"\bsatellite (?:ask|conversation|mode)\b",
+)
+
+_CAPABILITY_FACET_PATTERNS = (
+    r"\bsatellite\b",
+    r"\bcapabilit(?:y|ies)\b",
+    r"\bwhat can you do\b",
 )
 
 _TIME_QUERY_PATTERNS = (
@@ -137,11 +163,44 @@ def classify_intent(user_input: str | None) -> IntentType:
     return IntentType.KNOWLEDGE_QUESTION
 
 
-def planning_pathway_for_intent(intent: IntentType) -> str:
-    """Map top-level intent classes to deterministic response-planning pathways."""
+def extract_intent_facets(user_input: str | None) -> IntentFacets:
+    """Extract orthogonal facets that inform planning for mixed-intent phrasing."""
+
+    normalized = (user_input or "").strip().lower()
+    if not normalized:
+        return IntentFacets()
+
+    return IntentFacets(
+        temporal=_matches_any(normalized, _TIME_QUERY_PATTERNS),
+        memory=_matches_any(normalized, _MEMORY_RECALL_PATTERNS),
+        capability=(
+            _matches_any(normalized, _CAPABILITY_FACET_PATTERNS)
+            or is_satellite_action_request(normalized)
+            or _matches_any(normalized, _CAPABILITIES_HELP_PATTERNS)
+        ),
+        control=(
+            _matches_any(normalized, _CONTROL_PATTERNS)
+            or _matches_any(normalized, _GREETING_COMMAND_PATTERNS)
+        ),
+    )
+
+
+def planning_pathway_for_intent(intent: IntentType, facets: IntentFacets) -> PlanningDescriptor:
+    """Map intent + facets to a deterministic response-planning descriptor."""
 
     if intent == IntentType.MEMORY_RECALL:
-        return "memory_recall"
-    if intent == IntentType.TIME_QUERY:
-        return "time_query"
-    return "non_memory"
+        pathway = "memory_recall"
+    elif intent == IntentType.TIME_QUERY:
+        pathway = "time_query"
+    elif intent == IntentType.CAPABILITIES_HELP or facets.capability:
+        pathway = "capabilities"
+    elif intent == IntentType.CONTROL or facets.control:
+        pathway = "control"
+    else:
+        pathway = "non_memory"
+
+    return PlanningDescriptor(
+        pathway=pathway,
+        top_level_intent=intent,
+        facets=facets,
+    )
