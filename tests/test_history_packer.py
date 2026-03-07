@@ -24,21 +24,21 @@ def test_pack_chat_history_exact_structure_from_fixture() -> None:
             "Got it. I will include Home Assistant and Zigbee status.",
         ],
         "open_questions": [
-            "Can you also track Battery levels for Kitchen and Hallway?",
+            "Can you also track Battery levels for Kitchen and Hallway? [derived_by=heuristic confidence=medium source=user_turn]",
         ],
         "topic_entity_hints": [
-            "assistant",
-            "home",
-            "include",
-            "status",
-            "will",
-            "zigbee",
-            "about",
-            "also",
+            "assistant [derived_by=heuristic confidence=low source=transcript_tokens]",
+            "home [derived_by=heuristic confidence=low source=transcript_tokens]",
+            "include [derived_by=heuristic confidence=low source=transcript_tokens]",
+            "status [derived_by=heuristic confidence=low source=transcript_tokens]",
+            "will [derived_by=heuristic confidence=low source=transcript_tokens]",
+            "zigbee [derived_by=heuristic confidence=low source=transcript_tokens]",
+            "about [derived_by=heuristic confidence=low source=transcript_tokens]",
+            "also [derived_by=heuristic confidence=low source=transcript_tokens]",
         ],
         "constraints": [
-            "Please keep answers brief and only use memory-backed facts.",
-            "For the summary, include Home Assistant and Zigbee status exactly.",
+            "Please keep answers brief and only use memory-backed facts. [derived_by=heuristic confidence=medium source=user_turn]",
+            "For the summary, include Home Assistant and Zigbee status exactly. [derived_by=heuristic confidence=medium source=user_turn]",
         ],
     }
 
@@ -62,7 +62,10 @@ def test_extract_constraints_true_positives() -> None:
 
     packed = pack_chat_history(transcript)
 
-    assert packed.constraints == ["You must include citations.", "Do not guess."]
+    assert packed.constraints == [
+        "You must include citations. [derived_by=heuristic confidence=medium source=user_turn]",
+        "Do not guess. [derived_by=heuristic confidence=medium source=user_turn]",
+    ]
 
 
 def test_extract_constraints_avoids_substring_false_positives() -> None:
@@ -84,4 +87,20 @@ def test_extract_constraints_handles_punctuation_and_case_variants() -> None:
 
     packed = pack_chat_history(transcript)
 
-    assert packed.constraints == ["DON’T improvise.", "Use AT LEAST two examples."]
+    assert packed.constraints == [
+        "DON’T improvise. [derived_by=heuristic confidence=medium source=user_turn]",
+        "Use AT LEAST two examples. [derived_by=heuristic confidence=medium source=user_turn]",
+    ]
+
+
+def test_labeled_history_claims_marks_history_as_optional_advisory() -> None:
+    packed = pack_chat_history([
+        {"role": "user", "content": "Must include Zigbee status exactly."},
+        {"role": "user", "content": "Kitchen battery?"},
+    ])
+
+    claims = labeled_history_claims(packed)
+
+    assert any(claim.startswith("CHAT_HISTORY_OPTIONAL: constraint=") for claim in claims)
+    assert any("derived_by=heuristic" in claim for claim in claims)
+    assert any(claim.endswith("advisory=true") for claim in claims if claim.startswith("INFERENCE:"))
