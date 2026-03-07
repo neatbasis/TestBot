@@ -68,6 +68,9 @@ from testbot.history_packer import PackedHistory, labeled_history_claims, pack_c
 from testbot.response_planner import build_response_plan, plan_to_dict, render_response_plan_block
 from testbot.reject_taxonomy import RejectSignal, derive_reject_signal
 from testbot.canonical_turn_orchestrator import CanonicalStage, CanonicalTurnContext, CanonicalTurnOrchestrator
+from testbot.context_resolution import resolve as resolve_context
+from testbot.intent_resolution import resolve as resolve_intent
+from testbot.policy_decision import decide as decide_policy
 
 from langchain_core.documents import Document
 from langchain_core.prompts import ChatPromptTemplate
@@ -794,24 +797,11 @@ def _is_clarification_or_capability_confirmation_answer(text: str) -> bool:
 
 
 def resolve_turn_intent(*, utterance: str, prior_pipeline_state: PipelineState | None) -> tuple[IntentType, IntentType]:
-    classified_intent = classify_intent(utterance)
-    if prior_pipeline_state is None:
-        return classified_intent, classified_intent
+    context_resolution = resolve_context(utterance=utterance, prior_pipeline_state=prior_pipeline_state)
+    intent_resolution = resolve_intent(utterance=utterance, context=context_resolution)
+    return intent_resolution.classified_intent, intent_resolution.resolved_intent
 
-    prior_intent_raw = (prior_pipeline_state.prior_unresolved_intent or prior_pipeline_state.resolved_intent or "").strip()
-    if not prior_intent_raw:
-        return classified_intent, classified_intent
 
-    try:
-        prior_intent = IntentType(prior_intent_raw)
-    except ValueError:
-        return classified_intent, classified_intent
-
-    prior_answer = (prior_pipeline_state.final_answer or "").strip()
-    if _is_short_affirmation(utterance) and _is_clarification_or_capability_confirmation_answer(prior_answer):
-        return classified_intent, prior_intent
-
-    return classified_intent, classified_intent
 
 
 def _intent_class_for_policy(intent: IntentType) -> str:
@@ -839,12 +829,11 @@ def _intent_label(intent: IntentType) -> str:
     return intent.value
 
 
-def _uses_memory_retrieval(intent: IntentType) -> bool:
-    return intent == IntentType.MEMORY_RECALL
 
 
 def _is_definitional_query_form(utterance: str) -> bool:
-    return bool(_DEFINITIONAL_QUERY_PATTERN.match((utterance or "").strip()))
+    normalized = (utterance or "").strip().lower()
+    return normalized.startswith(("what is", "what are", "what's", "who is", "who are", "who's", "define", "definition of"))
 
 
 def _intent_classifier_confidence(*, utterance: str, predicted_intent: IntentType) -> float:
@@ -856,14 +845,6 @@ def _intent_classifier_confidence(*, utterance: str, predicted_intent: IntentTyp
         return 0.82
 
     return 0.95
-
-
-def _select_retrieval_branch(*, utterance: str, intent: IntentType) -> str:
-    if _uses_memory_retrieval(intent):
-        return "memory_retrieval"
-    if intent == IntentType.KNOWLEDGE_QUESTION and _is_definitional_query_form(utterance):
-        return "memory_retrieval"
-    return "direct_answer"
 
 
 def _minimal_confidence_decision_for_direct_answer(*, branch: str, base_confidence_decision: dict[str, object]) -> dict[str, object]:
@@ -2296,7 +2277,7 @@ def _run_canonical_turn_pipeline(
     capability_snapshot: CapabilitySnapshot,
     clock: Clock,
 ) -> tuple[PipelineState, list[Document]]:
-    retrieval_branch = _select_retrieval_branch(utterance=utterance, intent=resolved_intent)
+    policy_decision = decide_policy(utterance=utterance, intent=resolved_intent)
     context = CanonicalTurnContext(
         state=state,
         artifacts={
@@ -2304,7 +2285,7 @@ def _run_canonical_turn_pipeline(
             "intent_label": intent_label,
             "intent_classified": classified_intent.value,
             "intent_resolved": resolved_intent.value,
-            "retrieval_branch": retrieval_branch,
+            "policy_decision": policy_decision,
             "u_id": u_id,
             "u_ref_id": u_ref_id,
             "docs_and_scores": [],
@@ -2321,7 +2302,7 @@ def _run_canonical_turn_pipeline(
         return ctx
 
     def _encode_candidates(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
-        if ctx.artifacts["retrieval_branch"] == "memory_retrieval":
+        if ctx.artifacts["policy_decision"].requires_retrieval:
             _validate_and_log_transition(validate_encode_pre(ctx.state))
             ctx.state = encode_stage(llm, ctx.state)
             _validate_and_log_transition(validate_encode_post(ctx.state))
@@ -2354,18 +2335,27 @@ def _run_canonical_turn_pipeline(
                 "intent": intent_label,
                 "intent_classified": classified_intent.value,
                 "intent_resolved": resolved_intent.value,
-                "retrieval_branch": ctx.artifacts["retrieval_branch"],
+                "retrieval_branch": ctx.artifacts["policy_decision"].retrieval_branch,
+                "decision_rationale": ctx.artifacts["policy_decision"].rationale,
+                "evidence_posture": ctx.artifacts["policy_decision"].evidence_posture.value,
             },
         )
         append_pipeline_snapshot("intent", ctx.state)
         return ctx
 
     def _retrieve_evidence(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
-        if ctx.artifacts["retrieval_branch"] == "memory_retrieval":
+        if ctx.artifacts["policy_decision"].requires_retrieval:
             _validate_and_log_transition(validate_retrieve_pre(ctx.state))
             ctx.state, docs_and_scores = stage_retrieve(store, ctx.state)
             _validate_and_log_transition(validate_retrieve_post(ctx.state))
             ctx.artifacts["docs_and_scores"] = docs_and_scores
+            considered = int(ctx.state.confidence_decision.get("retrieval_candidates_considered", len(docs_and_scores)) or 0)
+            ctx.artifacts["policy_decision"] = decide_policy(
+                utterance=utterance,
+                intent=resolved_intent,
+                retrieval_candidates_considered=considered,
+                hit_count=0,
+            )
             append_session_log(
                 "retrieval_candidates",
                 {
@@ -2386,7 +2376,7 @@ def _run_canonical_turn_pipeline(
         return ctx
 
     def _policy_decide(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
-        if ctx.artifacts["retrieval_branch"] == "memory_retrieval":
+        if ctx.artifacts["policy_decision"].requires_retrieval:
             _validate_and_log_transition(validate_rerank_pre(ctx.state))
             ctx.state, hits = stage_rerank(
                 ctx.state,
@@ -2399,9 +2389,16 @@ def _run_canonical_turn_pipeline(
             )
             _validate_and_log_transition(validate_rerank_post(ctx.state))
             ctx.artifacts["hits"] = hits
+            considered = int(ctx.state.confidence_decision.get("retrieval_candidates_considered", len(ctx.artifacts["docs_and_scores"])) or 0)
+            ctx.artifacts["policy_decision"] = decide_policy(
+                utterance=utterance,
+                intent=resolved_intent,
+                retrieval_candidates_considered=considered,
+                hit_count=len(hits),
+            )
         else:
             minimal_confidence = _minimal_confidence_decision_for_direct_answer(
-                branch=ctx.artifacts["retrieval_branch"],
+                branch=ctx.artifacts["policy_decision"].retrieval_branch,
                 base_confidence_decision=ctx.state.confidence_decision,
             )
             ctx.state = replace(
@@ -2416,7 +2413,7 @@ def _run_canonical_turn_pipeline(
                     "utterance": utterance,
                     "reason": "intent_routed_to_direct_answer",
                     "intent": intent_label,
-                    "retrieval_branch": ctx.artifacts["retrieval_branch"],
+                    "retrieval_branch": ctx.artifacts["policy_decision"].retrieval_branch,
                 },
             )
         append_pipeline_snapshot("rerank", ctx.state)

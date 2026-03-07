@@ -7,7 +7,10 @@ from behave import given, then, when
 from langchain_core.documents import Document
 
 from testbot.history_packer import PackedHistory
+from testbot.context_resolution import resolve as resolve_context
+from testbot.intent_resolution import resolve as resolve_intent
 from testbot.intent_router import IntentType, classify_intent, extract_intent_facets
+from testbot.policy_decision import EvidencePosture, decide
 from testbot.pipeline_state import CandidateHit, PipelineState, ProvenanceType
 from testbot.sat_chatbot_memory_v2 import (
     ROUTE_TO_ASK_ANSWER,
@@ -576,3 +579,48 @@ def step_then_capabilities_in_context_phrase(context) -> None:
     assert context.ambiguous_intent is IntentType.KNOWLEDGE_QUESTION
     assert context.intent_facets.capability is True
 
+
+
+@when("retrieval policy evaluates empty and scored-empty evidence states")
+def step_when_retrieval_policy_evaluates_empty_vs_scored_empty(context) -> None:
+    context.empty_evidence_policy = decide(
+        utterance="what is ontology?",
+        intent=IntentType.KNOWLEDGE_QUESTION,
+        retrieval_candidates_considered=0,
+        hit_count=0,
+    )
+    context.scored_empty_policy = decide(
+        utterance="what is ontology?",
+        intent=IntentType.KNOWLEDGE_QUESTION,
+        retrieval_candidates_considered=2,
+        hit_count=0,
+    )
+
+
+@then("retrieval policy should record empty-evidence and scored-empty postures distinctly")
+def step_then_retrieval_policy_postures_distinct(context) -> None:
+    assert context.empty_evidence_policy.evidence_posture is EvidencePosture.EMPTY_EVIDENCE
+    assert context.scored_empty_policy.evidence_posture is EvidencePosture.SCORED_EMPTY
+
+
+@when("intent continuity is evaluated for affirmative and non-affirmative follow-ups")
+def step_when_intent_continuity_evaluated_for_followups(context) -> None:
+    prior_state = PipelineState(
+        user_input="ask something via satellite",
+        final_answer=ROUTE_TO_ASK_ANSWER,
+        resolved_intent=IntentType.CAPABILITIES_HELP.value,
+        prior_unresolved_intent=IntentType.CAPABILITIES_HELP.value,
+    )
+    affirmative_context = resolve_context(utterance="yes", prior_pipeline_state=prior_state)
+    non_affirmative_context = resolve_context(utterance="no, never mind", prior_pipeline_state=prior_state)
+    context.affirmative_resolution = resolve_intent(utterance="yes", context=affirmative_context)
+    context.non_affirmative_resolution = resolve_intent(
+        utterance="no, never mind",
+        context=non_affirmative_context,
+    )
+
+
+@then("continuity routing should preserve prior intent only for affirmative clarification follow-ups")
+def step_then_continuity_routing_preserves_only_affirmative(context) -> None:
+    assert context.affirmative_resolution.resolved_intent is IntentType.CAPABILITIES_HELP
+    assert context.non_affirmative_resolution.resolved_intent is context.non_affirmative_resolution.classified_intent
