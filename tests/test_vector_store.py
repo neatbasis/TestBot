@@ -24,7 +24,7 @@ class FakeStore:
     def add_documents(self, documents: list[Document]) -> None:
         self.docs.extend(documents)
 
-    def similarity_search_with_score(self, query: str, k: int = 4):
+    def similarity_search_with_score(self, query: str, k: int = 4, **kwargs):
         if not self.docs:
             return []
         return [(d, 0.9) for d in self.docs[:k]]
@@ -170,3 +170,57 @@ def test_build_memory_store_defaults_to_in_memory_adapter() -> None:
     store = build_memory_store(embeddings=StubEmbeddings(), mode="in_memory")
 
     assert isinstance(store, InMemoryMemoryStore)
+
+
+def test_inmemory_memory_store_retrieval_exclusions_block_same_turn_docs() -> None:
+    class _StubVectorStore:
+        def __init__(self) -> None:
+            self._docs = [
+                Document(id="turn-user", page_content="just said this", metadata={"doc_id": "turn-user", "ts": "2026-03-10T10:00:00Z"}),
+                Document(
+                    id="turn-reflection",
+                    page_content="reflection for this turn",
+                    metadata={"doc_id": "turn-reflection", "source_doc_id": "turn-user", "turn_doc_id": "turn-user"},
+                ),
+                Document(id="older-memory", page_content="older memory", metadata={"doc_id": "older-memory", "ts": "2026-03-01T10:00:00Z"}),
+            ]
+
+        def add_documents(self, documents: list[Document]) -> None:
+            self._docs.extend(documents)
+
+        def similarity_search_with_score(self, _query: str, k: int = 4) -> list[tuple[Document, float]]:
+            return [(doc, 0.9) for doc in self._docs[:k]]
+
+    store = InMemoryMemoryStore(_StubVectorStore())
+
+    hits = store.similarity_search_with_score(
+        "memory",
+        k=5,
+        exclude_doc_ids={"turn-user", "turn-reflection"},
+        exclude_source_ids={"turn-user"},
+        exclude_turn_scoped_ids={"turn-user", "turn-reflection"},
+    )
+
+    assert [doc.id for doc, _score in hits] == ["older-memory"]
+
+
+def test_elasticsearch_memory_store_search_includes_retrieval_hygiene_filters(
+    fake_elasticsearch_module: tuple[MagicMock, MagicMock],
+) -> None:
+    _es_ctor, es_client = fake_elasticsearch_module
+    es_client.indices.exists.return_value = True
+    es_client.search.return_value = {"hits": {"hits": []}}
+    store = ElasticsearchMemoryStore(embeddings=StubEmbeddings(), url="http://localhost:9200", index="cards")
+
+    store.similarity_search_with_score(
+        "fact",
+        k=2,
+        exclude_doc_ids={"turn-user", "turn-reflection"},
+        exclude_source_ids={"turn-user"},
+        exclude_turn_scoped_ids={"turn-user", "turn-reflection"},
+    )
+
+    bool_query = es_client.search.call_args.kwargs["query"]["script_score"]["query"]["bool"]
+    assert bool_query["must"] == [{"match_all": {}}]
+    assert {"ids": {"values": ["turn-reflection", "turn-user"]}} in bool_query["must_not"]
+    assert {"terms": {"metadata.source_doc_id": ["turn-user"]}} in bool_query["must_not"]

@@ -562,14 +562,34 @@ def encode_stage(llm: ChatOllama, state: PipelineState) -> PipelineState:
     return stage_rewrite_query(llm, state)
 
 
-def stage_retrieve(store: MemoryStore, state: PipelineState) -> tuple[PipelineState, list[tuple[Document, float]]]:
-    raw_docs_and_scores = store.similarity_search_with_score(state.rewritten_query, k=18)
+def stage_retrieve(
+    store: MemoryStore,
+    state: PipelineState,
+    *,
+    exclude_doc_ids: set[str] | None = None,
+    exclude_source_ids: set[str] | None = None,
+    exclude_turn_scoped_ids: set[str] | None = None,
+) -> tuple[PipelineState, list[tuple[Document, float]]]:
+    normalized_exclude_doc_ids = {value for value in (exclude_doc_ids or set()) if value}
+    normalized_exclude_source_ids = {value for value in (exclude_source_ids or set()) if value}
+    normalized_exclude_turn_scoped_ids = {value for value in (exclude_turn_scoped_ids or set()) if value}
+    raw_docs_and_scores = store.similarity_search_with_score(
+        state.rewritten_query,
+        k=18,
+        exclude_doc_ids=normalized_exclude_doc_ids,
+        exclude_source_ids=normalized_exclude_source_ids,
+        exclude_turn_scoped_ids=normalized_exclude_turn_scoped_ids,
+    )
     docs_and_scores = mix_source_evidence_with_memory_cards(raw_docs_and_scores, top_k=12, source_quota=3)
     retrieval_candidates = [doc_to_candidate_hit(doc, score) for doc, score in docs_and_scores]
     retrieval_telemetry = {
         "retrieval_candidates_considered": len(raw_docs_and_scores),
         "retrieval_returned_top_k": len(docs_and_scores),
         "retrieval_threshold": RETRIEVAL_SCORE_THRESHOLD,
+        "retrieval_exclude_doc_ids": sorted(normalized_exclude_doc_ids),
+        "retrieval_exclude_source_ids": sorted(normalized_exclude_source_ids),
+        "retrieval_exclude_turn_scoped_ids": sorted(normalized_exclude_turn_scoped_ids),
+        "retrieval_exclusion_invariant": "retrieve_stage_primary",
     }
     return replace(
         state,
@@ -1352,6 +1372,13 @@ def _build_debug_turn_payload(*, state: PipelineState, intent_label: str, hits: 
             "candidates_considered": float(state.confidence_decision.get("retrieval_candidates_considered", 0.0) or 0.0),
             "returned_top_k": float(state.confidence_decision.get("retrieval_returned_top_k", 0.0) or 0.0),
             "threshold": float(state.confidence_decision.get("retrieval_threshold", 0.0) or 0.0),
+            "hygiene": {
+                "exclude_doc_ids": state.confidence_decision.get("retrieval_exclude_doc_ids", []),
+                "exclude_source_ids": state.confidence_decision.get("retrieval_exclude_source_ids", []),
+                "exclude_turn_scoped_ids": state.confidence_decision.get("retrieval_exclude_turn_scoped_ids", []),
+                "exclusion_invariant": str(state.confidence_decision.get("retrieval_exclusion_invariant") or ""),
+                "rerank_defense_in_depth": True,
+            },
         },
         "debug.rerank": {
             "top_final_score": round(top_score, 4),
@@ -2346,7 +2373,16 @@ def _run_canonical_turn_pipeline(
     def _retrieve_evidence(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
         if ctx.artifacts["policy_decision"].requires_retrieval:
             _validate_and_log_transition(validate_retrieve_pre(ctx.state))
-            ctx.state, docs_and_scores = stage_retrieve(store, ctx.state)
+            retrieval_exclude_doc_ids = {ctx.artifacts["u_id"], ctx.artifacts["u_ref_id"]}
+            retrieval_exclude_source_ids = {ctx.artifacts["u_id"]}
+            retrieval_exclude_turn_scoped_ids = {ctx.artifacts["u_id"], ctx.artifacts["u_ref_id"]}
+            ctx.state, docs_and_scores = stage_retrieve(
+                store,
+                ctx.state,
+                exclude_doc_ids=retrieval_exclude_doc_ids,
+                exclude_source_ids=retrieval_exclude_source_ids,
+                exclude_turn_scoped_ids=retrieval_exclude_turn_scoped_ids,
+            )
             _validate_and_log_transition(validate_retrieve_post(ctx.state))
             ctx.artifacts["docs_and_scores"] = docs_and_scores
             considered = int(ctx.state.confidence_decision.get("retrieval_candidates_considered", len(docs_and_scores)) or 0)
@@ -2365,6 +2401,13 @@ def _run_canonical_turn_pipeline(
                         {"doc_id": (doc.id or doc.metadata.get("doc_id") or ""), "score": float(score)}
                         for doc, score in docs_and_scores[:4]
                     ],
+                    "hygiene": {
+                        "exclude_doc_ids": sorted(retrieval_exclude_doc_ids),
+                        "exclude_source_ids": sorted(retrieval_exclude_source_ids),
+                        "exclude_turn_scoped_ids": sorted(retrieval_exclude_turn_scoped_ids),
+                        "primary_invariant": "retrieve_stage_exclusion",
+                        "rerank_defense_in_depth": True,
+                    },
                 },
             )
         else:

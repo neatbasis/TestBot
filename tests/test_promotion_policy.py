@@ -14,7 +14,7 @@ class FakeMemoryStore:
     def add_documents(self, documents: list[Document]) -> None:
         self.docs.extend(documents)
 
-    def similarity_search_with_score(self, query: str, k: int = 4):
+    def similarity_search_with_score(self, query: str, k: int = 4, **kwargs):
         query_lower = query.lower()
         hits = [doc for doc in self.docs if query_lower.split()[0] in doc.page_content.lower()]
         return [(doc, 0.9) for doc in hits[:k]]
