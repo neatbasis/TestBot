@@ -98,6 +98,8 @@ Required pre-check sequence:
 
 Rationale: `scripts/report_feature_status.py` computes capability status from the contract (`docs/qa/feature-status.yaml`), gate results (`artifacts/all-green-gate-summary.json`), open issue records (`docs/issues/*.md` with open-like statuses), and roadmap priority references. This provides the authoritative duplicate-check surface before issue creation.
 
+Current canonical pipeline triage note: [`ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md`](issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md) is the project's **primary bug-elimination program** in the current state; contributors should triage canonical pipeline defects and follow-on work against ISSUE-0013 first, with ISSUE-0012 treated as linked delivery planning context.
+
 ## Principle alignment taxonomy
 
 Use one or more tags:
