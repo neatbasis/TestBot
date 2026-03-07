@@ -4,6 +4,25 @@
 
 This roadmap operationalizes the top-5 grounded-knowing priorities over four sprints. Each sprint includes explicit goals, measurable exits, and rollback criteria so delivery remains deterministic, testable, and reversible.
 
+## Canonical stage bundle mapping (ISSUE-0012 alignment)
+
+The roadmap priorities map to canonical turn pipeline stage bundles and governance acceptance criteria in
+`docs/issues/ISSUE-0012-canonical-turn-pipeline-delivery-plan.md` as follows.
+
+| Sprint milestone | Canonical stage bundle | Primary roadmap priorities | ISSUE-0012 acceptance criteria cross-link |
+| --- | --- | --- | --- |
+| **Sprint 3** | **observe / encode / stabilize** | `P1`, `P2` foundations required before route authority and ranking policy hardening | **AC3** (defines sprint slices + mandatory review checkpoint), **AC4** (deterministic verification commands and evidence reporting) |
+| **Sprint 4** | **context / intent / retrieve / decide** | `P2`, `P3` policy/ranking convergence and intent-grounded decisioning | **AC2** (cross-issue dependency coordination), **AC3** (mandatory review checkpoint for policy/retrieval alignment), **AC4** (deterministic verification commands) |
+| **Sprint 5** | **assemble / validate / render / commit** | `P4`, `P5` answer contract completion, replay hardening, and post-turn traceability | **AC1** (planned capability entries and status linkage), **AC3** (release-readiness review checkpoint), **AC4** (deterministic verification commands) |
+
+### Governance checkpoint rule for Sprint 3-5 milestones
+
+For each canonical stage bundle milestone above, maintain a mandatory code-review checkpoint before merge that explicitly records:
+
+- preserved canonical stage ordering,
+- invariant conformance against `docs/invariants.md`, and
+- deterministic evidence from BDD + pytest + canonical gate commands defined in `docs/testing.md`.
+
 ## Priority stack (ordered)
 
 1. **P1: Source connector interface + ingestion pipeline**
@@ -36,11 +55,16 @@ If a roadmap item is renamed for readability, keep the `P#` bound to the same ca
 ### Measurable exits
 - At least one connector implementation can ingest a fixture-backed source end-to-end with deterministic outputs.
 - Ingestion emits structured records containing required fields (`source_id`, `doc_id`, `ts`, `content`, `metadata`).
-- BDD and deterministic tests verify successful ingestion and failure-mode handling (bad payload, missing timestamps).
+- Stage-specific deterministic evidence is attached for ingestion-stage behavior and failure modes: `python -m behave`, `python -m pytest -m "not live_smoke"`, and `python scripts/all_green_gate.py` all pass for this scope (per `docs/testing.md`).
+
+### Mandatory code-review checkpoint (ISSUE-0012 consistency)
+- Architecture + runtime review confirms connector/ingestion delivery does not create an early lossy path that would violate canonical stage ordering before Sprint 3 stage-bundle work.
+- Review record includes links to deterministic evidence artifacts (BDD, pytest, canonical gate summary).
 
 ### Rollback criteria
 - If connector abstraction causes regression in existing retrieval flow, feature-flag new ingestion path off and revert to current pipeline defaults.
 - If ingestion schema instability breaks ranking tests, freeze schema to previous known-good envelope and defer non-essential fields.
+- Any rollback must preserve canonical stage order and retain invariant enforcement checks; do not accept rollback paths that bypass required stage transitions even when feature flags are disabled.
 
 ---
 
@@ -54,47 +78,85 @@ If a roadmap item is renamed for readability, keep the `P#` bound to the same ca
 ### Measurable exits
 - Ranking pipeline accepts mixed-source candidate sets without schema conversion errors.
 - Deterministic tests show stable ordering/top-1 selection across fixed fixtures for mixed-source cases.
-- Eval/runtime parity checks pass for added mixed-source scenarios.
+- Stage-specific deterministic evidence is attached for mixed-source normalization/ranking behavior: `python -m behave`, `python -m pytest -m "not live_smoke"`, `python -m pytest tests/test_eval_runtime_parity.py`, and `python scripts/all_green_gate.py` pass (per `docs/testing.md`).
+
+### Mandatory code-review checkpoint (ISSUE-0012 consistency)
+- Policy + retrieval reviewers verify ranking updates remain compatible with upcoming Sprint 4 `context/intent/retrieve/decide` stage sequencing.
+- Review notes explicitly capture deterministic evidence and stage-order invariant checks.
 
 ### Rollback criteria
 - If mixed-source ranking reduces baseline recall/precision beyond accepted threshold, disable mixed-source weighting and use existing single-source scoring path.
 - If attribution output is inconsistent run-to-run, remove non-deterministic components before merge.
+- Rollback must preserve canonical stage ordering and invariant enforcement, including deterministic checks that prove no out-of-order retrieval/decision path is introduced.
 
 ---
 
-## Sprint 3 — Knowing policy + citation/provenance contract (P3, P4)
+## Sprint 3 — Observe/encode/stabilize baseline delivery (P1, P2 foundations)
 
 ### Goals
-- Implement explicit knowing/unknowing decision policy with calibrated confidence thresholds.
-- Guarantee fallback behavior remains exact when evidence is insufficient.
-- Add citation/provenance explainability output contract for user-visible responses.
+- Land observe/encode/stabilize baseline updates required before route/decision authority.
+- Ensure durable fact extraction and speech-act candidate stabilization are deterministic and traceable.
+- Prepare policy/citation layers by enforcing observe-before-infer and stabilize-before-route semantics.
 
 ### Measurable exits
-- Policy returns deterministic know/unknown decisions for fixture-defined confidence bands.
-- BDD scenarios pass for both grounded answers and exact fallback (`I don't know from memory.`).
-- Response contract includes citation/provenance fields aligned to runtime state (`doc_id`, `ts`, `provenance_types`, `used_memory_refs`, `used_source_evidence_refs`, `source_evidence_attribution`, `basis_statement`).
+- BDD scenarios demonstrate observe-before-infer and stabilize-before-route behavior with deterministic fixtures.
+- Deterministic pytest coverage confirms stage outputs are stable and no lossy projection bypasses stabilize.
+- Canonical gate evidence is green: `python -m behave`, `python -m pytest -m "not live_smoke"`, and `python scripts/all_green_gate.py` pass for this sprint scope (per `docs/testing.md`).
+- Milestone trace links to ISSUE-0012 acceptance criteria: **AC3** + **AC4**.
+
+### Mandatory code-review checkpoint (ISSUE-0012 AC3)
+- Architecture + runtime review confirms no early lossy `U -> I` projection path is reintroduced.
+- Reviewer sign-off includes stage-order and invariant checklist references plus deterministic evidence links.
 
 ### Rollback criteria
-- If calibration induces overconfident false-positive “knowing” behavior, raise threshold to conservative default and re-enable strict fallback.
-- If citation/provenance output breaks answer contract compatibility, revert to prior response schema while preserving internal traces.
+- If baseline stabilization introduces regressions, revert the affected change set while preserving canonical stage order (`observe -> encode -> stabilize`) and invariant enforcement.
+- Do not approve rollback variants that skip required stage transitions, even behind temporary toggles.
 
 ---
 
-## Sprint 4 — Feedback loop + offline replay hardening (P5 + stabilization)
+## Sprint 4 — Context/intent/retrieve/decide alignment (P2, P3)
 
 ### Goals
-- Introduce feedback-loop ingestion for follow-up signals (clarifications, corrections, confirmations).
-- Build offline eval replay workflow to compare policy/ranking deltas across versions.
-- Finalize release gating integration for new grounded-knowing checks.
+- Deliver context resolution + intent resolution hardening and retrieval/policy coherence updates.
+- Ensure decision classes align with resolved intent and evidence posture (including empty-evidence vs scored-empty distinctions).
+- Keep knowing/unknowing decisioning calibrated to deterministic retrieval evidence.
 
 ### Measurable exits
-- Follow-up signals are captured in deterministic fixtures and influence replay metrics.
-- Offline replay reports comparable before/after metrics for knowing decisions and citation correctness.
-- Canonical gate includes replay-sensitive deterministic checks for regression detection.
+- BDD scenarios validate context/intent/retrieve/decide behavior and deterministic know/unknown outcomes.
+- Deterministic pytest suites (including parity checks) confirm retrieval-policy alignment and stable decision routing.
+- Canonical gate evidence is green: `python -m behave`, `python -m pytest -m "not live_smoke"`, `python -m pytest tests/test_eval_runtime_parity.py`, and `python scripts/all_green_gate.py` pass (per `docs/testing.md`).
+- Milestone trace links to ISSUE-0012 acceptance criteria: **AC2** + **AC3** + **AC4**.
+
+### Mandatory code-review checkpoint (ISSUE-0012 AC3)
+- Policy/retrieval review signs off on decision-answer alignment and explicit handling of empty-evidence vs scored-empty states.
+- Review notes include explicit cross-issue dependency traceability to ISSUE-0012 (AC2).
 
 ### Rollback criteria
-- If feedback signals introduce unstable behavior or drift in deterministic tests, isolate feedback weighting behind a disabled-by-default flag.
-- If replay metrics conflict with runtime parity expectations, freeze promotion and revert to previous policy/ranking package.
+- If alignment changes regress behavior, revert to the prior policy/retrieval package only if canonical stage order (`context -> intent -> retrieve -> decide`) and invariants remain enforced.
+- Feature toggles may be used temporarily, but must not permit out-of-order stage execution or bypass invariant checks.
+
+---
+
+## Sprint 5 — Assemble/validate/render/commit completion (P4, P5)
+
+### Goals
+- Complete answer assembly, validation, rendering, and commit sequencing for stakeholder-visible responses.
+- Finalize citation/provenance contract materialization into committed turn state.
+- Harden feedback/replay visibility and release-readiness reporting for post-turn audits.
+
+### Measurable exits
+- BDD scenarios pass for answer contract, provenance output, and fallback behavior at final response stages.
+- Deterministic pytest coverage verifies committed-state traceability and replay-sensitive correctness.
+- Canonical gate evidence is green: `python -m behave`, `python -m pytest -m "not live_smoke"`, `python -m pytest tests/test_eval_runtime_parity.py`, and `python scripts/all_green_gate.py` pass (per `docs/testing.md`).
+- Milestone trace links to ISSUE-0012 acceptance criteria: **AC1** + **AC3** + **AC4**.
+
+### Mandatory code-review checkpoint (ISSUE-0012 AC3)
+- Release-readiness review confirms pipeline invariants, traceability artifacts, and deterministic gate evidence before capability status changes.
+- Review explicitly records that canonical stage order is preserved through `assemble -> validate -> render -> commit`.
+
+### Rollback criteria
+- If final response/commit sequencing regresses, rollback must retain canonical stage order and invariant enforcement for all pre-commit stages.
+- Do not ship rollback paths that preserve feature toggles but break stage ordering, provenance traceability, or deterministic validation guarantees.
 
 ---
 
