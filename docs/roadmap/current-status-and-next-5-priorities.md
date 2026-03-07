@@ -11,7 +11,12 @@ This document answers four operational questions in one place:
 
 ---
 
-## Current status (as of 2026-03-06 00:00 UTC)
+## Current status
+
+Evidence timestamp reference:
+
+- `artifacts/feature-status-summary.json` → `generated_at_utc`: `2026-03-07T01:26:56Z`
+- `docs/qa/feature-status-report.md` is generated from the same artifact set and reports the same generation timestamp.
 
 Canonical machine-readable/source-of-truth status now lives in:
 
@@ -22,20 +27,26 @@ Canonical machine-readable/source-of-truth status now lives in:
 ### What is working
 
 - Most deterministic pytest layers are green, including broad non-live smoke coverage and eval/runtime parity tests.
-- External source ingestion capability is currently tracked as implemented in the feature status contract.
+- Time-aware memory retrieval/reranking and governance/readiness gate capabilities are tracked as implemented in the current feature status report.
 - Deterministic merge/readiness orchestration exists via `scripts/all_green_gate.py`.
 
 ### What is not yet green
 
-From the latest validated gate artifact (`artifacts/all-green-gate-summary.json`) and derived feature report (`docs/qa/feature-status-report.md`):
+From the latest gate artifact (`artifacts/all-green-gate-summary.json`) and derived feature report (`docs/qa/feature-status-report.md`):
 
-- 5 capabilities remain partial and 1 is implemented.
-- **Active blockers in "not yet green" are capability-delivery blockers, not executable gate blockers.**
-- Current executable gate status:
-  - All canonical checks in `python scripts/all_green_gate.py --continue-on-failure --json-output artifacts/all-green-gate-summary.json` are passing.
-  - Governance validators passed under the canonical base-ref policy: default `origin/main`, with documented fallback to `HEAD~1` then `HEAD` when `origin/main` is unavailable in this clone.
+- Capability summary line (from report): **Implemented: 2 | Partial: 4 | Missing: 0**.
+- Current executable gate status: **failed**.
+- Failed checks currently recorded in the gate artifact:
+  - `product_behave`
+  - `safety_behave_answer_contract_and_memory`
+- Governance validators passed in this artifact run under fallback base-ref usage (`HEAD~1`) as shown by `qa_validate_issue_links` and `qa_validate_issues`.
 
-### Historical blockers moved out of active list
+### Current blockers (active)
+
+- BDD behavior coverage is not currently green in the canonical gate due to failing checks `product_behave` and `safety_behave_answer_contract_and_memory`.
+- Feature status report also warns that gate evidence appears older than some source inputs; regenerate gate evidence for the freshest status before merge-readiness decisions.
+
+### Historical blockers (resolved in prior runs)
 
 The following previously reported blockers are now resolved and retained as historical notes only:
 
@@ -46,7 +57,7 @@ The following previously reported blockers are now resolved and retained as hist
 ### Risk interpretation
 
 - **Knowing-mode risk:** primarily capability-completeness risk (several features still intentionally tracked as partial), not immediate gate-execution risk.
-- **Unknowing-mode risk:** behavior remains only partially complete per feature contract, though executable deterministic evidence is currently green.
+- **Unknowing-mode risk:** behavior remains only partially complete per feature contract, and current executable gate evidence is not yet green (failed checks are still present).
 
 ---
 
