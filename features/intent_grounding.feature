@@ -59,6 +59,16 @@ Feature: Intent-specific grounding and provenance behavior
     And the response should not use clarifier mode
     And the response should include "General definition (not from your memory):"
 
+  Scenario: definitional prompt uses retrieval-enabled branch logging
+    Given an intent response harness
+    When the user asks a definitional knowledge prompt in runtime loop
+    Then retrieval branch logging should show memory retrieval with unskipped candidates
+
+  Scenario: conversational prompt avoids knowledge retrieval branch logging
+    Given an intent response harness
+    When the user asks a conversational prompt in runtime loop
+    Then retrieval branch logging should show direct answer with skipped candidates
+
   Scenario: control phrasing wins over ambiguous help and memory language
     Given an intent response harness
     When the user asks an ambiguous control-help-memory phrase

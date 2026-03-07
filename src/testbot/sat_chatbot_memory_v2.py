@@ -584,6 +584,10 @@ def stage_rerank(
 
 
 _AFFIRMATION_UTTERANCE_PATTERN = re.compile(r"^\s*(yes|yeah|yep|yup|ok|okay|sure|please|yes please|ok please|okay please)\s*[.!?]*\s*$", re.IGNORECASE)
+_DEFINITIONAL_QUERY_PATTERN = re.compile(
+    r"^\s*(what(?:\s+is|\s+are|'s)\b|who(?:\s+is|\s+are|'s)\b|define\b|definition\s+of\b|what\s+does\b.+\bmean\b)",
+    re.IGNORECASE,
+)
 
 
 def _is_short_affirmation(user_input: str) -> bool:
@@ -641,6 +645,18 @@ def _intent_label(intent: IntentType) -> str:
 
 def _uses_memory_retrieval(intent: IntentType) -> bool:
     return intent == IntentType.MEMORY_RECALL
+
+
+def _is_definitional_query_form(utterance: str) -> bool:
+    return bool(_DEFINITIONAL_QUERY_PATTERN.match((utterance or "").strip()))
+
+
+def _select_retrieval_branch(*, utterance: str, intent: IntentType) -> str:
+    if _uses_memory_retrieval(intent):
+        return "memory_retrieval"
+    if intent == IntentType.KNOWLEDGE_QUESTION and _is_definitional_query_form(utterance):
+        return "memory_retrieval"
+    return "direct_answer"
 
 
 def _minimal_confidence_decision_for_direct_answer(*, branch: str) -> dict[str, object]:
@@ -1529,7 +1545,7 @@ def _run_chat_loop(
             # -----------------------
             # 2) Retrieve + time-aware rerank (FIXED: handle tuples)
             # -----------------------
-        retrieval_branch = "memory_retrieval" if _uses_memory_retrieval(resolved_intent) else "direct_answer"
+        retrieval_branch = _select_retrieval_branch(utterance=utterance, intent=resolved_intent)
         append_session_log(
             "retrieval_branch_selected",
             {
