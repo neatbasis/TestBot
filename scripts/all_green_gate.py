@@ -32,10 +32,12 @@ class GateCheck:
 @dataclass
 class CheckResult:
     name: str
+    stage: str
     command: str
     status: str
     exit_code: int | None
     duration_s: float
+    artifact_path: str | None
 
 
 def parse_args() -> argparse.Namespace:
@@ -56,8 +58,13 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--json-output",
+        nargs="?",
+        const=Path("artifacts/all-green-gate-summary.json"),
         type=Path,
-        help="Optional path to write the JSON summary.",
+        help=(
+            "Optional path to write the machine-readable JSON summary. "
+            "When provided without a value, defaults to artifacts/all-green-gate-summary.json."
+        ),
     )
     parser.add_argument(
         "--check-profile",
@@ -76,6 +83,20 @@ def parse_args() -> argparse.Namespace:
         help="Rollout mode for turn analytics + KPI guardrail checks (default: optional).",
     )
     return parser.parse_args()
+
+
+def stage_name_for_check(check_name: str) -> str:
+    return check_name.split("_", maxsplit=1)[0]
+
+
+def extract_artifact_path(command: Sequence[str]) -> str | None:
+    path_flags = {"--json-output", "--summary-output", "--output"}
+    for idx, token in enumerate(command[:-1]):
+        if token in path_flags:
+            candidate = command[idx + 1]
+            if not candidate.startswith("-"):
+                return candidate
+    return None
 
 
 
@@ -264,10 +285,12 @@ def run_check(check: GateCheck) -> CheckResult:
     duration_s = round(time.monotonic() - started, 3)
     return CheckResult(
         name=check.name,
+        stage=stage_name_for_check(check.name),
         command=command_text,
         status=status,
         exit_code=code,
         duration_s=duration_s,
+        artifact_path=extract_artifact_path(check.command),
     )
 
 
@@ -283,10 +306,12 @@ def run_gate(checks: Sequence[GateCheck], continue_on_failure: bool) -> tuple[li
                 results.append(
                     CheckResult(
                         name=remaining.name,
+                        stage=stage_name_for_check(remaining.name),
                         command=shlex.join(remaining.command),
                         status="not_run",
                         exit_code=None,
                         duration_s=0.0,
+                        artifact_path=extract_artifact_path(remaining.command),
                     )
                 )
             break
@@ -302,21 +327,68 @@ def preflight_bdd_dependencies() -> CheckResult | None:
         return None
     return CheckResult(
         name=BEHAVE_PREFLIGHT_CHECK_NAME,
+        stage=stage_name_for_check(BEHAVE_PREFLIGHT_CHECK_NAME),
         command=f"{sys.executable} -c 'import behave'",
         status="failed",
         exit_code=1,
         duration_s=duration_s,
+        artifact_path=None,
     )
+
+
+def summarize_stages(results: Sequence[CheckResult]) -> list[dict[str, object]]:
+    stage_summaries: list[dict[str, object]] = []
+    for result in results:
+        if not stage_summaries or stage_summaries[-1]["stage"] != result.stage:
+            stage_summaries.append(
+                {
+                    "stage": result.stage,
+                    "duration_s": 0.0,
+                    "exit_code": 0,
+                    "first_failing_command": None,
+                    "artifact_path": None,
+                }
+            )
+
+        summary = stage_summaries[-1]
+        summary["duration_s"] = round(float(summary["duration_s"]) + result.duration_s, 3)
+
+        if result.artifact_path and summary["artifact_path"] is None:
+            summary["artifact_path"] = result.artifact_path
+
+        if result.status in {"failed", "warning"} and summary["first_failing_command"] is None:
+            summary["first_failing_command"] = result.command
+
+        if result.exit_code not in {None, 0} and summary["exit_code"] == 0:
+            summary["exit_code"] = result.exit_code
+
+    return stage_summaries
+
+
+def print_stage_summary(stage_summaries: Sequence[dict[str, object]]) -> None:
+    print("Stage summary:")
+    for stage_summary in stage_summaries:
+        stage = stage_summary["stage"]
+        duration_s = stage_summary["duration_s"]
+        exit_code = stage_summary["exit_code"]
+        first_failing_command = stage_summary["first_failing_command"] or "-"
+        artifact_path = stage_summary["artifact_path"] or "-"
+        print(
+            f"- {stage}: duration_s={duration_s:.3f}, exit_code={exit_code}, "
+            f"first_failing_command={first_failing_command}, artifact_path={artifact_path}"
+        )
 
 
 def summarize(results: Sequence[CheckResult], continue_on_failure: bool) -> dict[str, object]:
     has_failure = any(result.status == "failed" for result in results)
     warning_count = sum(1 for result in results if result.status == "warning")
+    stage_summaries = summarize_stages(results)
     return {
         "status": "failed" if has_failure else "passed",
         "exit_code": 1 if has_failure else 0,
         "continue_on_failure": continue_on_failure,
         "warning_count": warning_count,
+        "stages": stage_summaries,
         "checks": [asdict(result) for result in results],
     }
 
@@ -352,6 +424,8 @@ def main() -> int:
     results, exit_code = run_gate(checks=checks, continue_on_failure=args.continue_on_failure)
     summary = summarize(results=results, continue_on_failure=args.continue_on_failure)
 
+    print_stage_summary(summary["stages"])
+    print()
     summary_json = json.dumps(summary, indent=2)
     print(summary_json)
 

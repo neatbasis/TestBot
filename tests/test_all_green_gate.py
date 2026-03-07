@@ -15,6 +15,26 @@ sys.modules[_all_green_gate_spec.name] = all_green_gate
 _all_green_gate_spec.loader.exec_module(all_green_gate)
 
 
+def _result(
+    *,
+    name: str,
+    command: str,
+    status: str,
+    exit_code: int | None,
+    duration_s: float,
+    artifact_path: str | None = None,
+) -> all_green_gate.CheckResult:
+    return all_green_gate.CheckResult(
+        name=name,
+        stage=all_green_gate.stage_name_for_check(name),
+        command=command,
+        status=status,
+        exit_code=exit_code,
+        duration_s=duration_s,
+        artifact_path=artifact_path,
+    )
+
+
 def test_main_fails_fast_when_behave_dependency_missing(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
     monkeypatch.setattr(all_green_gate, "parse_args", lambda: all_green_gate.argparse.Namespace(
         continue_on_failure=False,
@@ -130,13 +150,7 @@ def test_run_gate_marks_optional_failure_as_warning(monkeypatch: pytest.MonkeyPa
     checks = [all_green_gate.GateCheck(name="optional", command=["optional"], blocking=False)]
 
     def fake_run_check(_check: all_green_gate.GateCheck) -> all_green_gate.CheckResult:
-        return all_green_gate.CheckResult(
-            name="optional",
-            command="optional",
-            status="failed",
-            exit_code=2,
-            duration_s=0.01,
-        )
+        return _result(name="optional", command="optional", status="failed", exit_code=2, duration_s=0.01)
 
     monkeypatch.setattr(all_green_gate, "run_check", fake_run_check)
 
@@ -153,7 +167,7 @@ def test_run_gate_enforces_blocking_turn_analytics_checks(monkeypatch: pytest.Mo
     ]
 
     def fake_run_check(_check: all_green_gate.GateCheck) -> all_green_gate.CheckResult:
-        return all_green_gate.CheckResult(
+        return _result(
             name="qa_aggregate_turn_analytics",
             command="aggregate",
             status="failed",
@@ -167,6 +181,7 @@ def test_run_gate_enforces_blocking_turn_analytics_checks(monkeypatch: pytest.Mo
 
     assert [result.status for result in results] == ["failed", "not_run"]
     assert exit_code == 1
+
 
 def test_build_checks_default_profile_has_expected_check_names() -> None:
     checks = all_green_gate.build_checks(base_ref="origin/main", kpi_guardrail_mode="optional")
@@ -210,3 +225,46 @@ def test_build_checks_default_profile_has_no_duplicate_pytest_file_payloads() ->
                 test_file_counts[arg] = test_file_counts.get(arg, 0) + 1
 
     assert all(count == 1 for count in test_file_counts.values())
+
+
+def test_summarize_includes_stable_stage_rollups() -> None:
+    summary = all_green_gate.summarize(
+        results=[
+            _result(name="product_behave", command="behave", status="passed", exit_code=0, duration_s=0.2),
+            _result(
+                name="product_eval_recall_topk4",
+                command="eval",
+                status="failed",
+                exit_code=5,
+                duration_s=0.3,
+                artifact_path="artifacts/eval.json",
+            ),
+            _result(name="qa_validate_issues", command="issues", status="not_run", exit_code=None, duration_s=0.0),
+        ],
+        continue_on_failure=False,
+    )
+
+    assert summary["stages"] == [
+        {
+            "stage": "product",
+            "duration_s": 0.5,
+            "exit_code": 5,
+            "first_failing_command": "eval",
+            "artifact_path": "artifacts/eval.json",
+        },
+        {
+            "stage": "qa",
+            "duration_s": 0.0,
+            "exit_code": 0,
+            "first_failing_command": None,
+            "artifact_path": None,
+        },
+    ]
+
+
+def test_parse_args_supports_default_json_output_path(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sys, "argv", ["all_green_gate.py", "--json-output"])
+
+    args = all_green_gate.parse_args()
+
+    assert args.json_output == Path("artifacts/all-green-gate-summary.json")
