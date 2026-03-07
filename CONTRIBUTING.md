@@ -2,6 +2,10 @@
 
 Thanks for contributing to TestBot.
 
+Canonical turn-pipeline triage note: track pipeline defect elimination and delivery status in
+[`docs/issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md`](docs/issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md).
+Use ISSUE-0012 only as linked historical delivery-planning context.
+
 ## Docs QA checklist
 
 When updating docs, complete this lightweight checklist before opening a PR:
@@ -48,4 +52,3 @@ Failure mode when missing linkage or schema consistency:
 
 - `python scripts/validate_issue_links.py` exits non-zero.
 - CI merge gate must fail until issue linkage and issue governance data are corrected.
-

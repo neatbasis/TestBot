@@ -2,6 +2,8 @@
 
 ## Scope and governance
 
+For canonical-turn-pipeline implementation risk, route defect-elimination sequencing and delivery-status updates through [`ISSUE-0013`](../issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md); use ISSUE-0012 only as historical planning context.
+
 This roadmap defines one sprint per capability increment, in this order:
 
 1. intent routing

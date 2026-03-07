@@ -18,6 +18,10 @@ From the repository root (`/workspace/TestBot`) with access to:
 ## Why
 A consistent startup path reduces configuration drift and prevents runtime failures caused by missing models, missing environment variables, or incorrect entry commands.
 
+Canonical turn-pipeline triage note: track pipeline defect elimination and delivery status in
+[`docs/issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md`](issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md).
+Use ISSUE-0012 only as linked historical delivery-planning context.
+
 ## Prerequisites
 
 - Python 3.11+

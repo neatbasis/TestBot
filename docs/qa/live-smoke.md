@@ -6,6 +6,18 @@ The live smoke runner requires a local environment file at:
 
 `scripts/smoke/run_live_smoke.py` loads this file before executing checks and exits early with a clear config error if the file is missing or invalid.
 
+## Canonical bug-elimination sequencing (ISSUE-0013)
+
+Use live-smoke evidence to close the learning loop for canonical-turn-pipeline defects: every failed smoke run should create or update a linked evidence note and route sequencing updates through
+[`ISSUE-0013`](../issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md). Keep ISSUE-0012 references as historical planning context only.
+
+Checklist for each smoke execution:
+
+- Record artifact paths (`smoke-summary.json`, `smoke-details.jsonl`, optional `smoke-report.md`).
+- Classify failure against canonical pipeline slices (foundation, decisioning, commit/audit).
+- Update ISSUE-0013 `Work Plan`/`Closure Notes` with defect-elimination sequencing and next validation command.
+- Cross-link any dependent capability issue IDs only after ISSUE-0013 routing is recorded.
+
 ## Required variables (TestBot production profile)
 
 Add these keys to `~/.testbot/.env`:
