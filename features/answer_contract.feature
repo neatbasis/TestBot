@@ -30,3 +30,25 @@ Feature: Answer citation contract enforcement
     And the final answer should include a safe action path
     And the final answer should not ask "Which person, event, or time window should I focus on?"
     And the response records knowledge-safe fallback provenance transparency
+
+  Scenario: ambiguous memory recall uses ask route when ask capability is available
+    Given an answer policy input with intent "memory_recall", context confidence true, ambiguity true, and memory hit count 2
+    And ask capability status is "ask_available"
+    When the answer routing policy resolves the request
+    Then the fallback action should be "ROUTE_TO_ASK"
+    And the canonical response token should be "ROUTE_TO_ASK_ANSWER"
+
+  Scenario: low-confidence non-memory fallback maps to uncertainty token
+    Given an answer policy input with intent "non_memory", context confidence false, ambiguity false, and memory hit count 0
+    And ask capability status is "ask_unavailable"
+    And source confidence is 0.2
+    When the answer routing policy resolves the request
+    Then the fallback action should be "ANSWER_UNKNOWN"
+    And the canonical response token should be "NON_KNOWLEDGE_UNCERTAINTY_ANSWER"
+
+  Scenario: memory recall without confident hit offers assist alternatives
+    Given an answer policy input with intent "memory_recall", context confidence false, ambiguity false, and memory hit count 0
+    And ask capability status is "ask_unavailable"
+    When the answer routing policy resolves the request
+    Then the fallback action should be "OFFER_CAPABILITY_ALTERNATIVES"
+    And the canonical response token should be "ASSIST_ALTERNATIVES_ANSWER"

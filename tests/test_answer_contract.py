@@ -4,6 +4,7 @@ from collections import deque
 
 from langchain_core.documents import Document
 
+from testbot.answer_policy import AnswerPolicyInput, resolve_answer_routing
 from testbot.pipeline_state import PipelineState, ProvenanceType
 from testbot.history_packer import pack_chat_history
 from testbot.sat_chatbot_memory_v2 import (
@@ -252,3 +253,64 @@ def test_non_memory_low_source_confidence_uses_unknown_fallback_without_source_c
     assert "source_uri:" not in answer_state.final_answer
     assert answer_state.invariant_decisions["fallback_action"] == "ANSWER_UNKNOWN"
     assert ProvenanceType.GENERAL_KNOWLEDGE in answer_state.provenance_types
+
+
+def test_ambiguous_memory_recall_routes_to_ask_token_when_available() -> None:
+    decision = resolve_answer_routing(
+        AnswerPolicyInput(
+            intent="memory_recall",
+            confidence_decision={
+                "context_confident": True,
+                "ambiguity_detected": True,
+                "memory_hit_count": 2,
+            },
+            capability_status="ask_available",
+        )
+    )
+
+    assert decision.fallback_action == "ROUTE_TO_ASK"
+    assert decision.canonical_response_token == "ROUTE_TO_ASK_ANSWER"
+    assert decision.clarification_allowed is True
+
+
+def test_memory_recall_no_hit_routes_to_assist_alternatives_token() -> None:
+    decision = resolve_answer_routing(
+        AnswerPolicyInput(
+            intent="memory_recall",
+            confidence_decision={
+                "context_confident": False,
+                "ambiguity_detected": False,
+                "memory_hit_count": 0,
+            },
+            capability_status="ask_unavailable",
+        )
+    )
+
+    assert decision.fallback_action == "OFFER_CAPABILITY_ALTERNATIVES"
+    assert decision.canonical_response_token == "ASSIST_ALTERNATIVES_ANSWER"
+
+
+def test_stage_answer_invariant_records_policy_rationale_for_low_confidence_non_memory() -> None:
+    state = PipelineState(
+        user_input="what happened in my source records?",
+        confidence_decision={
+            "context_confident": False,
+            "ambiguity_detected": False,
+            "source_confidence": 0.2,
+        },
+        resolved_intent="knowledge_question",
+    )
+
+    answer_state = stage_answer(
+        _UnlabeledGeneralKnowledgeLLM(),
+        state,
+        chat_history=deque(),
+        hits=[],
+        capability_status="ask_unavailable",
+        runtime_capability_status=_runtime_status(),
+        clock=None,
+    )
+
+    assert answer_state.invariant_decisions["fallback_action"] == "ANSWER_UNKNOWN"
+    assert answer_state.invariant_decisions["answer_policy_rationale"]["source_confidence"] == 0.2
+    assert answer_state.invariant_decisions["answer_mode_rationale"]["reason"] == "unknown_fallback"

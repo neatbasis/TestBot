@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from behave import given, then, when
 
+from testbot.answer_policy import AnswerPolicyInput, resolve_answer_routing
 from testbot.eval_fixtures import cases_by_id
 from testbot.pipeline_state import CandidateHit, PipelineState, ProvenanceType
 from testbot.sat_chatbot_memory_v2 import RuntimeCapabilityStatus, stage_answer, validate_answer_contract, validate_general_knowledge_contract
@@ -179,3 +180,50 @@ def step_then_response_records_general_knowledge_provenance_and_basis(context) -
     assert provenance_names == {"UNKNOWN"}
     assert context.stage_answer_state.basis_statement.strip()
     assert "no substantive claim" in context.stage_answer_state.basis_statement.lower()
+
+
+@given('an answer policy input with intent "{intent}", context confidence {context_confident}, ambiguity {ambiguity}, and memory hit count {memory_hit_count:d}')
+def step_given_answer_policy_input(context, intent: str, context_confident: str, ambiguity: str, memory_hit_count: int) -> None:
+    context.answer_policy_input = {
+        "intent": intent,
+        "confidence_decision": {
+            "context_confident": context_confident.lower() == "true",
+            "ambiguity_detected": ambiguity.lower() == "true",
+            "memory_hit_count": memory_hit_count,
+        },
+        "capability_status": "ask_unavailable",
+        "source_confidence": None,
+    }
+
+
+@given('ask capability status is "{capability_status}"')
+def step_given_ask_capability_status(context, capability_status: str) -> None:
+    context.answer_policy_input["capability_status"] = capability_status
+
+
+@given('source confidence is {source_confidence:f}')
+def step_given_source_confidence(context, source_confidence: float) -> None:
+    context.answer_policy_input["source_confidence"] = source_confidence
+
+
+@when("the answer routing policy resolves the request")
+def step_when_answer_routing_policy_resolves(context) -> None:
+    payload = context.answer_policy_input
+    context.answer_policy_decision = resolve_answer_routing(
+        AnswerPolicyInput(
+            intent=payload["intent"],
+            confidence_decision=payload["confidence_decision"],
+            capability_status=payload["capability_status"],
+            source_confidence=payload["source_confidence"],
+        )
+    )
+
+
+@then('the fallback action should be "{fallback_action}"')
+def step_then_fallback_action_should_be(context, fallback_action: str) -> None:
+    assert context.answer_policy_decision.fallback_action == fallback_action
+
+
+@then('the canonical response token should be "{canonical_response_token}"')
+def step_then_canonical_response_token_should_be(context, canonical_response_token: str) -> None:
+    assert context.answer_policy_decision.canonical_response_token == canonical_response_token

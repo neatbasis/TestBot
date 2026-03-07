@@ -23,6 +23,7 @@ from testbot.memory_cards import make_reflection_card, make_utterance_card, stor
 from testbot.pipeline_state import CandidateHit, PipelineState, ProvenanceType, append_pipeline_snapshot
 from testbot.promotion_policy import persist_promoted_context
 from testbot.reflection_policy import CapabilityStatus, decide_fallback_action
+from testbot.answer_policy import AnswerPolicyInput, resolve_answer_mode, resolve_answer_routing
 from testbot.rerank import (
     rerank_confidence_thresholds,
     adaptive_sigma_fractional,
@@ -574,6 +575,7 @@ def stage_rerank(
         "ambiguity_detected": rerank_outcome.ambiguity_detected,
         "ambiguous_candidates": rerank_outcome.near_tie_candidates,
         "scored_candidates": rerank_outcome.scored_candidates,
+        "memory_hit_count": len(hits),
         "objective": rerank_outcome.scored_candidates[0].get("objective", "") if rerank_outcome.scored_candidates else "",
         "objective_version": rerank_outcome.scored_candidates[0].get("objective_version", "") if rerank_outcome.scored_candidates else "",
         "top_final_score_min": rerank_confidence_thresholds().top_final_score_min,
@@ -950,26 +952,21 @@ def stage_answer(
         response_plan=response_plan_block,
     )
 
-    fallback_action = decide_fallback_action(
-        intent=intent_class,
-        memory_hit=bool(state.confidence_decision.get("context_confident", False)),
-        ambiguity=bool(state.confidence_decision.get("ambiguity_detected", False)),
-        capability_status=capability_status,
-        source_confidence=(
-            float(state.confidence_decision["source_confidence"])
-            if "source_confidence" in state.confidence_decision
-            else None
+    answer_routing = resolve_answer_routing(
+        AnswerPolicyInput(
+            intent=intent_class,
+            confidence_decision=state.confidence_decision,
+            capability_status=capability_status,
+            source_confidence=(
+                float(state.confidence_decision["source_confidence"])
+                if "source_confidence" in state.confidence_decision
+                else None
+            ),
         ),
+        fallback_decider=decide_fallback_action,
     )
-    ambiguity_detected = bool(state.confidence_decision.get("ambiguity_detected", False))
-    memory_hit_count = len(hits)
-    route_to_ask_expected = fallback_action == "ROUTE_TO_ASK"
-    clarification_allowed = (
-        (intent_class == "memory_recall" or route_to_ask_expected)
-        and (ambiguity_detected or (intent_class == "memory_recall" and memory_hit_count == 0))
-        and (not route_to_ask_expected or capability_status == "ask_available")
-    )
-
+    fallback_action = answer_routing.fallback_action
+    clarification_allowed = answer_routing.clarification_allowed
     def _clarifier_or_policy_alternative() -> str:
         if clarification_allowed:
             return build_partial_memory_clarifier(hits)
@@ -1079,23 +1076,17 @@ def stage_answer(
         basis_statement=basis_statement,
     )
 
-    answer_mode = (
-        "deny"
-        if final_answer == DENY_ANSWER
-        else (
-            "clarify"
-            if is_clarification_answer(final_answer)
-            else (
-                "dont-know"
-                if fallback_action == "ANSWER_UNKNOWN" or final_answer in {FALLBACK_ANSWER, NON_KNOWLEDGE_UNCERTAINTY_ANSWER}
-                else (
-                    "assist"
-                    if final_answer == ASSIST_ALTERNATIVES_ANSWER or social_or_non_knowledge_intent
-                    else "memory-grounded"
-                )
-            )
-        )
+    answer_mode_decision = resolve_answer_mode(
+        final_answer=final_answer,
+        fallback_action=fallback_action,
+        social_or_non_knowledge_intent=social_or_non_knowledge_intent,
+        is_clarification_answer=is_clarification_answer(final_answer),
+        is_deny_answer=final_answer == DENY_ANSWER,
+        is_assist_alternatives_answer=final_answer == ASSIST_ALTERNATIVES_ANSWER,
+        is_fallback_answer=final_answer == FALLBACK_ANSWER,
+        is_non_knowledge_uncertainty_answer=final_answer == NON_KNOWLEDGE_UNCERTAINTY_ANSWER,
     )
+    answer_mode = answer_mode_decision.answer_mode
     ambiguity_policy_allows_non_memory_clarify = bool(state.confidence_decision.get("allow_non_memory_clarify", False))
     if answer_mode == "clarify" and intent_class != "memory_recall" and not ambiguity_policy_allows_non_memory_clarify:
         raise AssertionError(
@@ -1112,6 +1103,8 @@ def stage_answer(
         "general_knowledge_confidence_gate_passed": passes_general_knowledge_confidence_gate(state.confidence_decision),
         "answer_mode": answer_mode,
         "fallback_action": fallback_action,
+        "answer_policy_rationale": answer_routing.rationale,
+        "answer_mode_rationale": answer_mode_decision.rationale,
         "provenance_recorded": bool(not is_non_trivial_answer(final_answer) or provenance_types),
     }
     return replace(
