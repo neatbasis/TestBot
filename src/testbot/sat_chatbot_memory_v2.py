@@ -66,6 +66,7 @@ from ha_ask import AskSpec, ask_question
 from ha_ask.config import normalize_rest_api_url
 from testbot.history_packer import PackedHistory, labeled_history_claims, pack_chat_history, render_packed_history
 from testbot.response_planner import build_response_plan, plan_to_dict, render_response_plan_block
+from testbot.reject_taxonomy import RejectSignal, derive_reject_signal
 
 from langchain_core.documents import Document
 from langchain_core.prompts import ChatPromptTemplate
@@ -722,6 +723,55 @@ def _derive_response_blocker_reason(
     answer_contract_valid: bool,
     general_knowledge_contract_valid: bool,
 ) -> str:
+    signal = derive_reject_signal(
+        intent_label="non_memory",
+        answer_mode=answer_mode,
+        fallback_action=fallback_action,
+        context_confident=context_confident,
+        context_score=0.0,
+        hit_count=hit_count,
+        ambiguity_detected=ambiguity_detected,
+        answer_contract_valid=answer_contract_valid,
+        general_knowledge_contract_valid=general_knowledge_contract_valid,
+    )
+    return signal.reason
+
+
+def _derive_reject_signal(
+    *,
+    intent_label: str,
+    answer_mode: str,
+    fallback_action: str,
+    context_confident: bool,
+    context_score: float,
+    hit_count: int,
+    ambiguity_detected: bool,
+    answer_contract_valid: bool,
+    general_knowledge_contract_valid: bool,
+) -> RejectSignal:
+    return derive_reject_signal(
+        intent_label=intent_label,
+        answer_mode=answer_mode,
+        fallback_action=fallback_action,
+        context_confident=context_confident,
+        context_score=context_score,
+        hit_count=hit_count,
+        ambiguity_detected=ambiguity_detected,
+        answer_contract_valid=answer_contract_valid,
+        general_knowledge_contract_valid=general_knowledge_contract_valid,
+    )
+
+
+def _derive_response_blocker_reason_legacy(
+    *,
+    answer_mode: str,
+    fallback_action: str,
+    context_confident: bool,
+    hit_count: int,
+    ambiguity_detected: bool,
+    answer_contract_valid: bool,
+    general_knowledge_contract_valid: bool,
+) -> str:
     if answer_mode == "clarify" or fallback_action in {"ASK_CLARIFYING_QUESTION", "ROUTE_TO_ASK"}:
         if hit_count == 0:
             return "no memory fragments were retrieved for this request"
@@ -777,21 +827,23 @@ def _build_debug_turn_payload(*, state: PipelineState, intent_label: str, hits: 
     top_threshold = float(state.confidence_decision.get("top_final_score_min", 0.0) or 0.0)
     margin_threshold = float(state.confidence_decision.get("min_margin_to_second", 0.0) or 0.0)
     ambiguity_threshold = 0.5
+    context_score = min(
+        top_score / top_threshold if top_threshold > 0 else 1.0,
+        observed_margin / margin_threshold if margin_threshold > 0 else 1.0,
+    )
 
-    reason = _derive_response_blocker_reason(
+    reject_signal = _derive_reject_signal(
+        intent_label=intent_label,
         answer_mode=answer_mode,
         fallback_action=fallback_action,
         context_confident=context_confident,
+        context_score=context_score,
         hit_count=len(hits),
         ambiguity_detected=ambiguity_detected,
         answer_contract_valid=answer_contract_valid,
         general_knowledge_contract_valid=general_knowledge_contract_valid,
     )
     doc_ids = [(doc.id or doc.metadata.get("doc_id") or "") for doc in hits[:3]]
-    context_score = min(
-        top_score / top_threshold if top_threshold > 0 else 1.0,
-        observed_margin / margin_threshold if margin_threshold > 0 else 1.0,
-    )
     ambiguity_score = 1.0 if not ambiguity_detected else 0.0
 
     return {
@@ -852,7 +904,13 @@ def _build_debug_turn_payload(*, state: PipelineState, intent_label: str, hits: 
         "debug.policy": {
             "answer_mode": answer_mode,
             "fallback_action": fallback_action,
-            "blocker_reason": reason,
+            "reject_code": reject_signal.reject_code,
+            "partition": reject_signal.partition,
+            "score": reject_signal.score,
+            "threshold": reject_signal.threshold,
+            "margin": reject_signal.margin,
+            "reason": reject_signal.reason,
+            "blocker_reason": reject_signal.reason,
         },
     }
 
@@ -873,6 +931,8 @@ def _format_debug_turn_trace(*, state: PipelineState, intent_label: str, hits: l
         f"ambiguity_detected={not payload['debug.rerank']['ambiguity_gate']['passed']}; "
         f"rewritten_query={payload['debug.rewrite']['rewritten_query']!r}; "
         f"retrieved_doc_ids={payload['debug.retrieval']['retrieved_doc_ids']}; "
+        f"reject_code={payload['debug.policy']['reject_code']}; "
+        f"partition={payload['debug.policy']['partition']}; "
         f"blocker_reason={payload['debug.policy']['blocker_reason']}."
     )
 

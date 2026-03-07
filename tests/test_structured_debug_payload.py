@@ -73,6 +73,35 @@ def test_structured_debug_payload_knowledge_includes_contract_gate_scalars() -> 
     _assert_gate_shape(payload["debug.contract"]["general_knowledge_contract_gate"])
 
 
+def test_structured_debug_payload_policy_reject_signal_shape_and_legacy_reason() -> None:
+    state = PipelineState(
+        user_input="summarize this",
+        rewritten_query="summarize this",
+        classified_intent="memory_recall",
+        resolved_intent="memory_recall",
+        confidence_decision={"context_confident": False, "ambiguity_detected": False},
+        invariant_decisions={"answer_mode": "assist", "fallback_action": "OFFER_CAPABILITY_ALTERNATIVES"},
+    )
+
+    payload = _build_debug_turn_payload(state=state, intent_label="memory_recall", hits=[])
+
+    policy = payload["debug.policy"]
+    assert set(policy.keys()) >= {
+        "answer_mode",
+        "fallback_action",
+        "reject_code",
+        "partition",
+        "score",
+        "threshold",
+        "margin",
+        "reason",
+        "blocker_reason",
+    }
+    assert policy["reject_code"] == "CONTEXT_CONF_BELOW_THRESHOLD"
+    assert policy["partition"] == "rerank"
+    assert policy["reason"] == policy["blocker_reason"]
+
+
 def test_structured_debug_payload_temporal_query_is_emitted_in_verbose_trace() -> None:
     state = PipelineState(
         user_input="what is tomorrow",

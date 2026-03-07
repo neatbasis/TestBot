@@ -15,6 +15,8 @@ Applies to the runtime flow implemented in `src/testbot/` and the behavior contr
 ## Why
 These design decisions prioritize deterministic memory-grounded answers with explicit citation/fallback guardrails over broader but less reliable conversational behavior.
 
+For deterministic reject diagnostics and machine-readable fallback reasons, see [docs/reject-taxonomy.md](reject-taxonomy.md).
+
 ## Pipeline overview
 
 TestBot follows a single loop designed for memory-grounded answers:
