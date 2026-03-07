@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import socket
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from importlib.metadata import PackageNotFoundError, version
@@ -265,9 +266,17 @@ class ArxivSourceConnector:
         start = self._parse_cursor(cursor)
         params = urlencode({"search_query": query, "start": start, "max_results": limit})
         url = f"https://export.arxiv.org/api/query?{params}"
-        with urlopen(url, timeout=8.0) as response:  # noqa: S310
-            payload = response.read().decode("utf-8")
-        root = ET.fromstring(payload)
+        try:
+            with urlopen(url, timeout=8.0) as response:  # noqa: S310
+                payload = response.read().decode("utf-8")
+        except (HTTPError, URLError, TimeoutError, socket.timeout) as exc:
+            _LOGGER.warning("arXiv fetch failed for query=%r: %s", query, exc)
+            return []
+        try:
+            root = ET.fromstring(payload)
+        except ET.ParseError as exc:
+            _LOGGER.warning("arXiv feed parse failed for query=%r: %s", query, exc)
+            return []
         namespace = {"atom": "http://www.w3.org/2005/Atom"}
         entries = root.findall("atom:entry", namespace)
         retrieved_at = datetime.now(UTC).isoformat().replace("+00:00", "Z")
