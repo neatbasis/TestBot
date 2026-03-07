@@ -560,4 +560,6 @@ def test_response_blocker_reason_for_answer_unknown_reports_insufficient_reliabl
         context_confident=False,
         hit_count=0,
         ambiguity_detected=False,
+        answer_contract_valid=True,
+        general_knowledge_contract_valid=True,
     ) == "insufficient reliable memory to answer directly"

@@ -703,16 +703,36 @@ def _user_followup_signal_proxy(*, final_answer: str, fallback_action: str, ambi
     return round(max(0.0, ambiguity_score * 0.5), 4)
 
 
-def _derive_response_blocker_reason(*, answer_mode: str, fallback_action: str, context_confident: bool, hit_count: int, ambiguity_detected: bool) -> str:
+def _derive_response_blocker_reason(
+    *,
+    answer_mode: str,
+    fallback_action: str,
+    context_confident: bool,
+    hit_count: int,
+    ambiguity_detected: bool,
+    answer_contract_valid: bool,
+    general_knowledge_contract_valid: bool,
+) -> str:
     if answer_mode == "clarify" or fallback_action in {"ASK_CLARIFYING_QUESTION", "ROUTE_TO_ASK"}:
-        if hit_count > 0 and (ambiguity_detected or not context_confident):
-            return "retrieved memory fragments were ambiguous or low-confidence"
         if hit_count == 0:
             return "no memory fragments were retrieved for this request"
+        if ambiguity_detected:
+            return "retrieved memory fragments were ambiguous"
+        if not context_confident:
+            return "retrieved memory fragments were low-confidence"
     if answer_mode == "dont-know" or fallback_action == "ANSWER_UNKNOWN":
         return "insufficient reliable memory to answer directly"
     if answer_mode == "assist" or fallback_action == "OFFER_CAPABILITY_ALTERNATIVES":
-        return "insufficient confidence for a direct answer; offered capability alternatives"
+        if not answer_contract_valid:
+            return "answer-contract rejection: draft did not satisfy grounding/citation requirements"
+        if not general_knowledge_contract_valid:
+            return "general-knowledge contract rejection: response did not satisfy marker/confidence policy"
+        if context_confident and hit_count > 0:
+            return "policy/contract rejected direct answer despite confident retrieved context"
+        if ambiguity_detected:
+            return "retrieved memory fragments were ambiguous; offered capability alternatives"
+        if not context_confident:
+            return "retrieved memory fragments were low-confidence for a direct answer"
     if answer_mode == "deny":
         return "request blocked by safety or policy checks"
     return "none"
@@ -724,12 +744,16 @@ def _format_debug_turn_trace(*, state: PipelineState, intent_label: str, hits: l
     answer_mode = str(state.invariant_decisions.get("answer_mode", "dont-know"))
     context_confident = bool(state.confidence_decision.get("context_confident", False))
     ambiguity_detected = bool(state.confidence_decision.get("ambiguity_detected", False))
+    answer_contract_valid = bool(state.invariant_decisions.get("answer_contract_valid", True))
+    general_knowledge_contract_valid = bool(state.invariant_decisions.get("general_knowledge_contract_valid", True))
     reason = _derive_response_blocker_reason(
         answer_mode=answer_mode,
         fallback_action=fallback_action,
         context_confident=context_confident,
         hit_count=len(hits),
         ambiguity_detected=ambiguity_detected,
+        answer_contract_valid=answer_contract_valid,
+        general_knowledge_contract_valid=general_knowledge_contract_valid,
     )
     doc_ids = [(doc.id or doc.metadata.get("doc_id") or "") for doc in hits[:3]]
     return (
