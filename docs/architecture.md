@@ -4,7 +4,8 @@
 Engineers, maintainers, and technical reviewers who need to reason about pipeline behavior and change impact.
 
 ## What
-The v0 memory-grounded pipeline (observe → intent → encode → retrieve → rerank → answer), memory-card structures, and answer guardrails.
+The canonical 11-stage turn pipeline (`observe.turn` → `answer.commit`) is the governing runtime contract for TestBot.
+This document defines the required stage ordering, stage-level invariants, memory/provenance structures, and answer guardrails that all implementations must preserve.
 
 ## When
 Use this document when proposing pipeline changes, reviewing design tradeoffs, or debugging behavior that spans multiple stages.
@@ -17,42 +18,50 @@ These design decisions prioritize deterministic memory-grounded answers with exp
 
 For deterministic reject diagnostics and machine-readable fallback reasons, see [docs/reject-taxonomy.md](reject-taxonomy.md).
 
-## Canonical turn pipeline (state-first)
+## Legacy v0 compatibility note (historical)
 
-For the canonical state-first pipeline contract (observe→encode→stabilize→context→intent→retrieve→decide→assemble→validate→render→commit), see [docs/architecture/canonical-turn-pipeline.md](architecture/canonical-turn-pipeline.md).
+Earlier revisions described a simplified 6-stage flow (`observe → intent → encode → retrieve → rerank → answer`). Treat that model as historical shorthand only; runtime design and acceptance criteria are governed by the canonical 11-stage pipeline in [docs/architecture/canonical-turn-pipeline.md](architecture/canonical-turn-pipeline.md).
 
 ## Pipeline overview
 
-TestBot follows a single loop designed for memory-grounded answers:
+TestBot follows a canonical state-first loop for every turn:
 
 ```mermaid
 flowchart LR
-    observe[Observe] --> intent[Intent]
-    intent --> encode[Encode memory]
-    encode --> retrieve[Retrieve]
-    retrieve --> rerank[Rerank]
-    rerank --> answer[Answer]
+    observe[observe.turn] --> encode[encode.candidates]
+    encode --> stabilize[stabilize.pre_route]
+    stabilize --> context[context.resolve]
+    context --> intent[intent.resolve]
+    intent --> retrieve[retrieve.evidence]
+    retrieve --> decide[policy.decide]
+    decide --> assemble[answer.assemble]
+    assemble --> validate[answer.validate]
+    validate --> render[answer.render]
+    render --> commit[answer.commit]
 ```
 
-1. **Observe**
-   - Receive user utterance from Home Assistant satellite.
-   - Capture assistant response for history.
-2. **Intent**
-   - Classify utterance into `IntentType` using deterministic rules.
-   - Route memory-recall, meta-conversation, control, and knowledge requests predictably.
-3. **Encode memory**
-   - Persist user/assistant utterances as structured cards.
-   - Generate and store reflection cards linked to source utterances.
-4. **Retrieve**
-   - Rewrite user input into a retrieval-oriented query.
-   - Fetch memory cards and source-evidence candidates from vector search.
-   - Deterministically mix source evidence with memory cards before rerank.
-5. **Rerank**
-   - Infer target time from natural language cues.
-   - Apply Gaussian time weighting centered on inferred target time across mixed candidates.
-6. **Answer**
-   - Provide recent chat window + memory context to the answer stage.
-   - Enforce memory-only answering and citation contract.
+1. **`observe.turn`**
+   - Capture raw utterance, timing, channel, and prior turn context without interpretation loss.
+2. **`encode.candidates`**
+   - Generate multiplicity-preserving candidate encodings (speech-act/fact/repair/query candidates).
+3. **`stabilize.pre_route`**
+   - Persist stable pre-routing artifacts (utterance card + fact/dialogue candidates with provenance).
+4. **`context.resolve`**
+   - Enrich state with pending repair, obligations, prior-offer anchors, and focus references.
+5. **`intent.resolve`**
+   - Resolve intent from enriched state rather than raw text projection.
+6. **`retrieve.evidence`**
+   - Retrieve evidence coherent with resolved intent and stabilized turn state.
+7. **`policy.decide`**
+   - Select semantic response class (`answer_from_memory`, clarification, repair continuation, etc.).
+8. **`answer.assemble`**
+   - Assemble answer candidate content bound to explicit evidence/provenance.
+9. **`answer.validate`**
+   - Validate grounding, citation/provenance contract, and decision-answer alignment.
+10. **`answer.render`**
+    - Render user-visible response without changing semantic class.
+11. **`answer.commit`**
+    - Commit assistant memory/provenance plus updated repair and obligation state for the next turn.
 
 ## Canonical per-turn state
 
@@ -178,7 +187,7 @@ Confidence policy thresholds (`top_final_score_min`, margin, ambiguity override)
 
 | Criterion | Current status | Last verified | Verification command | Evidence artifact |
 | --- | --- | --- | --- | --- |
-| Observe→intent→encode→retrieve→rerank→answer flow remains intact. | pass | 2026-03-06 | `python scripts/all_green_gate.py --json-output artifacts/all-green-gate-summary.json` | `artifacts/all-green-gate-summary.json` |
+| Canonical stage ordering (`observe.turn`→`answer.commit`) remains intact with no stage elision. | pass | 2026-03-06 | `python scripts/all_green_gate.py --json-output artifacts/all-green-gate-summary.json` | `artifacts/all-green-gate-summary.json` |
 | Reflection cards always include `source_doc_id` linkage. | partial | 2026-03-06 | `python -m behave` | `docs/qa/feature-status-report.md` |
 | Time-aware rerank is applied when target time can be inferred. | pass | 2026-03-06 | `python -m pytest tests/test_eval_runtime_parity.py` | `docs/qa/feature-status-report.md` |
 | Citation contract is enforced before final output is returned. | pass | 2026-03-06 | `python -m behave` | `docs/qa/feature-status-report.md` |
