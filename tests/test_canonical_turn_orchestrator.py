@@ -60,7 +60,7 @@ def test_orchestrator_executes_all_11_canonical_stages_in_order() -> None:
                 ctx.artifacts["encoded_candidates"] = encoded
             if name == "stabilize.pre_route":
                 assert "encoded_candidates" in ctx.artifacts
-                ctx.artifacts["stabilized_turn"] = {
+                ctx.artifacts["stabilized_turn_state"] = {
                     "same_turn_exclusion_doc_ids": ["turn-1", "ref-1"],
                     "candidate_facts": ctx.artifacts["encoded_candidates"].as_artifact_payload()["facts"],
                 }
@@ -72,9 +72,11 @@ def test_orchestrator_executes_all_11_canonical_stages_in_order() -> None:
                     },
                 )
             if name == "intent.resolve":
-                assert ctx.artifacts.get("stabilized_turn") is not None
+                assert ctx.artifacts.get("stabilized_turn_state") is not None
                 assert ctx.state.same_turn_exclusion.get("excluded_doc_ids") == ["turn-1", "ref-1"]
                 ctx.state = replace(ctx.state, resolved_intent="memory_recall")
+            if name == "retrieve.evidence":
+                ctx.artifacts["retrieval_result"] = {"posture": "empty_evidence"}
             return ctx
 
         stages.append(CanonicalStage(name=stage_name, handler=_handler))

@@ -149,3 +149,9 @@ Feature: Intent-specific grounding and provenance behavior
     Given an intent response harness
     When the user asks a capabilities-in-context phrase
     Then the utterance should route to knowledge intent with capability facet
+
+  Scenario: typed decision outcomes are selected deterministically
+    Given an intent response harness
+    When policy decision objects are resolved from typed evidence states
+    Then the decision outcomes should include "answer_from_memory" and "answer_general_knowledge_labeled"
+    And the decision outcomes should include "ask_for_clarification" and "continue_repair_reconstruction"

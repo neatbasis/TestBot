@@ -52,6 +52,11 @@ class CanonicalTurnOrchestrator:
 
     def run(self, context: CanonicalTurnContext) -> CanonicalTurnContext:
         for expected_stage, stage in zip(self.STAGE_ORDER, self._stages):
+            if expected_stage == "policy.decide":
+                if "stabilized_turn_state" not in context.artifacts:
+                    raise RuntimeError("policy.decide requires stabilized_turn_state artifact")
+                if "retrieval_result" not in context.artifacts:
+                    raise RuntimeError("policy.decide requires retrieval_result artifact")
             if stage.name != expected_stage:
                 raise RuntimeError(
                     f"Stage order violation: expected {expected_stage}, got {stage.name}."
