@@ -12,9 +12,12 @@ from testbot.sat_chatbot_memory_v2 import (
     RuntimeCapabilityStatus,
     build_provenance_metadata,
     evaluate_alignment_decision,
+    has_required_memory_citation,
     raw_claim_like_text_detected,
+    render_context,
     response_contains_claims,
     stage_answer,
+    validate_answer_contract,
 )
 
 
@@ -161,3 +164,63 @@ def test_raw_claim_like_text_detected_is_exposed_for_alignment_inputs() -> None:
 
     assert raw_claim_like_text_detected("hello there") is True
     assert decision["dimension_inputs"]["raw"]["raw_claim_like_text_detected"] is True
+
+
+def test_render_context_includes_structured_memory_fields_for_citations() -> None:
+    docs = [
+        Document(
+            page_content="  Team agreed to move weekly planning to Thursdays at 09:00.  ",
+            metadata={
+                "doc_id": "mem-100",
+                "ts": "2026-03-05T09:00:00Z",
+                "type": "decision",
+            },
+        ),
+        Document(
+            page_content="Second note without explicit type still renders deterministically.",
+            metadata={
+                "doc_id": "mem-101",
+                "ts": "2026-03-06T11:30:00Z",
+            },
+        ),
+    ]
+
+    rendered = render_context(docs)
+
+    assert rendered == (
+        "[doc_1]\n"
+        "doc_id: mem-100\n"
+        "ts: 2026-03-05T09:00:00Z\n"
+        "type: decision\n"
+        "content: Team agreed to move weekly planning to Thursdays at 09:00.\n"
+        "---\n"
+        "[doc_2]\n"
+        "doc_id: mem-101\n"
+        "ts: 2026-03-06T11:30:00Z\n"
+        "type: \n"
+        "content: Second note without explicit type still renders deterministically.\n"
+        "---"
+    )
+
+
+def test_rendered_context_supports_synthetic_citation_valid_draft_path() -> None:
+    docs = [
+        Document(
+            page_content="The training schedule was moved to Tuesday mornings.",
+            metadata={
+                "doc_id": "mem-42",
+                "ts": "2026-03-06T08:15:00Z",
+                "type": "plan",
+            },
+        )
+    ]
+
+    context = render_context(docs)
+    synthetic_draft = (
+        "From memory: training is Tuesday morning (doc_id: mem-42, ts: 2026-03-06T08:15:00Z)."
+    )
+
+    assert "doc_id: mem-42" in context
+    assert "ts: 2026-03-06T08:15:00Z" in context
+    assert has_required_memory_citation(synthetic_draft) is True
+    assert validate_answer_contract(synthetic_draft) is True
