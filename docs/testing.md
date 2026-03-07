@@ -21,6 +21,10 @@ This split keeps acceptance behavior explicit, speeds feedback loops, and avoids
 
 Behavior that stakeholders care about must be written first as `.feature` scenarios. Implementation is complete only when those scenarios pass and deterministic supporting tests confirm lower-level logic.
 
+## Scenario traceability quick map
+
+For fast failure triage across behavior specs, runtime anchors, and deterministic tests, use [docs/feature-runtime-test-traceability.md](feature-runtime-test-traceability.md).
+
 ## Test layers
 
 ### 1) BDD scenarios (`behave`)
