@@ -573,3 +573,100 @@ def test_response_blocker_reason_for_answer_unknown_reports_insufficient_reliabl
         answer_contract_valid=True,
         general_knowledge_contract_valid=True,
     ) == "insufficient reliable memory to answer directly"
+
+def test_chat_loop_debug_trace_logs_structured_payload_for_queryable_policy_fields(monkeypatch) -> None:
+    events: list[tuple[str, dict[str, object]]] = []
+
+    monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: events.append((event, payload)))
+    monkeypatch.setattr(runtime, "_validate_and_log_transition", lambda _result: None)
+    monkeypatch.setattr(runtime, "store_doc", lambda *args, **kwargs: None)
+    monkeypatch.setattr(runtime, "generate_reflection_yaml", lambda *args, **kwargs: "claims: []")
+    monkeypatch.setattr(runtime, "persist_promoted_context", lambda *args, **kwargs: [])
+    monkeypatch.setattr(runtime, "encode_stage", lambda _llm, state: replace(state, rewritten_query="release memory"))
+    monkeypatch.setattr(runtime, "stage_retrieve", lambda _store, state: (replace(state, retrieval_candidates=[]), []))
+    monkeypatch.setattr(
+        runtime,
+        "stage_rerank",
+        lambda state, docs_and_scores, **kwargs: (  # noqa: ARG005
+            replace(
+                state,
+                reranked_hits=[],
+                confidence_decision={
+                    "context_confident": False,
+                    "ambiguity_detected": False,
+                    "retrieval_branch": "memory_retrieval",
+                    "top_final_score_min": 0.9,
+                    "min_margin_to_second": 0.05,
+                    "scored_candidates": [{"final_score": 0.88}, {"final_score": 0.87}],
+                },
+            ),
+            [],
+        ),
+    )
+    monkeypatch.setattr(
+        runtime,
+        "stage_answer",
+        lambda _llm, state, **kwargs: replace(  # noqa: ARG005
+            state,
+            final_answer=ASSIST_ALTERNATIVES_ANSWER,
+            invariant_decisions={
+                "fallback_action": "OFFER_CAPABILITY_ALTERNATIVES",
+                "answer_mode": "assist",
+                "answer_contract_valid": False,
+                "general_knowledge_contract_valid": True,
+            },
+            provenance_types=[],
+            basis_statement="none",
+            claims=[],
+        ),
+    )
+
+    prompts = iter(["what did I say about release prep", "stop"])
+    _run_chat_loop(
+        llm=_StaticLLM("ignored"),
+        store=object(),
+        chat_history=deque(),
+        near_tie_delta=0.05,
+        io_channel="cli",
+        capability_status="ask_unavailable",
+        capability_snapshot=CapabilitySnapshot(
+            runtime={},
+            requested_mode="cli",
+            daemon_mode=False,
+            effective_mode="cli",
+            fallback_reason=None,
+            exit_reason=None,
+            ha_error=None,
+            ollama_error=None,
+            runtime_capability_status=RuntimeCapabilityStatus(
+                ollama_available=True,
+                ha_available=False,
+                effective_mode="cli",
+                requested_mode="cli",
+                daemon_mode=False,
+                fallback_reason=None,
+                memory_backend="inmemory",
+                debug_enabled=True,
+                debug_verbose=False,
+                text_clarification_available=True,
+                satellite_ask_available=False,
+            ),
+        ),
+        read_user_utterance=lambda: next(prompts, None),
+        send_assistant_text=lambda _text: None,
+        clock=_FIXED_CLOCK,
+    )
+
+    debug_event = next(payload for event, payload in events if event == "debug_turn_trace")
+    assert "trace" in debug_event
+    assert isinstance(debug_event["trace"], str)
+    assert "payload" in debug_event
+
+    policy = debug_event["payload"]["debug.policy"]
+    assert policy["reject_code"] == "ANSWER_CONTRACT_GROUNDING_FAIL"
+    assert policy["counterfactuals"]["alternate_routing_policy_checks"] == {
+        "ask_clarifying_question_passes": False,
+        "route_to_ask_passes": False,
+    }
+    assert debug_event["payload"]["debug.confidence"]["context_confident_gate"]["passed"] is False
+    assert debug_event["payload"]["debug.rerank"]["margin_gate"]["passed"] is False

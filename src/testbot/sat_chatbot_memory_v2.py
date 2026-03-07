@@ -1379,8 +1379,7 @@ def _build_debug_turn_payload(*, state: PipelineState, intent_label: str, hits: 
     }
 
 
-def _format_debug_turn_trace(*, state: PipelineState, intent_label: str, hits: list[Document], verbose: bool = False) -> str:
-    payload = _build_debug_turn_payload(state=state, intent_label=intent_label, hits=hits)
+def _format_debug_turn_trace_payload(*, payload: dict[str, object], verbose: bool = False) -> str:
 
     if verbose:
         return "[debug] " + json.dumps(payload, ensure_ascii=False, sort_keys=True)
@@ -1425,6 +1424,11 @@ def _format_debug_turn_trace(*, state: PipelineState, intent_label: str, hits: l
         f"partition={payload['debug.policy']['partition']}; "
         f"blocker_reason={payload['debug.policy']['blocker_reason']}."
     )
+
+
+def _format_debug_turn_trace(*, state: PipelineState, intent_label: str, hits: list[Document], verbose: bool = False) -> str:
+    payload = _build_debug_turn_payload(state=state, intent_label=intent_label, hits=hits)
+    return _format_debug_turn_trace_payload(payload=payload, verbose=verbose)
 
 
 def build_partial_memory_clarifier(hits: list[Document], *, max_items: int = 2) -> str:
@@ -2520,16 +2524,16 @@ def _run_chat_loop(
         )
 
         if capability_snapshot.runtime_capability_status.debug_enabled:
-            debug_trace = _format_debug_turn_trace(
-                state=state,
-                intent_label=intent_label,
-                hits=hits,
+            debug_payload = _build_debug_turn_payload(state=state, intent_label=intent_label, hits=hits)
+            debug_trace = _format_debug_turn_trace_payload(
+                payload=debug_payload,
                 verbose=capability_snapshot.runtime_capability_status.debug_verbose,
             )
             append_session_log(
                 "debug_turn_trace",
                 {
                     "utterance": utterance,
+                    "payload": debug_payload,
                     "trace": debug_trace,
                 },
             )
