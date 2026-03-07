@@ -158,3 +158,94 @@ def test_missing_required_keys_are_not_silently_defaulted() -> None:
     assert summary.invalid_rows == 1
     assert summary.per_event_validation_failures == {"intent_classified": 1}
     assert dataset[0].intent == "memory_recall"
+
+
+def test_aggregate_turn_dataset_supports_repair_continuation_action_deterministically() -> None:
+    rows = [
+        {"event": "user_utterance_ingest", "utterance": "continue fixing"},
+        {
+            "event": "intent_classified",
+            "schema_version": 3,
+            "intent": "memory_recall",
+            "ambiguity_score": 0.8,
+            "user_followup_signal_proxy": 0.8,
+        },
+        {
+            "event": "fallback_action_selected",
+            "schema_version": 3,
+            "intent": "memory_recall",
+            "ambiguity_score": 0.8,
+            "chosen_action": "CONTINUE_REPAIR_RECONSTRUCTION",
+            "user_followup_signal_proxy": 0.8,
+        },
+        {
+            "event": "provenance_summary",
+            "schema_version": 3,
+            "provenance_types": ["MEMORY"],
+            "used_memory_refs": ["mem-1"],
+            "basis_statement": "repair continuation uses memory anchors",
+        },
+        {
+            "event": "commit_stage_recorded",
+            "schema_version": 3,
+            "stage": "answer.commit",
+            "pending_repair_state": {"required": True},
+            "confirmed_user_facts": ["name=Sam"],
+        },
+    ]
+
+    normalized_rows, _summary = aggregator.normalize_and_validate_rows(rows)
+    dataset = aggregator.aggregate_turn_dataset(normalized_rows)
+
+    assert len(dataset) == 1
+    assert dataset[0].action == "CONTINUE_REPAIR_RECONSTRUCTION"
+    assert dataset[0].provenance_completeness == 1.0
+
+
+def test_normalize_and_validate_rows_accepts_pipeline_snapshot_sidecars_without_regression() -> None:
+    rows = [
+        {"event": "user_utterance_ingest", "utterance": "hello"},
+        {
+            "event": "pipeline_state_snapshot",
+            "schema_version": 3,
+            "stage": "answer.commit",
+            "state": {
+                "commit_receipt": {
+                    "commit_stage": "answer.commit",
+                    "pending_repair_state": {"required": False},
+                    "resolved_obligations": ["repair_state_not_required"],
+                    "remaining_obligations": [],
+                    "confirmed_user_facts": ["name=Sam"],
+                }
+            },
+        },
+        {
+            "event": "intent_classified",
+            "schema_version": 3,
+            "intent": "memory_recall",
+            "ambiguity_score": 0.1,
+            "user_followup_signal_proxy": 0.1,
+        },
+        {
+            "event": "fallback_action_selected",
+            "schema_version": 3,
+            "intent": "memory_recall",
+            "ambiguity_score": 0.1,
+            "chosen_action": "NONE",
+            "user_followup_signal_proxy": 0.1,
+        },
+        {
+            "event": "provenance_summary",
+            "schema_version": 3,
+            "provenance_types": ["MEMORY"],
+            "used_memory_refs": ["mem-1"],
+            "basis_statement": "memory evidence",
+        },
+    ]
+
+    normalized_rows, summary = aggregator.normalize_and_validate_rows(rows)
+    dataset = aggregator.aggregate_turn_dataset(normalized_rows)
+
+    assert summary.invalid_rows == 0
+    assert len(dataset) == 1
+    assert dataset[0].action == "NONE"
