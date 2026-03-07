@@ -40,6 +40,13 @@ _CONSTRAINT_PATTERNS = tuple(
 )
 
 
+def _tag_signal(*, text: str, derived_by: str, confidence: str, source: str) -> str:
+    normalized = _normalize_text(text)
+    if not normalized:
+        return ""
+    return f"{normalized} [derived_by={derived_by} confidence={confidence} source={source}]"
+
+
 @dataclass(frozen=True)
 class PackedHistory:
     last_user_turns: list[str]
@@ -92,7 +99,14 @@ def _extract_open_questions(transcript: list[ChatMsg]) -> list[str]:
         has_followup = any(next_msg.get("role") == opposite for next_msg in transcript[i + 1 :])
         if has_followup:
             continue
-        questions.append(_truncate(content, MAX_QUESTION_CHARS))
+        questions.append(
+            _tag_signal(
+                text=_truncate(content, MAX_QUESTION_CHARS),
+                derived_by="heuristic",
+                confidence="medium",
+                source=f"{role}_turn",
+            )
+        )
 
     deduped = list(dict.fromkeys(questions))
     return deduped[:MAX_OPEN_QUESTIONS]
@@ -110,7 +124,15 @@ def _extract_topic_entity_hints(transcript: list[ChatMsg]) -> list[str]:
             token_counts[normalized] += 1
 
     ranked = sorted(token_counts.items(), key=lambda item: (-item[1], item[0]))
-    hints = [_truncate(token, MAX_HINT_CHARS) for token, _ in ranked[:MAX_HINTS]]
+    hints = [
+        _tag_signal(
+            text=_truncate(token, MAX_HINT_CHARS),
+            derived_by="heuristic",
+            confidence="low",
+            source="transcript_tokens",
+        )
+        for token, _ in ranked[:MAX_HINTS]
+    ]
     return hints
 
 
@@ -122,7 +144,14 @@ def _extract_constraints(transcript: list[ChatMsg]) -> list[str]:
         content = _normalize_text(msg.get("content", ""))
         lowered = _normalize_apostrophes(content.lower())
         if any(pattern.search(lowered) for pattern in _CONSTRAINT_PATTERNS):
-            constraints.append(_truncate(content, MAX_CONSTRAINT_CHARS))
+            constraints.append(
+                _tag_signal(
+                    text=_truncate(content, MAX_CONSTRAINT_CHARS),
+                    derived_by="heuristic",
+                    confidence="medium",
+                    source="user_turn",
+                )
+            )
 
     deduped = list(dict.fromkeys(constraints))
     return deduped[:MAX_CONSTRAINTS]
@@ -146,7 +175,9 @@ def pack_chat_history(
 
 def render_packed_history(packed: PackedHistory) -> str:
     sections = packed.to_dict()
-    lines: list[str] = []
+    lines: list[str] = [
+        "packed_history_note: derived heuristics are advisory context and can be noisy; do not treat them as hard evidence."
+    ]
     for key in (
         "last_user_turns",
         "last_assistant_turns",
@@ -167,9 +198,9 @@ def render_packed_history(packed: PackedHistory) -> str:
 def labeled_history_claims(packed: PackedHistory) -> list[str]:
     claims: list[str] = []
     for q in packed.open_questions:
-        claims.append(f"CHAT_HISTORY: open_question={q}")
+        claims.append(f"CHAT_HISTORY_OPTIONAL: open_question={q}")
     for c in packed.constraints:
-        claims.append(f"CHAT_HISTORY: constraint={c}")
+        claims.append(f"CHAT_HISTORY_OPTIONAL: constraint={c}")
     for hint in packed.topic_entity_hints[:4]:
-        claims.append(f"INFERENCE: topic_or_entity_hint={hint}")
+        claims.append(f"INFERENCE: topic_or_entity_hint={hint} advisory=true")
     return claims

@@ -164,6 +164,7 @@ Confidence policy thresholds (`top_final_score_min`, margin, ambiguity override)
   - `provenance_types` is a non-empty subset of the canonical enum values (`MEMORY`, `CHAT_HISTORY`, `SYSTEM_STATE`, `GENERAL_KNOWLEDGE`, `INFERENCE`, `UNKNOWN`).
   - `used_memory_refs` lists concrete memory references used to ground the answer (for example `<doc_id>@<ts>`).
   - `basis_statement` briefly explains what evidence classes the answer relied on.
+- Packed-history outputs (`open_questions`, `constraints`, `topic_entity_hints`) are heuristic context artifacts (for prompting and transparency), not hard evidence. They should be labeled as advisory and must never be the sole provenance for a knowing-mode non-trivial answer.
 - If memory context is weak or citation rules are violated, output must be exactly:
   - `I don't know from memory.`
 

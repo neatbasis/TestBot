@@ -1189,7 +1189,7 @@ ANSWER_PROMPT = ChatPromptTemplate.from_messages(
         (
             "system",
             "You are a careful assistant.\n"
-            "Use ONLY the provided memory context and recent chat.\n"
+            "Use ONLY the provided memory context and recent chat.\nHeuristic packed-history hints are advisory context only, never hard evidence.\n"
             "If memory is empty or low-confidence, ask one targeted clarifying question or offer at least two capability-based alternatives.\n"
             "If memory is partial or ambiguous, provide a short user-facing summary and one bridging clarifier.\n"
             "Keep the exact phrase \"I don't know from memory.\" only for explicit deny/safety-policy cases.\n"
@@ -1348,7 +1348,7 @@ def build_provenance_metadata(
         basis_statement = (
             "Relevance summary basis: synthesized from recent chat history signals."
             if final_answer.startswith("Relevant summary:")
-            else "Answer synthesized from recent chat history."
+            else "Answer synthesized from recent chat history (advisory signals only)."
         )
     else:
         basis_statement = "General-knowledge basis: no supporting memory references were retrieved."

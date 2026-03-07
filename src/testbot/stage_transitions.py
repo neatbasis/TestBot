@@ -103,6 +103,36 @@ def _has_knowing_mode_provenance_metadata(state: PipelineState) -> bool:
     return True
 
 
+
+
+def _heuristic_only_history_inference(state: PipelineState) -> bool:
+    claims = [c.strip() for c in state.claims if c and c.strip()]
+    if not claims:
+        return False
+
+    allowed_heuristic_prefixes = ("INFERENCE:", "CHAT_HISTORY_OPTIONAL:")
+    if not all(claim.startswith(allowed_heuristic_prefixes) for claim in claims):
+        return False
+
+    has_heuristic_tag = any(
+        "derived_by=heuristic" in claim or "advisory=true" in claim or claim.startswith("CHAT_HISTORY_OPTIONAL:")
+        for claim in claims
+    )
+    if not has_heuristic_tag:
+        return False
+
+    return not (state.used_memory_refs or state.used_source_evidence_refs)
+
+
+def _knowing_mode_not_heuristic_only(state: PipelineState) -> bool:
+    answer_mode = str(state.invariant_decisions.get("answer_mode", ""))
+    if answer_mode in {"deny", "clarify", "dont-know", "assist"}:
+        return True
+    if not _is_non_trivial_answer(state.final_answer):
+        return True
+    return not _heuristic_only_history_inference(state)
+
+
 def _has_explicit_unknowing_uncertainty_fallback(state: PipelineState) -> bool:
     answer_mode = str(state.invariant_decisions.get("answer_mode", ""))
     if answer_mode != "dont-know":
@@ -324,6 +354,10 @@ def validate_answer_post(state: PipelineState) -> TransitionCheckResult:
             (
                 "knowing_mode_requires_provenance_metadata",
                 lambda s: _has_knowing_mode_provenance_metadata(s),
+            ),
+            (
+                "knowing_mode_disallows_heuristic_only_inference_provenance",
+                lambda s: _knowing_mode_not_heuristic_only(s),
             ),
             (
                 "unknowing_mode_requires_explicit_uncertainty_fallback",
