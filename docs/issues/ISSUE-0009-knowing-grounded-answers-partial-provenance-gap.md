@@ -9,6 +9,11 @@
 - **Target Sprint:** Sprint 2
 - **Principle Alignment:** contract-first, traceable, deterministic, user-centric
 
+## Cross-Reference
+
+- Primary implementation/bug-elimination program: ISSUE-0013
+- This issue remains planning/history/context unless otherwise specified.
+
 ## Problem Statement
 
 The `knowing_grounded_answers` capability remains `partial`. ISSUE-0009 is the primary traceability record for this capability and tracks the remaining measurable deltas against `product_behave`, `safety_behave_answer_contract_and_memory`, and `qa_eval_fixtures_and_runtime_parity`, while preserving explicit cross-capability linkage with ISSUE-0010 in generated status reporting.

@@ -95,3 +95,5 @@ python -m pytest tests/test_reflection_policy.py tests/test_runtime_logging_even
 
 ## Reporting/status artifacts
 Per issue instructions, status artifact regeneration via report scripts is deferred until criteria are implemented and validated as passing.
+
+ISSUE-0013 linkage: Canonical pipeline progress and defect-elimination sequencing for this evidence are tracked under ISSUE-0013.

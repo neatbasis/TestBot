@@ -9,6 +9,11 @@
 - **Target Sprint:** Sprint 2
 - **Principle Alignment:** contract-first, traceable, deterministic, user-centric
 
+## Cross-Reference
+
+- Primary implementation/bug-elimination program: ISSUE-0013
+- This issue remains planning/history/context unless otherwise specified.
+
 ## Problem Statement
 
 `scripts/aggregate_turn_analytics.py` currently accepts a session log input, but turn construction only starts on `user_utterance_ingest` and enrichment only uses a narrow event vocabulary (`intent_classified`, `fallback_action_selected`, `provenance_summary`). High-volume runtime/process events (for example `pipeline_state_snapshot` and `stage_transition_validation`) are effectively ignored for turn assembly without explicit input-coverage diagnostics.

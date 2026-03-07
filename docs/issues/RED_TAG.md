@@ -8,6 +8,10 @@ This file indexes all `severity: red` issues requiring escalated visibility.
 - If an issue is reopened or rescoped as non-red (for example, `amber`), remove it from `Active`/`Resolved` red-tag lists immediately.
 - Non-red follow-up lifecycle history may be captured in an archival note section, but that section must be explicitly labeled as out-of-scope for active red-tag status.
 
+## Canonical pipeline routing note
+
+- Canonical pipeline defects must be tagged and escalated against ISSUE-0013 first; link dependent issue IDs only after ISSUE-0013 routing is recorded.
+
 ## Recurring triage note template
 
 Use this note under each red-tag issue entry whenever status changes or during scheduled triage:

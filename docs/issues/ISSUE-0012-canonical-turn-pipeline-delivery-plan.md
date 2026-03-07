@@ -9,6 +9,11 @@
 - **Target Sprint:** Sprint 3-5
 - **Principle Alignment:** contract-first, invariant-driven, traceable, deterministic, ci-enforced
 
+## Cross-Reference
+
+- Primary implementation/bug-elimination program: ISSUE-0013
+- This issue remains planning/history/context unless otherwise specified.
+
 ## Problem Statement
 
 The canonical turn pipeline contract in `docs/architecture/canonical-turn-pipeline.md` defines required stages and invariants, but execution is not yet tracked as a single sprinted delivery plan with explicit feature slices and mandatory code review checkpoints. Without this governance layer, related capability work can land out of order and leave cross-stage invariants only partially enforced.

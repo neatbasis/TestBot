@@ -9,6 +9,11 @@
 - **Target Sprint:** Sprint 2
 - **Principle Alignment:** contract-first, deterministic, ci-enforced, traceable
 
+## Cross-Reference
+
+- Primary implementation/bug-elimination program: ISSUE-0013
+- This issue remains planning/history/context unless otherwise specified.
+
 ## Problem Statement
 
 The initial merge-blocking failures were remediated, but `intent_grounding_router` is still declared `partial`. This issue is reopened/rescoped to track remaining deterministic confidence and route-selection quality needed to move the capability to `implemented`.
