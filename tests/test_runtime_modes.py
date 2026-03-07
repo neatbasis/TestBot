@@ -20,6 +20,34 @@ def test_parse_args_satellite_daemon() -> None:
     assert args.daemon is True
 
 
+
+
+def test_parse_args_debug_verbose_defaults_to_none() -> None:
+    args = _parse_args([])
+    assert args.debug_verbose is None
+
+
+def test_parse_args_debug_verbose_opt_in() -> None:
+    args = _parse_args(["--debug-verbose"])
+    assert args.debug_verbose is True
+
+
+def test_parse_args_debug_verbose_opt_out() -> None:
+    args = _parse_args(["--no-debug-verbose"])
+    assert args.debug_verbose is False
+
+
+def test_read_runtime_env_debug_verbose_defaults_false(monkeypatch) -> None:
+    monkeypatch.delenv("TESTBOT_DEBUG_VERBOSE", raising=False)
+    runtime_env = runtime._read_runtime_env()
+    assert runtime_env["debug_verbose"] is False
+
+
+def test_read_runtime_env_debug_verbose_opt_in(monkeypatch) -> None:
+    monkeypatch.setenv("TESTBOT_DEBUG_VERBOSE", "1")
+    runtime_env = runtime._read_runtime_env()
+    assert runtime_env["debug_verbose"] is True
+
 def test_resolve_mode_prefers_satellite_when_ha_available() -> None:
     assert _resolve_mode("auto", None) == "satellite"
 

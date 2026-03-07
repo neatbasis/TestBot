@@ -143,6 +143,7 @@ def step_when_stage_answer_enforces_contract(context) -> None:
             fallback_reason=None,
             memory_backend="in_memory",
             debug_enabled=False,
+            debug_verbose=False,
             text_clarification_available=True,
             satellite_ask_available=False,
         ),

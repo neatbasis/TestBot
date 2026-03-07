@@ -3,7 +3,7 @@ from __future__ import annotations
 from testbot.sat_chatbot_memory_v2 import CapabilitySnapshot, RuntimeCapabilityStatus, _print_startup_status
 
 
-def _snapshot(*, effective_mode: str | None, ha_error: str | None, ollama_error: str | None, fallback_reason: str | None = None, memory_backend: str = "in_memory") -> CapabilitySnapshot:
+def _snapshot(*, effective_mode: str | None, ha_error: str | None, ollama_error: str | None, fallback_reason: str | None = None, memory_backend: str = "in_memory", debug_enabled: bool = False, debug_verbose: bool = False) -> CapabilitySnapshot:
     runtime = {
         "ollama_base_url": "http://localhost:11434",
         "ollama_model": "llama3.1:latest",
@@ -30,7 +30,8 @@ def _snapshot(*, effective_mode: str | None, ha_error: str | None, ollama_error:
             daemon_mode=False,
             fallback_reason=fallback_reason,
             memory_backend=memory_backend,
-            debug_enabled=False,
+            debug_enabled=debug_enabled,
+            debug_verbose=debug_verbose,
             text_clarification_available=(effective_mode or "unavailable") in {"cli", "satellite"},
             satellite_ask_available=(ha_error is None and (effective_mode or "unavailable") == "satellite"),
         ),
@@ -104,6 +105,7 @@ def test_startup_status_includes_requested_and_effective_modes_for_fallback(caps
             fallback_reason=snapshot.runtime_capability_status.fallback_reason,
             memory_backend=snapshot.runtime_capability_status.memory_backend,
             debug_enabled=snapshot.runtime_capability_status.debug_enabled,
+            debug_verbose=snapshot.runtime_capability_status.debug_verbose,
             text_clarification_available=snapshot.runtime_capability_status.text_clarification_available,
             satellite_ask_available=snapshot.runtime_capability_status.satellite_ask_available,
         ),
@@ -143,3 +145,19 @@ def test_startup_status_prints_ollama_unavailable_guidance(capsys) -> None:
     assert "Ollama: unavailable" in output
     assert "Install warning [RED]" in output
     assert "pull required models" in output
+
+
+def test_startup_status_reports_verbose_debug_toggle_state(capsys) -> None:
+    _print_startup_status(
+        snapshot=_snapshot(
+            effective_mode="cli",
+            ha_error="Missing HA_API_SECRET",
+            ollama_error=None,
+            fallback_reason="satellite connection is unavailable",
+            debug_enabled=True,
+            debug_verbose=True,
+        )
+    )
+
+    output = capsys.readouterr().out
+    assert "Debug tracing: enabled (TESTBOT_DEBUG), verbose payloads: enabled (TESTBOT_DEBUG_VERBOSE/--debug-verbose)" in output
