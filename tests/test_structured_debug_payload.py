@@ -74,6 +74,80 @@ def test_structured_debug_payload_knowledge_includes_contract_gate_scalars() -> 
     _assert_gate_shape(payload["debug.contract"]["general_knowledge_contract_gate"])
 
 
+
+
+def test_structured_debug_payload_memory_recall_emits_numeric_intent_and_retrieval_telemetry() -> None:
+    state = PipelineState(
+        user_input="what did I say about ontology",
+        rewritten_query="ontology memory",
+        classified_intent="memory_recall",
+        resolved_intent="memory_recall",
+        confidence_decision={
+            "intent_predicted": "memory_recall",
+            "intent_classifier_confidence": 0.95,
+            "intent_classifier_threshold": 0.75,
+            "retrieval_branch": "memory_retrieval",
+            "retrieval_candidates_considered": 18,
+            "retrieval_returned_top_k": 12,
+            "retrieval_threshold": 0.0,
+            "context_confident": False,
+            "ambiguity_detected": True,
+            "top_final_score_min": 0.9,
+            "min_margin_to_second": 0.05,
+            "scored_candidates": [{"final_score": 0.71}, {"final_score": 0.69}],
+        },
+        invariant_decisions={"answer_mode": "clarify", "fallback_action": "ASK_CLARIFYING_QUESTION"},
+    )
+
+    payload = _build_debug_turn_payload(state=state, intent_label="memory_recall", hits=[])
+
+    assert payload["debug.intent"]["predicted"] == "memory_recall"
+    assert isinstance(payload["debug.intent"]["confidence"], float)
+    assert isinstance(payload["debug.intent"]["threshold"], float)
+    assert payload["debug.retrieval"]["branch"] == "memory_retrieval"
+    assert isinstance(payload["debug.retrieval"]["candidates_considered"], float)
+    assert isinstance(payload["debug.retrieval"]["returned_top_k"], float)
+    assert isinstance(payload["debug.retrieval"]["threshold"], float)
+
+
+def test_structured_debug_payload_knowledge_question_emits_numeric_intent_and_retrieval_telemetry() -> None:
+    state = PipelineState(
+        user_input="what is ontology",
+        rewritten_query="what is ontology",
+        classified_intent="knowledge_question",
+        resolved_intent="knowledge_question",
+        confidence_decision={
+            "intent_predicted": "knowledge_question",
+            "intent_classifier_confidence": 0.82,
+            "intent_classifier_threshold": 0.75,
+            "retrieval_branch": "direct_answer",
+            "retrieval_candidates_considered": 0,
+            "retrieval_returned_top_k": 0,
+            "retrieval_threshold": 0.0,
+            "context_confident": True,
+            "ambiguity_detected": False,
+            "top_final_score_min": 0.8,
+            "min_margin_to_second": 0.05,
+            "scored_candidates": [{"final_score": 0.88}, {"final_score": 0.6}],
+        },
+        invariant_decisions={
+            "answer_mode": "assist",
+            "fallback_action": "ANSWER_GENERAL_KNOWLEDGE",
+            "answer_contract_valid": True,
+            "general_knowledge_contract_valid": True,
+        },
+    )
+
+    payload = _build_debug_turn_payload(state=state, intent_label="knowledge_question", hits=[])
+
+    assert payload["debug.intent"]["predicted"] == "knowledge_question"
+    assert isinstance(payload["debug.intent"]["confidence"], float)
+    assert isinstance(payload["debug.intent"]["threshold"], float)
+    assert payload["debug.retrieval"]["branch"] == "direct_answer"
+    assert isinstance(payload["debug.retrieval"]["candidates_considered"], float)
+    assert isinstance(payload["debug.retrieval"]["returned_top_k"], float)
+    assert isinstance(payload["debug.retrieval"]["threshold"], float)
+
 def test_structured_debug_payload_policy_reject_signal_shape_and_legacy_reason() -> None:
     state = PipelineState(
         user_input="summarize this",

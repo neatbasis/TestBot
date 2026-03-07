@@ -111,6 +111,8 @@ GENERAL_KNOWLEDGE_SUPPORT_MIN = 2
 ALIGNMENT_OBJECTIVE_VERSION = "2026-03-05.v3"
 SESSION_LOG_SCHEMA_VERSION = 2
 _LOGGER = logging.getLogger(__name__)
+INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD = 0.75
+RETRIEVAL_SCORE_THRESHOLD = 0.0
 
 
 @dataclass(frozen=True)
@@ -560,7 +562,16 @@ def stage_retrieve(store: MemoryStore, state: PipelineState) -> tuple[PipelineSt
     raw_docs_and_scores = store.similarity_search_with_score(state.rewritten_query, k=18)
     docs_and_scores = mix_source_evidence_with_memory_cards(raw_docs_and_scores, top_k=12, source_quota=3)
     retrieval_candidates = [doc_to_candidate_hit(doc, score) for doc, score in docs_and_scores]
-    return replace(state, retrieval_candidates=retrieval_candidates), docs_and_scores
+    retrieval_telemetry = {
+        "retrieval_candidates_considered": len(raw_docs_and_scores),
+        "retrieval_returned_top_k": len(docs_and_scores),
+        "retrieval_threshold": RETRIEVAL_SCORE_THRESHOLD,
+    }
+    return replace(
+        state,
+        retrieval_candidates=retrieval_candidates,
+        confidence_decision={**state.confidence_decision, **retrieval_telemetry},
+    ), docs_and_scores
 
 
 _ANAPHORA_PATTERNS: tuple[re.Pattern[str], ...] = (
@@ -734,6 +745,7 @@ def stage_rerank(
         ambiguity_detected=rerank_outcome.ambiguity_detected,
     )
     confidence_decision = {
+        **state.confidence_decision,
         "context_confident": has_context,
         "ambiguity_detected": rerank_outcome.ambiguity_detected,
         "anaphora_detected": bool(temporal_bridge.get("anaphora_detected", False)),
@@ -834,6 +846,17 @@ def _is_definitional_query_form(utterance: str) -> bool:
     return bool(_DEFINITIONAL_QUERY_PATTERN.match((utterance or "").strip()))
 
 
+def _intent_classifier_confidence(*, utterance: str, predicted_intent: IntentType) -> float:
+    normalized = (utterance or "").strip().lower()
+    if not normalized:
+        return INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD
+
+    if predicted_intent == IntentType.KNOWLEDGE_QUESTION and not _is_definitional_query_form(normalized):
+        return 0.82
+
+    return 0.95
+
+
 def _select_retrieval_branch(*, utterance: str, intent: IntentType) -> str:
     if _uses_memory_retrieval(intent):
         return "memory_retrieval"
@@ -842,8 +865,9 @@ def _select_retrieval_branch(*, utterance: str, intent: IntentType) -> str:
     return "direct_answer"
 
 
-def _minimal_confidence_decision_for_direct_answer(*, branch: str) -> dict[str, object]:
+def _minimal_confidence_decision_for_direct_answer(*, branch: str, base_confidence_decision: dict[str, object]) -> dict[str, object]:
     return {
+        **base_confidence_decision,
         "context_confident": False,
         "ambiguity_detected": False,
         "ambiguous_candidates": [],
@@ -851,6 +875,9 @@ def _minimal_confidence_decision_for_direct_answer(*, branch: str) -> dict[str, 
         "objective": "",
         "objective_version": "",
         "retrieval_branch": branch,
+        "retrieval_candidates_considered": 0,
+        "retrieval_returned_top_k": 0,
+        "retrieval_threshold": RETRIEVAL_SCORE_THRESHOLD,
     }
 
 
@@ -1252,6 +1279,9 @@ def _build_debug_turn_payload(*, state: PipelineState, intent_label: str, hits: 
         "debug.intent": {
             "resolved": intent_label,
             "classified": state.classified_intent,
+            "predicted": str(state.confidence_decision.get("intent_predicted") or state.classified_intent),
+            "confidence": float(state.confidence_decision.get("intent_classifier_confidence", 0.0) or 0.0),
+            "threshold": float(state.confidence_decision.get("intent_classifier_threshold", 0.0) or 0.0),
             "prior_unresolved": state.prior_unresolved_intent,
         },
         "debug.rewrite": {
@@ -1263,6 +1293,9 @@ def _build_debug_turn_payload(*, state: PipelineState, intent_label: str, hits: 
             "branch": retrieval_branch,
             "hit_count": len(hits),
             "retrieved_doc_ids": doc_ids,
+            "candidates_considered": float(state.confidence_decision.get("retrieval_candidates_considered", 0.0) or 0.0),
+            "returned_top_k": float(state.confidence_decision.get("retrieval_returned_top_k", 0.0) or 0.0),
+            "threshold": float(state.confidence_decision.get("retrieval_threshold", 0.0) or 0.0),
         },
         "debug.rerank": {
             "top_final_score": round(top_score, 4),
@@ -2205,6 +2238,14 @@ def _run_chat_loop(
             utterance=utterance,
             prior_pipeline_state=prior_pipeline_state,
         )
+        intent_classifier_metrics = {
+            "intent_predicted": classified_intent.value,
+            "intent_classifier_confidence": _intent_classifier_confidence(
+                utterance=utterance,
+                predicted_intent=classified_intent,
+            ),
+            "intent_classifier_threshold": INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD,
+        }
         intent_label = _intent_label(resolved_intent)
 
         state = PipelineState(
@@ -2217,6 +2258,7 @@ def _run_chat_loop(
                 if prior_pipeline_state is not None
                 else ""
             ),
+            confidence_decision=intent_classifier_metrics,
         )
         append_pipeline_snapshot("ingest", state)
 
@@ -2337,7 +2379,10 @@ def _run_chat_loop(
             _validate_and_log_transition(validate_rerank_post(state))
             append_pipeline_snapshot("rerank", state)
         else:
-            minimal_confidence = _minimal_confidence_decision_for_direct_answer(branch=retrieval_branch)
+            minimal_confidence = _minimal_confidence_decision_for_direct_answer(
+                branch=retrieval_branch,
+                base_confidence_decision=state.confidence_decision,
+            )
             state = replace(state, rewritten_query=state.user_input, retrieval_candidates=[], reranked_hits=[], confidence_decision=minimal_confidence)
             append_pipeline_snapshot("rewrite", state)
             append_pipeline_snapshot("retrieve", state)
