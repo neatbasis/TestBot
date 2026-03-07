@@ -45,7 +45,7 @@ from testbot.stage_transitions import (
     validate_retrieve_pre,
 )
 from testbot.time_parse import parse_target_time
-from testbot.intent_router import IntentType, classify_intent, is_satellite_action_request
+from testbot.intent_router import IntentType, classify_intent, is_satellite_action_request, planning_pathway_for_intent
 from testbot.time_reasoning import elapsed_since_last_user_message, resolve_relative_date
 from testbot.source_connectors import (
     ArxivSourceConnector,
@@ -58,6 +58,7 @@ from testbot.source_ingest import SourceIngestor
 from ha_ask import AskSpec, ask_question
 from ha_ask.config import normalize_rest_api_url
 from testbot.history_packer import PackedHistory, labeled_history_claims, pack_chat_history, render_packed_history
+from testbot.response_planner import build_response_plan, plan_to_dict, render_response_plan_block
 
 from langchain_core.documents import Document
 from langchain_core.prompts import ChatPromptTemplate
@@ -938,7 +939,16 @@ def stage_answer(
     context_str = render_context(hits)
     packed_history = pack_chat_history(list(chat_history))
     history_str = render_packed_history(packed_history)
-    msgs = ANSWER_PROMPT.format_messages(input=state.user_input, chat_history=history_str, context=context_str)
+    response_plan_block = render_response_plan_block(build_response_plan(
+        pathway=planning_pathway_for_intent(resolved_intent),
+        user_input=state.user_input,
+    ))
+    msgs = ANSWER_PROMPT.format_messages(
+        input=state.user_input,
+        chat_history=history_str,
+        context=context_str,
+        response_plan=response_plan_block,
+    )
 
     fallback_action = decide_fallback_action(
         intent=intent_class,
@@ -1182,7 +1192,8 @@ ANSWER_PROMPT = ChatPromptTemplate.from_messages(
             "Keep the exact phrase \"I don't know from memory.\" only for explicit deny/safety-policy cases.\n"
             "For any factual claim, include at least one cited memory with both doc_id and ts.\n\n"
             "Recent chat:\n{chat_history}\n\n"
-            "Memory context:\n{context}\n",
+            "Memory context:\n{context}\n\n"
+            "Deterministic response plan:\n{response_plan}\n",
         ),
         ("human", "{input}"),
     ]
@@ -1660,6 +1671,12 @@ def _run_chat_loop(
                 "retrieval_branch": retrieval_branch,
             },
         )
+
+        response_plan = build_response_plan(
+            pathway=planning_pathway_for_intent(resolved_intent),
+            user_input=utterance,
+        )
+        state = replace(state, response_plan=plan_to_dict(response_plan))
 
         if retrieval_branch == "memory_retrieval":
             _validate_and_log_transition(validate_encode_pre(state))

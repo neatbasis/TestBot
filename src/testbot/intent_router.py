@@ -135,3 +135,13 @@ def classify_intent(user_input: str | None) -> IntentType:
     if _matches_any(normalized, _KNOWLEDGE_CUES):
         return IntentType.KNOWLEDGE_QUESTION
     return IntentType.KNOWLEDGE_QUESTION
+
+
+def planning_pathway_for_intent(intent: IntentType) -> str:
+    """Map top-level intent classes to deterministic response-planning pathways."""
+
+    if intent == IntentType.MEMORY_RECALL:
+        return "memory_recall"
+    if intent == IntentType.TIME_QUERY:
+        return "time_query"
+    return "non_memory"
