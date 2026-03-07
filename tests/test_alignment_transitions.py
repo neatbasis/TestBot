@@ -200,6 +200,74 @@ def test_stage_answer_memory_hit_without_ambiguity_does_not_force_clarifier_mode
 
 
 
+
+
+def test_evaluate_alignment_decision_missing_required_citation_sets_citation_validity_to_zero() -> None:
+    decision = evaluate_alignment_decision(
+        user_input="what did i say yesterday",
+        draft_answer="You said hi yesterday.",
+        final_answer="You said hi yesterday.",
+        confidence_decision={
+            "context_confident": True,
+            "scored_candidates": [{"final_score": 0.91}, {"final_score": 0.42}],
+            "min_margin_to_second": 0.1,
+        },
+        claims=["You said hi yesterday."],
+        provenance_types=[ProvenanceType.MEMORY],
+        basis_statement="Based on memory card doc_id: 1.",
+    )
+
+    raw = decision["dimension_inputs"]["raw"]
+    normalized = decision["dimension_inputs"]["normalized"]
+    assert raw["citation_required_for_mode"] is True
+    assert raw["citation_check_applicable"] is True
+    assert normalized["citation_validity"] == 0.0
+    assert decision["final_alignment_decision"] == "fallback"
+
+
+def test_evaluate_alignment_decision_no_claims_fallback_does_not_inflate_citation_or_provenance() -> None:
+    decision = evaluate_alignment_decision(
+        user_input="what did i say yesterday",
+        draft_answer="",
+        final_answer=FALLBACK_ANSWER,
+        confidence_decision={"context_confident": False},
+        claims=[],
+        provenance_types=[ProvenanceType.UNKNOWN],
+        basis_statement="",
+    )
+
+    raw = decision["dimension_inputs"]["raw"]
+    normalized = decision["dimension_inputs"]["normalized"]
+    assert raw["citation_required_for_mode"] is False
+    assert raw["citation_check_applicable"] is False
+    assert normalized["citation_validity"] == 0.0
+    assert decision["dimensions"]["provenance_transparency"] == 0.0
+    assert decision["final_alignment_decision"] == "fallback"
+
+
+def test_evaluate_alignment_decision_with_required_citation_allows_when_other_signals_are_strong() -> None:
+    decision = evaluate_alignment_decision(
+        user_input="what did i say yesterday",
+        draft_answer="You said hi. doc_id: 1 ts: 2025-01-01T00:00:00Z",
+        final_answer="You said hi. doc_id: 1 ts: 2025-01-01T00:00:00Z",
+        confidence_decision={
+            "context_confident": True,
+            "scored_candidates": [{"final_score": 0.91}, {"final_score": 0.42}],
+            "min_margin_to_second": 0.1,
+        },
+        claims=["You said hi yesterday."],
+        provenance_types=[ProvenanceType.MEMORY],
+        basis_statement="Based on memory card doc_id: 1.",
+    )
+
+    raw = decision["dimension_inputs"]["raw"]
+    normalized = decision["dimension_inputs"]["normalized"]
+    assert raw["citation_required_for_mode"] is True
+    assert raw["citation_check_applicable"] is True
+    assert normalized["citation_validity"] == 1.0
+    assert decision["final_alignment_decision"] == "allow"
+
+
 def test_evaluate_alignment_decision_normalizes_dimension_inputs_to_unit_interval() -> None:
     decision = evaluate_alignment_decision(
         user_input="what did i say yesterday",
