@@ -291,6 +291,62 @@ class _InvalidContractLLM:
         return self._Response()
 
 
+class _UnlabeledGeneralKnowledgeLLM:
+    class _Response:
+        content = "Life is a characteristic that distinguishes biological processes from nonliving matter. doc_id: gk-1 ts: 2026-01-01T00:00:00Z"
+
+    def invoke(self, _msgs):
+        return self._Response()
+
+
+def test_stage_answer_non_memory_invalid_gk_contract_routes_to_safe_fallback_and_passes_post_validation() -> None:
+    state = PipelineState(
+        user_input="What is life?",
+        rewritten_query="what is life",
+        confidence_decision={
+            "context_confident": False,
+            "ambiguity_detected": False,
+            "general_knowledge_confidence": 0.2,
+            "general_knowledge_support": 0,
+        },
+        resolved_intent="knowledge_question",
+    )
+
+    answer_state = stage_answer(
+        _UnlabeledGeneralKnowledgeLLM(),
+        state,
+        chat_history=deque(),
+        hits=[],
+        capability_status="ask_unavailable",
+        clock=None,
+    )
+
+    assert answer_state.invariant_decisions["general_knowledge_contract_valid"] is False
+    assert answer_state.final_answer in {ASSIST_ALTERNATIVES_ANSWER, NON_KNOWLEDGE_UNCERTAINTY_ANSWER}
+
+    result = validate_answer_post(answer_state)
+
+    assert result.passed is True
+
+
+def test_validate_answer_post_rejects_non_fallback_factual_answer_when_gk_contract_invalid() -> None:
+    state = replace(
+        _base_state(),
+        final_answer="Life is the condition that distinguishes organisms from inorganic matter.",
+        invariant_decisions={
+            **_base_state().invariant_decisions,
+            "general_knowledge_contract_valid": False,
+            "answer_mode": "memory-grounded",
+        },
+        alignment_decision={**_base_state().alignment_decision, "final_alignment_decision": "allow"},
+    )
+
+    result = validate_answer_post(state)
+
+    assert not result.passed
+    assert "inv_003_general_knowledge_contract_enforced" in result.failures
+
+
 def test_stage_answer_memory_hit_without_ambiguity_does_not_force_clarifier_mode() -> None:
     state = PipelineState(
         user_input="what did i say yesterday",
