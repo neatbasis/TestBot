@@ -284,10 +284,13 @@ def validate_answer_post(state: PipelineState) -> TransitionCheckResult:
         boundary="post",
         invariant_refs=("INV-001", "INV-002", "INV-003"),
         checks=[
-            ("invariant_decisions_recorded", lambda s: isinstance(s.invariant_decisions, dict) and bool(s.invariant_decisions)),
+            (
+                "invariant_decisions_recorded",
+                lambda s: hasattr(s.invariant_decisions, "get") and bool(s.invariant_decisions),
+            ),
             (
                 "alignment_decision_recorded",
-                lambda s: isinstance(s.alignment_decision, dict)
+                lambda s: hasattr(s.alignment_decision, "get")
                 and isinstance(s.alignment_decision.get("dimensions"), dict)
                 and isinstance(s.alignment_decision.get("final_alignment_decision"), str),
             ),
