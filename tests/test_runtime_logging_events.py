@@ -919,3 +919,71 @@ def test_chat_loop_cli_turn_logs_jsonl_with_alignment_decision_object(tmp_path, 
     assert isinstance(alignment_row["alignment_decision"], dict)
     assert set(alignment_row["alignment_decision"]).issuperset({"final_alignment_decision", "dimensions"})
     assert alignment_row["alignment_decision"]["final_alignment_decision"] == "allow"
+
+
+def test_chat_loop_logs_commit_stage_record_with_durable_commit_state(tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(runtime, "_validate_and_log_transition", lambda _result: None)
+    monkeypatch.setattr(runtime, "store_doc", lambda *args, **kwargs: None)
+    monkeypatch.setattr(runtime, "generate_reflection_yaml", lambda *args, **kwargs: "claims: []")
+    monkeypatch.setattr(runtime, "persist_promoted_context", lambda *args, **kwargs: [])
+    monkeypatch.setattr(runtime, "encode_stage", lambda _llm, state: replace(state, rewritten_query="self facts"))
+    monkeypatch.setattr(runtime, "stage_retrieve", lambda _store, state, **kwargs: (replace(state, retrieval_candidates=[]), []))
+    monkeypatch.setattr(runtime, "stage_rerank", lambda state, docs_and_scores, **kwargs: (replace(state, reranked_hits=[]), []))
+    monkeypatch.setattr(
+        runtime,
+        "stage_answer",
+        lambda _llm, state, **kwargs: replace(  # noqa: ARG005
+            state,
+            final_answer="From memory, your name is Sam.",
+            invariant_decisions={"fallback_action": "NONE", "answer_mode": "memory-grounded"},
+            claims=["name=Sam"],
+            basis_statement="Memory-backed basis",
+        ),
+    )
+
+    prompts = iter(["who am i?", "stop"])
+    replies: list[str] = []
+    _run_chat_loop(
+        llm=_StaticLLM("From memory, your name is Sam."),
+        store=object(),
+        chat_history=deque(),
+        near_tie_delta=0.05,
+        io_channel="cli",
+        capability_status="ask_unavailable",
+        capability_snapshot=CapabilitySnapshot(
+            runtime={},
+            requested_mode="cli",
+            daemon_mode=False,
+            effective_mode="cli",
+            fallback_reason=None,
+            exit_reason=None,
+            ha_error=None,
+            ollama_error=None,
+            runtime_capability_status=RuntimeCapabilityStatus(
+                ollama_available=True,
+                ha_available=False,
+                effective_mode="cli",
+                requested_mode="cli",
+                daemon_mode=False,
+                fallback_reason=None,
+                memory_backend="inmemory",
+                debug_enabled=False,
+                debug_verbose=False,
+                text_clarification_available=True,
+                satellite_ask_available=False,
+            ),
+        ),
+        read_user_utterance=lambda: next(prompts, None),
+        send_assistant_text=lambda text: replies.append(text),
+        clock=_FIXED_CLOCK,
+    )
+
+    rows = [json.loads(line) for line in (tmp_path / "logs" / "session.jsonl").read_text(encoding="utf-8").splitlines() if line.strip()]
+    commit_row = next(row for row in rows if row.get("event") == "commit_stage_recorded")
+    assert commit_row["stage"] == "answer.commit"
+    assert commit_row["pipeline_state_snapshot"] == "recorded"
+    assert isinstance(commit_row["pending_repair_state"], dict)
+    assert isinstance(commit_row["resolved_obligations"], list)
+    assert isinstance(commit_row["remaining_obligations"], list)
+    assert isinstance(commit_row["confirmed_user_facts"], list)

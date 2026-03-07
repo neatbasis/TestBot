@@ -76,6 +76,10 @@ from testbot.context_resolution import resolve as resolve_context
 from testbot.intent_resolution import resolve as resolve_intent
 from testbot.evidence_retrieval import EvidenceBundle, retrieval_result
 from testbot.policy_decision import decide as decide_policy, decide_from_evidence
+from testbot.answer_assembly import assemble_answer_contract
+from testbot.answer_validation import validate_answer_assembly_boundary
+from testbot.answer_rendering import render_answer
+from testbot.answer_commit import commit_answer_stage
 
 from langchain_core.documents import Document
 from langchain_core.prompts import ChatPromptTemplate
@@ -2742,19 +2746,42 @@ def _run_canonical_turn_pipeline(
             runtime_capability_status=capability_snapshot.runtime_capability_status,
             clock=clock,
         )
+        decision_object = ctx.artifacts["decision_object"]
+        retrieval_result_obj = ctx.artifacts["retrieval_result"]
+        ctx.artifacts["answer_assembly_contract"] = assemble_answer_contract(
+            decision=decision_object,
+            evidence_bundle=retrieval_result_obj.evidence_bundle,
+        )
         append_pipeline_snapshot("answer.assemble", ctx.state)
         return ctx
 
     def _answer_validate(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        ctx.artifacts["answer_validation_contract"] = validate_answer_assembly_boundary(
+            ctx.artifacts["answer_assembly_contract"]
+        )
+        if not ctx.artifacts["answer_validation_contract"].passed:
+            raise RuntimeError("answer assembly contract validation failed before render/commit")
         _validate_and_log_transition(validate_answer_post(ctx.state))
         append_pipeline_snapshot("answer.validate", ctx.state)
         return ctx
 
     def _answer_render(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        ctx.artifacts["answer_render_contract"] = render_answer(
+            assembly=ctx.artifacts["answer_assembly_contract"],
+            validation=ctx.artifacts["answer_validation_contract"],
+            preferred_text=ctx.state.final_answer,
+        )
         append_pipeline_snapshot("answer.render", ctx.state)
         return ctx
 
     def _answer_commit(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        ctx.state = commit_answer_stage(
+            ctx.state,
+            assembly=ctx.artifacts["answer_assembly_contract"],
+            validation=ctx.artifacts["answer_validation_contract"],
+            rendered=ctx.artifacts["answer_render_contract"],
+            commit_stage_id="answer.commit",
+        )
         append_pipeline_snapshot("answer", ctx.state)
         ambiguity_score = _ambiguity_score(ctx.state.confidence_decision)
         ctx.artifacts["ambiguity_score"] = ambiguity_score
@@ -2767,6 +2794,18 @@ def _run_canonical_turn_pipeline(
                 "intent_resolved": resolved_intent.value,
                 "ambiguity_score": ambiguity_score,
                 "user_followup_signal_proxy": round(ambiguity_score, 4),
+            },
+        )
+        append_session_log(
+            "commit_stage_recorded",
+            {
+                "stage": "answer.commit",
+                "commit_stage": ctx.state.commit_receipt.get("commit_stage", "answer.commit"),
+                "pipeline_state_snapshot": ctx.state.commit_receipt.get("pipeline_state_snapshot", "recorded"),
+                "pending_repair_state": ctx.state.commit_receipt.get("pending_repair_state", {}),
+                "resolved_obligations": ctx.state.commit_receipt.get("resolved_obligations", []),
+                "remaining_obligations": ctx.state.commit_receipt.get("remaining_obligations", []),
+                "confirmed_user_facts": ctx.state.commit_receipt.get("confirmed_user_facts", []),
             },
         )
         append_session_log(
@@ -2783,6 +2822,7 @@ def _run_canonical_turn_pipeline(
                 "source_evidence_attribution": ctx.state.source_evidence_attribution,
                 "basis_statement": ctx.state.basis_statement,
                 "stage_audit_trail": list(ctx.stage_audit_trail),
+                "commit_stage": ctx.state.commit_receipt.get("commit_stage", "answer.commit"),
             },
         )
         append_pipeline_snapshot("answer.commit", ctx.state)
