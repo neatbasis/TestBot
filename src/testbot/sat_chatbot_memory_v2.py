@@ -69,6 +69,9 @@ from testbot.history_packer import PackedHistory, labeled_history_claims, pack_c
 from testbot.response_planner import build_response_plan, plan_to_dict, render_response_plan_block
 from testbot.reject_taxonomy import RejectSignal, derive_reject_signal
 from testbot.canonical_turn_orchestrator import CanonicalStage, CanonicalTurnContext, CanonicalTurnOrchestrator
+from testbot.turn_observation import observe_turn
+from testbot.candidate_encoding import encode_turn_candidates
+from testbot.stabilization import StabilizedTurnState, stabilize_pre_route
 from testbot.context_resolution import resolve as resolve_context
 from testbot.intent_resolution import resolve as resolve_intent
 from testbot.policy_decision import decide as decide_policy
@@ -790,6 +793,7 @@ def stage_rerank(
     user_reflection_doc_id: str,
     near_tie_delta: float,
     clock: Clock,
+    io_channel: str = "cli",
 ) -> tuple[PipelineState, list[Document]]:
     now = clock.now()
     temporal_bridge = _resolve_temporal_anaphora_bridge(
@@ -2503,13 +2507,13 @@ def _run_canonical_turn_pipeline(
     classified_intent: IntentType,
     resolved_intent: IntentType,
     intent_label: str,
-    u_id: str,
-    u_ref_id: str,
+    turn_id: str,
     near_tie_delta: float,
     chat_history: deque[ChatMsg],
     capability_status: CapabilityStatus,
     capability_snapshot: CapabilitySnapshot,
     clock: Clock,
+    io_channel: str = "cli",
 ) -> tuple[PipelineState, list[Document]]:
     policy_decision = decide_policy(utterance=utterance, intent=resolved_intent)
     context = CanonicalTurnContext(
@@ -2520,8 +2524,7 @@ def _run_canonical_turn_pipeline(
             "intent_classified": classified_intent.value,
             "intent_resolved": resolved_intent.value,
             "policy_decision": policy_decision,
-            "u_id": u_id,
-            "u_ref_id": u_ref_id,
+            "turn_id": turn_id,
             "docs_and_scores": [],
             "hits": [],
             "ambiguity_score": 0.0,
@@ -2530,6 +2533,14 @@ def _run_canonical_turn_pipeline(
 
     def _observe_turn(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
         _validate_and_log_transition(validate_observe_pre(ctx.state))
+        observation = observe_turn(
+            ctx.state,
+            turn_id=ctx.artifacts["turn_id"],
+            observed_at=clock.now().isoformat(),
+            speaker="user",
+            channel=io_channel,
+        )
+        ctx.artifacts["turn_observation"] = observation
         ctx.state = observe_stage(ctx.state)
         _validate_and_log_transition(validate_observe_post(ctx.state))
         append_pipeline_snapshot("observe", ctx.state)
@@ -2538,22 +2549,45 @@ def _run_canonical_turn_pipeline(
     def _encode_candidates(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
         if ctx.artifacts["policy_decision"].requires_retrieval:
             _validate_and_log_transition(validate_encode_pre(ctx.state))
-            ctx.state = encode_stage(llm, ctx.state)
-            _validate_and_log_transition(validate_encode_post(ctx.state))
-            append_session_log("query_rewrite_output", {"utterance": utterance, "query": ctx.state.rewritten_query})
+            rewritten_state = encode_stage(llm, ctx.state)
+            _validate_and_log_transition(validate_encode_post(rewritten_state))
+            rewritten_query = rewritten_state.rewritten_query
+            append_session_log("query_rewrite_output", {"utterance": utterance, "query": rewritten_query})
         else:
-            ctx.state = replace(ctx.state, rewritten_query=ctx.state.user_input)
+            rewritten_query = ctx.state.user_input
             append_session_log(
                 "query_rewrite_output",
-                {"utterance": utterance, "query": ctx.state.rewritten_query, "skipped": True},
+                {"utterance": utterance, "query": rewritten_query, "skipped": True},
             )
+
+        encoded = encode_turn_candidates(
+            ctx.state,
+            observation=ctx.artifacts["turn_observation"],
+            rewritten_query=rewritten_query,
+        )
+        ctx.artifacts["encoded_candidates"] = encoded
+        ctx.state = replace(
+            ctx.state,
+            rewritten_query=encoded.rewritten_query,
+            candidate_facts=encoded.as_artifact_payload(),
+        )
         append_pipeline_snapshot("rewrite", ctx.state)
         return ctx
 
     def _stabilize_pre_route(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
         planning_descriptor = planning_pathway_for_intent(resolved_intent, extract_intent_facets(utterance))
         response_plan = build_response_plan(descriptor=planning_descriptor, user_input=utterance)
-        ctx.state = replace(ctx.state, response_plan=plan_to_dict(response_plan))
+        reflection_yaml = generate_reflection_yaml(llm, speaker="user", text=utterance)
+        ctx.state, stabilized = stabilize_pre_route(
+            store=store,
+            state=ctx.state,
+            observation=ctx.artifacts["turn_observation"],
+            encoded=ctx.artifacts["encoded_candidates"],
+            response_plan=plan_to_dict(response_plan),
+            reflection_yaml=reflection_yaml,
+            store_doc_fn=store_doc,
+        )
+        ctx.artifacts["stabilized_turn_state"] = stabilized
         append_pipeline_snapshot("stabilize", ctx.state)
         return ctx
 
@@ -2580,9 +2614,12 @@ def _run_canonical_turn_pipeline(
     def _retrieve_evidence(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
         if ctx.artifacts["policy_decision"].requires_retrieval:
             _validate_and_log_transition(validate_retrieve_pre(ctx.state))
-            retrieval_exclude_doc_ids = {ctx.artifacts["u_id"], ctx.artifacts["u_ref_id"]}
-            retrieval_exclude_source_ids = {ctx.artifacts["u_id"]}
-            retrieval_exclude_turn_scoped_ids = {ctx.artifacts["u_id"], ctx.artifacts["u_ref_id"]}
+            same_turn_exclusion_doc_ids = set(ctx.state.same_turn_exclusion.get("excluded_doc_ids", []))
+            retrieval_exclude_doc_ids = same_turn_exclusion_doc_ids
+            retrieval_exclude_source_ids = {
+                ctx.artifacts["stabilized_turn_state"].utterance_doc_id,
+            }
+            retrieval_exclude_turn_scoped_ids = same_turn_exclusion_doc_ids
             ctx.state, docs_and_scores = stage_retrieve(
                 store,
                 ctx.state,
@@ -2628,12 +2665,13 @@ def _run_canonical_turn_pipeline(
     def _policy_decide(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
         if ctx.artifacts["policy_decision"].requires_retrieval:
             _validate_and_log_transition(validate_rerank_pre(ctx.state))
+            stabilized: StabilizedTurnState = ctx.artifacts["stabilized_turn_state"]
             ctx.state, hits = stage_rerank(
                 ctx.state,
                 ctx.artifacts["docs_and_scores"],
                 utterance=utterance,
-                user_doc_id=u_id,
-                user_reflection_doc_id=u_ref_id,
+                user_doc_id=stabilized.utterance_doc_id,
+                user_reflection_doc_id=stabilized.reflection_doc_id,
                 near_tie_delta=near_tie_delta,
                 clock=clock,
             )
@@ -2815,57 +2853,7 @@ def _run_chat_loop(
             confidence_decision=intent_classifier_metrics,
         )
         append_pipeline_snapshot("ingest", state)
-
-            # -----------------------
-            # 1) Store user utterance card + reflection card
-            # -----------------------
-        now_iso = clock.now().isoformat()
-        u_id = str(uuid.uuid4())
-
-        u_card = make_utterance_card(
-            ts_iso=now_iso,
-            speaker="user",
-            text=utterance,
-            doc_id=u_id,
-            channel=io_channel,
-        )
-        store_doc(
-            store,
-            doc_id=u_id,
-            content=u_card,
-            metadata={
-                "ts": now_iso,
-                "type": "user_utterance",
-                "speaker": "user",
-                "channel": io_channel,
-                "doc_id": u_id,
-                "raw": utterance,
-            },
-        )
-
-        u_ref_yaml = generate_reflection_yaml(llm, speaker="user", text=utterance)
-        u_ref_ts = clock.now().isoformat()
-        u_ref_id = str(uuid.uuid4())
-
-        u_ref_card = make_reflection_card(
-            ts_iso=u_ref_ts,
-            about="user",
-            source_doc_id=u_id,
-            doc_id=u_ref_id,
-            reflection_yaml=u_ref_yaml,
-        )
-        store_doc(
-            store,
-            doc_id=u_ref_id,
-            content=u_ref_card,
-            metadata={
-                "ts": u_ref_ts,
-                "type": "reflection",
-                "about": "user",
-                "source_doc_id": u_id,
-                "doc_id": u_ref_id,
-            },
-        )
+        turn_id = str(uuid.uuid4())
 
         state, hits = _run_canonical_turn_pipeline(
             llm=llm,
@@ -2875,13 +2863,13 @@ def _run_chat_loop(
             classified_intent=classified_intent,
             resolved_intent=resolved_intent,
             intent_label=intent_label,
-            u_id=u_id,
-            u_ref_id=u_ref_id,
+            turn_id=turn_id,
             near_tie_delta=near_tie_delta,
             chat_history=chat_history,
             capability_status=capability_status,
             capability_snapshot=capability_snapshot,
             clock=clock,
+            io_channel=io_channel,
         )
 
         ambiguity_score = _ambiguity_score(state.confidence_decision)
@@ -2962,7 +2950,7 @@ def _run_chat_loop(
             # -----------------------
             # 4) Store assistant utterance card + reflection card
             # -----------------------
-        last_user_message_ts = now_iso
+        last_user_message_ts = clock.now().isoformat()
         chat_history.append({"role": "user", "content": utterance})
         chat_history.append({"role": "assistant", "content": state.final_answer})
         prior_pipeline_state = state
@@ -3021,7 +3009,7 @@ def _run_satellite_mode(
 
         def _read() -> str | None:
             res = ask_question(
-                channel="satellite",
+                channel=io_channel,
                 spec=AskSpec(
                     question="Ask one memory-grounded question.",
                     answers=None,
