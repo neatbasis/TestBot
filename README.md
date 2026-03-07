@@ -50,19 +50,32 @@ Authoritative grounding/intent references:
 - For current validation expectations, see [docs/testing.md](docs/testing.md).
 - For roadmap and delivery status, see [docs/roadmap/](docs/roadmap/).
 
-## Setup
+## Setup by persona
 From the repository root:
 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
 pip install -U pip
+```
+
+### Operator / runtime only
+
+Install only runtime dependencies:
+
+```bash
 pip install -e .
+```
+
+### Contributor / QA (validation enabled)
+
+Install the canonical contributor environment:
+
+```bash
 pip install -e .[dev]
 ```
 
-`behave` is installed via the `dev` extra, so install this before running behavior scenarios.
-Treat missing `behave` as a setup failure (not an acceptable skip): canonical validation is fail-closed on BDD.
+`.[dev]` includes runtime dependencies plus validation tooling (for example `pytest` and `behave`). If `behave` is missing, your setup is incomplete—see the canonical note in [docs/testing.md](docs/testing.md#bdd-tooling-health-check-canonical).
 
 For full environment prerequisites and `.env` variables, use [docs/quickstart.md](docs/quickstart.md).
 
@@ -114,9 +127,8 @@ python scripts/all_green_gate.py
 
 For non-live code changes, use this offline/deterministic gate:
 
-1. `pip install -e .`
-2. `pip install -e .[dev]`
-3. `python scripts/all_green_gate.py`
+1. `pip install -e .[dev]`
+2. `python scripts/all_green_gate.py`
 
 See [docs/testing.md](docs/testing.md) for test-layer policy and acceptance criteria.
 

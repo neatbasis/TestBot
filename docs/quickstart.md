@@ -39,17 +39,21 @@ Use ISSUE-0012 only as linked historical delivery-planning context.
    pip install -U pip
    ```
 
-2. Install project dependencies.
+2. Install project dependencies by persona.
+
+   Operator/runtime-only install:
 
    ```bash
    pip install -e .
    ```
 
-   Optional development extras:
+   Contributor/QA install (includes runtime dependencies and validation tooling):
 
    ```bash
    pip install -e .[dev]
    ```
+
+   If `behave` is missing, your setup is incomplete—follow the canonical note in [docs/testing.md](testing.md#bdd-tooling-health-check-canonical).
 
 3. Start Ollama and pull required models.
 

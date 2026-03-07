@@ -37,8 +37,7 @@ Use BDD to validate externally visible outcomes:
 - Assistant uses progressive fallback when memory is insufficient: ask one targeted clarifier or offer at least two capability-based alternatives; reserve exact `I don't know from memory.` for explicit deny/safety-only cases.
 - Time-aware retrieval behavior matches expected outcomes for representative phrasing.
 
-`behave` is mandatory for canonical merge validation. If `behave` is missing, treat that as a local setup defect and
-fix it with `pip install -e .[dev]` before considering validation complete.
+`behave` is mandatory for canonical merge validation. If `behave` is missing, your environment is not ready; use the canonical remediation in [BDD tooling health check (canonical)](#bdd-tooling-health-check-canonical).
 
 Recommended layout:
 
@@ -90,9 +89,10 @@ Use the following canonical commands from repository root.
 
 For non-live changes, this is the expected offline/deterministic contributor gate:
 
-1. `pip install -e .`
-2. `pip install -e .[dev]`
-3. `python scripts/all_green_gate.py`
+1. `pip install -e .[dev]`
+2. `python scripts/all_green_gate.py`
+
+`pip install -e .[dev]` is the canonical contributor install command and includes runtime dependencies plus development/validation tooling.
 
 `scripts/all_green_gate.py` is the only authoritative command sequence for merge readiness. By default it runs a **fast** profile that preserves category coverage while avoiding redundant targeted checks already covered by broader suites (for example, `pytest -m "not live_smoke"` and full `behave`).
 
@@ -113,6 +113,19 @@ The canonical gate (`scripts/all_green_gate.py`) supports KPI rollout controls v
 | Governance / issue linkage checks | `python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main` | Local git metadata + docs/issues files | **Executed by canonical gate (component check)** | ~1-5s | Exit code `0`; non-trivial PR/commit metadata include `ISSUE-XXXX`; canonical fields are non-placeholder; required issue section bodies are non-empty; red-severity ownership/sprint/status and RED_TAG consistency checks pass. |
 | Policy compatibility checks | `python scripts/validate_issues.py --all-issue-files --base-ref origin/main` | Local git metadata + docs/issues files | **Executed by canonical gate (component check)** | ~1-5s | Exit code `0`; compatibility validator reports no missing canonical sections and no red-tag owner/sprint gaps. |
 | Optional live smoke profile | `pytest -m live_smoke` | Reachable Home Assistant + Ollama endpoints and any required env vars/secrets | **Optional (post-merge/manual gate)** | ~1-5 min depending on services | Exit code `0`; no infra/auth/connectivity errors; end-to-end smoke assertions pass. |
+
+
+### BDD tooling health check (canonical)
+
+If `behave` is missing, your setup is incomplete.
+
+Fix contributor environments with:
+
+```bash
+pip install -e .[dev]
+```
+
+Do not treat missing `behave` as an acceptable skip for canonical validation.
 
 ### Dependency policy for test tooling
 
@@ -159,7 +172,7 @@ Validate invariant mirror sync only (non-zero on mismatch):
 python scripts/sync_invariants_mirror.py --check
 ```
 
-Run BDD scenarios directly (requires `pip install -e .[dev]` first):
+Run BDD scenarios directly (requires canonical contributor install `pip install -e .[dev]` first):
 
 ```bash
 python -m behave
