@@ -152,3 +152,31 @@ capabilities:
     assert capability["capability_id"] == "governance_readiness_gate"
     assert capability["relevant_open_issues"][0]["id"] == "ISSUE-0007"
     assert summary_payload["open_issue_count"] == 1
+
+
+def test_build_report_renders_gate_stale_warning_with_refresh_hint(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(report_feature_status, "REPO_ROOT", tmp_path)
+
+    report_markdown, summary = report_feature_status.build_report(
+        contract={"capabilities": []},
+        gate_results={},
+        open_issues=[],
+        roadmap_priorities={},
+        generated_at_utc="2026-03-07T00:00:00Z",
+        input_paths={
+            "contract_path": "docs/qa/feature-status.yaml",
+            "gate_summary_path": "artifacts/all-green-gate-summary.json",
+            "issues_dir": "docs/issues",
+            "roadmap_dir": "docs/roadmap",
+        },
+        source_file_metadata={"contract": None, "gate_summary": None, "open_issues": []},
+        gate_stale_warning=(
+            "Gate summary appears older than one or more source files "
+            "(contract or open issue records); regenerate gate evidence for freshest status. "
+            "Hint: run `python scripts/all_green_gate.py --continue-on-failure --json-output artifacts/all-green-gate-summary.json` "
+            "to refresh `artifacts/all-green-gate-summary.json`."
+        ),
+    )
+
+    assert "Hint: run `python scripts/all_green_gate.py --continue-on-failure --json-output artifacts/all-green-gate-summary.json`" in report_markdown
+    assert summary["warnings"]
