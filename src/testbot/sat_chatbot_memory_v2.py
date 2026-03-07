@@ -1351,7 +1351,14 @@ def evaluate_alignment_decision(
     unsafe_request = is_unsafe_user_request(user_input)
     observed_margin, required_margin, confidence_margin_normalized = _candidate_margin_normalized()
 
-    citation_validity = 1.0 if (contract_exempt_response or not raw_claim_text_detected or has_citation) else 0.0
+    citation_required_for_mode = raw_claim_text_detected and not contract_exempt_response
+    citation_check_applicable = citation_required_for_mode
+    if citation_required_for_mode:
+        citation_validity = 1.0 if has_citation else 0.0
+    elif raw_claim_text_detected:
+        citation_validity = 0.5
+    else:
+        citation_validity = 0.0
     factual_grounding_reliability = _clamp01((0.65 * citation_validity) + (0.35 * confidence_margin_normalized))
     safety_compliance_strictness = 0.0 if (unsafe_request and final_answer != DENY_ANSWER) else 1.0
 
@@ -1381,12 +1388,14 @@ def evaluate_alignment_decision(
         "basis_statement_non_empty": bool((basis_statement or "").strip()),
     }
     passed_required_checks = sum(1 for passed in required_provenance_checks.values() if passed)
-    provenance_transparency = 1.0 if not is_non_trivial_answer(final_answer) else _clamp01(
+    provenance_transparency = 0.0 if not is_non_trivial_answer(final_answer) else _clamp01(
         passed_required_checks / float(len(required_provenance_checks))
     )
 
     if safety_compliance_strictness < 1.0:
         final_alignment_decision = "deny"
+    elif contract_exempt_response:
+        final_alignment_decision = "allow"
     elif factual_grounding_reliability < 0.6:
         final_alignment_decision = "fallback"
     elif response_utility < 0.5:
@@ -1412,6 +1421,8 @@ def evaluate_alignment_decision(
                 "has_claims": has_claims,
                 "raw_claim_like_text_detected": raw_claim_text_detected,
                 "has_required_memory_citation": has_citation,
+                "citation_required_for_mode": citation_required_for_mode,
+                "citation_check_applicable": citation_check_applicable,
                 "context_confident": context_confident,
                 "unsafe_request": unsafe_request,
                 "confidence_margin_observed": round(observed_margin, 4),
