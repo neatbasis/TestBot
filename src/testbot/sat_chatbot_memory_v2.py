@@ -1352,6 +1352,28 @@ def _format_debug_turn_trace(*, state: PipelineState, intent_label: str, hits: l
     if verbose:
         return "[debug] " + json.dumps(payload, ensure_ascii=False, sort_keys=True)
 
+    def _metric_fragment(label: str, gate: dict[str, object]) -> str:
+        score = float(gate.get("score", 0.0) or 0.0)
+        threshold = float(gate.get("threshold", 0.0) or 0.0)
+        return f"{label}={score:.3f}>{threshold:.3f}" if bool(gate.get("passed", False)) else f"{label}={score:.3f}<{threshold:.3f}"
+
+    rerank = payload["debug.rerank"]
+    confidence = payload["debug.confidence"]
+    policy = payload["debug.policy"]
+    top1_metric = _metric_fragment("top1", rerank["top_final_score_gate"])
+    context_metric = _metric_fragment("context_conf", confidence["context_confident_gate"])
+    margin_metric = _metric_fragment("margin", rerank["margin_gate"])
+
+    nearest_failure_fragment = ""
+    nearest_failure_gate = policy.get("nearest_failure_gate")
+    if bool(policy.get("rejected_turn", False)) and isinstance(nearest_failure_gate, dict):
+        gate_name = str(nearest_failure_gate.get("gate", ""))
+        gate_margin = float(nearest_failure_gate.get("margin_to_pass", 0.0) or 0.0)
+        nearest_failure_fragment = f" nearest_failure={gate_name}:+{gate_margin:.3f};"
+
+    retrieved_doc_ids = payload["debug.retrieval"]["retrieved_doc_ids"]
+    retrieved_doc_ids_compact = retrieved_doc_ids[:3] if isinstance(retrieved_doc_ids, list) else retrieved_doc_ids
+
     return (
         "[debug] "
         f"intent={payload['debug.intent']['resolved']}; "
@@ -1360,8 +1382,12 @@ def _format_debug_turn_trace(*, state: PipelineState, intent_label: str, hits: l
         f"retrieval_branch={payload['debug.retrieval']['branch']}; "
         f"context_confident={payload['debug.confidence']['context_confident_gate']['passed']}; "
         f"ambiguity_detected={not payload['debug.rerank']['ambiguity_gate']['passed']}; "
+        f"{top1_metric}; "
+        f"{context_metric}; "
+        f"{margin_metric};"
+        f"{nearest_failure_fragment} "
         f"rewritten_query={payload['debug.rewrite']['rewritten_query']!r}; "
-        f"retrieved_doc_ids={payload['debug.retrieval']['retrieved_doc_ids']}; "
+        f"retrieved_doc_ids={retrieved_doc_ids_compact}; "
         f"reject_code={payload['debug.policy']['reject_code']}; "
         f"partition={payload['debug.policy']['partition']}; "
         f"blocker_reason={payload['debug.policy']['blocker_reason']}."
