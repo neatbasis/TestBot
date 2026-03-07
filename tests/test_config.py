@@ -38,9 +38,9 @@ def test_config_loads_dotenv_from_testbot_home(tmp_path: Path) -> None:
         capture_output=True,
         text=True,
         env={
-            **dict(os.environ),
             "HOME": str(tmp_path),
             "PYTHONPATH": str(Path.cwd() / "src"),
+            "PATH": os.environ.get("PATH", ""),
         },
         check=False,
     )

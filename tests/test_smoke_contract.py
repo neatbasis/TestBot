@@ -97,7 +97,12 @@ def test_live_smoke_runner_writes_contract_artifacts(tmp_path: Path) -> None:
         "--report-md",
     ]
 
-    completed = subprocess.run(command, capture_output=True, text=True, env={**dict(os.environ), "HOME": str(tmp_path)})
+    completed = subprocess.run(
+        command,
+        capture_output=True,
+        text=True,
+        env={"HOME": str(tmp_path), "PATH": os.environ.get("PATH", "")},
+    )
     assert completed.returncode == 1
 
     summary_path = output_dir / "smoke-summary.json"
@@ -162,7 +167,12 @@ def test_live_smoke_report_lists_validated_capabilities(tmp_path: Path) -> None:
             "--report-md",
         ]
 
-        completed = subprocess.run(command, capture_output=True, text=True, env={**dict(os.environ), "HOME": str(tmp_path)})
+        completed = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            env={"HOME": str(tmp_path), "PATH": os.environ.get("PATH", "")},
+        )
         assert completed.returncode == 0
 
     summary = json.loads((output_dir / "smoke-summary.json").read_text(encoding="utf-8"))
@@ -208,6 +218,11 @@ def test_live_smoke_runner_fails_with_clear_env_error(tmp_path: Path) -> None:
         "--checks-file",
         str(checks_file),
     ]
-    completed = subprocess.run(command, capture_output=True, text=True, env={**dict(os.environ), "HOME": str(tmp_path)})
+    completed = subprocess.run(
+        command,
+        capture_output=True,
+        text=True,
+        env={"HOME": str(tmp_path), "PATH": os.environ.get("PATH", "")},
+    )
     assert completed.returncode == 2
     assert "Missing required environment file" in completed.stdout
