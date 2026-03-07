@@ -46,6 +46,14 @@ The `knowing_grounded_answers` capability remains `partial`. ISSUE-0009 is the p
 - [ ] **Remaining delta: debug reason accuracy** — ensure debug/trace reason values reflect true confidence/ambiguity branch decisions for memory-recall turns.
 - [ ] Regenerate report/status artifacts with existing scripts only after acceptance criteria 1-3 are fully implemented and validated as passing.
 
+### Remaining delta stage map
+
+| Remaining delta item | Canonical stage | Why this stage is authoritative |
+| --- | --- | --- |
+| confident memory-recall recovery | `policy.decide` | Tie-break and ambiguity routing are decision-time controls that determine whether memory recall proceeds, clarifies, or falls back. |
+| citation-context format | `answer.render` | Citation/provenance string shape is a rendered-output contract and must be deterministic in user-facing response text. |
+| debug reason accuracy | `answer.validate` | Branch reason strings should be validated against confidence and ambiguity outcomes before final rendering/commit. |
+
 - Sequence memory/provenance deltas against ISSUE-0012 Sprint 3 and Sprint 5 checkpoints so pre-route stabilization and answer validation changes are reviewed together.
 
 ## Verification

@@ -207,6 +207,7 @@ def step_when_source_confidence_insufficient(context) -> None:
             "general_knowledge_contract_valid": True,
             "answer_mode": "assist",
             "fallback_action": "OFFER_CAPABILITY_ALTERNATIVES",
+            "answer_policy_rationale": {"fallback_reason": "non_memory_low_source_confidence"},
         },
     )
     _run_contract_checks(context)
@@ -229,6 +230,7 @@ def step_when_source_evidence_low_confidence_after_retrieval(context) -> None:
             "general_knowledge_contract_valid": True,
             "answer_mode": "assist",
             "fallback_action": "OFFER_CAPABILITY_ALTERNATIVES",
+            "answer_policy_rationale": {"fallback_reason": "insufficient_reliable_memory"},
         },
     )
     _run_contract_checks(context)
@@ -255,6 +257,7 @@ def step_when_source_evidence_conflicts_across_candidates(context) -> None:
             "general_knowledge_contract_valid": True,
             "answer_mode": "clarify",
             "fallback_action": "ASK_CLARIFYING_QUESTION",
+            "answer_policy_rationale": {"fallback_reason": "ambiguous_memory_candidates_without_ask"},
         },
     )
     _run_contract_checks(context)
@@ -668,3 +671,9 @@ def step_then_decision_outcomes_include_clarify_and_repair(context) -> None:
     decisions = {decision.decision_class.value for decision in context.typed_decisions}
     assert "ask_for_clarification" in decisions
     assert "continue_repair_reconstruction" in decisions
+
+
+@then('the fallback reason should be "{fallback_reason}"')
+def step_then_fallback_reason_should_be(context, fallback_reason: str) -> None:
+    rationale = context.pipeline_state.invariant_decisions.get("answer_policy_rationale", {})
+    assert rationale.get("fallback_reason") == fallback_reason

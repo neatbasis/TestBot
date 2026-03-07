@@ -342,3 +342,8 @@ def step_then_debug_counterfactuals_include_threshold_and_routing_checks(context
         "ask_clarifying_question_passes": False,
         "route_to_ask_passes": False,
     }
+
+
+@then('the policy rationale fallback reason should be "{fallback_reason}"')
+def step_then_policy_rationale_fallback_reason(context, fallback_reason: str) -> None:
+    assert context.answer_policy_decision.rationale.get("fallback_reason") == fallback_reason

@@ -2227,7 +2227,7 @@ def collect_used_memory_refs(hits: list[Document]) -> list[str]:
             continue
         ts = str(d.metadata.get("ts") or "").strip()
         refs.append(f"{doc_id}@{ts}" if ts else doc_id)
-    return list(dict.fromkeys(refs))
+    return sorted(dict.fromkeys(refs))
 
 
 def collect_used_source_evidence_refs(hits: list[Document]) -> tuple[list[str], list[dict[str, str]]]:
@@ -2247,8 +2247,9 @@ def collect_used_source_evidence_refs(hits: list[Document]) -> tuple[list[str], 
             "trust_tier": str(d.metadata.get("trust_tier") or ""),
         }
         attributions.append(attribution)
-    deduped_refs = list(dict.fromkeys(refs))
+    deduped_refs = sorted(dict.fromkeys(refs))
     deduped_attributions = list({json.dumps(item, sort_keys=True): item for item in attributions}.values())
+    deduped_attributions.sort(key=lambda item: (item.get("doc_id", ""), item.get("source_uri", ""), item.get("retrieved_at", "")))
     return deduped_refs, deduped_attributions
 
 

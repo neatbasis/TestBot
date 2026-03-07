@@ -45,6 +45,14 @@ The `unknowing_safe_fallback` capability is still marked `partial`. ISSUE-0010 i
 - [ ] **Remaining delta: debug reason accuracy** — reconcile debug/trace reason strings so low-confidence and unknown branches report accurate reasons for fallback decisions.
 - [ ] Regenerate report/status artifacts with existing scripts only after acceptance criteria 1-3 are fully implemented and validated as passing.
 
+### Remaining delta stage map
+
+| Remaining delta item | Canonical stage | Why this stage is authoritative |
+| --- | --- | --- |
+| confident memory-recall recovery | `policy.decide` | Upstream confidence recovery and ambiguity handling determine whether unknowing fallback is entered for memory-recall turns. |
+| citation-context format | `answer.render` | Uncertainty and provenance/basis wording is a rendered-output contract that must stay deterministic across channels. |
+| debug reason accuracy | `answer.validate` | Low-confidence vs unknown-branch reason strings should be validated against policy outcomes before render/commit. |
+
 - Track fallback-contract completion as a dependency of ISSUE-0012 Sprint 4/5 review checkpoints for decision-answer alignment and commit-state consistency.
 
 ## Verification

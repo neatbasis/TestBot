@@ -289,3 +289,8 @@ def test_eval_runtime_parity_fixture_families() -> None:
             assert runtime["context_confident"] is bool(expected["context_confident"]), fixture["fixture_id"]
         if "near_tie_min_count" in expected:
             assert len(runtime["near_tie_candidates"]) >= int(expected["near_tie_min_count"]), fixture["fixture_id"]
+
+
+def test_structured_mode_distinguishes_ambiguous_and_low_confidence_dont_know() -> None:
+    assert _structured_mode({"intent": "dont-know", "ambiguity_detected": True}) == "dont-know-ambiguous"
+    assert _structured_mode({"intent": "dont-know", "ambiguity_detected": False}) == "dont-know-low-confidence"

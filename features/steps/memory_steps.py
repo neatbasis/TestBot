@@ -448,3 +448,10 @@ def step_then_stabilization_provides_same_turn_exclusion_doc_ids(context) -> Non
 def step_then_stabilization_candidate_facts_include_name(context) -> None:
     assert any(f.key == "user_name" and f.value == "Sebastian" for f in context.canonical_encoded.facts)
 
+
+
+@then("the response includes deterministic citation-context formatting")
+def step_then_deterministic_citation_context_formatting(context) -> None:
+    refs = list(context.pipeline_state.used_memory_refs)
+    assert refs == sorted(refs)
+    assert all("@" in ref for ref in refs)
