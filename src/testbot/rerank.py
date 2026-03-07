@@ -519,7 +519,9 @@ def rerank_objective_score_components(
         "objective": _objective_label(active_config),
         "objective_version": active_config.objective_version,
         "semantic_score": float(sim_score),
+        "semantic_similarity": float(sim_score),
         "temporal_gaussian_weight": float(temporal_gaussian_weight),
+        "time_decay_freshness": float(temporal_gaussian_weight),
         "temporal_blend": float(temporal_blend),
         "timestamp_quality": timestamp_quality,
         "type_prior": float(type_prior),
@@ -627,15 +629,22 @@ def rerank_docs_with_time_and_type_outcome(
         lane_quotas=lane_quotas,
     )
     docs = [doc for doc, _ in fused_docs_and_scores]
-    component_by_doc_id: dict[str, dict[str, float | str]] = {
-        _doc_id(doc): {
-            "doc_id": _doc_id(doc),
-            "doc_type": str(doc.metadata.get("type") or ""),
-            "ts": str(doc.metadata.get("ts") or ""),
+    threshold = rerank_confidence_thresholds().top_final_score_min
+    component_by_doc_id: dict[str, dict[str, float | str]] = {}
+    for score, doc, components in scored:
+        doc_id = _doc_id(doc)
+        metadata = doc.metadata if isinstance(doc.metadata, dict) else {}
+        has_provenance_fields = bool(doc_id and str(metadata.get("ts") or ""))
+        provenance_citation_factor = 1.0 if has_provenance_fields else 0.85
+        component_by_doc_id[doc_id] = {
+            "doc_id": doc_id,
+            "doc_type": str(metadata.get("type") or ""),
+            "ts": str(metadata.get("ts") or ""),
+            "provenance_citation_factor": float(provenance_citation_factor),
+            "threshold": float(threshold),
+            "passes_threshold": bool(float(components.get("final_score", 0.0) or 0.0) >= threshold),
             **components,
         }
-        for score, doc, components in scored
-    }
     scored_candidates = [component_by_doc_id.get(_doc_id(doc), {}) for doc, _ in fused_docs_and_scores]
 
     near_tie_candidates: list[dict[str, float | str]] = []

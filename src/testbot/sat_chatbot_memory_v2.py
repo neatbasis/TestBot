@@ -548,6 +548,132 @@ def stage_retrieve(store: MemoryStore, state: PipelineState) -> tuple[PipelineSt
     return replace(state, retrieval_candidates=retrieval_candidates), docs_and_scores
 
 
+_ANAPHORA_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"\bit\b", re.IGNORECASE),
+    re.compile(r"\bthat\b", re.IGNORECASE),
+)
+
+
+def _contains_anaphora_cue(utterance: str) -> bool:
+    text = utterance or ""
+    return any(pattern.search(text) is not None for pattern in _ANAPHORA_PATTERNS)
+
+
+def _contains_elapsed_time_cue(utterance: str) -> bool:
+    text = (utterance or "").lower()
+    return "how long ago" in text
+
+
+def _contains_yesterday_cue(utterance: str) -> bool:
+    return "yesterday" in (utterance or "").lower()
+
+
+def _humanize_seconds_delta(delta_seconds: int) -> str:
+    if delta_seconds < 60:
+        return f"{delta_seconds} seconds ago"
+    if delta_seconds < 3600:
+        minutes = max(1, round(delta_seconds / 60))
+        return f"{minutes} minutes ago"
+    if delta_seconds < 86400:
+        hours = max(1, round(delta_seconds / 3600))
+        return f"{hours} hours ago"
+    days = max(1, round(delta_seconds / 86400))
+    return f"{days} days ago"
+
+
+def _candidate_anchor_confidence(score: float) -> float:
+    return round(max(0.0, min(1.0, float(score))), 4)
+
+
+def _resolve_temporal_anaphora_bridge(
+    *,
+    utterance: str,
+    docs_and_scores: list[tuple[Document, float]],
+    now: arrow.Arrow,
+) -> dict[str, object]:
+    anaphora_detected = _contains_anaphora_cue(utterance)
+    elapsed_time_cue = _contains_elapsed_time_cue(utterance)
+    yesterday_cue = _contains_yesterday_cue(utterance)
+
+    anchor_candidates: list[dict[str, object]] = []
+    for doc, score in docs_and_scores[:5]:
+        metadata = doc.metadata if isinstance(doc.metadata, dict) else {}
+        anchor_candidates.append(
+            {
+                "doc_id": str(doc.id or metadata.get("doc_id") or ""),
+                "ts": str(metadata.get("ts") or ""),
+                "confidence": _candidate_anchor_confidence(score),
+            }
+        )
+
+    selected_anchor = anchor_candidates[0] if anchor_candidates else {"doc_id": "", "ts": "", "confidence": 0.0}
+    selected_anchor_ts = str(selected_anchor.get("ts") or "")
+    selected_anchor_doc_id = str(selected_anchor.get("doc_id") or "")
+
+    delta_seconds: int | None = None
+    if selected_anchor_ts and elapsed_time_cue:
+        try:
+            anchor_ts = arrow.get(selected_anchor_ts)
+            delta_seconds = max(0, int((now - anchor_ts).total_seconds()))
+        except Exception:
+            delta_seconds = None
+
+    target_override_ts = ""
+    if selected_anchor_ts and (anaphora_detected or elapsed_time_cue):
+        target_override_ts = selected_anchor_ts
+
+    window_start = ""
+    window_end = ""
+    if yesterday_cue:
+        window_start = now.shift(days=-1).floor("day").isoformat()
+        window_end = now.shift(days=-1).ceil("day").isoformat()
+
+    return {
+        "anaphora_detected": anaphora_detected,
+        "anchor_candidates": anchor_candidates,
+        "selected_anchor_doc_id": selected_anchor_doc_id,
+        "selected_anchor_ts": selected_anchor_ts,
+        "target_override_ts": target_override_ts,
+        "delta_seconds_raw": delta_seconds,
+        "delta_humanized": _humanize_seconds_delta(delta_seconds) if delta_seconds is not None else "",
+        "elapsed_time_cue": elapsed_time_cue,
+        "time_window": "yesterday" if yesterday_cue else "",
+        "window_start": window_start,
+        "window_end": window_end,
+    }
+
+
+def _filter_docs_for_temporal_window(
+    *,
+    docs_and_scores: list[tuple[Document, float]],
+    bridge: dict[str, object],
+) -> list[tuple[Document, float]]:
+    window_start = str(bridge.get("window_start") or "")
+    window_end = str(bridge.get("window_end") or "")
+    if not window_start or not window_end:
+        return docs_and_scores
+
+    try:
+        start_ts = arrow.get(window_start)
+        end_ts = arrow.get(window_end)
+    except Exception:
+        return docs_and_scores
+
+    filtered: list[tuple[Document, float]] = []
+    for doc, score in docs_and_scores:
+        metadata = doc.metadata if isinstance(doc.metadata, dict) else {}
+        raw_ts = str(metadata.get("ts") or "")
+        if not raw_ts:
+            continue
+        try:
+            doc_ts = arrow.get(raw_ts)
+        except Exception:
+            continue
+        if start_ts <= doc_ts <= end_ts:
+            filtered.append((doc, score))
+    return filtered
+
+
 def stage_rerank(
     state: PipelineState,
     docs_and_scores: list[tuple[Document, float]],
@@ -559,10 +685,25 @@ def stage_rerank(
     clock: Clock,
 ) -> tuple[PipelineState, list[Document]]:
     now = clock.now()
+    temporal_bridge = _resolve_temporal_anaphora_bridge(
+        utterance=utterance,
+        docs_and_scores=docs_and_scores,
+        now=now,
+    )
+    filtered_docs_and_scores = _filter_docs_for_temporal_window(
+        docs_and_scores=docs_and_scores,
+        bridge=temporal_bridge,
+    )
     target = parse_target_time(utterance, now=now)
+    target_override_ts = str(temporal_bridge.get("target_override_ts") or "")
+    if target_override_ts:
+        try:
+            target = arrow.get(target_override_ts)
+        except Exception:
+            pass
     sigma = adaptive_sigma_fractional(now=now, target=target, frac=0.25)
     rerank_outcome = rerank_docs_with_time_and_type_outcome(
-        docs_and_scores,
+        filtered_docs_and_scores,
         now=now,
         target=target,
         sigma_seconds=sigma,
@@ -580,6 +721,12 @@ def stage_rerank(
     confidence_decision = {
         "context_confident": has_context,
         "ambiguity_detected": rerank_outcome.ambiguity_detected,
+        "anaphora_detected": bool(temporal_bridge.get("anaphora_detected", False)),
+        "anchor_candidates": temporal_bridge.get("anchor_candidates", []),
+        "selected_anchor_doc_id": str(temporal_bridge.get("selected_anchor_doc_id") or ""),
+        "selected_anchor_ts": str(temporal_bridge.get("selected_anchor_ts") or ""),
+        "computed_delta_raw_seconds": temporal_bridge.get("delta_seconds_raw"),
+        "computed_delta_humanized": str(temporal_bridge.get("delta_humanized") or ""),
         "ambiguous_candidates": rerank_outcome.near_tie_candidates,
         "scored_candidates": rerank_outcome.scored_candidates,
         "memory_hit_count": len(hits),
@@ -592,6 +739,9 @@ def stage_rerank(
         "now_ts": now.isoformat(),
         "target_ts": target.isoformat(),
         "sigma_seconds": sigma,
+        "time_window": str(temporal_bridge.get("time_window") or ""),
+        "window_start": str(temporal_bridge.get("window_start") or ""),
+        "window_end": str(temporal_bridge.get("window_end") or ""),
     }
     return replace(state, reranked_hits=reranked_hits, confidence_decision=confidence_decision), hits
 
@@ -915,7 +1065,8 @@ def _build_debug_turn_payload(*, state: PipelineState, intent_label: str, hits: 
     doc_ids = [(doc.id or doc.metadata.get("doc_id") or "") for doc in hits[:3]]
     ambiguity_score = 1.0 if not ambiguity_detected else 0.0
     observed_docs: list[dict[str, object]] = []
-    for doc in hits[:3]:
+    score_decomposition: list[dict[str, object]] = []
+    for index, doc in enumerate(hits[:3]):
         metadata = doc.metadata if isinstance(doc.metadata, dict) else {}
         observed_docs.append(
             {
@@ -927,6 +1078,20 @@ def _build_debug_turn_payload(*, state: PipelineState, intent_label: str, hits: 
                 "source": str(metadata.get("source") or ""),
             }
         )
+        if isinstance(scored_candidates, list) and index < len(scored_candidates) and isinstance(scored_candidates[index], dict):
+            candidate = scored_candidates[index]
+            score_decomposition.append(
+                {
+                    "doc_id": str(candidate.get("doc_id") or doc.id or metadata.get("doc_id") or ""),
+                    "semantic_similarity": float(candidate.get("semantic_similarity", candidate.get("semantic_score", 0.0)) or 0.0),
+                    "time_decay_freshness": float(candidate.get("time_decay_freshness", candidate.get("temporal_gaussian_weight", 0.0)) or 0.0),
+                    "type_prior": float(candidate.get("type_prior", 0.0) or 0.0),
+                    "provenance_citation_factor": float(candidate.get("provenance_citation_factor", 0.0) or 0.0),
+                    "final_score": float(candidate.get("final_score", 0.0) or 0.0),
+                    "threshold": float(candidate.get("threshold", top_threshold) or 0.0),
+                    "passes_threshold": bool(candidate.get("passes_threshold", False)),
+                }
+            )
     policy_alternatives = _build_policy_alternatives(
         intent_label=intent_label,
         chosen_action=fallback_action,
@@ -995,6 +1160,7 @@ def _build_debug_turn_payload(*, state: PipelineState, intent_label: str, hits: 
                     "top_gate_threshold": round(top_threshold, 4),
                     "margin_gate_threshold": round(margin_threshold, 4),
                     "context_score": round(context_score, 4),
+                    "candidate_score_decomposition": score_decomposition,
                 },
                 "time_windows": {
                     "query_time_window": str(state.confidence_decision.get("time_window") or ""),
@@ -1006,7 +1172,11 @@ def _build_debug_turn_payload(*, state: PipelineState, intent_label: str, hits: 
                     "ambiguity_detected": ambiguity_detected,
                     "ambiguous_candidates": state.confidence_decision.get("ambiguous_candidates", []),
                     "anaphora_detected": bool(state.confidence_decision.get("anaphora_detected", False)),
-                    "anaphora_target": str(state.confidence_decision.get("anaphora_target") or ""),
+                    "candidate_anchors": state.confidence_decision.get("anchor_candidates", []),
+                    "selected_anchor_doc_id": str(state.confidence_decision.get("selected_anchor_doc_id") or ""),
+                    "selected_anchor_ts": str(state.confidence_decision.get("selected_anchor_ts") or ""),
+                    "computed_delta_raw_seconds": state.confidence_decision.get("computed_delta_raw_seconds"),
+                    "computed_delta_humanized": str(state.confidence_decision.get("computed_delta_humanized") or ""),
                 },
             }
         },

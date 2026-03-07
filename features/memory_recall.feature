@@ -23,3 +23,10 @@ Feature: Memory recall behavior
     Given a deterministic in-memory recall harness
     When equivalent top candidates remain after tie-break
     Then the assistant returns a bridging clarification response
+
+  Scenario: pronoun temporal follow-up resolves anchor before routing
+    Given a deterministic in-memory recall harness
+    And recall candidates include a recent anchor and older distractor
+    When the user asks a pronoun temporal follow-up "how long ago was it yesterday"
+    Then the temporal anaphora bridge selects the anchor before rerank
+    And the bridge emits elapsed delta and yesterday window details

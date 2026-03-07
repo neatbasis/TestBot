@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import arrow
+from langchain_core.documents import Document
 
 from testbot.pipeline_state import PipelineState
 from testbot.sat_chatbot_memory_v2 import stage_answer, stage_rerank
@@ -79,3 +80,72 @@ def test_parse_target_time_maps_ambiguous_temporal_phrases_deterministically() -
     assert parse_target_time("What did I mention earlier this week?", now=now) == now.floor("week")
     assert parse_target_time("What did I mention this morning?", now=now) == now.floor("day").shift(hours=+9)
     assert parse_target_time("What did I mention recently?", now=now) == now.shift(hours=-6)
+
+
+def test_stage_rerank_pronoun_elapsed_time_emits_anchor_and_delta() -> None:
+    frozen_now = arrow.get("2026-03-10T12:00:00+00:00")
+    state = PipelineState(user_input="How long ago was it?")
+    docs_and_scores = [
+        (
+            Document(
+                id="mem-1",
+                page_content="You mentioned it before",
+                metadata={"doc_id": "mem-1", "type": "user_utterance", "ts": "2026-03-10T11:30:00+00:00"},
+            ),
+            0.82,
+        )
+    ]
+
+    updated, hits = stage_rerank(
+        state,
+        docs_and_scores,
+        utterance="How long ago was it?",
+        user_doc_id="u1",
+        user_reflection_doc_id="r1",
+        near_tie_delta=0.02,
+        clock=FakeClock(frozen_now),
+    )
+
+    assert hits
+    assert updated.confidence_decision["anaphora_detected"] is True
+    assert updated.confidence_decision["selected_anchor_doc_id"] == "mem-1"
+    assert updated.confidence_decision["selected_anchor_ts"] == "2026-03-10T11:30:00+00:00"
+    assert updated.confidence_decision["computed_delta_raw_seconds"] == 1800
+    assert updated.confidence_decision["computed_delta_humanized"] == "30 minutes ago"
+
+
+def test_stage_rerank_yesterday_window_filters_candidates() -> None:
+    frozen_now = arrow.get("2026-03-10T12:00:00+00:00")
+    state = PipelineState(user_input="What happened yesterday?")
+    docs_and_scores = [
+        (
+            Document(
+                id="yesterday-doc",
+                page_content="Yesterday note",
+                metadata={"doc_id": "yesterday-doc", "type": "user_utterance", "ts": "2026-03-09T08:00:00+00:00"},
+            ),
+            0.70,
+        ),
+        (
+            Document(
+                id="today-doc",
+                page_content="Today note",
+                metadata={"doc_id": "today-doc", "type": "user_utterance", "ts": "2026-03-10T08:00:00+00:00"},
+            ),
+            0.95,
+        ),
+    ]
+
+    updated, hits = stage_rerank(
+        state,
+        docs_and_scores,
+        utterance="What happened yesterday?",
+        user_doc_id="u1",
+        user_reflection_doc_id="r1",
+        near_tie_delta=0.02,
+        clock=FakeClock(frozen_now),
+    )
+
+    assert [doc.id for doc in hits] == ["yesterday-doc"]
+    assert updated.confidence_decision["time_window"] == "yesterday"
+    assert updated.confidence_decision["window_start"].startswith("2026-03-09T00:00:00")
