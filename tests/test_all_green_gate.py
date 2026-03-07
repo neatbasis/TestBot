@@ -20,6 +20,7 @@ def test_main_fails_fast_when_behave_dependency_missing(monkeypatch: pytest.Monk
         continue_on_failure=False,
         base_ref="origin/main",
         json_output=None,
+        check_profile="fast",
         kpi_guardrail_mode="optional",
     ))
     monkeypatch.setattr(all_green_gate.importlib.util, "find_spec", lambda _name: None)
@@ -66,6 +67,7 @@ def test_main_propagates_effective_base_ref_to_governance_checks(
             continue_on_failure=False,
             base_ref="origin/main",
             json_output=None,
+            check_profile="fast",
             kpi_guardrail_mode="optional",
         ),
     )
@@ -165,3 +167,46 @@ def test_run_gate_enforces_blocking_turn_analytics_checks(monkeypatch: pytest.Mo
 
     assert [result.status for result in results] == ["failed", "not_run"]
     assert exit_code == 1
+
+def test_build_checks_default_profile_has_expected_check_names() -> None:
+    checks = all_green_gate.build_checks(base_ref="origin/main", kpi_guardrail_mode="optional")
+
+    assert [check.name for check in checks] == [
+        "product_behave",
+        "product_eval_recall_topk4",
+        "safety_validate_log_schema",
+        "qa_pytest_not_live_smoke",
+        "qa_validate_issue_links",
+        "qa_validate_issues",
+        "qa_validate_invariant_sync",
+        "qa_validate_markdown_paths",
+        "qa_aggregate_turn_analytics",
+        "qa_validate_kpi_guardrails",
+    ]
+
+
+def test_build_checks_exhaustive_profile_includes_targeted_overlap_checks() -> None:
+    checks = all_green_gate.build_checks(
+        base_ref="origin/main",
+        kpi_guardrail_mode="optional",
+        check_profile="exhaustive",
+    )
+
+    check_names = [check.name for check in checks]
+    assert "product_eval_runtime_parity" in check_names
+    assert "safety_behave_answer_contract_and_memory" in check_names
+    assert "qa_eval_fixtures_and_runtime_parity" in check_names
+
+
+def test_build_checks_default_profile_has_no_duplicate_pytest_file_payloads() -> None:
+    checks = all_green_gate.build_checks(base_ref="origin/main", kpi_guardrail_mode="optional")
+
+    test_file_counts: dict[str, int] = {}
+    for check in checks:
+        if check.command[:3] != [all_green_gate.sys.executable, "-m", "pytest"]:
+            continue
+        for arg in check.command[3:]:
+            if arg.startswith("tests/") and arg.endswith(".py"):
+                test_file_counts[arg] = test_file_counts.get(arg, 0) + 1
+
+    assert all(count == 1 for count in test_file_counts.values())

@@ -60,6 +60,16 @@ def parse_args() -> argparse.Namespace:
         help="Optional path to write the JSON summary.",
     )
     parser.add_argument(
+        "--check-profile",
+        choices=("fast", "exhaustive"),
+        default="fast",
+        help=(
+            "Check composition profile for canonical gate execution. "
+            "'fast' removes targeted checks already covered by broader suites; "
+            "'exhaustive' runs both broad and targeted commands."
+        ),
+    )
+    parser.add_argument(
         "--kpi-guardrail-mode",
         choices=("off", "optional", "blocking"),
         default="optional",
@@ -107,64 +117,25 @@ def resolve_base_ref(base_ref: str) -> tuple[str | None, list[str]]:
     )
     return None, notes
 
-def build_checks(*, base_ref: str | None, kpi_guardrail_mode: str = "optional") -> list[GateCheck]:
+def build_checks(
+    *,
+    base_ref: str | None,
+    kpi_guardrail_mode: str = "optional",
+    check_profile: str = "fast",
+) -> list[GateCheck]:
     checks = [
         GateCheck(name="product_behave", command=[sys.executable, "-m", "behave"]),
         GateCheck(
-            name="product_eval_runtime_parity",
-            command=[sys.executable, "-m", "pytest", "tests/test_eval_runtime_parity.py"],
-        ),
-        GateCheck(
             name="product_eval_recall_topk4",
             command=[sys.executable, "scripts/eval_recall.py", "--top-k", "4"],
-        ),
-        GateCheck(
-            name="safety_behave_answer_contract_and_memory",
-            command=[
-                sys.executable,
-                "-m",
-                "behave",
-                "features/answer_contract.feature",
-                "features/memory_recall.feature",
-            ],
-        ),
-        GateCheck(
-            name="safety_reflection_and_runtime_logging_pytests",
-            command=[
-                sys.executable,
-                "-m",
-                "pytest",
-                "tests/test_reflection_policy.py",
-                "tests/test_runtime_logging_events.py",
-            ],
         ),
         GateCheck(
             name="safety_validate_log_schema",
             command=[sys.executable, "scripts/validate_log_schema.py"],
         ),
         GateCheck(
-            name="ops_runtime_modes_and_startup_status",
-            command=[
-                sys.executable,
-                "-m",
-                "pytest",
-                "tests/test_runtime_modes.py",
-                "tests/test_startup_status.py",
-            ],
-        ),
-        GateCheck(
             name="qa_pytest_not_live_smoke",
             command=[sys.executable, "-m", "pytest", "-m", "not live_smoke"],
-        ),
-        GateCheck(
-            name="qa_eval_fixtures_and_runtime_parity",
-            command=[
-                sys.executable,
-                "-m",
-                "pytest",
-                "tests/test_eval_fixtures.py",
-                "tests/test_eval_runtime_parity.py",
-            ],
         ),
         GateCheck(
             name="qa_validate_issue_links",
@@ -195,6 +166,54 @@ def build_checks(*, base_ref: str | None, kpi_guardrail_mode: str = "optional") 
             command=[sys.executable, "scripts/validate_markdown_paths.py"],
         ),
     ]
+
+    if check_profile == "exhaustive":
+        checks[2:2] = [
+            GateCheck(
+                name="product_eval_runtime_parity",
+                command=[sys.executable, "-m", "pytest", "tests/test_eval_runtime_parity.py"],
+            ),
+            GateCheck(
+                name="safety_behave_answer_contract_and_memory",
+                command=[
+                    sys.executable,
+                    "-m",
+                    "behave",
+                    "features/answer_contract.feature",
+                    "features/memory_recall.feature",
+                ],
+            ),
+            GateCheck(
+                name="safety_reflection_and_runtime_logging_pytests",
+                command=[
+                    sys.executable,
+                    "-m",
+                    "pytest",
+                    "tests/test_reflection_policy.py",
+                    "tests/test_runtime_logging_events.py",
+                ],
+            ),
+            GateCheck(
+                name="ops_runtime_modes_and_startup_status",
+                command=[
+                    sys.executable,
+                    "-m",
+                    "pytest",
+                    "tests/test_runtime_modes.py",
+                    "tests/test_startup_status.py",
+                ],
+            ),
+            GateCheck(
+                name="qa_eval_fixtures_and_runtime_parity",
+                command=[
+                    sys.executable,
+                    "-m",
+                    "pytest",
+                    "tests/test_eval_fixtures.py",
+                    "tests/test_eval_runtime_parity.py",
+                ],
+            ),
+        ]
 
     if kpi_guardrail_mode != "off":
         kpi_blocking = kpi_guardrail_mode == "blocking"
@@ -325,7 +344,11 @@ def main() -> int:
             f"origin/main -> HEAD~1 -> HEAD (using {effective_base_ref!r})."
         )
 
-    checks = build_checks(base_ref=effective_base_ref, kpi_guardrail_mode=args.kpi_guardrail_mode)
+    checks = build_checks(
+        base_ref=effective_base_ref,
+        kpi_guardrail_mode=args.kpi_guardrail_mode,
+        check_profile=args.check_profile,
+    )
     results, exit_code = run_gate(checks=checks, continue_on_failure=args.continue_on_failure)
     summary = summarize(results=results, continue_on_failure=args.continue_on_failure)
 
