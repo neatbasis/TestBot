@@ -478,6 +478,53 @@ def step_when_unmatched_ambiguous_phrase(context) -> None:
 def step_then_unmatched_ambiguous_phrase(context) -> None:
     assert context.ambiguous_intent is IntentType.KNOWLEDGE_QUESTION
 
+@when("the user asks an ambiguous prompt requiring divergent analysis")
+def step_when_ambiguous_prompt_divergent_analysis(context) -> None:
+    answer = (
+        "Possible explanations: (1) a data-sync delay, (2) conflicting source records, "
+        "(3) a wording mismatch in the request. Converged recommendation: verify latest source "
+        "timestamp first, then narrow scope if conflict persists."
+    )
+    context.pipeline_state = _build_base_state(
+        user_input="Why did this happen?",
+        final_answer=answer,
+        draft_answer=answer,
+        confidence_decision={"context_confident": False, "ambiguity_detected": True},
+    )
+
+
+@then("the assistant enumerates plausible explanation spaces before converging")
+def step_then_enumerates_explanation_space_before_converging(context) -> None:
+    final_answer = context.pipeline_state.final_answer
+    assert "Possible explanations:" in final_answer
+    assert "(1)" in final_answer and "(2)" in final_answer and "(3)" in final_answer
+    assert "Converged recommendation:" in final_answer
+    assert final_answer.index("Possible explanations:") < final_answer.index("Converged recommendation:")
+
+
+@when("the user asks for a multi-framework perspective switch")
+def step_when_multi_framework_perspective_switch(context) -> None:
+    answer = (
+        "Framework: systems -> treat this as process and dependency risk. "
+        "Framework: behavioral -> treat this as intent and communication risk. "
+        "Synthesis: prioritize the systems fix, then add behavioral guardrails."
+    )
+    context.pipeline_state = _build_base_state(
+        user_input="Analyze this from multiple frameworks.",
+        final_answer=answer,
+        draft_answer=answer,
+        confidence_decision={"context_confident": True, "multi_framework": True},
+    )
+
+
+@then("the assistant presents multiple frameworks and a synthesized conclusion")
+def step_then_presents_frameworks_and_synthesis(context) -> None:
+    final_answer = context.pipeline_state.final_answer
+    assert "Framework: systems" in final_answer
+    assert "Framework: behavioral" in final_answer
+    assert "Synthesis:" in final_answer
+    assert final_answer.index("Framework: systems") < final_answer.index("Framework: behavioral") < final_answer.index("Synthesis:")
+
 
 @when("the user provides a self-identification utterance")
 def step_when_self_identification_utterance(context) -> None:
