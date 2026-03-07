@@ -21,6 +21,54 @@ CanonicalResponseToken = Literal[
 AnswerMode = Literal["deny", "clarify", "dont-know", "assist", "memory-grounded"]
 
 
+def _policy_action_universe(intent: IntentClass) -> list[FallbackAction]:
+    if intent == "memory_recall":
+        return [
+            "ROUTE_TO_ASK",
+            "ASK_CLARIFYING_QUESTION",
+            "OFFER_CAPABILITY_ALTERNATIVES",
+            "ANSWER_GENERAL_KNOWLEDGE",
+            "ANSWER_UNKNOWN",
+        ]
+    if intent == "time_query":
+        return ["ANSWER_TIME", "ANSWER_UNKNOWN", "ANSWER_GENERAL_KNOWLEDGE"]
+    return ["ANSWER_GENERAL_KNOWLEDGE", "ANSWER_UNKNOWN", "OFFER_CAPABILITY_ALTERNATIVES"]
+
+
+def _policy_alternative_reason(*, action: FallbackAction, chosen: FallbackAction, memory_hit: bool, ambiguity: bool) -> str:
+    if action == chosen:
+        return "selected"
+    if action == "ROUTE_TO_ASK":
+        return "ask route rejected: ambiguity or ask capability conditions not met"
+    if action == "ASK_CLARIFYING_QUESTION":
+        return "clarify path rejected: policy chose route-to-ask or alternatives"
+    if action == "OFFER_CAPABILITY_ALTERNATIVES":
+        if memory_hit and not ambiguity:
+            return "alternatives rejected: retrieval confidence supported direct handling"
+        return "alternatives rejected: another fallback had higher policy priority"
+    if action == "ANSWER_TIME":
+        return "time answer rejected: intent was not a time query"
+    if action == "ANSWER_UNKNOWN":
+        return "unknown fallback rejected: policy selected a more specific action"
+    return "general-knowledge route rejected: fallback policy gates did not select it"
+
+
+def _policy_alternatives(*, intent: IntentClass, chosen: FallbackAction, memory_hit: bool, ambiguity: bool) -> list[dict[str, str]]:
+    return [
+        {
+            "action": action,
+            "status": "selected" if action == chosen else "rejected",
+            "reason": _policy_alternative_reason(
+                action=action,
+                chosen=chosen,
+                memory_hit=memory_hit,
+                ambiguity=ambiguity,
+            ),
+        }
+        for action in _policy_action_universe(intent)
+    ]
+
+
 @dataclass(frozen=True)
 class AnswerPolicyInput:
     intent: IntentClass
@@ -93,6 +141,12 @@ def resolve_answer_routing(
         "memory_hit_count": memory_hit_count,
         "capability_status": policy_input.capability_status,
         "source_confidence": policy_input.source_confidence,
+        "considered_alternatives": _policy_alternatives(
+            intent=policy_input.intent,
+            chosen=fallback_action,
+            memory_hit=memory_hit,
+            ambiguity=ambiguity,
+        ),
     }
     return AnswerRoutingDecision(
         fallback_action=fallback_action,

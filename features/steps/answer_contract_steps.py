@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from behave import given, then, when
+from langchain_core.documents import Document
 
 from testbot.answer_policy import AnswerPolicyInput, resolve_answer_routing
 from testbot.eval_fixtures import cases_by_id
 from testbot.pipeline_state import CandidateHit, PipelineState, ProvenanceType
 from testbot.sat_chatbot_memory_v2 import RuntimeCapabilityStatus, stage_answer, validate_answer_contract, validate_general_knowledge_contract
+from testbot.sat_chatbot_memory_v2 import _build_debug_turn_payload
 from testbot.stage_transitions import validate_answer_post, validate_answer_pre
 
 
@@ -227,3 +229,89 @@ def step_then_fallback_action_should_be(context, fallback_action: str) -> None:
 @then('the canonical response token should be "{canonical_response_token}"')
 def step_then_canonical_response_token_should_be(context, canonical_response_token: str) -> None:
     assert context.answer_policy_decision.canonical_response_token == canonical_response_token
+
+
+@then("the policy rationale includes considered alternatives with rejection reasons")
+def step_then_policy_rationale_includes_considered_alternatives(context) -> None:
+    alternatives = context.answer_policy_decision.rationale.get("considered_alternatives")
+    assert isinstance(alternatives, list)
+    assert alternatives
+    for alternative in alternatives:
+        assert alternative["action"]
+        assert alternative["reason"]
+
+
+@given("a low-confidence recall pipeline state with ambiguous references")
+def step_given_low_confidence_recall_pipeline_state(context) -> None:
+    context.debug_state = PipelineState(
+        user_input="what did I say about that yesterday",
+        rewritten_query="what did I say about that yesterday",
+        classified_intent="memory_recall",
+        resolved_intent="memory_recall",
+        last_user_message_ts="2026-03-01T09:00:00Z",
+        confidence_decision={
+            "context_confident": False,
+            "ambiguity_detected": True,
+            "anaphora_detected": True,
+            "anaphora_target": "that",
+            "time_window": "yesterday",
+            "window_start": "2026-02-29T00:00:00Z",
+            "window_end": "2026-02-29T23:59:59Z",
+            "top_final_score_min": 0.9,
+            "min_margin_to_second": 0.05,
+            "scored_candidates": [{"final_score": 0.62}, {"final_score": 0.6}],
+            "ambiguous_candidates": ["memory_card_1", "memory_card_2"],
+        },
+        invariant_decisions={
+            "answer_mode": "assist",
+            "fallback_action": "OFFER_CAPABILITY_ALTERNATIVES",
+            "answer_policy_rationale": {
+                "intent": "memory_recall",
+                "ambiguity": True,
+                "memory_hit": False,
+                "considered_alternatives": [
+                    {"action": "ROUTE_TO_ASK", "reason": "ask route unavailable"},
+                    {"action": "OFFER_CAPABILITY_ALTERNATIVES", "reason": "selected"},
+                ],
+            },
+        },
+    )
+    context.debug_hits = [
+        Document(
+            page_content="memory fragment",
+            metadata={
+                "doc_id": "card-1",
+                "card_type": "memory",
+                "ts": "2026-02-29T12:30:00Z",
+                "window_start": "2026-02-29T00:00:00Z",
+                "window_end": "2026-02-29T23:59:59Z",
+            },
+        )
+    ]
+
+
+@when("the structured debug payload is built for memory recall")
+def step_when_structured_debug_payload_built(context) -> None:
+    context.debug_payload = _build_debug_turn_payload(
+        state=context.debug_state,
+        intent_label="memory_recall",
+        hits=context.debug_hits,
+    )
+
+
+@then("the debug payload includes explicit observation and policy layers")
+def step_then_debug_payload_includes_observation_and_policy_layers(context) -> None:
+    assert "debug.observation" in context.debug_payload
+    assert "debug.policy" in context.debug_payload
+    observation = context.debug_payload["debug.observation"]["candidate_evidence"]
+    assert observation["retrieved_docs"][0]["doc_id"] == "card-1"
+    assert observation["ambiguity_state"]["anaphora_detected"] is True
+
+
+@then("the fallback decision includes considered alternatives and rejection reasons")
+def step_then_fallback_decision_includes_alternatives_with_reasons(context) -> None:
+    alternatives = context.debug_payload["debug.policy"]["considered_alternatives"]
+    assert isinstance(alternatives, list)
+    assert any(option["status"] == "selected" for option in alternatives)
+    assert any(option["status"] == "rejected" for option in alternatives)
+    assert all(option["reason"] for option in alternatives)

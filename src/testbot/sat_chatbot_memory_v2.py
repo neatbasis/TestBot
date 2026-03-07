@@ -807,6 +807,75 @@ def _gate_metrics(*, passed: bool, score: float, threshold: float) -> dict[str, 
     }
 
 
+def _policy_action_universe(*, intent_label: str) -> list[str]:
+    if intent_label == "memory_recall":
+        return [
+            "ROUTE_TO_ASK",
+            "ASK_CLARIFYING_QUESTION",
+            "OFFER_CAPABILITY_ALTERNATIVES",
+            "ANSWER_GENERAL_KNOWLEDGE",
+            "ANSWER_UNKNOWN",
+        ]
+    if intent_label == "time_query":
+        return ["ANSWER_TIME", "ANSWER_UNKNOWN", "ANSWER_GENERAL_KNOWLEDGE"]
+    return ["ANSWER_GENERAL_KNOWLEDGE", "ANSWER_UNKNOWN", "OFFER_CAPABILITY_ALTERNATIVES"]
+
+
+def _policy_alternative_rejection_reason(
+    *,
+    action: str,
+    chosen_action: str,
+    context_confident: bool,
+    ambiguity_detected: bool,
+    hit_count: int,
+) -> str:
+    if action == chosen_action:
+        return "selected"
+    if action == "ROUTE_TO_ASK":
+        return "ask route rejected: ambiguity or ask-capability requirements were not met"
+    if action == "ASK_CLARIFYING_QUESTION":
+        return "clarifier rejected: policy preferred either ask route or capability alternatives"
+    if action == "OFFER_CAPABILITY_ALTERNATIVES":
+        if context_confident and hit_count > 0:
+            return "alternatives rejected: confident retrieval context supported direct handling"
+        return "alternatives rejected: policy chose a stricter uncertainty handling path"
+    if action == "ANSWER_TIME":
+        return "time answer rejected: intent was not a time query"
+    if action == "ANSWER_UNKNOWN":
+        if context_confident and not ambiguity_detected:
+            return "unknown fallback rejected: confidence gates passed"
+        return "unknown fallback rejected: policy preferred a more specific fallback path"
+    if action == "ANSWER_GENERAL_KNOWLEDGE":
+        return "general-knowledge path rejected: retrieval/policy gates required fallback behavior"
+    return "alternative rejected by deterministic fallback policy"
+
+
+def _build_policy_alternatives(
+    *,
+    intent_label: str,
+    chosen_action: str,
+    context_confident: bool,
+    ambiguity_detected: bool,
+    hit_count: int,
+) -> list[dict[str, str]]:
+    alternatives: list[dict[str, str]] = []
+    for action in _policy_action_universe(intent_label=intent_label):
+        alternatives.append(
+            {
+                "action": action,
+                "status": "selected" if action == chosen_action else "rejected",
+                "reason": _policy_alternative_rejection_reason(
+                    action=action,
+                    chosen_action=chosen_action,
+                    context_confident=context_confident,
+                    ambiguity_detected=ambiguity_detected,
+                    hit_count=hit_count,
+                ),
+            }
+        )
+    return alternatives
+
+
 def _build_debug_turn_payload(*, state: PipelineState, intent_label: str, hits: list[Document]) -> dict[str, object]:
     fallback_action = str(state.invariant_decisions.get("fallback_action", "NONE"))
     retrieval_branch = str(state.confidence_decision.get("retrieval_branch", "memory_retrieval"))
@@ -845,6 +914,33 @@ def _build_debug_turn_payload(*, state: PipelineState, intent_label: str, hits: 
     )
     doc_ids = [(doc.id or doc.metadata.get("doc_id") or "") for doc in hits[:3]]
     ambiguity_score = 1.0 if not ambiguity_detected else 0.0
+    observed_docs: list[dict[str, object]] = []
+    for doc in hits[:3]:
+        metadata = doc.metadata if isinstance(doc.metadata, dict) else {}
+        observed_docs.append(
+            {
+                "doc_id": str(doc.id or metadata.get("doc_id") or ""),
+                "card_type": str(metadata.get("card_type") or metadata.get("type") or ""),
+                "ts": str(metadata.get("ts") or ""),
+                "window_start": str(metadata.get("window_start") or state.confidence_decision.get("window_start") or ""),
+                "window_end": str(metadata.get("window_end") or state.confidence_decision.get("window_end") or ""),
+                "source": str(metadata.get("source") or ""),
+            }
+        )
+    policy_alternatives = _build_policy_alternatives(
+        intent_label=intent_label,
+        chosen_action=fallback_action,
+        context_confident=context_confident,
+        ambiguity_detected=ambiguity_detected,
+        hit_count=len(hits),
+    )
+    policy_thresholds = {
+        "top_final_score_min": round(top_threshold, 4),
+        "min_margin_to_second": round(margin_threshold, 4),
+        "ambiguity_threshold": round(ambiguity_threshold, 4),
+        "context_score_target": 1.0,
+    }
+    policy_rationale = state.invariant_decisions.get("answer_policy_rationale", {})
 
     return {
         "debug.intent": {
@@ -889,6 +985,31 @@ def _build_debug_turn_payload(*, state: PipelineState, intent_label: str, hits: 
                 threshold=1.0,
             ),
         },
+        "debug.observation": {
+            "candidate_evidence": {
+                "retrieved_docs": observed_docs,
+                "score_components": {
+                    "top_final_score": round(top_score, 4),
+                    "second_final_score": round(second_score, 4),
+                    "observed_margin": round(observed_margin, 4),
+                    "top_gate_threshold": round(top_threshold, 4),
+                    "margin_gate_threshold": round(margin_threshold, 4),
+                    "context_score": round(context_score, 4),
+                },
+                "time_windows": {
+                    "query_time_window": str(state.confidence_decision.get("time_window") or ""),
+                    "window_start": str(state.confidence_decision.get("window_start") or ""),
+                    "window_end": str(state.confidence_decision.get("window_end") or ""),
+                    "last_user_message_ts": state.last_user_message_ts,
+                },
+                "ambiguity_state": {
+                    "ambiguity_detected": ambiguity_detected,
+                    "ambiguous_candidates": state.confidence_decision.get("ambiguous_candidates", []),
+                    "anaphora_detected": bool(state.confidence_decision.get("anaphora_detected", False)),
+                    "anaphora_target": str(state.confidence_decision.get("anaphora_target") or ""),
+                },
+            }
+        },
         "debug.contract": {
             "answer_contract_gate": _gate_metrics(
                 passed=answer_contract_valid,
@@ -902,6 +1023,20 @@ def _build_debug_turn_payload(*, state: PipelineState, intent_label: str, hits: 
             ),
         },
         "debug.policy": {
+            "chosen_action": fallback_action,
+            "considered_alternatives": policy_alternatives,
+            "decision_rationale": {
+                "reject_signal": {
+                    "reject_code": reject_signal.reject_code,
+                    "partition": reject_signal.partition,
+                    "reason": reject_signal.reason,
+                    "score": reject_signal.score,
+                    "threshold": reject_signal.threshold,
+                    "margin": reject_signal.margin,
+                },
+                "thresholds": policy_thresholds,
+                "answer_policy_inputs": policy_rationale if isinstance(policy_rationale, dict) else {},
+            },
             "answer_mode": answer_mode,
             "fallback_action": fallback_action,
             "reject_code": reject_signal.reject_code,

@@ -10,6 +10,7 @@ REQUIRED_DEBUG_KEYS = {
     "debug.retrieval",
     "debug.rerank",
     "debug.confidence",
+    "debug.observation",
     "debug.contract",
     "debug.policy",
 }
@@ -100,6 +101,45 @@ def test_structured_debug_payload_policy_reject_signal_shape_and_legacy_reason()
     assert policy["reject_code"] == "CONTEXT_CONF_BELOW_THRESHOLD"
     assert policy["partition"] == "rerank"
     assert policy["reason"] == policy["blocker_reason"]
+    assert policy["chosen_action"] == "OFFER_CAPABILITY_ALTERNATIVES"
+    assert isinstance(policy["considered_alternatives"], list)
+    assert any(option["status"] == "rejected" for option in policy["considered_alternatives"])
+    assert "thresholds" in policy["decision_rationale"]
+
+
+def test_structured_debug_payload_observation_includes_candidate_evidence_details() -> None:
+    state = PipelineState(
+        user_input="what did I say about that yesterday",
+        rewritten_query="ontology update yesterday",
+        classified_intent="memory_recall",
+        resolved_intent="memory_recall",
+        last_user_message_ts="2026-03-01T08:00:00Z",
+        confidence_decision={
+            "context_confident": False,
+            "ambiguity_detected": True,
+            "anaphora_detected": True,
+            "anaphora_target": "that",
+            "time_window": "yesterday",
+            "window_start": "2026-02-29T00:00:00Z",
+            "window_end": "2026-02-29T23:59:59Z",
+            "top_final_score_min": 0.85,
+            "min_margin_to_second": 0.1,
+            "scored_candidates": [{"final_score": 0.61}, {"final_score": 0.6}],
+        },
+        invariant_decisions={"answer_mode": "clarify", "fallback_action": "ASK_CLARIFYING_QUESTION"},
+    )
+
+    payload = _build_debug_turn_payload(
+        state=state,
+        intent_label="memory_recall",
+        hits=[],
+    )
+
+    observation = payload["debug.observation"]["candidate_evidence"]
+    assert set(observation.keys()) == {"retrieved_docs", "score_components", "time_windows", "ambiguity_state"}
+    assert observation["score_components"]["top_gate_threshold"] == 0.85
+    assert observation["time_windows"]["query_time_window"] == "yesterday"
+    assert observation["ambiguity_state"]["anaphora_detected"] is True
 
 
 def test_structured_debug_payload_temporal_query_is_emitted_in_verbose_trace() -> None:
