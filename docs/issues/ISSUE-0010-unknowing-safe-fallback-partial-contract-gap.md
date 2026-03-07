@@ -9,6 +9,11 @@
 - **Target Sprint:** Sprint 2
 - **Principle Alignment:** contract-first, user-centric, deterministic, traceable
 
+## Cross-Reference
+
+- Primary implementation/bug-elimination program: ISSUE-0013
+- This issue remains planning/history/context unless otherwise specified.
+
 ## Problem Statement
 
 The `unknowing_safe_fallback` capability is still marked `partial`. ISSUE-0010 is the primary traceability record for this capability and tracks the remaining measurable deltas tied to its gate checks (`product_behave`, `safety_reflection_and_runtime_logging_pytests`), while preserving explicit cross-capability linkage with ISSUE-0009 in generated status reporting.

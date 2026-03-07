@@ -169,3 +169,5 @@ To make this feedback operational, add two artifacts in future QA runs:
 
 ## Final relevance/accuracy conclusion
 The feedback is **relevant and technically sound for this repository**. It should be applied as a maturity-contract extension across docs, test strategy, and parity execution paths—not as a wording-only fallback tweak.
+
+ISSUE-0013 linkage: Canonical pipeline progress and defect-elimination sequencing for this evidence are tracked under ISSUE-0013.
