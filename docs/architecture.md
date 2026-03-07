@@ -17,6 +17,10 @@ These design decisions prioritize deterministic memory-grounded answers with exp
 
 For deterministic reject diagnostics and machine-readable fallback reasons, see [docs/reject-taxonomy.md](reject-taxonomy.md).
 
+## Canonical turn pipeline (state-first)
+
+For the canonical state-first pipeline contract (observe→encode→stabilize→context→intent→retrieve→decide→assemble→validate→render→commit), see [docs/architecture/canonical-turn-pipeline.md](architecture/canonical-turn-pipeline.md).
+
 ## Pipeline overview
 
 TestBot follows a single loop designed for memory-grounded answers:
