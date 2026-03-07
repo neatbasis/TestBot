@@ -59,3 +59,5 @@ Feature: Answer citation contract enforcement
     When the structured debug payload is built for memory recall
     Then the debug payload includes explicit observation and policy layers
     And the fallback decision includes considered alternatives and rejection reasons
+    And rejected-turn diagnostics include nearest failure gate details
+    And debug counterfactuals include threshold and alternate-routing checks

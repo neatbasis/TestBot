@@ -315,3 +315,29 @@ def step_then_fallback_decision_includes_alternatives_with_reasons(context) -> N
     assert any(option["status"] == "selected" for option in alternatives)
     assert any(option["status"] == "rejected" for option in alternatives)
     assert all(option["reason"] for option in alternatives)
+
+
+@then("rejected-turn diagnostics include nearest failure gate details")
+def step_then_rejected_turn_diagnostics_include_nearest_failure_gate(context) -> None:
+    policy = context.debug_payload["debug.policy"]
+    assert policy["rejected_turn"] is True
+    assert policy["nearest_failure_gate"] == {
+        "gate": "margin_gate",
+        "current": 0.02,
+        "required": 0.05,
+        "margin_to_pass": 0.03,
+    }
+
+
+@then("debug counterfactuals include threshold and alternate-routing checks")
+def step_then_debug_counterfactuals_include_threshold_and_routing_checks(context) -> None:
+    counterfactuals = context.debug_payload["debug.policy"]["counterfactuals"]
+    assert counterfactuals["top_candidate_pass_thresholds"] == {
+        "top_final_score_min": 0.9,
+        "min_margin_to_second": 0.05,
+        "context_score_target": 1.0,
+    }
+    assert counterfactuals["alternate_routing_policy_checks"] == {
+        "ask_clarifying_question_passes": False,
+        "route_to_ask_passes": False,
+    }

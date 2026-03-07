@@ -148,6 +148,76 @@ def test_structured_debug_payload_observation_includes_candidate_evidence_detail
     assert observation["ambiguity_state"]["selected_anchor_doc_id"] == "d1"
 
 
+
+def test_structured_debug_payload_rejected_turn_has_nearest_gate_and_counterfactuals() -> None:
+    state = PipelineState(
+        user_input="what did I say about that",
+        rewritten_query="what did I say about that",
+        classified_intent="memory_recall",
+        resolved_intent="memory_recall",
+        confidence_decision={
+            "context_confident": False,
+            "ambiguity_detected": False,
+            "top_final_score_min": 0.9,
+            "min_margin_to_second": 0.05,
+            "scored_candidates": [{"final_score": 0.88}, {"final_score": 0.87}],
+        },
+        invariant_decisions={
+            "answer_mode": "assist",
+            "fallback_action": "OFFER_CAPABILITY_ALTERNATIVES",
+            "answer_contract_valid": False,
+            "general_knowledge_contract_valid": True,
+        },
+    )
+
+    payload = _build_debug_turn_payload(state=state, intent_label="memory_recall", hits=[])
+
+    policy = payload["debug.policy"]
+    assert policy["rejected_turn"] is True
+    assert policy["nearest_failure_gate"] == {
+        "gate": "top_final_score_gate",
+        "current": 0.88,
+        "required": 0.9,
+        "margin_to_pass": 0.02,
+    }
+    assert policy["counterfactuals"]["top_candidate_pass_thresholds"] == {
+        "top_final_score_min": 0.9,
+        "min_margin_to_second": 0.05,
+        "context_score_target": 1.0,
+    }
+    assert policy["counterfactuals"]["alternate_routing_policy_checks"] == {
+        "ask_clarifying_question_passes": False,
+        "route_to_ask_passes": False,
+    }
+
+
+def test_structured_debug_payload_non_rejected_turn_has_no_nearest_failure_gate() -> None:
+    state = PipelineState(
+        user_input="what time is it",
+        rewritten_query="what time is it",
+        classified_intent="time_query",
+        resolved_intent="time_query",
+        confidence_decision={
+            "context_confident": True,
+            "ambiguity_detected": False,
+            "top_final_score_min": 0.8,
+            "min_margin_to_second": 0.05,
+            "scored_candidates": [{"final_score": 0.9}, {"final_score": 0.7}],
+        },
+        invariant_decisions={
+            "answer_mode": "memory-grounded",
+            "fallback_action": "ANSWER_TIME",
+            "answer_contract_valid": True,
+            "general_knowledge_contract_valid": True,
+        },
+    )
+
+    payload = _build_debug_turn_payload(state=state, intent_label="time_query", hits=[])
+
+    policy = payload["debug.policy"]
+    assert policy["rejected_turn"] is False
+    assert policy["nearest_failure_gate"] is None
+
 def test_structured_debug_payload_temporal_query_is_emitted_in_verbose_trace() -> None:
     state = PipelineState(
         user_input="what is tomorrow",
