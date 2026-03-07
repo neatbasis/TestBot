@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from langchain_core.documents import Document
+
 from testbot.pipeline_state import PipelineState
 from testbot.sat_chatbot_memory_v2 import _format_debug_turn_trace
 
@@ -33,7 +35,31 @@ def test_format_debug_turn_trace_reports_low_confidence_assist_reason() -> None:
     assert "answer_mode=assist" in trace
     assert "fallback_action=OFFER_CAPABILITY_ALTERNATIVES" in trace
     assert "retrieval_branch=memory_retrieval" in trace
-    assert "blocker_reason=insufficient confidence for a direct answer; offered capability alternatives" in trace
+    assert "blocker_reason=retrieved memory fragments were low-confidence for a direct answer" in trace
+
+
+def test_format_debug_turn_trace_reports_contract_rejection_assist_reason() -> None:
+    state = PipelineState(
+        user_input="summarize this",
+        rewritten_query="summarize this",
+        confidence_decision={"context_confident": True, "ambiguity_detected": False},
+        invariant_decisions={
+            "answer_mode": "assist",
+            "fallback_action": "OFFER_CAPABILITY_ALTERNATIVES",
+            "answer_contract_valid": False,
+            "general_knowledge_contract_valid": True,
+        },
+    )
+
+    trace = _format_debug_turn_trace(
+        state=state,
+        intent_label="memory_recall",
+        hits=[Document(page_content="fragment", metadata={"doc_id": "doc-1"})],
+    )
+
+    assert "answer_mode=assist" in trace
+    assert "context_confident=True" in trace
+    assert "blocker_reason=answer-contract rejection: draft did not satisfy grounding/citation requirements" in trace
 
 
 def test_format_debug_turn_trace_reports_direct_answer_branch() -> None:
