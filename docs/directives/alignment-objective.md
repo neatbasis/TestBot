@@ -10,10 +10,11 @@ Each turn must produce all five dimension scores in `[0.0, 1.0]` and a final dec
 
 1. **factual-grounding reliability**
    - Raw inputs:
+     - `raw_claim_like_text_detected ∈ {0,1}`
      - `has_required_memory_citation ∈ {0,1}`
      - confidence margin (`top_final_score - second_final_score`) and `min_margin_to_second`
    - Normalization:
-     - `citation_validity = 1.0` when response is contract-exempt, has no claims, or has required citation; else `0.0`.
+     - `citation_validity = 1.0` when response is contract-exempt, no raw claim-like text is detected, or required citation is present; else `0.0`.
      - `confidence_margin_normalized = clamp01(confidence_margin / min_margin_to_second)`.
    - Score:
      - `factual_grounding_reliability = clamp01(0.65 * citation_validity + 0.35 * confidence_margin_normalized)`.
