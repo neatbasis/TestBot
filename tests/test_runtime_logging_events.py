@@ -3,9 +3,9 @@ from __future__ import annotations
 from collections import deque
 from dataclasses import replace
 
+import arrow
 from langchain_core.documents import Document
 
-from testbot.clock import SystemClock
 from testbot.pipeline_state import PipelineState
 from testbot import sat_chatbot_memory_v2 as runtime
 from testbot.intent_router import IntentType
@@ -25,6 +25,14 @@ from testbot.sat_chatbot_memory_v2 import (
     stage_answer,
     stage_rewrite_query,
 )
+
+
+class _FixedClock:
+    def now(self) -> arrow.Arrow:
+        return arrow.get("2026-03-10T11:00:00+00:00")
+
+
+_FIXED_CLOCK = _FixedClock()
 
 
 class _ExplodingLLM:
@@ -76,7 +84,7 @@ def test_stage_answer_invoke_failure_uses_deterministic_fallback_and_logs(monkey
         chat_history=deque(),
         hits=[],
         capability_status="ask_unavailable",
-        clock=SystemClock(),
+        clock=_FIXED_CLOCK,
     )
 
     assert answered.draft_answer == ""
@@ -239,7 +247,7 @@ def test_stage_answer_non_memory_without_ambiguity_does_not_emit_memory_fragment
         chat_history=deque(),
         hits=[],
         capability_status="ask_unavailable",
-        clock=SystemClock(),
+        clock=_FIXED_CLOCK,
     )
 
     assert answered.final_answer.startswith("General definition (not from your memory):")
@@ -322,7 +330,7 @@ def test_chat_loop_definitional_question_attempts_retrieval_and_does_not_mark_sk
         ),
         read_user_utterance=lambda: next(prompts, None),
         send_assistant_text=lambda _text: None,
-        clock=SystemClock(),
+        clock=_FIXED_CLOCK,
     )
 
     branch_payload = next(payload for event, payload in events if event == "retrieval_branch_selected")
@@ -386,7 +394,7 @@ def test_chat_loop_conversational_prompt_skips_knowledge_retrieval_path(monkeypa
         ),
         read_user_utterance=lambda: next(prompts, None),
         send_assistant_text=lambda _text: None,
-        clock=SystemClock(),
+        clock=_FIXED_CLOCK,
     )
 
     branch_payload = next(payload for event, payload in events if event == "retrieval_branch_selected")
@@ -413,7 +421,7 @@ def test_stage_answer_low_source_confidence_non_memory_uses_safe_unknowing_mode_
         chat_history=deque(),
         hits=[],
         capability_status="ask_unavailable",
-        clock=SystemClock(),
+        clock=_FIXED_CLOCK,
     )
 
     assert answered.final_answer == NON_KNOWLEDGE_UNCERTAINTY_ANSWER
@@ -441,7 +449,7 @@ def test_stage_answer_greeting_command_preserves_social_draft_answer() -> None:
         chat_history=deque(),
         hits=[],
         capability_status="ask_unavailable",
-        clock=SystemClock(),
+        clock=_FIXED_CLOCK,
     )
 
     assert answered.final_answer == "Hello! Nice to meet you."
@@ -465,7 +473,7 @@ def test_stage_answer_low_source_confidence_non_memory_uses_uncertainty_response
         chat_history=deque(),
         hits=[],
         capability_status="ask_unavailable",
-        clock=SystemClock(),
+        clock=_FIXED_CLOCK,
     )
 
     assert answered.final_answer == NON_KNOWLEDGE_UNCERTAINTY_ANSWER
@@ -491,7 +499,7 @@ def test_stage_answer_self_introduction_preserves_acknowledgement_draft() -> Non
         chat_history=deque(),
         hits=[],
         capability_status="ask_unavailable",
-        clock=SystemClock(),
+        clock=_FIXED_CLOCK,
     )
 
     assert answered.final_answer == "Thanks, Taylor — I'll remember that for this conversation."
@@ -516,7 +524,7 @@ def test_stage_answer_regression_say_hello_keeps_greeting_instead_of_memory_fall
         chat_history=deque(),
         hits=[],
         capability_status="ask_unavailable",
-        clock=SystemClock(),
+        clock=_FIXED_CLOCK,
     )
 
     assert answered.final_answer == "hello"
@@ -544,7 +552,7 @@ def test_stage_answer_memory_recall_confident_hit_recovers_from_contract_failure
             )
         ],
         capability_status="ask_unavailable",
-        clock=SystemClock(),
+        clock=_FIXED_CLOCK,
     )
 
     assert answered.final_answer != ASSIST_ALTERNATIVES_ANSWER

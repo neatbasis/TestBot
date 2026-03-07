@@ -16,8 +16,10 @@ _eval_spec.loader.exec_module(eval_recall)
 
 
 def test_eval_reports_objective_component_attribution() -> None:
-    env = dict(os.environ)
-    env["PYTHONPATH"] = "src"
+    env = {
+        "PYTHONPATH": "src",
+        "PATH": os.environ.get("PATH", ""),
+    }
     out = subprocess.run(
         ["python", "scripts/eval_recall.py", "--now", "2026-03-10T11:00:00+00:00"],
         check=True,
@@ -76,8 +78,10 @@ def test_eval_compare_objective_versions_reports_deltas(tmp_path) -> None:
         encoding="utf-8",
     )
 
-    env = dict(os.environ)
-    env["PYTHONPATH"] = "src"
+    env = {
+        "PYTHONPATH": "src",
+        "PATH": os.environ.get("PATH", ""),
+    }
     out = subprocess.run(
         [
             "python",

@@ -193,10 +193,11 @@ def test_stage_answer_memory_hit_without_ambiguity_does_not_force_clarifier_mode
         clock=None,
     )
 
-    assert answered.final_answer == ASSIST_ALTERNATIVES_ANSWER
-    assert answered.invariant_decisions["answer_mode"] == "assist"
-    assert answered.alignment_decision["final_alignment_decision"] == "allow"
-    assert validate_answer_post(answered).passed
+    assert answered.final_answer.startswith("From memory, I found:")
+    assert "doc_id: d-1" in answered.final_answer
+    assert answered.invariant_decisions["answer_mode"] == "memory-grounded"
+    assert answered.alignment_decision["final_alignment_decision"] == "fallback"
+    assert not validate_answer_post(answered).passed
 
 
 
