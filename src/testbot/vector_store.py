@@ -12,7 +12,15 @@ from langchain_core.vectorstores import InMemoryVectorStore
 class MemoryStore(Protocol):
     def add_documents(self, documents: list[Document]) -> None: ...
 
-    def similarity_search_with_score(self, query: str, k: int = 4) -> list[tuple[Document, float]]: ...
+    def similarity_search_with_score(
+        self,
+        query: str,
+        k: int = 4,
+        *,
+        exclude_doc_ids: set[str] | None = None,
+        exclude_source_ids: set[str] | None = None,
+        exclude_turn_scoped_ids: set[str] | None = None,
+    ) -> list[tuple[Document, float]]: ...
 
 
 MemoryBackend = Literal["in_memory", "elasticsearch", "hybrid"]
@@ -76,8 +84,23 @@ class InMemoryMemoryStore:
     def add_documents(self, documents: list[Document]) -> None:
         self.store.add_documents(documents)
 
-    def similarity_search_with_score(self, query: str, k: int = 4) -> list[tuple[Document, float]]:
-        return self.store.similarity_search_with_score(query, k=k)
+    def similarity_search_with_score(
+        self,
+        query: str,
+        k: int = 4,
+        *,
+        exclude_doc_ids: set[str] | None = None,
+        exclude_source_ids: set[str] | None = None,
+        exclude_turn_scoped_ids: set[str] | None = None,
+    ) -> list[tuple[Document, float]]:
+        hits = self.store.similarity_search_with_score(query, k=k + 12)
+        return _filter_hits_for_exclusions(
+            hits,
+            k=k,
+            exclude_doc_ids=exclude_doc_ids,
+            exclude_source_ids=exclude_source_ids,
+            exclude_turn_scoped_ids=exclude_turn_scoped_ids,
+        )
 
 
 class ElasticsearchMemoryStore:
@@ -140,14 +163,38 @@ class ElasticsearchMemoryStore:
             raise ValueError(f"Document at position {position} has invalid id: {raw_id!r}")
         return normalized_id
 
-    def similarity_search_with_score(self, query: str, k: int = 4) -> list[tuple[Document, float]]:
+    def similarity_search_with_score(
+        self,
+        query: str,
+        k: int = 4,
+        *,
+        exclude_doc_ids: set[str] | None = None,
+        exclude_source_ids: set[str] | None = None,
+        exclude_turn_scoped_ids: set[str] | None = None,
+    ) -> list[tuple[Document, float]]:
+        exclude_doc_ids = _normalize_exclusion_ids(exclude_doc_ids)
+        exclude_source_ids = _normalize_exclusion_ids(exclude_source_ids)
+        exclude_turn_scoped_ids = _normalize_exclusion_ids(exclude_turn_scoped_ids)
+
+        must_not: list[dict[str, object]] = []
+        if exclude_doc_ids:
+            must_not.append({"ids": {"values": sorted(exclude_doc_ids)}})
+            must_not.append({"terms": {"metadata.doc_id": sorted(exclude_doc_ids)}})
+        if exclude_source_ids:
+            must_not.append({"terms": {"metadata.source_doc_id": sorted(exclude_source_ids)}})
+        if exclude_turn_scoped_ids:
+            scoped = sorted(exclude_turn_scoped_ids)
+            must_not.append({"terms": {"metadata.turn_doc_id": scoped}})
+            must_not.append({"terms": {"metadata.doc_id": scoped}})
+            must_not.append({"terms": {"metadata.source_doc_id": scoped}})
+
         query_vector = self._embeddings.embed_query(query)
         res = self._es.search(
             index=self._index,
             size=k,
             query={
                 "script_score": {
-                    "query": {"match_all": {}},
+                    "query": {"bool": {"must": [{"match_all": {}}], "must_not": must_not}},
                     "script": {
                         "source": "cosineSimilarity(params.query_vector, 'embedding') + 1.0",
                         "params": {"query_vector": query_vector},
@@ -168,7 +215,13 @@ class ElasticsearchMemoryStore:
                     float(row.get("_score") or 0.0),
                 )
             )
-        return hits
+        return _filter_hits_for_exclusions(
+            hits,
+            k=k,
+            exclude_doc_ids=exclude_doc_ids,
+            exclude_source_ids=exclude_source_ids,
+            exclude_turn_scoped_ids=exclude_turn_scoped_ids,
+        )
 
 
 @dataclass
@@ -186,12 +239,32 @@ class PromotingMemoryStore:
         self.primary.add_documents(documents)
         self.fallback.add_documents(documents)
 
-    def similarity_search_with_score(self, query: str, k: int = 4) -> list[tuple[Document, float]]:
-        primary_hits = self.primary.similarity_search_with_score(query, k=k)
+    def similarity_search_with_score(
+        self,
+        query: str,
+        k: int = 4,
+        *,
+        exclude_doc_ids: set[str] | None = None,
+        exclude_source_ids: set[str] | None = None,
+        exclude_turn_scoped_ids: set[str] | None = None,
+    ) -> list[tuple[Document, float]]:
+        primary_hits = self.primary.similarity_search_with_score(
+            query,
+            k=k,
+            exclude_doc_ids=exclude_doc_ids,
+            exclude_source_ids=exclude_source_ids,
+            exclude_turn_scoped_ids=exclude_turn_scoped_ids,
+        )
         if primary_hits:
             return primary_hits
 
-        fallback_hits = self.fallback.similarity_search_with_score(query, k=k)
+        fallback_hits = self.fallback.similarity_search_with_score(
+            query,
+            k=k,
+            exclude_doc_ids=exclude_doc_ids,
+            exclude_source_ids=exclude_source_ids,
+            exclude_turn_scoped_ids=exclude_turn_scoped_ids,
+        )
         if fallback_hits:
             promoted_docs: list[Document] = []
             for doc, _score in fallback_hits[: self.promote_top_k]:
@@ -204,6 +277,58 @@ class PromotingMemoryStore:
                 )
             self.primary.add_documents(promoted_docs)
         return fallback_hits
+
+
+def _normalize_exclusion_ids(values: set[str] | None) -> set[str]:
+    if not values:
+        return set()
+    return {str(value).strip() for value in values if str(value).strip()}
+
+
+def _is_excluded_document(
+    doc: Document,
+    *,
+    exclude_doc_ids: set[str],
+    exclude_source_ids: set[str],
+    exclude_turn_scoped_ids: set[str],
+) -> bool:
+    metadata = doc.metadata if isinstance(doc.metadata, dict) else {}
+    doc_id = str(doc.id or metadata.get("doc_id") or "").strip()
+    source_doc_id = str(metadata.get("source_doc_id") or "").strip()
+    turn_doc_id = str(metadata.get("turn_doc_id") or "").strip()
+    if doc_id and doc_id in exclude_doc_ids:
+        return True
+    if source_doc_id and source_doc_id in exclude_source_ids:
+        return True
+    if exclude_turn_scoped_ids and any(
+        value in exclude_turn_scoped_ids for value in (doc_id, source_doc_id, turn_doc_id) if value
+    ):
+        return True
+    return False
+
+
+def _filter_hits_for_exclusions(
+    hits: list[tuple[Document, float]],
+    *,
+    k: int,
+    exclude_doc_ids: set[str] | None,
+    exclude_source_ids: set[str] | None,
+    exclude_turn_scoped_ids: set[str] | None,
+) -> list[tuple[Document, float]]:
+    doc_ids = _normalize_exclusion_ids(exclude_doc_ids)
+    source_ids = _normalize_exclusion_ids(exclude_source_ids)
+    turn_ids = _normalize_exclusion_ids(exclude_turn_scoped_ids)
+    filtered = [
+        (doc, score)
+        for doc, score in hits
+        if not _is_excluded_document(
+            doc,
+            exclude_doc_ids=doc_ids,
+            exclude_source_ids=source_ids,
+            exclude_turn_scoped_ids=turn_ids,
+        )
+    ]
+    return filtered[:k]
 
 
 def build_memory_store(*, embeddings: Embeddings, mode: str, elasticsearch_url: str = "", elasticsearch_index: str = "") -> MemoryStore:

@@ -51,6 +51,46 @@ class _StaticLLM:
         return type("_Resp", (), {"content": self.content})()
 
 
+
+
+def test_stage_retrieve_passes_hygiene_exclusions_and_blocks_same_turn_candidates() -> None:
+    class _FilteringStore:
+        def similarity_search_with_score(self, query: str, k: int = 4, **kwargs):
+            del query, k
+            docs = [
+                Document(id="turn-user", page_content="latest", metadata={"doc_id": "turn-user"}),
+                Document(id="turn-reflection", page_content="reflection", metadata={"doc_id": "turn-reflection", "source_doc_id": "turn-user"}),
+                Document(id="older-memory", page_content="older", metadata={"doc_id": "older-memory"}),
+            ]
+            excluded_docs = set(kwargs.get("exclude_doc_ids") or set())
+            excluded_sources = set(kwargs.get("exclude_source_ids") or set())
+            excluded_turn = set(kwargs.get("exclude_turn_scoped_ids") or set())
+            kept = []
+            for doc in docs:
+                source = str(doc.metadata.get("source_doc_id") or "")
+                if doc.id in excluded_docs:
+                    continue
+                if source and source in excluded_sources:
+                    continue
+                if doc.id in excluded_turn or source in excluded_turn:
+                    continue
+                kept.append((doc, 0.9))
+            return kept
+
+    state = PipelineState(user_input="what did i just say", rewritten_query="latest memory")
+    updated_state, docs_and_scores = runtime.stage_retrieve(
+        _FilteringStore(),
+        state,
+        exclude_doc_ids={"turn-user", "turn-reflection"},
+        exclude_source_ids={"turn-user"},
+        exclude_turn_scoped_ids={"turn-user", "turn-reflection"},
+    )
+
+    assert [doc.id for doc, _score in docs_and_scores] == ["older-memory"]
+    assert [candidate.doc_id for candidate in updated_state.retrieval_candidates] == ["older-memory"]
+    assert updated_state.confidence_decision["retrieval_exclude_doc_ids"] == ["turn-reflection", "turn-user"]
+    assert updated_state.confidence_decision["retrieval_exclusion_invariant"] == "retrieve_stage_primary"
+
 def test_stage_rewrite_query_invoke_failure_falls_back_and_logs(monkeypatch) -> None:
     events: list[tuple[str, dict]] = []
     monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: events.append((event, payload)))
@@ -296,7 +336,7 @@ def test_chat_loop_definitional_question_attempts_retrieval_and_does_not_mark_sk
     monkeypatch.setattr(runtime, "generate_reflection_yaml", lambda *args, **kwargs: "claims: []")
     monkeypatch.setattr(runtime, "persist_promoted_context", lambda *args, **kwargs: [])
     monkeypatch.setattr(runtime, "encode_stage", lambda _llm, state: replace(state, rewritten_query="ontology definition"))
-    monkeypatch.setattr(runtime, "stage_retrieve", lambda _store, state: (replace(state, retrieval_candidates=[]), []))
+    monkeypatch.setattr(runtime, "stage_retrieve", lambda _store, state, **kwargs: (replace(state, retrieval_candidates=[]), []))
     monkeypatch.setattr(
         runtime,
         "stage_rerank",
@@ -360,6 +400,9 @@ def test_chat_loop_definitional_question_attempts_retrieval_and_does_not_mark_sk
     assert branch_payload["retrieval_branch"] == "memory_retrieval"
     assert retrieval_payload["candidate_count"] >= 0
     assert retrieval_payload.get("skipped", False) is False
+    assert retrieval_payload["hygiene"]["primary_invariant"] == "retrieve_stage_exclusion"
+    assert retrieval_payload["hygiene"]["rerank_defense_in_depth"] is True
+    assert len(retrieval_payload["hygiene"]["exclude_doc_ids"]) == 2
 
 
 def test_chat_loop_conversational_prompt_skips_knowledge_retrieval_path(monkeypatch) -> None:
@@ -603,7 +646,7 @@ def test_chat_loop_debug_trace_logs_structured_payload_for_queryable_policy_fiel
     monkeypatch.setattr(runtime, "generate_reflection_yaml", lambda *args, **kwargs: "claims: []")
     monkeypatch.setattr(runtime, "persist_promoted_context", lambda *args, **kwargs: [])
     monkeypatch.setattr(runtime, "encode_stage", lambda _llm, state: replace(state, rewritten_query="release memory"))
-    monkeypatch.setattr(runtime, "stage_retrieve", lambda _store, state: (replace(state, retrieval_candidates=[]), []))
+    monkeypatch.setattr(runtime, "stage_retrieve", lambda _store, state, **kwargs: (replace(state, retrieval_candidates=[]), []))
     monkeypatch.setattr(
         runtime,
         "stage_rerank",

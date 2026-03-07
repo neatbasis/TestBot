@@ -20,7 +20,7 @@ class _FakeStore:
     def add_documents(self, documents):
         self.docs.extend(documents)
 
-    def similarity_search_with_score(self, query: str, k: int = 4):  # pragma: no cover
+    def similarity_search_with_score(self, query: str, k: int = 4, **kwargs):  # pragma: no cover
         del query, k
         return []
 
