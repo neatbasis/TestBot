@@ -11,7 +11,7 @@ The following directive documents are canonical references and must be treated a
 - `docs/directives/terms.md`
 - `docs/directives/traceability-matrix.md`
 
-`docs/directives/invariants.md` is a required mirror of `docs/invariants.md` and must not diverge on invariant IDs, invariant statements, or scenario-ID mappings.
+`docs/directives/invariants.md` is a required mirror of the canonical sync block in `docs/invariants.md` and must not diverge on invariant IDs, invariant statements, or scenario-ID mappings.
 
 If a change conflicts with these references, either:
 
@@ -23,8 +23,8 @@ If a change conflicts with these references, either:
 For any invariant change, apply updates in this order:
 
 1. Edit `docs/invariants.md` first (canonical source-of-truth).
-2. Mirror equivalent invariant IDs, statements, and scenario mappings into `docs/directives/invariants.md`.
-3. Run `python scripts/validate_invariant_sync.py` and ensure it passes before merge.
+2. Run `python scripts/sync_invariants_mirror.py` to refresh `docs/directives/invariants.md` from the canonical sync block.
+3. Run `python scripts/sync_invariants_mirror.py --check` (or `python scripts/validate_invariant_sync.py`) and ensure it passes before merge.
 
 The sync check is a merge gate for invariant-related changes.
 

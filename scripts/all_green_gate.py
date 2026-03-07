@@ -180,7 +180,7 @@ def build_checks(
         ),
         GateCheck(
             name="qa_validate_invariant_sync",
-            command=[sys.executable, "scripts/validate_invariant_sync.py"],
+            command=[sys.executable, "scripts/sync_invariants_mirror.py", "--check"],
         ),
         GateCheck(
             name="qa_validate_markdown_paths",

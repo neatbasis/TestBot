@@ -1,6 +1,8 @@
 # Invariant Registry (Directive View)
 
-`docs/invariants.md` is the canonical invariant registry with stable IDs and traceability. This directive view mirrors the same invariants for readers navigating the `docs/directives/` tree and must stay synchronized with the canonical file.
+This file is a mirror view for readers in `docs/directives/`. Only the synchronized block below is canonical mirror content.
+
+<!-- BEGIN_SYNCED_INVARIANTS_TABLE_AND_SCENARIO_MAP -->
 
 ## Invariants
 
@@ -19,12 +21,4 @@
 - `BDD-AC-03`: `features/answer_contract.feature` → `Scenario: allowed labeled general-knowledge output when confidence gate passes`
 - `BDD-AC-04`: `features/answer_contract.feature` → `Scenario: non-memory general-knowledge fallback stays knowledge-safe`
 
-## Stage transition contracts
-
-| Stage | Preconditions | Postconditions | Invariant linkage |
-|---|---|---|---|
-| `observe` | `user_input` is present and non-empty before processing begins. | Canonical state remains initialized with the same non-empty `user_input`. | `INV-002` (fallback flow is only meaningful for non-empty user turns). |
-| `encode` | `user_input` is present. | `rewritten_query` is present and non-empty. | `INV-002` (downstream confidence/fallback logic relies on a query entering retrieval). |
-| `retrieve` | `rewritten_query` is present. | `retrieval_candidates` is a scored candidate list (`doc_id`, `score`, `ts`, `card_type`) shape. | `INV-002` (insufficient context is measured from retrieval outputs). |
-| `rerank` | `retrieval_candidates` already matches scored candidate shape. | `reranked_hits` keeps scored candidate shape and `confidence_decision.context_confident` is explicitly boolean. | `INV-002` (progressive fallback branch selection is keyed by confidence and ambiguity decisions). |
-| `answer` | `confidence_decision.context_confident` is explicitly boolean. | `invariant_decisions` is recorded, `INV-001` citation contract is enforced, `INV-002` progressive clarify/assist behavior is enforced for memory insufficiency, and `INV-003` general-knowledge marker/confidence gating is enforced with knowledge-safe degradation when needed. | `INV-001`, `INV-002`, `INV-003`. |
+<!-- END_SYNCED_INVARIANTS_TABLE_AND_SCENARIO_MAP -->
