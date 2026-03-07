@@ -342,7 +342,9 @@ def main() -> int:
         if stale_against_contract or stale_against_issues:
             gate_stale_warning = (
                 "Gate summary appears older than one or more source files "
-                "(contract or open issue records); regenerate gate evidence for freshest status."
+                "(contract or open issue records); regenerate gate evidence for freshest status. "
+                "Hint: run `python scripts/all_green_gate.py --continue-on-failure --json-output artifacts/all-green-gate-summary.json` "
+                "to refresh `artifacts/all-green-gate-summary.json`."
             )
 
     report_text, summary_payload = build_report(
