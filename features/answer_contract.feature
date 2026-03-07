@@ -61,3 +61,9 @@ Feature: Answer citation contract enforcement
     And the fallback decision includes considered alternatives and rejection reasons
     And rejected-turn diagnostics include nearest failure gate details
     And debug counterfactuals include threshold and alternate-routing checks
+
+  Scenario: stabilization persists candidate facts before route authority
+    Given a canonical stage harness with a raw utterance "My name is Sebastian"
+    When canonical observe encode and stabilize execute
+    Then stabilization candidate facts include "user_name" as "Sebastian"
+

@@ -30,3 +30,10 @@ Feature: Memory recall behavior
     When the user asks a pronoun temporal follow-up "how long ago was it yesterday"
     Then the temporal anaphora bridge selects the anchor before rerank
     And the bridge emits elapsed delta and yesterday window details
+
+  Scenario: observe and stabilize happen before route authority
+    Given a canonical stage harness with a raw utterance "My name is Sebastian"
+    When canonical observe encode and stabilize execute
+    Then the stage artifacts include a typed turn observation
+    And stabilization provides same-turn exclusion doc ids before intent resolve
+

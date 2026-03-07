@@ -11,6 +11,9 @@ from langchain_core.documents import Document
 from testbot.eval_fixtures import best_candidate_doc_id, cases_by_id
 from testbot.pipeline_state import CandidateHit, PipelineState, ProvenanceType
 from testbot.rerank import adaptive_sigma_fractional, rerank_docs_with_time_and_type_outcome
+from testbot.turn_observation import observe_turn
+from testbot.candidate_encoding import encode_turn_candidates
+
 from testbot.sat_chatbot_memory_v2 import has_sufficient_context_confidence, stage_rerank
 from testbot.stage_transitions import (
     validate_answer_post,
@@ -390,6 +393,7 @@ def step_when_user_asks_pronoun_temporal_followup(context, utterance: str) -> No
         user_reflection_doc_id="r1",
         near_tie_delta=0.02,
         clock=_Clock(),
+        io_channel="cli",
     )
 
 
@@ -407,3 +411,40 @@ def step_then_bridge_emits_delta_and_window(context) -> None:
     assert decision["computed_delta_humanized"] == "14 hours ago"
     assert decision["time_window"] == "yesterday"
     assert decision["window_start"].startswith("2026-03-09T00:00:00")
+
+@given('a canonical stage harness with a raw utterance "{utterance}"')
+def step_given_canonical_stage_harness(context, utterance: str) -> None:
+    context.canonical_stage_state = PipelineState(user_input=utterance)
+
+
+@when("canonical observe encode and stabilize execute")
+def step_when_canonical_observe_encode_stabilize_execute(context) -> None:
+    state = context.canonical_stage_state
+    observation = observe_turn(
+        state,
+        turn_id="turn-bdd-1",
+        observed_at="2026-03-07T10:00:00+00:00",
+        speaker="user",
+        channel="cli",
+    )
+    encoded = encode_turn_candidates(state, observation=observation, rewritten_query=state.user_input)
+    context.canonical_observation = observation
+    context.canonical_encoded = encoded
+    context.canonical_same_turn_exclusion_doc_ids = ["turn-bdd-1", "reflection-bdd-1"]
+
+
+@then("the stage artifacts include a typed turn observation")
+def step_then_stage_artifacts_include_typed_turn_observation(context) -> None:
+    assert context.canonical_observation.turn_id == "turn-bdd-1"
+    assert context.canonical_observation.utterance
+
+
+@then("stabilization provides same-turn exclusion doc ids before intent resolve")
+def step_then_stabilization_provides_same_turn_exclusion_doc_ids(context) -> None:
+    assert context.canonical_same_turn_exclusion_doc_ids == ["turn-bdd-1", "reflection-bdd-1"]
+
+
+@then('stabilization candidate facts include "user_name" as "Sebastian"')
+def step_then_stabilization_candidate_facts_include_name(context) -> None:
+    assert any(f.key == "user_name" and f.value == "Sebastian" for f in context.canonical_encoded.facts)
+
