@@ -18,6 +18,8 @@ These design decisions prioritize deterministic memory-grounded answers with exp
 
 For deterministic reject diagnostics and machine-readable fallback reasons, see [docs/reject-taxonomy.md](reject-taxonomy.md).
 
+Program linkage: [`ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md`](issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md) is the project's **primary bug-elimination program** in the current state; contributors should triage canonical pipeline defects and follow-on work against ISSUE-0013 first, with ISSUE-0012 treated as linked delivery planning context in [`ISSUE-0012-canonical-turn-pipeline-delivery-plan.md`](issues/ISSUE-0012-canonical-turn-pipeline-delivery-plan.md).
+
 ## Legacy v0 compatibility note (historical)
 
 Earlier revisions described a simplified 6-stage flow (`observe → intent → encode → retrieve → rerank → answer`). Treat that model as historical shorthand only; runtime design and acceptance criteria are governed by the canonical 11-stage pipeline in [docs/architecture/canonical-turn-pipeline.md](architecture/canonical-turn-pipeline.md).
