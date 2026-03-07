@@ -1014,7 +1014,8 @@ def stage_answer(
         )
 
     invariant_decisions = {
-        "response_contains_claims": response_contains_claims(draft_answer),
+        "response_contains_claims": bool(claims),
+        "raw_claim_like_text_detected": raw_claim_like_text_detected(draft_answer),
         "has_required_memory_citation": has_required_memory_citation(draft_answer),
         "answer_contract_valid": validate_answer_contract(draft_answer),
         "general_knowledge_contract_valid": general_knowledge_contract_valid,
@@ -1261,6 +1262,10 @@ def build_provenance_metadata(
     )
 
 def response_contains_claims(text: str) -> bool:
+    return bool(extract_claims(text))
+
+
+def raw_claim_like_text_detected(text: str) -> bool:
     normalized = (text or "").strip()
     if not normalized:
         return False
@@ -1276,7 +1281,7 @@ def has_required_memory_citation(text: str) -> bool:
 
 
 def validate_answer_contract(text: str) -> bool:
-    if not response_contains_claims(text):
+    if not raw_claim_like_text_detected(text):
         return True
     return has_required_memory_citation(text)
 
@@ -1340,12 +1345,13 @@ def evaluate_alignment_decision(
         ASSIST_ALTERNATIVES_ANSWER,
     } or _is_capabilities_help_answer(final_answer)
     has_claims = response_contains_claims(draft_answer)
+    raw_claim_text_detected = raw_claim_like_text_detected(draft_answer)
     has_citation = has_required_memory_citation(draft_answer)
     context_confident = bool(confidence_decision.get("context_confident", False))
     unsafe_request = is_unsafe_user_request(user_input)
     observed_margin, required_margin, confidence_margin_normalized = _candidate_margin_normalized()
 
-    citation_validity = 1.0 if (contract_exempt_response or not has_claims or has_citation) else 0.0
+    citation_validity = 1.0 if (contract_exempt_response or not raw_claim_text_detected or has_citation) else 0.0
     factual_grounding_reliability = _clamp01((0.65 * citation_validity) + (0.35 * confidence_margin_normalized))
     safety_compliance_strictness = 0.0 if (unsafe_request and final_answer != DENY_ANSWER) else 1.0
 
@@ -1404,6 +1410,7 @@ def evaluate_alignment_decision(
         "dimension_inputs": {
             "raw": {
                 "has_claims": has_claims,
+                "raw_claim_like_text_detected": raw_claim_text_detected,
                 "has_required_memory_citation": has_citation,
                 "context_confident": context_confident,
                 "unsafe_request": unsafe_request,
