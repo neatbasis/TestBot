@@ -263,7 +263,102 @@ def test_structured_debug_payload_rejected_turn_has_nearest_gate_and_counterfact
         "ask_clarifying_question_passes": False,
         "route_to_ask_passes": False,
     }
+    assert policy["counterfactuals"]["nearest_pass_frontier"] == [
+        {
+            "family": "confidence",
+            "gate": "context_confident_gate",
+            "current": 0.2,
+            "required": 1.0,
+            "delta_to_pass": 0.8,
+        },
+        {
+            "family": "contract",
+            "gate": "answer_contract_gate",
+            "current": 0.0,
+            "required": 1.0,
+            "delta_to_pass": 1.0,
+        },
+        {
+            "family": "rerank",
+            "gate": "top_final_score_gate",
+            "current": 0.88,
+            "required": 0.9,
+            "delta_to_pass": 0.02,
+        },
+    ]
+    assert policy["counterfactuals"]["dominant_contributors"] == [
+        {"component": "provenance_citation_factor", "current": 0.0, "delta_to_ideal": 1.0},
+        {"component": "semantic_similarity", "current": 0.0, "delta_to_ideal": 1.0},
+    ]
 
+
+
+def test_structured_debug_payload_temporal_rejection_includes_temporal_frontier_and_contributors() -> None:
+    state = PipelineState(
+        user_input="what happened then",
+        rewritten_query="what happened then",
+        classified_intent="time_query",
+        resolved_intent="time_query",
+        confidence_decision={
+            "context_confident": False,
+            "ambiguity_detected": False,
+            "anaphora_detected": True,
+            "top_final_score_min": 0.8,
+            "min_margin_to_second": 0.05,
+            "scored_candidates": [
+                {
+                    "final_score": 0.4,
+                    "semantic_similarity": 0.92,
+                    "time_decay_freshness": 0.18,
+                    "type_prior": 0.85,
+                    "provenance_citation_factor": 0.94,
+                },
+                {"final_score": 0.35},
+            ],
+        },
+        invariant_decisions={"answer_mode": "dont-know", "fallback_action": "ANSWER_UNKNOWN"},
+    )
+
+    payload = _build_debug_turn_payload(state=state, intent_label="time_query", hits=[])
+
+    counterfactuals = payload["debug.policy"]["counterfactuals"]
+    assert counterfactuals["nearest_pass_frontier"] == [
+        {"family": "confidence", "gate": "context_confident_gate", "current": 0.5, "required": 1.0, "delta_to_pass": 0.5},
+        {"family": "rerank", "gate": "top_final_score_gate", "current": 0.4, "required": 0.8, "delta_to_pass": 0.4},
+        {"family": "temporal", "gate": "temporal_reference_gate", "current": 0.0, "required": 1.0, "delta_to_pass": 1.0},
+    ]
+    assert counterfactuals["dominant_contributors"] == [
+        {"component": "time_decay_freshness", "current": 0.18, "delta_to_ideal": 0.82},
+        {"component": "type_prior", "current": 0.85, "delta_to_ideal": 0.15},
+    ]
+
+
+def test_structured_debug_payload_contract_rejection_frontier_focuses_contract_gate() -> None:
+    state = PipelineState(
+        user_input="summarize the release notes",
+        rewritten_query="summarize the release notes",
+        classified_intent="knowledge_question",
+        resolved_intent="knowledge_question",
+        confidence_decision={
+            "context_confident": True,
+            "ambiguity_detected": False,
+            "top_final_score_min": 0.75,
+            "min_margin_to_second": 0.05,
+            "scored_candidates": [{"final_score": 0.92}, {"final_score": 0.7}],
+        },
+        invariant_decisions={
+            "answer_mode": "assist",
+            "fallback_action": "OFFER_CAPABILITY_ALTERNATIVES",
+            "answer_contract_valid": False,
+            "general_knowledge_contract_valid": True,
+        },
+    )
+
+    payload = _build_debug_turn_payload(state=state, intent_label="knowledge_question", hits=[])
+
+    assert payload["debug.policy"]["counterfactuals"]["nearest_pass_frontier"] == [
+        {"family": "contract", "gate": "answer_contract_gate", "current": 0.0, "required": 1.0, "delta_to_pass": 1.0}
+    ]
 
 def test_structured_debug_payload_non_rejected_turn_has_no_nearest_failure_gate() -> None:
     state = PipelineState(

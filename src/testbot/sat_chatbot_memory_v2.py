@@ -1022,6 +1022,41 @@ def _nearest_failure_gate(*, gates: dict[str, dict[str, float | bool]]) -> dict[
     }
 
 
+def _gate_delta_entry(*, family: str, gate_name: str, gate: dict[str, float | bool]) -> dict[str, float | str]:
+    score = float(gate.get("score", 0.0) or 0.0)
+    threshold = float(gate.get("threshold", 0.0) or 0.0)
+    return {
+        "family": family,
+        "gate": gate_name,
+        "current": round(score, 4),
+        "required": round(threshold, 4),
+        "delta_to_pass": round(max(0.0, threshold - score), 4),
+    }
+
+
+def _dominant_score_contributors(*, score_decomposition: list[dict[str, object]], max_items: int = 2) -> list[dict[str, float | str]]:
+    if not score_decomposition:
+        return []
+    top_candidate = score_decomposition[0] if isinstance(score_decomposition[0], dict) else {}
+    contributor_pairs: list[tuple[str, float]] = [
+        ("time_decay_freshness", float(top_candidate.get("time_decay_freshness", 0.0) or 0.0)),
+        ("semantic_similarity", float(top_candidate.get("semantic_similarity", 0.0) or 0.0)),
+        ("type_prior", float(top_candidate.get("type_prior", 0.0) or 0.0)),
+        ("provenance_citation_factor", float(top_candidate.get("provenance_citation_factor", 0.0) or 0.0)),
+    ]
+    ordered = sorted(contributor_pairs, key=lambda item: (-abs(1.0 - item[1]), item[0]))
+    dominant: list[dict[str, float | str]] = []
+    for component, value in ordered[:max_items]:
+        dominant.append(
+            {
+                "component": component,
+                "current": round(value, 4),
+                "delta_to_ideal": round(max(0.0, 1.0 - value), 4),
+            }
+        )
+    return dominant
+
+
 def _counterfactual_policy_passes(
     *,
     intent_label: str,
@@ -1164,8 +1199,7 @@ def _build_debug_turn_payload(*, state: PipelineState, intent_label: str, hits: 
     doc_ids = [(doc.id or doc.metadata.get("doc_id") or "") for doc in hits[:3]]
     ambiguity_score = 1.0 if not ambiguity_detected else 0.0
     observed_docs: list[dict[str, object]] = []
-    score_decomposition: list[dict[str, object]] = []
-    for index, doc in enumerate(hits[:3]):
+    for doc in hits[:3]:
         metadata = doc.metadata if isinstance(doc.metadata, dict) else {}
         observed_docs.append(
             {
@@ -1177,11 +1211,15 @@ def _build_debug_turn_payload(*, state: PipelineState, intent_label: str, hits: 
                 "source": str(metadata.get("source") or ""),
             }
         )
-        if isinstance(scored_candidates, list) and index < len(scored_candidates) and isinstance(scored_candidates[index], dict):
-            candidate = scored_candidates[index]
+
+    score_decomposition: list[dict[str, object]] = []
+    if isinstance(scored_candidates, list):
+        for candidate in scored_candidates[:3]:
+            if not isinstance(candidate, dict):
+                continue
             score_decomposition.append(
                 {
-                    "doc_id": str(candidate.get("doc_id") or doc.id or metadata.get("doc_id") or ""),
+                    "doc_id": str(candidate.get("doc_id") or ""),
                     "semantic_similarity": float(candidate.get("semantic_similarity", candidate.get("semantic_score", 0.0)) or 0.0),
                     "time_decay_freshness": float(candidate.get("time_decay_freshness", candidate.get("temporal_gaussian_weight", 0.0)) or 0.0),
                     "type_prior": float(candidate.get("type_prior", 0.0) or 0.0),
@@ -1248,6 +1286,42 @@ def _build_debug_turn_payload(*, state: PipelineState, intent_label: str, hits: 
             "general_knowledge_contract_gate": general_knowledge_contract_gate,
         }
     )
+
+    nearest_pass_frontier: list[dict[str, float | str]] = []
+    if rejected_turn:
+        gate_families: tuple[tuple[str, str, dict[str, float | bool]], ...] = (
+            ("rerank", "top_final_score_gate", top_final_score_gate),
+            ("rerank", "margin_gate", margin_gate),
+            ("rerank", "ambiguity_gate", ambiguity_gate),
+            ("confidence", "context_confident_gate", context_confident_gate),
+            ("contract", "answer_contract_gate", answer_contract_gate),
+            ("contract", "general_knowledge_contract_gate", general_knowledge_contract_gate),
+        )
+        if intent_label == "time_query" or bool(state.confidence_decision.get("anaphora_detected", False)):
+            gate_families += (("temporal", "temporal_reference_gate", _gate_metrics(
+                passed=reject_signal.reject_code != "TEMPORAL_REFERENCE_UNRESOLVED",
+                score=reject_signal.score if reject_signal.partition == "temporal" else 1.0,
+                threshold=reject_signal.threshold if reject_signal.partition == "temporal" else 1.0,
+            )),)
+
+        closest_by_family: dict[str, dict[str, float | str]] = {}
+        for family, gate_name, gate in gate_families:
+            if bool(gate.get("passed", False)):
+                continue
+            entry = _gate_delta_entry(family=family, gate_name=gate_name, gate=gate)
+            current = closest_by_family.get(family)
+            if current is None:
+                closest_by_family[family] = entry
+                continue
+            if (
+                float(entry["delta_to_pass"]) < float(current["delta_to_pass"])
+                or (
+                    float(entry["delta_to_pass"]) == float(current["delta_to_pass"])
+                    and str(entry["gate"]) < str(current["gate"])
+                )
+            ):
+                closest_by_family[family] = entry
+        nearest_pass_frontier = [closest_by_family[k] for k in sorted(closest_by_family)]
 
     top_candidate_pass_thresholds = {
         "top_final_score_min": round(max(top_threshold, top_score), 4),
@@ -1361,6 +1435,8 @@ def _build_debug_turn_payload(*, state: PipelineState, intent_label: str, hits: 
             "nearest_failure_gate": nearest_failure_gate,
             "counterfactuals": {
                 "top_candidate_pass_thresholds": top_candidate_pass_thresholds,
+                "nearest_pass_frontier": nearest_pass_frontier,
+                "dominant_contributors": _dominant_score_contributors(score_decomposition=score_decomposition),
                 "alternate_routing_policy_checks": {
                     "ask_clarifying_question_passes": clarify_policy_passes,
                     "route_to_ask_passes": route_to_ask_policy_passes,
