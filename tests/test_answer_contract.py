@@ -2,9 +2,12 @@ from __future__ import annotations
 
 from collections import deque
 
+from langchain_core.documents import Document
+
 from testbot.pipeline_state import PipelineState, ProvenanceType
 from testbot.history_packer import pack_chat_history
 from testbot.sat_chatbot_memory_v2 import (
+    ASSIST_ALTERNATIVES_ANSWER,
     FALLBACK_ANSWER,
     RuntimeCapabilityStatus,
     build_provenance_metadata,
@@ -65,6 +68,39 @@ def test_non_memory_general_knowledge_contract_failure_degrades_to_knowledge_saf
     assert "i can either" in lowered and " or " in lowered
     assert "Which person, event, or time window should I focus on?" not in answer_state.final_answer
     assert answer_state.invariant_decisions["answer_mode"] != "clarify"
+
+
+def test_memory_recall_confident_contract_failure_uses_deterministic_recovery_hit() -> None:
+    state = PipelineState(
+        user_input="what did i decide about training schedule?",
+        confidence_decision={
+            "context_confident": True,
+            "ambiguity_detected": False,
+        },
+        resolved_intent="memory_recall",
+    )
+    hits = [
+        Document(
+            page_content="You decided to move strength training to Tuesday mornings after the team standup.",
+            metadata={"doc_id": "mem-42", "ts": "2026-03-06T08:15:00Z"},
+        )
+    ]
+
+    answer_state = stage_answer(
+        _UnlabeledGeneralKnowledgeLLM(),
+        state,
+        chat_history=deque(),
+        hits=hits,
+        capability_status="ask_unavailable",
+        runtime_capability_status=_runtime_status(),
+        clock=None,
+    )
+
+    assert answer_state.final_answer != ASSIST_ALTERNATIVES_ANSWER
+    assert "From memory, I found:" in answer_state.final_answer
+    assert "doc_id: mem-42" in answer_state.final_answer
+    assert "ts: 2026-03-06T08:15:00Z" in answer_state.final_answer
+    assert answer_state.invariant_decisions["answer_mode"] == "memory-grounded"
 
 
 

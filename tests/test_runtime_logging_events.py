@@ -522,6 +522,37 @@ def test_stage_answer_regression_say_hello_keeps_greeting_instead_of_memory_fall
     assert answered.final_answer == "hello"
     assert "reliable memory" not in answered.final_answer.lower()
 
+
+def test_stage_answer_memory_recall_confident_hit_recovers_from_contract_failure() -> None:
+    state = PipelineState(
+        user_input="what did i note about release prep?",
+        resolved_intent=IntentType.MEMORY_RECALL.value,
+        confidence_decision={
+            "context_confident": True,
+            "ambiguity_detected": False,
+        },
+    )
+
+    answered = stage_answer(
+        _StaticLLM("It should be fine."),
+        state,
+        chat_history=deque(),
+        hits=[
+            Document(
+                page_content="You noted that release prep requires changelog review before tagging.",
+                metadata={"doc_id": "mem-7", "ts": "2026-03-01T12:00:00Z"},
+            )
+        ],
+        capability_status="ask_unavailable",
+        clock=SystemClock(),
+    )
+
+    assert answered.final_answer != ASSIST_ALTERNATIVES_ANSWER
+    assert "From memory, I found:" in answered.final_answer
+    assert "doc_id: mem-7" in answered.final_answer
+    assert "ts: 2026-03-01T12:00:00Z" in answered.final_answer
+    assert answered.invariant_decisions.get("answer_mode") == "memory-grounded"
+
 def test_response_blocker_reason_for_answer_unknown_reports_insufficient_reliable_memory() -> None:
     assert _derive_response_blocker_reason(
         answer_mode="assist",
