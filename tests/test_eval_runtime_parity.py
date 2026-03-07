@@ -159,6 +159,14 @@ def _assert_runtime_eval_signal_parity(runtime: dict[str, Any], eval_path: dict[
     _assert_intermediate_signal_contract(eval_path, fixture_id)
 
 
+def _structured_mode(signals: dict[str, Any]) -> str:
+    if signals["intent"] == "memory-grounded":
+        return "memory-grounded"
+    if signals["ambiguity_detected"]:
+        return "dont-know-ambiguous"
+    return "dont-know-low-confidence"
+
+
 def test_eval_runtime_parity_clear_winner_case() -> None:
     case = cases_by_id()["sleep-followup"]
 
@@ -255,6 +263,7 @@ def test_eval_runtime_parity_fixture_families() -> None:
         "eval_runtime_parity_ambiguous_intent.jsonl",
         "eval_runtime_parity_observation_making_processes.jsonl",
         "eval_runtime_parity_temporal_uncertainty.jsonl",
+        "eval_runtime_parity_divergent_analysis.jsonl",
     ]
 
     fixtures: list[dict[str, Any]] = []
@@ -272,5 +281,11 @@ def test_eval_runtime_parity_fixture_families() -> None:
         top_k = int(expected.get("top_k", 1))
         assert runtime["ranked_doc_ids"][:top_k] == expected["ranked_doc_ids_top_k"], fixture["fixture_id"]
         assert runtime["intent"] == expected["intent"], fixture["fixture_id"]
+        assert _structured_mode(runtime) == expected.get("mode", _structured_mode(runtime)), fixture["fixture_id"]
+
+        if "ambiguity_detected" in expected:
+            assert runtime["ambiguity_detected"] is bool(expected["ambiguity_detected"]), fixture["fixture_id"]
+        if "context_confident" in expected:
+            assert runtime["context_confident"] is bool(expected["context_confident"]), fixture["fixture_id"]
         if "near_tie_min_count" in expected:
             assert len(runtime["near_tie_candidates"]) >= int(expected["near_tie_min_count"]), fixture["fixture_id"]
