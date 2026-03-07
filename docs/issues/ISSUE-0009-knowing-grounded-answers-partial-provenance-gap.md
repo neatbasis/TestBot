@@ -41,6 +41,8 @@ The `knowing_grounded_answers` capability remains `partial`. ISSUE-0009 is the p
 - [ ] **Remaining delta: debug reason accuracy** — ensure debug/trace reason values reflect true confidence/ambiguity branch decisions for memory-recall turns.
 - [ ] Regenerate report/status artifacts with existing scripts only after acceptance criteria 1-3 are fully implemented and validated as passing.
 
+- Sequence memory/provenance deltas against ISSUE-0012 Sprint 3 and Sprint 5 checkpoints so pre-route stabilization and answer validation changes are reviewed together.
+
 ## Verification
 
 - Command: `python -m behave features/answer_contract.feature features/memory_recall.feature`
