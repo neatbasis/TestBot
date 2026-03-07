@@ -127,9 +127,10 @@ capabilities:
   roadmap_priority_refs:
   - P3
   - P4
+  open_issues:
+  - ISSUE-0013
   issue_keywords:
-  - ISSUE-0012
-  - canonical_turn_pipeline
+  - ISSUE-0013
 - capability_id: canonical_turn_pipeline_decisioning
   capability_name: Canonical turn pipeline decisioning (context/intent/retrieve/policy)
   owner_module: src/testbot/intent_router.py
@@ -147,9 +148,10 @@ capabilities:
   roadmap_priority_refs:
   - P3
   - P4
+  open_issues:
+  - ISSUE-0013
   issue_keywords:
-  - ISSUE-0012
-  - canonical_turn_pipeline
+  - ISSUE-0013
 - capability_id: canonical_turn_pipeline_commit_and_audit
   capability_name: Canonical turn pipeline commit and auditability (assemble/validate/render/commit)
   owner_module: src/testbot/pipeline_state.py
@@ -166,9 +168,10 @@ capabilities:
   roadmap_priority_refs:
   - P4
   - P5
+  open_issues:
+  - ISSUE-0013
   issue_keywords:
-  - ISSUE-0012
-  - canonical_turn_pipeline
+  - ISSUE-0013
 - capability_id: governance_readiness_gate
   capability_name: Canonical all-green merge gate and issue governance checks
   owner_module: scripts/all_green_gate.py
