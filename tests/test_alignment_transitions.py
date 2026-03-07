@@ -322,11 +322,40 @@ def test_stage_answer_non_memory_invalid_gk_contract_routes_to_safe_fallback_and
     )
 
     assert answer_state.invariant_decisions["general_knowledge_contract_valid"] is False
-    assert answer_state.final_answer in {ASSIST_ALTERNATIVES_ANSWER, NON_KNOWLEDGE_UNCERTAINTY_ANSWER}
+    assert answer_state.final_answer == NON_KNOWLEDGE_UNCERTAINTY_ANSWER
+    assert answer_state.invariant_decisions["answer_mode"] == "dont-know"
 
     result = validate_answer_post(answer_state)
 
     assert result.passed is True
+
+
+def test_stage_answer_social_statement_with_invalid_gk_contract_degrades_to_uncertainty_fallback() -> None:
+    state = PipelineState(
+        user_input="My name is Sebastian",
+        rewritten_query="my name is sebastian",
+        confidence_decision={
+            "context_confident": False,
+            "ambiguity_detected": False,
+            "general_knowledge_confidence": 0.0,
+            "general_knowledge_support": 0,
+        },
+        resolved_intent="knowledge_question",
+    )
+
+    answer_state = stage_answer(
+        _UnlabeledGeneralKnowledgeLLM(),
+        state,
+        chat_history=deque(),
+        hits=[],
+        capability_status="ask_unavailable",
+        clock=None,
+    )
+
+    assert answer_state.invariant_decisions["general_knowledge_contract_valid"] is False
+    assert answer_state.final_answer == NON_KNOWLEDGE_UNCERTAINTY_ANSWER
+    assert answer_state.invariant_decisions["answer_mode"] == "dont-know"
+    assert validate_answer_post(answer_state).passed is True
 
 
 def test_validate_answer_post_rejects_non_fallback_factual_answer_when_gk_contract_invalid() -> None:
@@ -418,7 +447,7 @@ def test_evaluate_alignment_decision_no_claims_fallback_does_not_inflate_citatio
     assert raw["citation_check_applicable"] is False
     assert normalized["citation_validity"] == 0.0
     assert decision["dimensions"]["provenance_transparency"] == 0.3333
-    assert decision["final_alignment_decision"] == "fallback"
+    assert decision["final_alignment_decision"] == "allow"
 
 
 def test_evaluate_alignment_decision_with_required_citation_allows_when_other_signals_are_strong() -> None:

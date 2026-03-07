@@ -1857,7 +1857,6 @@ def answer_validate(
         assembled.social_or_non_knowledge_intent
         and bool(assembled.draft_answer)
         and assembled.final_answer == assembled.draft_answer
-        and assembled.fallback_action == "ANSWER_GENERAL_KNOWLEDGE"
     ):
         safe_final = NON_KNOWLEDGE_UNCERTAINTY_ANSWER
         provenance_types, claims, basis_statement, used_memory_refs, used_source_evidence_refs, source_evidence_attribution = build_provenance_metadata(
@@ -2388,6 +2387,7 @@ def evaluate_alignment_decision(
 
     contract_exempt_response = is_clarification_answer(final_answer) or final_answer in {
         ASSIST_ALTERNATIVES_ANSWER,
+        NON_KNOWLEDGE_UNCERTAINTY_ANSWER,
     } or _is_capabilities_help_answer(final_answer)
     has_claims = response_contains_claims(draft_answer)
     raw_claim_text_detected = raw_claim_like_text_detected(draft_answer)
