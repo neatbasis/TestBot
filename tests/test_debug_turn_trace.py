@@ -39,6 +39,10 @@ def test_format_debug_turn_trace_reports_low_confidence_assist_reason() -> None:
     assert "retrieval_branch=memory_retrieval" in trace
     assert "reject_code=CONTEXT_CONF_BELOW_THRESHOLD" in trace
     assert "partition=rerank" in trace
+    assert "top1=0.000>0.000" in trace
+    assert "context_conf=1.000<1.000" in trace
+    assert "margin=0.000>0.000" in trace
+    assert "nearest_failure=context_confident_gate:+0.000" in trace
     assert "blocker_reason=retrieved memory fragments were low-confidence for a direct answer" in trace
 
 
@@ -63,6 +67,10 @@ def test_format_debug_turn_trace_reports_contract_rejection_assist_reason() -> N
 
     assert "answer_mode=assist" in trace
     assert "context_confident=True" in trace
+    assert "top1=0.000>0.000" in trace
+    assert "context_conf=1.000>1.000" in trace
+    assert "margin=0.000>0.000" in trace
+    assert "nearest_failure=answer_contract_gate:+1.000" in trace
     assert "reject_code=ANSWER_CONTRACT_GROUNDING_FAIL" in trace
     assert "partition=contract" in trace
     assert "blocker_reason=answer-contract rejection: draft did not satisfy grounding/citation requirements" in trace
@@ -109,6 +117,34 @@ def test_format_debug_turn_trace_defaults_to_non_verbose_format() -> None:
 
     assert trace.startswith("[debug] intent=")
     assert "debug.intent" not in trace
+
+
+def test_format_debug_turn_trace_compact_trace_includes_gate_scalars_when_candidates_present() -> None:
+    state = PipelineState(
+        user_input="what did I say about ontology",
+        rewritten_query="ontology memory",
+        confidence_decision={
+            "context_confident": False,
+            "ambiguity_detected": False,
+            "retrieval_branch": "memory_retrieval",
+            "top_final_score_min": 0.9,
+            "min_margin_to_second": 0.05,
+            "scored_candidates": [{"final_score": 0.88}, {"final_score": 0.87}],
+        },
+        invariant_decisions={
+            "answer_mode": "assist",
+            "fallback_action": "OFFER_CAPABILITY_ALTERNATIVES",
+            "answer_contract_valid": True,
+            "general_knowledge_contract_valid": True,
+        },
+    )
+
+    trace = _format_debug_turn_trace(state=state, intent_label="memory_recall", hits=[])
+
+    assert "top1=0.880<0.900" in trace
+    assert "context_conf=0.200<1.000" in trace
+    assert "margin=0.010<0.050" in trace
+    assert "nearest_failure=top_final_score_gate:+0.020" in trace
 
 
 def test_format_debug_turn_trace_verbose_opt_in_emits_json_payload() -> None:
