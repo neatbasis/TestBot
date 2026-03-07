@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections import deque
+import json
 from dataclasses import replace
 
 import arrow
@@ -733,3 +734,83 @@ def test_chat_loop_debug_trace_logs_structured_payload_for_queryable_policy_fiel
     }
     assert debug_event["payload"]["debug.confidence"]["context_confident_gate"]["passed"] is False
     assert debug_event["payload"]["debug.rerank"]["margin_gate"]["passed"] is False
+
+
+def test_chat_loop_alignment_decision_event_writes_json_safe_session_log(tmp_path, monkeypatch) -> None:
+    session_log = tmp_path / "session.jsonl"
+
+    original_append_session_log = runtime.append_session_log
+
+    def _append_to_tmp_log(event: str, payload: dict, *, log_path=None):  # noqa: ARG001
+        original_append_session_log(event, payload, log_path=session_log)
+
+    monkeypatch.setattr(runtime, "append_session_log", _append_to_tmp_log)
+    monkeypatch.setattr(runtime, "_validate_and_log_transition", lambda _result: None)
+    monkeypatch.setattr(runtime, "store_doc", lambda *args, **kwargs: None)
+    monkeypatch.setattr(runtime, "generate_reflection_yaml", lambda *args, **kwargs: "claims: []")
+    monkeypatch.setattr(runtime, "persist_promoted_context", lambda *args, **kwargs: [])
+    monkeypatch.setattr(runtime, "encode_stage", lambda _llm, state: replace(state, rewritten_query="release prep notes"))
+    monkeypatch.setattr(runtime, "stage_retrieve", lambda _store, state, **kwargs: (replace(state, retrieval_candidates=[]), []))
+    monkeypatch.setattr(
+        runtime,
+        "stage_rerank",
+        lambda state, docs_and_scores, **kwargs: (replace(state, reranked_hits=[]), []),  # noqa: ARG005
+    )
+    monkeypatch.setattr(
+        runtime,
+        "stage_answer",
+        lambda _llm, state, **kwargs: replace(  # noqa: ARG005
+            state,
+            final_answer="From memory, I found: release prep includes changelog checks.",
+            invariant_decisions={"fallback_action": "NONE", "answer_mode": "memory-grounded"},
+            provenance_types=[],
+            basis_statement="Memory-grounded basis.",
+            claims=["release prep includes changelog checks"],
+        ),
+    )
+
+    prompts = iter(["what did i note about release prep?", "stop"])
+    replies: list[str] = []
+
+    _run_chat_loop(
+        llm=_StaticLLM("From memory, I found: release prep includes changelog checks."),
+        store=object(),
+        chat_history=deque(),
+        near_tie_delta=0.05,
+        io_channel="cli",
+        capability_status="ask_unavailable",
+        capability_snapshot=CapabilitySnapshot(
+            runtime={},
+            requested_mode="cli",
+            daemon_mode=False,
+            effective_mode="cli",
+            fallback_reason=None,
+            exit_reason=None,
+            ha_error=None,
+            ollama_error=None,
+            runtime_capability_status=RuntimeCapabilityStatus(
+                ollama_available=True,
+                ha_available=False,
+                effective_mode="cli",
+                requested_mode="cli",
+                daemon_mode=False,
+                fallback_reason=None,
+                memory_backend="inmemory",
+                debug_enabled=False,
+                debug_verbose=False,
+                text_clarification_available=True,
+                satellite_ask_available=False,
+            ),
+        ),
+        read_user_utterance=lambda: next(prompts, None),
+        send_assistant_text=lambda text: replies.append(text),
+        clock=_FIXED_CLOCK,
+    )
+
+    log_rows = [json.loads(line) for line in session_log.read_text(encoding="utf-8").splitlines() if line.strip()]
+    assert replies
+    assert any(row.get("event") == "alignment_decision_evaluated" for row in log_rows)
+
+    alignment_row = next(row for row in log_rows if row.get("event") == "alignment_decision_evaluated")
+    assert isinstance(alignment_row["alignment_decision"], dict)
+    assert isinstance(alignment_row["alignment_dimensions"], dict)
