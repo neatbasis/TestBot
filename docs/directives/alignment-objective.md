@@ -4,6 +4,8 @@
 - **Version:** `2026-03-05.v3`
 - **Scope:** per-turn answer emission in `sat_chatbot_memory_v2`.
 
+Program linkage: [`ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md`](../issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md) is the project's **primary bug-elimination program** in the current state; contributors should triage canonical pipeline defects and follow-on work against ISSUE-0013 first, with ISSUE-0012 treated as linked delivery planning context in [`ISSUE-0012-canonical-turn-pipeline-delivery-plan.md`](../issues/ISSUE-0012-canonical-turn-pipeline-delivery-plan.md).
+
 ## Objective Dimensions
 
 Each turn must produce all five dimension scores in `[0.0, 1.0]` and a final decision.
