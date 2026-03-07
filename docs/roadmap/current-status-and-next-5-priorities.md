@@ -2,6 +2,8 @@
 
 ## Why this exists
 
+Implementation-risk burn-down for canonical pipeline milestones is tracked under [`ISSUE-0013`](../issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md); treat ISSUE-0012 references in roadmap material as historical delivery-planning context only.
+
 This document answers four operational questions in one place:
 
 1. Where are we right now?

@@ -9,6 +9,8 @@ This assessment compares current implementation, tests, and governance behavior 
 
 ## Executive summary
 
+Implementation-risk burn-down and canonical pipeline defect-elimination sequencing should be tracked in [`ISSUE-0013`](../issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md), with ISSUE-0012 retained as historical planning context.
+
 - Core runtime quality signals are currently strong: BDD and deterministic pytest suites are passing locally after installing dev dependencies.
 - The largest alignment drift is in planning/governance documents that still describe now-resolved states or reference non-existent module/test paths.
 - The highest technical debt item is release-gate brittleness in environments without `origin/main` fetch context, which can cause governance checks to fail even when behavior/tests pass.

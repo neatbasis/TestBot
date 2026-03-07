@@ -4,16 +4,16 @@
 
 This roadmap operationalizes the top-5 grounded-knowing priorities over four sprints. Each sprint includes explicit goals, measurable exits, and rollback criteria so delivery remains deterministic, testable, and reversible.
 
-## Canonical stage bundle mapping (ISSUE-0012 alignment)
+## Canonical stage bundle mapping (ISSUE-0013 implementation-risk alignment)
 
-The roadmap priorities map to canonical turn pipeline stage bundles and governance acceptance criteria in
-`docs/issues/ISSUE-0012-canonical-turn-pipeline-delivery-plan.md` as follows.
+The roadmap priorities map to canonical turn pipeline stage bundles and implementation-risk burn-down sequencing in
+`docs/issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md` (with ISSUE-0012 retained as historical planning context) as follows.
 
-| Sprint milestone | Canonical stage bundle | Primary roadmap priorities | ISSUE-0012 acceptance criteria cross-link |
+| Sprint milestone | Canonical stage bundle | Primary roadmap priorities | ISSUE-0013 implementation-risk burn-down link |
 | --- | --- | --- | --- |
-| **Sprint 3** | **observe / encode / stabilize** | `P1`, `P2` foundations required before route authority and ranking policy hardening | **AC3** (defines sprint slices + mandatory review checkpoint), **AC4** (deterministic verification commands and evidence reporting) |
-| **Sprint 4** | **context / intent / retrieve / decide** | `P2`, `P3` policy/ranking convergence and intent-grounded decisioning | **AC2** (cross-issue dependency coordination), **AC3** (mandatory review checkpoint for policy/retrieval alignment), **AC4** (deterministic verification commands) |
-| **Sprint 5** | **assemble / validate / render / commit** | `P4`, `P5` answer contract completion, replay hardening, and post-turn traceability | **AC1** (planned capability entries and status linkage), **AC3** (release-readiness review checkpoint), **AC4** (deterministic verification commands) |
+| **Sprint 3** | **observe / encode / stabilize** | `P1`, `P2` foundations required before route authority and ranking policy hardening | Foundation checkpoint sequencing, defect intake, and evidence links are recorded in ISSUE-0013 Work Plan + Closure Notes. |
+| **Sprint 4** | **context / intent / retrieve / decide** | `P2`, `P3` policy/ranking convergence and intent-grounded decisioning | Decisioning checkpoint sequencing and cross-issue dependency routing are tracked in ISSUE-0013. |
+| **Sprint 5** | **assemble / validate / render / commit** | `P4`, `P5` answer contract completion, replay hardening, and post-turn traceability | Commit/audit checkpoint sequencing and release-readiness risk burn-down are tracked in ISSUE-0013. |
 
 ### Governance checkpoint rule for Sprint 3-5 milestones
 
@@ -57,7 +57,7 @@ If a roadmap item is renamed for readability, keep the `P#` bound to the same ca
 - Ingestion emits structured records containing required fields (`source_id`, `doc_id`, `ts`, `content`, `metadata`).
 - Stage-specific deterministic evidence is attached for ingestion-stage behavior and failure modes: `python -m behave`, `python -m pytest -m "not live_smoke"`, and `python scripts/all_green_gate.py` all pass for this scope (per `docs/testing.md`).
 
-### Mandatory code-review checkpoint (ISSUE-0012 consistency)
+### Mandatory code-review checkpoint (ISSUE-0013 sequencing consistency)
 - Architecture + runtime review confirms connector/ingestion delivery does not create an early lossy path that would violate canonical stage ordering before Sprint 3 stage-bundle work.
 - Review record includes links to deterministic evidence artifacts (BDD, pytest, canonical gate summary).
 
@@ -80,7 +80,7 @@ If a roadmap item is renamed for readability, keep the `P#` bound to the same ca
 - Deterministic tests show stable ordering/top-1 selection across fixed fixtures for mixed-source cases.
 - Stage-specific deterministic evidence is attached for mixed-source normalization/ranking behavior: `python -m behave`, `python -m pytest -m "not live_smoke"`, `python -m pytest tests/test_eval_runtime_parity.py`, and `python scripts/all_green_gate.py` pass (per `docs/testing.md`).
 
-### Mandatory code-review checkpoint (ISSUE-0012 consistency)
+### Mandatory code-review checkpoint (ISSUE-0013 sequencing consistency)
 - Policy + retrieval reviewers verify ranking updates remain compatible with upcoming Sprint 4 `context/intent/retrieve/decide` stage sequencing.
 - Review notes explicitly capture deterministic evidence and stage-order invariant checks.
 
@@ -102,9 +102,9 @@ If a roadmap item is renamed for readability, keep the `P#` bound to the same ca
 - BDD scenarios demonstrate observe-before-infer and stabilize-before-route behavior with deterministic fixtures.
 - Deterministic pytest coverage confirms stage outputs are stable and no lossy projection bypasses stabilize.
 - Canonical gate evidence is green: `python -m behave`, `python -m pytest -m "not live_smoke"`, and `python scripts/all_green_gate.py` pass for this sprint scope (per `docs/testing.md`).
-- Milestone trace links to ISSUE-0012 acceptance criteria: **AC3** + **AC4**.
+- Milestone trace links to ISSUE-0013 sequencing checkpoints for decisioning + deterministic validation evidence.
 
-### Mandatory code-review checkpoint (ISSUE-0012 AC3)
+### Mandatory code-review checkpoint (ISSUE-0013 decisioning sequencing)
 - Architecture + runtime review confirms no early lossy `U -> I` projection path is reintroduced.
 - Reviewer sign-off includes stage-order and invariant checklist references plus deterministic evidence links.
 
@@ -125,11 +125,11 @@ If a roadmap item is renamed for readability, keep the `P#` bound to the same ca
 - BDD scenarios validate context/intent/retrieve/decide behavior and deterministic know/unknown outcomes.
 - Deterministic pytest suites (including parity checks) confirm retrieval-policy alignment and stable decision routing.
 - Canonical gate evidence is green: `python -m behave`, `python -m pytest -m "not live_smoke"`, `python -m pytest tests/test_eval_runtime_parity.py`, and `python scripts/all_green_gate.py` pass (per `docs/testing.md`).
-- Milestone trace links to ISSUE-0012 acceptance criteria: **AC2** + **AC3** + **AC4**.
+- Milestone trace links to ISSUE-0013 sequencing checkpoints for cross-issue dependency routing + deterministic validation evidence.
 
-### Mandatory code-review checkpoint (ISSUE-0012 AC3)
+### Mandatory code-review checkpoint (ISSUE-0013 sequencing checkpoint)
 - Policy/retrieval review signs off on decision-answer alignment and explicit handling of empty-evidence vs scored-empty states.
-- Review notes include explicit cross-issue dependency traceability to ISSUE-0012 (AC2).
+- Review notes include explicit cross-issue dependency traceability to ISSUE-0013 sequencing records (with historical linkage back to ISSUE-0012 when needed).
 
 ### Rollback criteria
 - If alignment changes regress behavior, revert to the prior policy/retrieval package only if canonical stage order (`context -> intent -> retrieve -> decide`) and invariants remain enforced.
@@ -148,9 +148,9 @@ If a roadmap item is renamed for readability, keep the `P#` bound to the same ca
 - BDD scenarios pass for answer contract, provenance output, and fallback behavior at final response stages.
 - Deterministic pytest coverage verifies committed-state traceability and replay-sensitive correctness.
 - Canonical gate evidence is green: `python -m behave`, `python -m pytest -m "not live_smoke"`, `python -m pytest tests/test_eval_runtime_parity.py`, and `python scripts/all_green_gate.py` pass (per `docs/testing.md`).
-- Milestone trace links to ISSUE-0012 acceptance criteria: **AC1** + **AC3** + **AC4**.
+- Milestone trace links to ISSUE-0013 sequencing checkpoints for commit/audit risk burn-down + deterministic validation evidence.
 
-### Mandatory code-review checkpoint (ISSUE-0012 AC3)
+### Mandatory code-review checkpoint (ISSUE-0013 sequencing checkpoint)
 - Release-readiness review confirms pipeline invariants, traceability artifacts, and deterministic gate evidence before capability status changes.
 - Review explicitly records that canonical stage order is preserved through `assemble -> validate -> render -> commit`.
 

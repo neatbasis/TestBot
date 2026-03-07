@@ -4,6 +4,9 @@ This quick map links each `features/*.feature` scenario family to primary runtim
 
 Use it for rapid triage when a behavior breaks: jump from scenario text to function/class search anchors, then to deterministic test coverage.
 
+Canonical turn-pipeline sequencing note: if triage reveals a canonical pipeline defect or implementation-risk milestone gap, route sequencing and delivery-status updates through
+[`ISSUE-0013`](issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md), with ISSUE-0012 retained as historical planning context.
+
 ## How to triage quickly
 
 1. Locate the failing scenario title in `features/*.feature`.

@@ -2,6 +2,9 @@
 
 This contract defines deterministic CI artifacts emitted by `scripts/smoke/run_live_smoke.sh`.
 
+Canonical turn-pipeline sequencing note: evidence in this contract must be triaged through
+[`ISSUE-0013`](../issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md) for bug elimination and delivery-status updates; use ISSUE-0012 only as historical planning context.
+
 ## Entrypoint
 
 ```bash
@@ -42,6 +45,8 @@ Optional fields:
 - `headers` (object of HTTP headers, values support `${ENV_VAR}` expansion)
 
 ## Output artifacts
+
+When artifacts indicate failures or regressions, attach artifact references to ISSUE-0013 and note the affected canonical pipeline slice before opening follow-on issue threads.
 
 ### `smoke-summary.json`
 
