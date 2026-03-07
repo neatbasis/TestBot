@@ -9,6 +9,7 @@ from langchain_core.documents import Document
 from testbot.pipeline_state import PipelineState
 from testbot import sat_chatbot_memory_v2 as runtime
 from testbot.intent_router import IntentType
+from testbot.policy_decision import EvidencePosture, decide
 from testbot.sat_chatbot_memory_v2 import (
     ASSIST_ALTERNATIVES_ANSWER,
     NON_KNOWLEDGE_UNCERTAINTY_ANSWER,
@@ -18,7 +19,6 @@ from testbot.sat_chatbot_memory_v2 import (
     _ambiguity_score,
     _intent_label,
     _run_chat_loop,
-    _select_retrieval_branch,
     _user_followup_signal_proxy,
     build_provenance_metadata,
     generate_reflection_yaml,
@@ -255,16 +255,36 @@ def test_stage_answer_non_memory_without_ambiguity_does_not_emit_memory_fragment
     assert answered.confidence_decision.get("ambiguity_detected") is False
 
 
-def test_select_retrieval_branch_routes_definitional_knowledge_question_to_memory_retrieval() -> None:
-    branch = _select_retrieval_branch(utterance="What is ontology?", intent=IntentType.KNOWLEDGE_QUESTION)
+def test_policy_decision_routes_definitional_knowledge_question_to_memory_retrieval() -> None:
+    decision = decide(utterance="What is ontology?", intent=IntentType.KNOWLEDGE_QUESTION)
 
-    assert branch == "memory_retrieval"
+    assert decision.retrieval_branch == "memory_retrieval"
+    assert decision.evidence_posture is EvidencePosture.EMPTY_EVIDENCE
 
 
-def test_select_retrieval_branch_routes_conversational_prompt_to_direct_answer() -> None:
-    branch = _select_retrieval_branch(utterance="hello there", intent=IntentType.META_CONVERSATION)
+def test_policy_decision_routes_conversational_prompt_to_direct_answer() -> None:
+    decision = decide(utterance="hello there", intent=IntentType.META_CONVERSATION)
 
-    assert branch == "direct_answer"
+    assert decision.retrieval_branch == "direct_answer"
+    assert decision.evidence_posture is EvidencePosture.NOT_REQUESTED
+
+
+def test_policy_decision_distinguishes_empty_evidence_and_scored_empty() -> None:
+    empty_evidence = decide(
+        utterance="what is ontology?",
+        intent=IntentType.KNOWLEDGE_QUESTION,
+        retrieval_candidates_considered=0,
+        hit_count=0,
+    )
+    scored_empty = decide(
+        utterance="what is ontology?",
+        intent=IntentType.KNOWLEDGE_QUESTION,
+        retrieval_candidates_considered=3,
+        hit_count=0,
+    )
+
+    assert empty_evidence.evidence_posture is EvidencePosture.EMPTY_EVIDENCE
+    assert scored_empty.evidence_posture is EvidencePosture.SCORED_EMPTY
 
 
 def test_chat_loop_definitional_question_attempts_retrieval_and_does_not_mark_skipped(monkeypatch) -> None:

@@ -83,6 +83,17 @@ Feature: Intent-specific grounding and provenance behavior
     When the user asks a conversational prompt in runtime loop
     Then retrieval branch logging should show direct answer with skipped candidates
 
+
+  Scenario: retrieval policy distinguishes empty evidence from scored-empty candidates
+    Given an intent response harness
+    When retrieval policy evaluates empty and scored-empty evidence states
+    Then retrieval policy should record empty-evidence and scored-empty postures distinctly
+
+  Scenario: continuity-sensitive routing preserves prior intent only for affirmative clarifier follow-ups
+    Given an intent response harness
+    When intent continuity is evaluated for affirmative and non-affirmative follow-ups
+    Then continuity routing should preserve prior intent only for affirmative clarification follow-ups
+
   Scenario: control phrasing wins over ambiguous help and memory language
     Given an intent response harness
     When the user asks an ambiguous control-help-memory phrase
