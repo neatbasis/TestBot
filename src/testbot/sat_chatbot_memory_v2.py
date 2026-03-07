@@ -23,7 +23,7 @@ from testbot.memory_cards import make_reflection_card, make_utterance_card, stor
 from testbot.pipeline_state import CandidateHit, PipelineState, ProvenanceType, append_pipeline_snapshot
 from testbot.promotion_policy import persist_promoted_context
 from testbot.reflection_policy import CapabilityStatus, decide_fallback_action
-from testbot.answer_policy import AnswerPolicyInput, resolve_answer_mode, resolve_answer_routing
+from testbot.answer_policy import AnswerPolicyInput, AnswerRoutingDecision, resolve_answer_mode, resolve_answer_routing
 from testbot.rerank import (
     rerank_confidence_thresholds,
     adaptive_sigma_fractional,
@@ -145,6 +145,35 @@ class CapabilitySnapshot:
     ha_error: str | None
     ollama_error: str | None
     runtime_capability_status: RuntimeCapabilityStatus
+
+
+@dataclass(frozen=True)
+class AnswerAssembleResult:
+    draft_answer: str
+    final_answer: str
+    fallback_action: str
+    intent_class: str
+    social_or_non_knowledge_intent: bool
+    answer_policy_rationale: dict[str, object]
+    capability_help_short_circuit: bool = False
+
+
+@dataclass(frozen=True)
+class AnswerValidateResult:
+    final_answer: str
+    claims: list[str]
+    provenance_types: list[ProvenanceType]
+    used_memory_refs: list[str]
+    used_source_evidence_refs: list[str]
+    source_evidence_attribution: list[dict[str, str]]
+    basis_statement: str
+    invariant_decisions: dict[str, object]
+    alignment_decision: dict[str, object]
+
+
+@dataclass(frozen=True)
+class AnswerRenderResult:
+    final_answer: str
 
 
 def _format_capabilities_help_answer(*, status: RuntimeCapabilityStatus, capability_status: CapabilityStatus) -> str:
@@ -1577,17 +1606,18 @@ def _build_time_answer(*, user_input: str, now: arrow.Arrow, last_user_message_t
     return "I can answer relative time questions like 'how many minutes ago' or 'what is tomorrow?'."
 
 
-def stage_answer(
+def answer_assemble(
     llm: ChatOllama,
     state: PipelineState,
     *,
     chat_history: deque[ChatMsg],
     hits: list[Document],
     capability_status: CapabilityStatus,
+    answer_routing: AnswerRoutingDecision,
     runtime_capability_status: RuntimeCapabilityStatus | None = None,
     clock: Clock | None = None,
     timezone: str = "Europe/Helsinki",
-) -> PipelineState:
+) -> AnswerAssembleResult:
     runtime_capability_status = runtime_capability_status or RuntimeCapabilityStatus(
         ollama_available=True,
         ha_available=False,
@@ -1601,6 +1631,13 @@ def stage_answer(
         text_clarification_available=True,
         satellite_ask_available=False,
     )
+
+    fallback_action = answer_routing.fallback_action
+    clarification_allowed = answer_routing.clarification_allowed
+    resolved_intent = IntentType(state.resolved_intent or classify_intent(state.user_input).value)
+    intent_class = _intent_class_for_policy(resolved_intent)
+    social_or_non_knowledge_intent = _is_social_or_non_knowledge_intent(resolved_intent)
+    satellite_action_request = is_satellite_action_request(state.user_input)
 
     def _fallback_answer_for_action(action: str, *, intent_class: str) -> str:
         if action == "ROUTE_TO_ASK":
@@ -1622,11 +1659,6 @@ def stage_answer(
             )
         return ASSIST_ALTERNATIVES_ANSWER
 
-    resolved_intent = IntentType(state.resolved_intent or classify_intent(state.user_input).value)
-    intent_class = _intent_class_for_policy(resolved_intent)
-    social_or_non_knowledge_intent = _is_social_or_non_knowledge_intent(resolved_intent)
-    satellite_action_request = is_satellite_action_request(state.user_input)
-
     if _is_capabilities_help_request(resolved_intent):
         final_answer = _format_capabilities_help_answer(
             status=runtime_capability_status,
@@ -1643,43 +1675,14 @@ def stage_answer(
                     _format_satellite_action_alternatives(status=runtime_capability_status),
                 ]
             )
-        provenance_types, claims, basis_statement, used_memory_refs, used_source_evidence_refs, source_evidence_attribution = build_provenance_metadata(
-            final_answer=final_answer,
-            hits=hits,
-            chat_history=chat_history,
-            packed_history=pack_chat_history(list(chat_history)),
-        )
-        alignment_decision = evaluate_alignment_decision(
-            user_input=state.user_input,
+        return AnswerAssembleResult(
             draft_answer="",
             final_answer=final_answer,
-            confidence_decision=state.confidence_decision,
-            claims=claims,
-            provenance_types=provenance_types,
-            basis_statement=basis_statement,
-        )
-        return replace(
-            state,
-            draft_answer="",
-            final_answer=final_answer,
-            claims=claims,
-            provenance_types=provenance_types,
-            used_memory_refs=used_memory_refs,
-            used_source_evidence_refs=used_source_evidence_refs,
-            source_evidence_attribution=source_evidence_attribution,
-            basis_statement=basis_statement,
-            invariant_decisions={
-                "response_contains_claims": False,
-                "has_required_memory_citation": False,
-                "answer_contract_valid": True,
-                "general_knowledge_contract_valid": True,
-                "has_general_knowledge_marker": False,
-                "general_knowledge_confidence_gate_passed": True,
-                "answer_mode": "assist",
-                "fallback_action": "ANSWER_GENERAL_KNOWLEDGE",
-                "provenance_recorded": True,
-            },
-            alignment_decision=alignment_decision,
+            fallback_action="ANSWER_GENERAL_KNOWLEDGE",
+            intent_class=intent_class,
+            social_or_non_knowledge_intent=social_or_non_knowledge_intent,
+            answer_policy_rationale={"capability_help_short_circuit": True},
+            capability_help_short_circuit=True,
         )
 
     context_str = render_context(hits)
@@ -1697,21 +1700,6 @@ def stage_answer(
         response_plan=response_plan_block,
     )
 
-    answer_routing = resolve_answer_routing(
-        AnswerPolicyInput(
-            intent=intent_class,
-            confidence_decision=state.confidence_decision,
-            capability_status=capability_status,
-            source_confidence=(
-                float(state.confidence_decision["source_confidence"])
-                if "source_confidence" in state.confidence_decision
-                else None
-            ),
-        ),
-        fallback_decider=decide_fallback_action,
-    )
-    fallback_action = answer_routing.fallback_action
-    clarification_allowed = answer_routing.clarification_allowed
     def _clarifier_or_policy_alternative() -> str:
         if clarification_allowed:
             return build_partial_memory_clarifier(hits)
@@ -1724,13 +1712,6 @@ def stage_answer(
         if selected_hit is not None:
             return _build_memory_recall_recovery_answer(selected_hit)
         return _clarifier_or_policy_alternative()
-
-    def _knowledge_safe_fallback() -> str:
-        if fallback_action in {"ANSWER_UNKNOWN", "OFFER_CAPABILITY_ALTERNATIVES", "ANSWER_TIME"}:
-            return _fallback_answer_for_action(fallback_action, intent_class=intent_class)
-        if intent_class == "memory_recall":
-            return _clarifier_or_policy_alternative()
-        return _fallback_answer_for_action(fallback_action, intent_class=intent_class)
 
     if is_unsafe_user_request(state.user_input):
         draft_answer = ""
@@ -1771,50 +1752,98 @@ def stage_answer(
                 final_answer = draft_answer
             elif intent_class == "memory_recall" and bool(state.confidence_decision.get("context_confident", False)):
                 final_answer = _memory_recall_recovery_or_alternative()
-                # Keep downstream invariant/alignment checks consistent with the deterministic
-                # recovery answer chosen for memory recall turns.
                 draft_answer = final_answer
             elif social_or_non_knowledge_intent and fallback_action == "ANSWER_GENERAL_KNOWLEDGE":
                 final_answer = draft_answer
             else:
                 final_answer = _clarifier_or_policy_alternative()
 
-    provenance_types, claims, basis_statement, used_memory_refs, used_source_evidence_refs, source_evidence_attribution = build_provenance_metadata(
+    return AnswerAssembleResult(
+        draft_answer=draft_answer,
         final_answer=final_answer,
+        fallback_action=fallback_action,
+        intent_class=intent_class,
+        social_or_non_knowledge_intent=social_or_non_knowledge_intent,
+        answer_policy_rationale=dict(answer_routing.rationale),
+        capability_help_short_circuit=False,
+    )
+
+
+def answer_validate(
+    state: PipelineState,
+    *,
+    assembled: AnswerAssembleResult,
+    hits: list[Document],
+    chat_history: deque[ChatMsg],
+) -> AnswerValidateResult:
+    packed_history = pack_chat_history(list(chat_history))
+    provenance_types, claims, basis_statement, used_memory_refs, used_source_evidence_refs, source_evidence_attribution = build_provenance_metadata(
+        final_answer=assembled.final_answer,
         hits=hits,
         chat_history=chat_history,
         packed_history=packed_history,
     )
 
+    if assembled.capability_help_short_circuit:
+        alignment_decision = evaluate_alignment_decision(
+            user_input=state.user_input,
+            draft_answer="",
+            final_answer=assembled.final_answer,
+            confidence_decision=state.confidence_decision,
+            claims=claims,
+            provenance_types=provenance_types,
+            basis_statement=basis_statement,
+        )
+        return AnswerValidateResult(
+            final_answer=assembled.final_answer,
+            claims=claims,
+            provenance_types=provenance_types,
+            used_memory_refs=used_memory_refs,
+            used_source_evidence_refs=used_source_evidence_refs,
+            source_evidence_attribution=source_evidence_attribution,
+            basis_statement=basis_statement,
+            invariant_decisions={
+                "response_contains_claims": False,
+                "has_required_memory_citation": False,
+                "answer_contract_valid": True,
+                "general_knowledge_contract_valid": True,
+                "has_general_knowledge_marker": False,
+                "general_knowledge_confidence_gate_passed": True,
+                "answer_mode": "assist",
+                "fallback_action": "ANSWER_GENERAL_KNOWLEDGE",
+                "provenance_recorded": True,
+            },
+            alignment_decision=alignment_decision,
+        )
+
     general_knowledge_contract_valid = (
         True
-        if fallback_action == "ANSWER_TIME"
+        if assembled.fallback_action == "ANSWER_TIME"
         else validate_general_knowledge_contract(
-            final_answer,
+            assembled.final_answer,
             provenance_types=provenance_types,
             confidence_decision=state.confidence_decision,
         )
     )
-    if final_answer != FALLBACK_ANSWER and not general_knowledge_contract_valid:
-        preserve_social_draft = (
-            social_or_non_knowledge_intent
-            and bool(draft_answer)
-            and final_answer == draft_answer
-            and fallback_action == "ANSWER_GENERAL_KNOWLEDGE"
+    if assembled.final_answer != FALLBACK_ANSWER and not general_knowledge_contract_valid and not (
+        assembled.social_or_non_knowledge_intent
+        and bool(assembled.draft_answer)
+        and assembled.final_answer == assembled.draft_answer
+        and assembled.fallback_action == "ANSWER_GENERAL_KNOWLEDGE"
+    ):
+        safe_final = NON_KNOWLEDGE_UNCERTAINTY_ANSWER
+        provenance_types, claims, basis_statement, used_memory_refs, used_source_evidence_refs, source_evidence_attribution = build_provenance_metadata(
+            final_answer=safe_final,
+            hits=hits,
+            chat_history=chat_history,
+            packed_history=packed_history,
         )
-        if not preserve_social_draft:
-            final_answer = _knowledge_safe_fallback()
-            provenance_types, claims, basis_statement, used_memory_refs, used_source_evidence_refs, source_evidence_attribution = build_provenance_metadata(
-                final_answer=final_answer,
-                hits=hits,
-                chat_history=chat_history,
-                packed_history=packed_history,
-            )
+        assembled = replace(assembled, final_answer=safe_final)
 
     alignment_decision = evaluate_alignment_decision(
         user_input=state.user_input,
-        draft_answer=draft_answer,
-        final_answer=final_answer,
+        draft_answer=assembled.draft_answer,
+        final_answer=assembled.final_answer,
         confidence_decision=state.confidence_decision,
         claims=claims,
         provenance_types=provenance_types,
@@ -1822,40 +1851,38 @@ def stage_answer(
     )
 
     answer_mode_decision = resolve_answer_mode(
-        final_answer=final_answer,
-        fallback_action=fallback_action,
-        social_or_non_knowledge_intent=social_or_non_knowledge_intent,
-        is_clarification_answer=is_clarification_answer(final_answer),
-        is_deny_answer=final_answer == DENY_ANSWER,
-        is_assist_alternatives_answer=final_answer == ASSIST_ALTERNATIVES_ANSWER,
-        is_fallback_answer=final_answer == FALLBACK_ANSWER,
-        is_non_knowledge_uncertainty_answer=final_answer == NON_KNOWLEDGE_UNCERTAINTY_ANSWER,
+        final_answer=assembled.final_answer,
+        fallback_action=assembled.fallback_action,
+        social_or_non_knowledge_intent=assembled.social_or_non_knowledge_intent,
+        is_clarification_answer=is_clarification_answer(assembled.final_answer),
+        is_deny_answer=assembled.final_answer == DENY_ANSWER,
+        is_assist_alternatives_answer=assembled.final_answer == ASSIST_ALTERNATIVES_ANSWER,
+        is_fallback_answer=assembled.final_answer == FALLBACK_ANSWER,
+        is_non_knowledge_uncertainty_answer=assembled.final_answer == NON_KNOWLEDGE_UNCERTAINTY_ANSWER,
     )
     answer_mode = answer_mode_decision.answer_mode
     ambiguity_policy_allows_non_memory_clarify = bool(state.confidence_decision.get("allow_non_memory_clarify", False))
-    if answer_mode == "clarify" and intent_class != "memory_recall" and not ambiguity_policy_allows_non_memory_clarify:
+    if answer_mode == "clarify" and assembled.intent_class != "memory_recall" and not ambiguity_policy_allows_non_memory_clarify:
         raise AssertionError(
             "Non-memory intent produced answer_mode=clarify without explicit ambiguity policy override."
         )
 
     invariant_decisions = {
         "response_contains_claims": bool(claims),
-        "raw_claim_like_text_detected": raw_claim_like_text_detected(draft_answer),
-        "has_required_memory_citation": has_required_memory_citation(draft_answer),
-        "answer_contract_valid": validate_answer_contract(draft_answer),
+        "raw_claim_like_text_detected": raw_claim_like_text_detected(assembled.draft_answer),
+        "has_required_memory_citation": has_required_memory_citation(assembled.draft_answer),
+        "answer_contract_valid": validate_answer_contract(assembled.draft_answer),
         "general_knowledge_contract_valid": general_knowledge_contract_valid,
-        "has_general_knowledge_marker": has_general_knowledge_marker(final_answer),
+        "has_general_knowledge_marker": has_general_knowledge_marker(assembled.final_answer),
         "general_knowledge_confidence_gate_passed": passes_general_knowledge_confidence_gate(state.confidence_decision),
         "answer_mode": answer_mode,
-        "fallback_action": fallback_action,
-        "answer_policy_rationale": answer_routing.rationale,
+        "fallback_action": assembled.fallback_action,
+        "answer_policy_rationale": assembled.answer_policy_rationale,
         "answer_mode_rationale": answer_mode_decision.rationale,
-        "provenance_recorded": bool(not is_non_trivial_answer(final_answer) or provenance_types),
+        "provenance_recorded": bool(not is_non_trivial_answer(assembled.final_answer) or provenance_types),
     }
-    return replace(
-        state,
-        draft_answer=draft_answer,
-        final_answer=final_answer,
+    return AnswerValidateResult(
+        final_answer=assembled.final_answer,
         claims=claims,
         provenance_types=provenance_types,
         used_memory_refs=used_memory_refs,
@@ -1866,6 +1893,158 @@ def stage_answer(
         alignment_decision=alignment_decision,
     )
 
+
+def answer_render(validated: AnswerValidateResult) -> AnswerRenderResult:
+    return AnswerRenderResult(final_answer=validated.final_answer)
+
+
+def answer_commit(
+    state: PipelineState,
+    *,
+    assembled: AnswerAssembleResult,
+    validated: AnswerValidateResult,
+    rendered: AnswerRenderResult,
+) -> PipelineState:
+    return replace(
+        state,
+        draft_answer=assembled.draft_answer,
+        final_answer=rendered.final_answer,
+        claims=validated.claims,
+        provenance_types=validated.provenance_types,
+        used_memory_refs=validated.used_memory_refs,
+        used_source_evidence_refs=validated.used_source_evidence_refs,
+        source_evidence_attribution=validated.source_evidence_attribution,
+        basis_statement=validated.basis_statement,
+        invariant_decisions=validated.invariant_decisions,
+        alignment_decision=validated.alignment_decision,
+    )
+
+
+def stage_answer(
+    llm: ChatOllama,
+    state: PipelineState,
+    *,
+    chat_history: deque[ChatMsg],
+    hits: list[Document],
+    capability_status: CapabilityStatus,
+    runtime_capability_status: RuntimeCapabilityStatus | None = None,
+    clock: Clock | None = None,
+    timezone: str = "Europe/Helsinki",
+) -> PipelineState:
+    resolved_intent = IntentType(state.resolved_intent or classify_intent(state.user_input).value)
+    answer_routing = resolve_answer_routing(
+        AnswerPolicyInput(
+            intent=_intent_class_for_policy(resolved_intent),
+            confidence_decision=state.confidence_decision,
+            capability_status=capability_status,
+            source_confidence=(
+                float(state.confidence_decision["source_confidence"])
+                if "source_confidence" in state.confidence_decision
+                else None
+            ),
+        ),
+        fallback_decider=decide_fallback_action,
+    )
+    assembled = answer_assemble(
+        llm,
+        state,
+        chat_history=chat_history,
+        hits=hits,
+        capability_status=capability_status,
+        answer_routing=answer_routing,
+        runtime_capability_status=runtime_capability_status,
+        clock=clock,
+        timezone=timezone,
+    )
+    validated = answer_validate(
+        state,
+        assembled=assembled,
+        hits=hits,
+        chat_history=chat_history,
+    )
+    rendered = answer_render(validated)
+    return answer_commit(
+        state,
+        assembled=assembled,
+        validated=validated,
+        rendered=rendered,
+    )
+
+
+
+
+def answer_commit_persistence(
+    *,
+    llm: ChatOllama,
+    store: MemoryStore,
+    state: PipelineState,
+    io_channel: str,
+    clock: Clock,
+) -> None:
+    a_ts = clock.now().isoformat()
+    a_id = str(uuid.uuid4())
+    a_card = make_utterance_card(
+        ts_iso=a_ts,
+        speaker="assistant",
+        text=state.final_answer,
+        doc_id=a_id,
+        channel=io_channel,
+    )
+    store_doc(
+        store,
+        doc_id=a_id,
+        content=a_card,
+        metadata={
+            "ts": a_ts,
+            "type": "assistant_utterance",
+            "speaker": "assistant",
+            "channel": io_channel,
+            "doc_id": a_id,
+            "raw": state.final_answer,
+        },
+    )
+
+    a_ref_yaml = generate_reflection_yaml(llm, speaker="assistant", text=state.final_answer)
+    a_ref_ts = clock.now().isoformat()
+    a_ref_id = str(uuid.uuid4())
+    a_ref_card = make_reflection_card(
+        ts_iso=a_ref_ts,
+        about="assistant",
+        source_doc_id=a_id,
+        doc_id=a_ref_id,
+        reflection_yaml=a_ref_yaml,
+    )
+    store_doc(
+        store,
+        doc_id=a_ref_id,
+        content=a_ref_card,
+        metadata={
+            "ts": a_ref_ts,
+            "type": "reflection",
+            "about": "assistant",
+            "source_doc_id": a_id,
+            "doc_id": a_ref_id,
+        },
+    )
+
+    promoted_doc_ids = persist_promoted_context(
+        store=store,
+        ts_iso=a_ref_ts,
+        source_doc_id=a_id,
+        source_reflection_id=a_ref_id,
+        reflection_yaml=a_ref_yaml,
+        channel=io_channel,
+    )
+    if promoted_doc_ids:
+        append_session_log(
+            "promoted_context_persisted",
+            {
+                "source_doc_id": a_id,
+                "source_reflection_id": a_ref_id,
+                "promoted_doc_ids": promoted_doc_ids,
+                "count": len(promoted_doc_ids),
+            },
+        )
 
 def _validate_and_log_transition(result) -> None:
     append_transition_validation_log(result)
@@ -2760,70 +2939,14 @@ def _run_chat_loop(
         chat_history.append({"role": "assistant", "content": state.final_answer})
         prior_pipeline_state = state
 
-        a_ts = clock.now().isoformat()
-        a_id = str(uuid.uuid4())
-        a_card = make_utterance_card(
-            ts_iso=a_ts,
-            speaker="assistant",
-            text=state.final_answer,
-            doc_id=a_id,
-            channel=io_channel,
-        )
-        store_doc(
-            store,
-            doc_id=a_id,
-            content=a_card,
-            metadata={
-                "ts": a_ts,
-                "type": "assistant_utterance",
-                "speaker": "assistant",
-                "channel": io_channel,
-                "doc_id": a_id,
-                "raw": state.final_answer,
-            },
-        )
-
-        a_ref_yaml = generate_reflection_yaml(llm, speaker="assistant", text=state.final_answer)
-        a_ref_ts = clock.now().isoformat()
-        a_ref_id = str(uuid.uuid4())
-        a_ref_card = make_reflection_card(
-            ts_iso=a_ref_ts,
-            about="assistant",
-            source_doc_id=a_id,
-            doc_id=a_ref_id,
-            reflection_yaml=a_ref_yaml,
-        )
-        store_doc(
-            store,
-            doc_id=a_ref_id,
-            content=a_ref_card,
-            metadata={
-                "ts": a_ref_ts,
-                "type": "reflection",
-                "about": "assistant",
-                "source_doc_id": a_id,
-                "doc_id": a_ref_id,
-            },
-        )
-
-        promoted_doc_ids = persist_promoted_context(
+        answer_commit_persistence(
+            llm=llm,
             store=store,
-            ts_iso=a_ref_ts,
-            source_doc_id=a_id,
-            source_reflection_id=a_ref_id,
-            reflection_yaml=a_ref_yaml,
-            channel=io_channel,
+            state=state,
+            io_channel=io_channel,
+            clock=clock,
         )
-        if promoted_doc_ids:
-            append_session_log(
-                "promoted_context_persisted",
-                {
-                    "source_doc_id": a_id,
-                    "source_reflection_id": a_ref_id,
-                    "promoted_doc_ids": promoted_doc_ids,
-                    "count": len(promoted_doc_ids),
-                },
-            )
+
 
 
 def _run_cli_mode(*, llm: ChatOllama, store: MemoryStore, chat_history: deque[ChatMsg], near_tie_delta: float, capability_snapshot: CapabilitySnapshot, clock: Clock) -> None:

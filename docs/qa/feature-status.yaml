@@ -51,7 +51,7 @@ capabilities:
   - unknowing_safe_fallback
 - capability_id: intent_grounding_router
   capability_name: Deterministic intent grounding and route selection
-  owner_module: src/testbot/intent_router.py
+  owner_module: src/testbot/sat_chatbot_memory_v2.py::context.resolve|intent.resolve|retrieve.evidence|policy.decide
   acceptance_tests:
   - features/intent_grounding.feature
   - tests/test_intent_router.py
@@ -112,7 +112,7 @@ capabilities:
   - ingestion
 - capability_id: canonical_turn_pipeline_foundation
   capability_name: Canonical turn pipeline foundation (observe/encode/stabilize)
-  owner_module: src/testbot/sat_chatbot_memory_v2.py
+  owner_module: src/testbot/sat_chatbot_memory_v2.py::observe_stage|encode_stage
   acceptance_tests:
   - features/memory_recall.feature
   - features/answer_contract.feature
@@ -155,7 +155,7 @@ capabilities:
   - ISSUE-0013
 - capability_id: canonical_turn_pipeline_commit_and_audit
   capability_name: Canonical turn pipeline commit and auditability (assemble/validate/render/commit)
-  owner_module: src/testbot/pipeline_state.py
+  owner_module: src/testbot/sat_chatbot_memory_v2.py::answer_assemble|answer_validate|answer_render|answer_commit|answer_commit_persistence
   acceptance_tests:
   - features/answer_contract.feature
   - tests/test_runtime_logging_events.py
