@@ -10,7 +10,7 @@ import uuid
 from urllib.error import URLError
 from urllib.parse import urljoin
 from urllib.request import urlopen
-from argparse import ArgumentParser, Namespace
+from argparse import ArgumentParser, BooleanOptionalAction, Namespace
 from collections import deque
 from dataclasses import dataclass, replace
 from pathlib import Path
@@ -123,6 +123,7 @@ class RuntimeCapabilityStatus:
     fallback_reason: str | None
     memory_backend: str
     debug_enabled: bool
+    debug_verbose: bool
     text_clarification_available: bool
     satellite_ask_available: bool
 
@@ -275,11 +276,21 @@ def _parse_args(argv: list[str] | None = None) -> Namespace:
         action="store_true",
         help="Do not fall back to CLI if satellite mode is unavailable; exit instead.",
     )
+    parser.add_argument(
+        "--debug-verbose",
+        action=BooleanOptionalAction,
+        default=None,
+        help=(
+            "Enable verbose debug trace payloads when TESTBOT_DEBUG=1. "
+            "Defaults to TESTBOT_DEBUG_VERBOSE environment setting."
+        ),
+    )
     return parser.parse_args(argv)
 
 
 def _read_runtime_env() -> dict[str, object]:
     memory_store_mode = os.getenv("MEMORY_STORE_MODE", "in_memory")
+    debug_verbose = os.getenv("TESTBOT_DEBUG_VERBOSE", "0") == "1"
     return {
         "ha_api_url": os.getenv("HA_API_URL", "http://localhost:8123"),
         "ha_api_secret": os.getenv("HA_API_SECRET", ""),
@@ -301,6 +312,7 @@ def _read_runtime_env() -> dict[str, object]:
         "source_wikipedia_topic": os.getenv("SOURCE_WIKIPEDIA_TOPIC", ""),
         "source_wikipedia_language": os.getenv("SOURCE_WIKIPEDIA_LANGUAGE", "en"),
         "source_arxiv_query": os.getenv("SOURCE_ARXIV_QUERY", ""),
+        "debug_verbose": debug_verbose,
     }
 
 
@@ -485,6 +497,9 @@ def _print_startup_status(*, snapshot: CapabilitySnapshot) -> None:
         print("Ollama: available (chat + embedding models verified)")
         print("Install warning [GREEN]: Ollama capability is active; keep OLLAMA_MODEL and OLLAMA_EMBEDDING_MODEL provisioned.")
     print(f"Memory backend: {runtime['memory_store_backend']}")
+    debug_mode = "enabled" if snapshot.runtime_capability_status.debug_enabled else "disabled"
+    debug_verbose = "enabled" if snapshot.runtime_capability_status.debug_verbose else "disabled"
+    print(f"Debug tracing: {debug_mode} (TESTBOT_DEBUG), verbose payloads: {debug_verbose} (TESTBOT_DEBUG_VERBOSE/--debug-verbose)")
     if snapshot.ha_error:
         print(f"Home Assistant: unavailable ({snapshot.ha_error})")
         print("Install warning [YELLOW]: Home Assistant capability is degraded; configure HA_API_SECRET and HA_SATELLITE_ENTITY_ID to enable satellite mode.")
@@ -1434,6 +1449,7 @@ def stage_answer(
         fallback_reason=None,
         memory_backend="in_memory",
         debug_enabled=False,
+        debug_verbose=False,
         text_clarification_available=True,
         satellite_ask_available=False,
     )
@@ -2437,6 +2453,7 @@ def _run_chat_loop(
                 state=state,
                 intent_label=intent_label,
                 hits=hits,
+                verbose=capability_snapshot.runtime_capability_status.debug_verbose,
             )
             append_session_log(
                 "debug_turn_trace",
@@ -2627,6 +2644,7 @@ def _build_runtime_capability_status(
         fallback_reason=fallback_reason,
         memory_backend=str(runtime.get("memory_store_backend", "unknown")),
         debug_enabled=os.getenv("TESTBOT_DEBUG", "0") == "1",
+        debug_verbose=bool(runtime.get("debug_verbose", False)),
         text_clarification_available=can_text_clarify,
         satellite_ask_available=can_satellite_ask,
     )
@@ -2677,6 +2695,9 @@ def build_capability_snapshot(*, requested_mode: str, daemon_mode: bool, runtime
 def main(argv: list[str] | None = None) -> None:
     args = _parse_args(argv)
     runtime = _read_runtime_env()
+    debug_verbose_override = getattr(args, "debug_verbose", None)
+    if debug_verbose_override is not None:
+        runtime["debug_verbose"] = debug_verbose_override
 
     capability_snapshot = build_capability_snapshot(
         requested_mode=args.mode,

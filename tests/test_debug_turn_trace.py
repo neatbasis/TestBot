@@ -95,3 +95,31 @@ def test_format_debug_turn_trace_non_memory_no_ambiguity_does_not_report_clarify
     assert "intent=non_memory" in trace
     assert "ambiguity_detected=False" in trace
     assert "answer_mode=clarify" not in trace
+
+
+def test_format_debug_turn_trace_defaults_to_non_verbose_format() -> None:
+    state = PipelineState(
+        user_input="what is ontology",
+        rewritten_query="what is ontology",
+        confidence_decision={"context_confident": False, "ambiguity_detected": False, "retrieval_branch": "direct_answer"},
+        invariant_decisions={"answer_mode": "assist", "fallback_action": "ANSWER_GENERAL_KNOWLEDGE"},
+    )
+
+    trace = _format_debug_turn_trace(state=state, intent_label="non_memory", hits=[])
+
+    assert trace.startswith("[debug] intent=")
+    assert "debug.intent" not in trace
+
+
+def test_format_debug_turn_trace_verbose_opt_in_emits_json_payload() -> None:
+    state = PipelineState(
+        user_input="what is ontology",
+        rewritten_query="what is ontology",
+        confidence_decision={"context_confident": False, "ambiguity_detected": False, "retrieval_branch": "direct_answer"},
+        invariant_decisions={"answer_mode": "assist", "fallback_action": "ANSWER_GENERAL_KNOWLEDGE"},
+    )
+
+    trace = _format_debug_turn_trace(state=state, intent_label="non_memory", hits=[], verbose=True)
+
+    assert trace.startswith("[debug] {")
+    assert '"debug.intent"' in trace

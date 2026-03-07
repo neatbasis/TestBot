@@ -41,6 +41,7 @@ def _runtime_status() -> RuntimeCapabilityStatus:
         fallback_reason=None,
         memory_backend="in_memory",
         debug_enabled=False,
+        debug_verbose=False,
         text_clarification_available=True,
         satellite_ask_available=False,
     )
