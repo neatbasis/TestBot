@@ -13,10 +13,11 @@ This document answers four operational questions in one place:
 
 ## Current status
 
-Evidence timestamp reference:
+Evidence timestamp reference (artifact freshness):
 
 - `artifacts/feature-status-summary.json` → `generated_at_utc`: `2026-03-07T01:26:56Z`
-- `docs/qa/feature-status-report.md` is generated from the same artifact set and reports the same generation timestamp.
+- `docs/qa/feature-status-report.md` reports the same generation moment (`Generated at (UTC): 2026-03-07T01:26:56Z`), so capability counts below are tied to that artifact run.
+- `artifacts/all-green-gate-summary.json` is the gate execution artifact used for gate status and failed-check assertions below.
 
 Canonical machine-readable/source-of-truth status now lives in:
 
@@ -24,31 +25,28 @@ Canonical machine-readable/source-of-truth status now lives in:
 - Generated report (canonical status view): `docs/qa/feature-status-report.md`
 - Generated JSON summary: `artifacts/feature-status-summary.json`
 
-### What is working
+From the latest generated status artifacts:
 
-- Most deterministic pytest layers are green, including broad non-live smoke coverage and eval/runtime parity tests.
-- Time-aware memory retrieval/reranking and governance/readiness gate capabilities are tracked as implemented in the current feature status report.
-- Deterministic merge/readiness orchestration exists via `scripts/all_green_gate.py`.
-
-### What is not yet green
-
-From the latest gate artifact (`artifacts/all-green-gate-summary.json`) and derived feature report (`docs/qa/feature-status-report.md`):
-
-- Capability summary line (from report): **Implemented: 2 | Partial: 4 | Missing: 0**.
-- Current executable gate status: **failed**.
-- Failed checks currently recorded in the gate artifact:
+- Capability summary line (`docs/qa/feature-status-report.md`): **Implemented: 2 | Partial: 4 | Missing: 0**.
+- Gate status (`artifacts/all-green-gate-summary.json` → top-level `status`): **failed**.
+- Failed checks in the same gate artifact:
   - `product_behave`
   - `safety_behave_answer_contract_and_memory`
-- Governance validators passed in this artifact run under fallback base-ref usage (`HEAD~1`) as shown by `qa_validate_issue_links` and `qa_validate_issues`.
+
+### What is working
+
+- Most deterministic pytest layers in the gate artifact are passing (including non-live smoke and eval/runtime parity checks).
+- Time-aware memory retrieval/reranking and canonical merge-gate/governance capabilities remain tracked as **implemented** in the feature status report.
+- Governance validators (`qa_validate_issue_links`, `qa_validate_issues`) are passing in the current gate artifact run.
 
 ### Current blockers (active)
 
-- BDD behavior coverage is not currently green in the canonical gate due to failing checks `product_behave` and `safety_behave_answer_contract_and_memory`.
-- Feature status report also warns that gate evidence appears older than some source inputs; regenerate gate evidence for the freshest status before merge-readiness decisions.
+- Canonical gate evidence is currently **failed** due to `product_behave` and `safety_behave_answer_contract_and_memory`; treat behavior as not merge-ready until these checks are green in a newer artifact run.
+- Feature status output includes a staleness warning that gate evidence may be older than some source inputs; refresh gate artifacts before making final merge-readiness calls.
 
 ### Historical blockers (resolved in prior runs)
 
-The following previously reported blockers are now resolved and retained as historical notes only:
+The following are historical notes from prior runs. They are separate from current blockers above and do not imply that the current failing checks are resolved:
 
 - Missing `behave` in environment (resolved by installing dev dependencies and re-running gate).
 - `product_eval_recall_topk4` import failure (`ModuleNotFoundError: No module named 'testbot'`) resolved in validated environment.
