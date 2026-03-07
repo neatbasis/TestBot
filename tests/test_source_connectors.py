@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from urllib.error import HTTPError
+from urllib.error import HTTPError, URLError
 
 from testbot.source_connectors import (
     ArxivSourceConnector,
@@ -143,6 +143,38 @@ def test_wikipedia_connector_returns_empty_list_on_http_403() -> None:
 
     assert connector.fetch(cursor=None, limit=1) == []
 
+
+
+
+def test_arxiv_connector_returns_empty_list_on_http_or_network_failure(monkeypatch) -> None:
+    def _raise_network_error(*args, **kwargs):
+        del args, kwargs
+        raise URLError("network down")
+
+    monkeypatch.setattr("testbot.source_connectors.urlopen", _raise_network_error)
+
+    connector = ArxivSourceConnector(query="cat:cs.AI")
+
+    assert connector.fetch(cursor=None, limit=2) == []
+
+
+def test_arxiv_connector_returns_empty_list_on_malformed_xml(monkeypatch) -> None:
+    class _Response:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            del exc_type, exc, tb
+            return False
+
+        def read(self) -> bytes:
+            return b"<feed><entry>not closed"
+
+    monkeypatch.setattr("testbot.source_connectors.urlopen", lambda *args, **kwargs: _Response())
+
+    connector = ArxivSourceConnector(query="cat:cs.AI")
+
+    assert connector.fetch(cursor=None, limit=2) == []
 
 def test_arxiv_connector_parses_feed(monkeypatch) -> None:
     xml_payload = """<?xml version='1.0' encoding='UTF-8'?>
