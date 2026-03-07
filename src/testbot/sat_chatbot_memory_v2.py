@@ -12,7 +12,8 @@ from urllib.parse import urljoin
 from urllib.request import urlopen
 from argparse import ArgumentParser, BooleanOptionalAction, Namespace
 from collections import deque
-from dataclasses import dataclass, replace
+from dataclasses import asdict, dataclass, is_dataclass, replace
+from enum import Enum
 from pathlib import Path
 
 import arrow
@@ -548,12 +549,39 @@ def _print_startup_status(*, snapshot: CapabilitySnapshot) -> None:
 
 
 def append_session_log(event: str, payload: dict, *, log_path: Path = Path("./logs/session.jsonl")) -> None:
+    def _normalize_json_safe(value: object) -> object:
+        if value is None or isinstance(value, (str, int, float, bool)):
+            return value
+        if isinstance(value, Enum):
+            return _normalize_json_safe(value.value)
+        if isinstance(value, dict):
+            return {str(key): _normalize_json_safe(item) for key, item in value.items()}
+        if isinstance(value, (list, tuple)):
+            return [_normalize_json_safe(item) for item in value]
+        if isinstance(value, set):
+            return [_normalize_json_safe(item) for item in sorted(value, key=repr)]
+
+        to_dict = getattr(value, "to_dict", None)
+        if callable(to_dict):
+            try:
+                return _normalize_json_safe(to_dict())
+            except Exception:
+                pass
+
+        if is_dataclass(value):
+            return _normalize_json_safe(asdict(value))
+
+        if hasattr(value, "__dict__"):
+            return _normalize_json_safe(vars(value))
+
+        return repr(value)
+
     log_path.parent.mkdir(parents=True, exist_ok=True)
     row = {
         "ts": utc_now_iso(),
         "event": event,
         "schema_version": SESSION_LOG_SCHEMA_VERSION,
-        **payload,
+        **_normalize_json_safe(payload),
     }
     with log_path.open("a", encoding="utf-8") as f:
         f.write(json.dumps(row, ensure_ascii=False) + "\n")
@@ -2900,7 +2928,7 @@ def _run_chat_loop(
                 "intent": intent_label,
                 "intent_classified": classified_intent.value,
                 "intent_resolved": resolved_intent.value,
-                "alignment_decision": state.alignment_decision,
+                "alignment_decision": state.alignment_decision.to_dict(),
                 "alignment_dimension_inputs_raw": state.alignment_decision.get("dimension_inputs", {}).get("raw", {}),
                 "alignment_dimension_inputs_normalized": state.alignment_decision.get("dimension_inputs", {}).get("normalized", {}),
                 "alignment_dimensions": state.alignment_decision.get("dimensions", {}),
