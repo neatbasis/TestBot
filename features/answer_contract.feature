@@ -45,6 +45,7 @@ Feature: Answer citation contract enforcement
     When the answer routing policy resolves the request
     Then the fallback action should be "ANSWER_UNKNOWN"
     And the canonical response token should be "NON_KNOWLEDGE_UNCERTAINTY_ANSWER"
+    And the policy rationale includes considered alternatives with rejection reasons
 
   Scenario: memory recall without confident hit offers assist alternatives
     Given an answer policy input with intent "memory_recall", context confidence false, ambiguity false, and memory hit count 0
@@ -52,3 +53,9 @@ Feature: Answer citation contract enforcement
     When the answer routing policy resolves the request
     Then the fallback action should be "OFFER_CAPABILITY_ALTERNATIVES"
     And the canonical response token should be "ASSIST_ALTERNATIVES_ANSWER"
+
+  Scenario: low-confidence recall debug emits transparent observation and policy layers
+    Given a low-confidence recall pipeline state with ambiguous references
+    When the structured debug payload is built for memory recall
+    Then the debug payload includes explicit observation and policy layers
+    And the fallback decision includes considered alternatives and rejection reasons
