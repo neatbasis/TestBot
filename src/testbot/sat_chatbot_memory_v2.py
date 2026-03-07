@@ -747,7 +747,17 @@ def _derive_response_blocker_reason(
     return "none"
 
 
-def _format_debug_turn_trace(*, state: PipelineState, intent_label: str, hits: list[Document]) -> str:
+def _gate_metrics(*, passed: bool, score: float, threshold: float) -> dict[str, float | bool]:
+    margin = round(score - threshold, 4)
+    return {
+        "passed": passed,
+        "score": round(score, 4),
+        "threshold": round(threshold, 4),
+        "margin": margin,
+    }
+
+
+def _build_debug_turn_payload(*, state: PipelineState, intent_label: str, hits: list[Document]) -> dict[str, object]:
     fallback_action = str(state.invariant_decisions.get("fallback_action", "NONE"))
     retrieval_branch = str(state.confidence_decision.get("retrieval_branch", "memory_retrieval"))
     answer_mode = str(state.invariant_decisions.get("answer_mode", "dont-know"))
@@ -755,6 +765,19 @@ def _format_debug_turn_trace(*, state: PipelineState, intent_label: str, hits: l
     ambiguity_detected = bool(state.confidence_decision.get("ambiguity_detected", False))
     answer_contract_valid = bool(state.invariant_decisions.get("answer_contract_valid", True))
     general_knowledge_contract_valid = bool(state.invariant_decisions.get("general_knowledge_contract_valid", True))
+    scored_candidates = state.confidence_decision.get("scored_candidates", [])
+    top_score = 0.0
+    second_score = 0.0
+    if isinstance(scored_candidates, list) and scored_candidates:
+        top_candidate = scored_candidates[0] if isinstance(scored_candidates[0], dict) else {}
+        top_score = float(top_candidate.get("final_score", 0.0) or 0.0)
+        if len(scored_candidates) > 1 and isinstance(scored_candidates[1], dict):
+            second_score = float(scored_candidates[1].get("final_score", 0.0) or 0.0)
+    observed_margin = max(0.0, top_score - second_score)
+    top_threshold = float(state.confidence_decision.get("top_final_score_min", 0.0) or 0.0)
+    margin_threshold = float(state.confidence_decision.get("min_margin_to_second", 0.0) or 0.0)
+    ambiguity_threshold = 0.5
+
     reason = _derive_response_blocker_reason(
         answer_mode=answer_mode,
         fallback_action=fallback_action,
@@ -765,17 +788,92 @@ def _format_debug_turn_trace(*, state: PipelineState, intent_label: str, hits: l
         general_knowledge_contract_valid=general_knowledge_contract_valid,
     )
     doc_ids = [(doc.id or doc.metadata.get("doc_id") or "") for doc in hits[:3]]
+    context_score = min(
+        top_score / top_threshold if top_threshold > 0 else 1.0,
+        observed_margin / margin_threshold if margin_threshold > 0 else 1.0,
+    )
+    ambiguity_score = 1.0 if not ambiguity_detected else 0.0
+
+    return {
+        "debug.intent": {
+            "resolved": intent_label,
+            "classified": state.classified_intent,
+            "prior_unresolved": state.prior_unresolved_intent,
+        },
+        "debug.rewrite": {
+            "user_input": state.user_input,
+            "rewritten_query": state.rewritten_query,
+            "changed": state.user_input.strip() != state.rewritten_query.strip(),
+        },
+        "debug.retrieval": {
+            "branch": retrieval_branch,
+            "hit_count": len(hits),
+            "retrieved_doc_ids": doc_ids,
+        },
+        "debug.rerank": {
+            "top_final_score": round(top_score, 4),
+            "second_final_score": round(second_score, 4),
+            "margin": round(observed_margin, 4),
+            "top_final_score_gate": _gate_metrics(
+                passed=top_score >= top_threshold,
+                score=top_score,
+                threshold=top_threshold,
+            ),
+            "margin_gate": _gate_metrics(
+                passed=observed_margin >= margin_threshold,
+                score=observed_margin,
+                threshold=margin_threshold,
+            ),
+            "ambiguity_gate": _gate_metrics(
+                passed=not ambiguity_detected,
+                score=ambiguity_score,
+                threshold=ambiguity_threshold,
+            ),
+        },
+        "debug.confidence": {
+            "context_confident_gate": _gate_metrics(
+                passed=context_confident,
+                score=context_score,
+                threshold=1.0,
+            ),
+        },
+        "debug.contract": {
+            "answer_contract_gate": _gate_metrics(
+                passed=answer_contract_valid,
+                score=1.0 if answer_contract_valid else 0.0,
+                threshold=1.0,
+            ),
+            "general_knowledge_contract_gate": _gate_metrics(
+                passed=general_knowledge_contract_valid,
+                score=1.0 if general_knowledge_contract_valid else 0.0,
+                threshold=1.0,
+            ),
+        },
+        "debug.policy": {
+            "answer_mode": answer_mode,
+            "fallback_action": fallback_action,
+            "blocker_reason": reason,
+        },
+    }
+
+
+def _format_debug_turn_trace(*, state: PipelineState, intent_label: str, hits: list[Document], verbose: bool = False) -> str:
+    payload = _build_debug_turn_payload(state=state, intent_label=intent_label, hits=hits)
+
+    if verbose:
+        return "[debug] " + json.dumps(payload, ensure_ascii=False, sort_keys=True)
+
     return (
         "[debug] "
-        f"intent={intent_label}; "
-        f"answer_mode={answer_mode}; "
-        f"fallback_action={fallback_action}; "
-        f"retrieval_branch={retrieval_branch}; "
-        f"context_confident={context_confident}; "
-        f"ambiguity_detected={ambiguity_detected}; "
-        f"rewritten_query={state.rewritten_query!r}; "
-        f"retrieved_doc_ids={doc_ids}; "
-        f"blocker_reason={reason}."
+        f"intent={payload['debug.intent']['resolved']}; "
+        f"answer_mode={payload['debug.policy']['answer_mode']}; "
+        f"fallback_action={payload['debug.policy']['fallback_action']}; "
+        f"retrieval_branch={payload['debug.retrieval']['branch']}; "
+        f"context_confident={payload['debug.confidence']['context_confident_gate']['passed']}; "
+        f"ambiguity_detected={not payload['debug.rerank']['ambiguity_gate']['passed']}; "
+        f"rewritten_query={payload['debug.rewrite']['rewritten_query']!r}; "
+        f"retrieved_doc_ids={payload['debug.retrieval']['retrieved_doc_ids']}; "
+        f"blocker_reason={payload['debug.policy']['blocker_reason']}."
     )
 
 
