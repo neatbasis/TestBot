@@ -109,6 +109,10 @@ def test_rerank_includes_objective_component_breakdown() -> None:
     assert scored["doc_id"] == "winner"
     assert scored["objective"] == "semantic_temporal_type_v2"
     assert scored["timestamp_quality"] == "valid"
+    assert "semantic_similarity" in scored
+    assert "time_decay_freshness" in scored
+    assert "provenance_citation_factor" in scored
+    assert "passes_threshold" in scored
     assert float(scored["final_score"]) > 0.0
 
 

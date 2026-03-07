@@ -11,7 +11,7 @@ from langchain_core.documents import Document
 from testbot.eval_fixtures import best_candidate_doc_id, cases_by_id
 from testbot.pipeline_state import CandidateHit, PipelineState, ProvenanceType
 from testbot.rerank import adaptive_sigma_fractional, rerank_docs_with_time_and_type_outcome
-from testbot.sat_chatbot_memory_v2 import has_sufficient_context_confidence
+from testbot.sat_chatbot_memory_v2 import has_sufficient_context_confidence, stage_rerank
 from testbot.stage_transitions import (
     validate_answer_post,
     validate_answer_pre,
@@ -350,3 +350,60 @@ def step_then_bridging_clarifier(context) -> None:
     assert context.parity_signals["intent"] == "dont-know"
     assert context.parity_signals["ambiguity_detected"] == context.eval_parity_signals["ambiguity_detected"]
     assert len(context.parity_signals["near_tie_candidates"]) >= 2
+
+
+@given("recall candidates include a recent anchor and older distractor")
+def step_given_recall_candidates_include_anchor(context) -> None:
+    context.followup_now = arrow.get("2026-03-10T12:00:00+00:00")
+    context.followup_candidates = [
+        (
+            Document(
+                id="anchor-doc",
+                page_content="Anchored memory",
+                metadata={"doc_id": "anchor-doc", "type": "user_utterance", "ts": "2026-03-09T22:00:00+00:00"},
+            ),
+            0.81,
+        ),
+        (
+            Document(
+                id="older-doc",
+                page_content="Older memory",
+                metadata={"doc_id": "older-doc", "type": "user_utterance", "ts": "2026-03-08T10:00:00+00:00"},
+            ),
+            0.93,
+        ),
+    ]
+
+
+@when('the user asks a pronoun temporal follow-up "{utterance}"')
+def step_when_user_asks_pronoun_temporal_followup(context, utterance: str) -> None:
+    class _Clock:
+        def now(self) -> arrow.Arrow:
+            return context.followup_now
+
+    state = PipelineState(user_input=utterance)
+    context.followup_state, context.followup_hits = stage_rerank(
+        state,
+        context.followup_candidates,
+        utterance=utterance,
+        user_doc_id="u1",
+        user_reflection_doc_id="r1",
+        near_tie_delta=0.02,
+        clock=_Clock(),
+    )
+
+
+@then("the temporal anaphora bridge selects the anchor before rerank")
+def step_then_temporal_bridge_selects_anchor(context) -> None:
+    assert context.followup_state.confidence_decision["anaphora_detected"] is True
+    assert context.followup_state.confidence_decision["selected_anchor_doc_id"] == "anchor-doc"
+    assert [doc.id for doc in context.followup_hits] == ["anchor-doc"]
+
+
+@then("the bridge emits elapsed delta and yesterday window details")
+def step_then_bridge_emits_delta_and_window(context) -> None:
+    decision = context.followup_state.confidence_decision
+    assert decision["computed_delta_raw_seconds"] == 50400
+    assert decision["computed_delta_humanized"] == "14 hours ago"
+    assert decision["time_window"] == "yesterday"
+    assert decision["window_start"].startswith("2026-03-09T00:00:00")

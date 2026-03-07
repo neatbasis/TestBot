@@ -118,7 +118,11 @@ def test_structured_debug_payload_observation_includes_candidate_evidence_detail
             "context_confident": False,
             "ambiguity_detected": True,
             "anaphora_detected": True,
-            "anaphora_target": "that",
+            "anchor_candidates": [{"doc_id": "d1", "ts": "2026-02-29T12:00:00Z", "confidence": 0.7}],
+            "selected_anchor_doc_id": "d1",
+            "selected_anchor_ts": "2026-02-29T12:00:00Z",
+            "computed_delta_raw_seconds": 3600,
+            "computed_delta_humanized": "1 hours ago",
             "time_window": "yesterday",
             "window_start": "2026-02-29T00:00:00Z",
             "window_end": "2026-02-29T23:59:59Z",
@@ -138,8 +142,10 @@ def test_structured_debug_payload_observation_includes_candidate_evidence_detail
     observation = payload["debug.observation"]["candidate_evidence"]
     assert set(observation.keys()) == {"retrieved_docs", "score_components", "time_windows", "ambiguity_state"}
     assert observation["score_components"]["top_gate_threshold"] == 0.85
+    assert isinstance(observation["score_components"]["candidate_score_decomposition"], list)
     assert observation["time_windows"]["query_time_window"] == "yesterday"
     assert observation["ambiguity_state"]["anaphora_detected"] is True
+    assert observation["ambiguity_state"]["selected_anchor_doc_id"] == "d1"
 
 
 def test_structured_debug_payload_temporal_query_is_emitted_in_verbose_trace() -> None:
