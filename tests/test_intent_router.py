@@ -1,6 +1,6 @@
 from testbot.pipeline_state import PipelineState
 from testbot.sat_chatbot_memory_v2 import CLARIFY_ANSWER, ROUTE_TO_ASK_ANSWER, resolve_turn_intent
-from testbot.intent_router import IntentType, classify_intent
+from testbot.intent_router import IntentType, classify_intent, extract_intent_facets
 
 
 def test_classify_intent_memory_recall_ambiguous_what_did_i_ask() -> None:
@@ -146,3 +146,32 @@ def test_classify_intent_capabilities_help_use_satellite() -> None:
 
 def test_classify_intent_capabilities_help_start_satellite_conversation() -> None:
     assert classify_intent("start satellite conversation") is IntentType.CAPABILITIES_HELP
+
+
+def test_extract_intent_facets_for_temporal_memory_mixed_utterance() -> None:
+    facets = extract_intent_facets("how many minutes ago did we talk before?")
+
+    assert facets.temporal is True
+    assert facets.memory is True
+    assert facets.capability is False
+    assert facets.control is False
+
+
+def test_extract_intent_facets_for_capabilities_in_context_utterance() -> None:
+    utterance = "what is ontology with satellite context?"
+
+    assert classify_intent(utterance) is IntentType.KNOWLEDGE_QUESTION
+    facets = extract_intent_facets(utterance)
+
+    assert facets.capability is True
+    assert facets.temporal is False
+
+
+def test_extract_intent_facets_for_memory_and_capability_mixed_utterance() -> None:
+    utterance = "can you help me remember our satellite context?"
+
+    assert classify_intent(utterance) is IntentType.MEMORY_RECALL
+    facets = extract_intent_facets(utterance)
+
+    assert facets.memory is True
+    assert facets.capability is True

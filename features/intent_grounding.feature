@@ -128,3 +128,13 @@ Feature: Intent-specific grounding and provenance behavior
     Given an intent response harness
     When the user provides a say-hello command
     Then the utterance should route to control intent deterministically
+
+  Scenario: mixed temporal and memory phrasing preserves time intent with memory facet visibility
+    Given an intent response harness
+    When the user asks a mixed temporal-memory phrase
+    Then the utterance should route to time-query intent with temporal and memory facets
+
+  Scenario: capabilities in context preserves knowledge routing with capability facet
+    Given an intent response harness
+    When the user asks a capabilities-in-context phrase
+    Then the utterance should route to knowledge intent with capability facet

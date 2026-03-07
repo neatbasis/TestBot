@@ -46,7 +46,13 @@ from testbot.stage_transitions import (
     validate_retrieve_pre,
 )
 from testbot.time_parse import parse_target_time
-from testbot.intent_router import IntentType, classify_intent, is_satellite_action_request, planning_pathway_for_intent
+from testbot.intent_router import (
+    IntentType,
+    classify_intent,
+    extract_intent_facets,
+    is_satellite_action_request,
+    planning_pathway_for_intent,
+)
 from testbot.time_reasoning import elapsed_since_last_user_message, resolve_relative_date
 from testbot.source_connectors import (
     ArxivSourceConnector,
@@ -941,8 +947,9 @@ def stage_answer(
     context_str = render_context(hits)
     packed_history = pack_chat_history(list(chat_history))
     history_str = render_packed_history(packed_history)
+    planning_descriptor = planning_pathway_for_intent(resolved_intent, extract_intent_facets(state.user_input))
     response_plan_block = render_response_plan_block(build_response_plan(
-        pathway=planning_pathway_for_intent(resolved_intent),
+        descriptor=planning_descriptor,
         user_input=state.user_input,
     ))
     msgs = ANSWER_PROMPT.format_messages(
@@ -1668,8 +1675,9 @@ def _run_chat_loop(
             },
         )
 
+        planning_descriptor = planning_pathway_for_intent(resolved_intent, extract_intent_facets(utterance))
         response_plan = build_response_plan(
-            pathway=planning_pathway_for_intent(resolved_intent),
+            descriptor=planning_descriptor,
             user_input=utterance,
         )
         state = replace(state, response_plan=plan_to_dict(response_plan))
