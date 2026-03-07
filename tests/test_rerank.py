@@ -298,6 +298,24 @@ def test_rerank_objective_config_loader_falls_back_when_config_invalid(tmp_path,
     assert loaded == DEFAULT_RERANK_OBJECTIVE_CONFIG
 
 
+def test_rerank_objective_config_loader_warns_when_config_invalid(tmp_path, monkeypatch, caplog) -> None:
+    invalid_path = tmp_path / "invalid_rerank_config.json"
+    invalid_path.write_text("{not-json", encoding="utf-8")
+    monkeypatch.setenv("TESTBOT_RERANK_OBJECTIVE_CONFIG", str(invalid_path))
+
+    with caplog.at_level("WARNING"):
+        loaded = load_rerank_objective_config(force_reload=True)
+
+    assert loaded == DEFAULT_RERANK_OBJECTIVE_CONFIG
+    assert len(caplog.records) == 1
+    warning = caplog.records[0]
+    assert warning.levelname == "WARNING"
+    assert "Failed to load rerank objective config from" in warning.message
+    assert str(invalid_path) in warning.message
+    assert "JSONDecodeError" in warning.message
+    assert "using default rerank objective config" in warning.message
+
+
 def test_rerank_scored_candidates_surface_objective_version(tmp_path, monkeypatch) -> None:
     config_path = tmp_path / "rerank_objective.json"
     config_path.write_text(

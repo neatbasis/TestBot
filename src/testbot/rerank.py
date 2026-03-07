@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 import json
+import logging
 import math
 from dataclasses import dataclass
 from pathlib import Path
 
 import arrow
 from langchain_core.documents import Document
+
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -226,7 +230,13 @@ def load_rerank_objective_config(*, force_reload: bool = False) -> RerankObjecti
             return _RERANK_OBJECTIVE_CONFIG_CACHE
         raw = json.loads(path.read_text(encoding="utf-8"))
         _RERANK_OBJECTIVE_CONFIG_CACHE = _parse_objective_config(raw)
-    except (OSError, json.JSONDecodeError, ValueError):
+    except (OSError, json.JSONDecodeError, ValueError) as exc:
+        logger.warning(
+            "Failed to load rerank objective config from %s due to %s: %s; using default rerank objective config.",
+            path,
+            type(exc).__name__,
+            exc,
+        )
         _RERANK_OBJECTIVE_CONFIG_CACHE = DEFAULT_RERANK_OBJECTIVE_CONFIG
 
     _RERANK_OBJECTIVE_CONFIG_CACHE_PATH = path
