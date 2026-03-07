@@ -27,6 +27,7 @@ def _base_state() -> PipelineState:
         },
         claims=["You said hi yesterday."],
         provenance_types=[ProvenanceType.MEMORY],
+        used_memory_refs=["1@2025-01-01T00:00:00Z"],
         basis_statement="Based on memory card doc_id: 1.",
         alignment_decision={
             "objective_version": "2026-03-05.v3",
@@ -154,6 +155,65 @@ def test_validate_answer_post_allows_deny_when_safety_dimension_fails() -> None:
     assert result.passed
 
 
+
+
+def test_validate_answer_post_rejects_knowing_mode_without_provenance_metadata() -> None:
+    state = replace(
+        _base_state(),
+        invariant_decisions={**_base_state().invariant_decisions, "answer_mode": "memory-grounded"},
+        provenance_types=[ProvenanceType.INFERENCE],
+        used_memory_refs=[],
+        used_source_evidence_refs=[],
+        basis_statement="",
+    )
+
+    result = validate_answer_post(state)
+
+    assert not result.passed
+    assert "knowing_mode_requires_provenance_metadata" in result.failures
+
+
+def test_validate_answer_post_allows_knowing_mode_with_provenance_metadata() -> None:
+    state = replace(
+        _base_state(),
+        invariant_decisions={**_base_state().invariant_decisions, "answer_mode": "memory-grounded"},
+        provenance_types=[ProvenanceType.MEMORY, ProvenanceType.INFERENCE],
+        used_memory_refs=["d-1@2025-01-01T00:00:00Z"],
+        basis_statement="Answer synthesized from reranked memory context.",
+    )
+
+    result = validate_answer_post(state)
+
+    assert result.passed
+
+
+def test_validate_answer_post_rejects_unknowing_mode_without_explicit_uncertainty_fallback() -> None:
+    state = replace(
+        _base_state(),
+        confidence_decision={"context_confident": False},
+        invariant_decisions={**_base_state().invariant_decisions, "answer_mode": "dont-know", "answer_contract_valid": False},
+        final_answer="Need more details.",
+        alignment_decision={**_base_state().alignment_decision, "final_alignment_decision": "allow"},
+    )
+
+    result = validate_answer_post(state)
+
+    assert not result.passed
+    assert "unknowing_mode_requires_explicit_uncertainty_fallback" in result.failures
+
+
+def test_validate_answer_post_allows_unknowing_mode_with_explicit_uncertainty_fallback() -> None:
+    state = replace(
+        _base_state(),
+        confidence_decision={"context_confident": False},
+        invariant_decisions={**_base_state().invariant_decisions, "answer_mode": "dont-know", "answer_contract_valid": False},
+        final_answer=FALLBACK_ANSWER,
+        alignment_decision={**_base_state().alignment_decision, "final_alignment_decision": "fallback"},
+    )
+
+    result = validate_answer_post(state)
+
+    assert result.passed
 def test_validate_answer_post_rejects_missing_provenance_dimension_for_non_trivial_answer() -> None:
     state = _base_state()
     state.alignment_decision["dimensions"].pop("provenance_transparency")
