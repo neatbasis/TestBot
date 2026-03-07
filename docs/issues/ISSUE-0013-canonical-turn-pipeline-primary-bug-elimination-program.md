@@ -7,6 +7,7 @@
 - **Owner:** platform-qa
 - **Created:** 2026-03-07
 - **Target Sprint:** Sprint 3-5
+- **Canonical Cross-Reference:** `ISSUE-0012-canonical-turn-pipeline-delivery-plan.md`
 - **Principle Alignment:** contract-first, invariant-driven, traceable, deterministic, ci-enforced, ontology-aware
 
 ## Problem Statement
@@ -113,4 +114,5 @@ The repository documents a canonical 11-stage turn pipeline and the doctrine "wr
 ## Closure Notes
 
 - 2026-03-07: Opened as the primary bug-elimination program to align runtime behavior with the canonical turn pipeline contract and eliminate raw-utterance-first routing as the dominant defect source.
+- 2026-03-07: Cross-system traceability note — ISSUE-0013 is the implementation and bug-elimination counterpart to `ISSUE-0012-canonical-turn-pipeline-delivery-plan.md` (delivery planning/governance anchor).
 - Closure requires evidence that canonical pipeline foundation, decisioning, and commit/audit slices are implemented in runtime, test coverage is deterministic and passing, and feature status moved beyond planned states.

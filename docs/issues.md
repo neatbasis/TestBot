@@ -40,6 +40,11 @@ Every issue file MUST include the following sections:
 14. `Verification`
 15. `Closure Notes`
 
+Recommended metadata extension for linked issue streams:
+
+- `Canonical Cross-Reference` (optional but recommended when linked planning/implementation issues exist; use issue filename, e.g., `ISSUE-0012-canonical-turn-pipeline-delivery-plan.md`).
+
+
 ## Severity and Red-Tag area
 
 A **Red-Tag** issue is any issue with severity `red` and one or more of:
