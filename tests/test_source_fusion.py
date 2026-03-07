@@ -22,16 +22,16 @@ def _packed_history() -> PackedHistory:
 
 def test_source_fusion_prioritizes_source_then_memory_then_remaining_source() -> None:
     docs_and_scores = [
-        (Document(id="m1", page_content="memory 1", metadata={"type": "memory", "ts": "2026-03-10T10:00:00Z"}), 0.92),
+        (Document(id="m1", page_content="memory 1", metadata={"type": "utterance_memory", "record_kind": "utterance_memory", "ts": "2026-03-10T10:00:00Z"}), 0.92),
         (
             Document(
                 id="s1",
                 page_content="source 1",
-                metadata={"type": "source_evidence", "ts": "2026-03-10T10:05:00Z", "source_uri": "calendar://1"},
+                metadata={"type": "source_evidence", "record_kind": "source_evidence", "ts": "2026-03-10T10:05:00Z", "source_uri": "calendar://1"},
             ),
             0.87,
         ),
-        (Document(id="m2", page_content="memory 2", metadata={"type": "memory", "ts": "2026-03-10T09:59:00Z"}), 0.9),
+        (Document(id="m2", page_content="memory 2", metadata={"type": "utterance_memory", "record_kind": "utterance_memory", "ts": "2026-03-10T09:59:00Z"}), 0.9),
         (
             Document(
                 id="s2",
@@ -61,7 +61,7 @@ def test_collect_used_source_evidence_refs_dedupes_refs_and_attribution() -> Non
     )
 
     refs, attribution = collect_used_source_evidence_refs(
-        [source_hit, source_hit, Document(id="mem-1", page_content="memory", metadata={"type": "memory"})]
+        [source_hit, source_hit, Document(id="mem-1", page_content="memory", metadata={"type": "utterance_memory", "record_kind": "utterance_memory"})]
     )
 
     assert refs == ["src-1"]
@@ -109,7 +109,7 @@ def test_build_provenance_metadata_includes_memory_and_source_refs_for_mixed_hit
     memory_hit = Document(
         id="mem-11",
         page_content="Remember to call Alex Thursday.",
-        metadata={"type": "memory", "doc_id": "mem-11", "ts": "2026-03-09T10:00:00Z"},
+        metadata={"type": "utterance_memory", "record_kind": "utterance_memory", "doc_id": "mem-11", "ts": "2026-03-09T10:00:00Z"},
     )
     source_hit = Document(
         id="src-11",

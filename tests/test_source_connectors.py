@@ -234,7 +234,7 @@ def test_source_ingest_canonicalizes_fixture_connector_docs() -> None:
     assert result.stored_count == 2
     memory_doc = result.memory_documents[0]
     evidence_doc = result.evidence_documents[0]
-    assert memory_doc.metadata["record_kind"] == "source_memory"
+    assert memory_doc.metadata["record_kind"] == "utterance_memory"
     assert evidence_doc.metadata["record_kind"] == "source_evidence"
     assert evidence_doc.metadata["source_type"] == "calendar"
     assert evidence_doc.metadata["trust_tier"] == "high"

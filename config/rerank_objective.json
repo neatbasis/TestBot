@@ -1,11 +1,23 @@
 {
   "objective_name": "semantic_temporal_type",
-  "objective_version": "v1",
+  "objective_version": "v2",
   "coefficients": {
     "base_temporal_blend": 0.25,
     "gaussian_temporal_blend": 0.75,
     "reflection_type_prior": 0.7,
-    "default_type_prior": 1.0
+    "default_type_prior": 1.0,
+    "lane_coefficients": {
+      "utterance_memory": 1.0,
+      "reflection_hypothesis": 0.7,
+      "promoted_context": 1.05,
+      "source_evidence": 1.1
+    }
+  },
+  "lane_fusion": {
+    "source_evidence": 2,
+    "promoted_context": 1,
+    "utterance_memory": 4,
+    "reflection_hypothesis": 0
   },
   "confidence_thresholds": {
     "top_final_score_min": 0.2,

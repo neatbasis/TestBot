@@ -5,9 +5,19 @@ import logging
 import math
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
 import arrow
 from langchain_core.documents import Document
+
+from testbot.vector_store import (
+    RECORD_KIND_PROMOTED_CONTEXT,
+    RECORD_KIND_REFLECTION_HYPOTHESIS,
+    RECORD_KIND_SOURCE_EVIDENCE,
+    RECORD_KIND_UTTERANCE_MEMORY,
+    RecordKind,
+    is_valid_record_kind,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -43,6 +53,15 @@ class RerankObjectiveCoefficients:
     reflection_type_prior: float = 0.7
     default_type_prior: float = 1.0
     neutral_temporal_prior: float = 0.5
+    lane_coefficients: dict[RecordKind, float] | None = None
+
+
+DEFAULT_LANE_COEFFICIENTS: dict[RecordKind, float] = {
+    RECORD_KIND_UTTERANCE_MEMORY: 1.0,
+    RECORD_KIND_REFLECTION_HYPOTHESIS: 0.7,
+    RECORD_KIND_PROMOTED_CONTEXT: 1.05,
+    RECORD_KIND_SOURCE_EVIDENCE: 1.1,
+}
 
 
 DEFAULT_RERANK_COEFFICIENTS = RerankObjectiveCoefficients()
@@ -54,13 +73,27 @@ class RerankObjectiveConfig:
     objective_version: str
     coefficients: RerankObjectiveCoefficients
     confidence_thresholds: ContextConfidenceThresholds
+    lane_fusion: dict[RecordKind, int]
 
 
 DEFAULT_RERANK_OBJECTIVE_CONFIG = RerankObjectiveConfig(
     objective_name="semantic_temporal_type",
-    objective_version="v1",
-    coefficients=DEFAULT_RERANK_COEFFICIENTS,
+    objective_version="v2",
+    coefficients=RerankObjectiveCoefficients(
+        base_temporal_blend=DEFAULT_RERANK_COEFFICIENTS.base_temporal_blend,
+        gaussian_temporal_blend=DEFAULT_RERANK_COEFFICIENTS.gaussian_temporal_blend,
+        reflection_type_prior=DEFAULT_RERANK_COEFFICIENTS.reflection_type_prior,
+        default_type_prior=DEFAULT_RERANK_COEFFICIENTS.default_type_prior,
+        neutral_temporal_prior=DEFAULT_RERANK_COEFFICIENTS.neutral_temporal_prior,
+        lane_coefficients=DEFAULT_LANE_COEFFICIENTS,
+    ),
     confidence_thresholds=DEFAULT_CONTEXT_CONFIDENCE_THRESHOLDS,
+    lane_fusion={
+        RECORD_KIND_SOURCE_EVIDENCE: 2,
+        RECORD_KIND_PROMOTED_CONTEXT: 1,
+        RECORD_KIND_UTTERANCE_MEMORY: 4,
+        RECORD_KIND_REFLECTION_HYPOTHESIS: 0,
+    },
 )
 
 
@@ -71,6 +104,13 @@ _CARD_TYPE_PRIORITY: dict[str, int] = {
     "source_evidence": 3,
     "reflection": 4,
 }
+
+_LANE_FUSION_ORDER: tuple[RecordKind, ...] = (
+    RECORD_KIND_SOURCE_EVIDENCE,
+    RECORD_KIND_PROMOTED_CONTEXT,
+    RECORD_KIND_UTTERANCE_MEMORY,
+    RECORD_KIND_REFLECTION_HYPOTHESIS,
+)
 
 
 _RERANK_OBJECTIVE_CONFIG_CACHE: RerankObjectiveConfig | None = None
@@ -120,6 +160,20 @@ def _parse_coefficients(raw: object) -> RerankObjectiveCoefficients:
     missing = required.difference(mapping)
     if missing:
         raise ValueError(f"coefficients missing keys: {sorted(missing)}")
+    lane_coefficients_raw = mapping.get("lane_coefficients", DEFAULT_LANE_COEFFICIENTS)
+    lane_coefficients_mapping = _require_mapping(lane_coefficients_raw, where="coefficients.lane_coefficients")
+    lane_coefficients: dict[RecordKind, float] = {}
+    for lane_name, lane_value in lane_coefficients_mapping.items():
+        lane_key = str(lane_name)
+        if not is_valid_record_kind(lane_key):
+            raise ValueError(f"coefficients.lane_coefficients contains invalid lane: {lane_name}")
+        lane_coefficients[lane_key] = _require_float(
+            lane_value,
+            where=f"coefficients.lane_coefficients.{lane_key}",
+            minimum=0.0,
+            maximum=3.0,
+        )
+
     return RerankObjectiveCoefficients(
         base_temporal_blend=_require_float(
             mapping["base_temporal_blend"],
@@ -151,7 +205,26 @@ def _parse_coefficients(raw: object) -> RerankObjectiveCoefficients:
             minimum=0.0,
             maximum=1.0,
         ),
+        lane_coefficients=lane_coefficients,
     )
+
+
+def _parse_lane_fusion(raw: object) -> dict[RecordKind, int]:
+    mapping = _require_mapping(raw, where="lane_fusion")
+    parsed: dict[RecordKind, int] = {}
+    for lane_name, lane_quota in mapping.items():
+        lane_key = str(lane_name)
+        if not is_valid_record_kind(lane_key):
+            raise ValueError(f"lane_fusion contains invalid lane: {lane_name}")
+        if isinstance(lane_quota, bool) or not isinstance(lane_quota, int):
+            raise ValueError(f"lane_fusion.{lane_key} must be an integer")
+        if lane_quota < 0:
+            raise ValueError(f"lane_fusion.{lane_key} must be >= 0")
+        parsed[lane_key] = lane_quota
+
+    for lane_name in _LANE_FUSION_ORDER:
+        parsed.setdefault(lane_name, DEFAULT_RERANK_OBJECTIVE_CONFIG.lane_fusion[lane_name])
+    return parsed
 
 
 def _parse_confidence_thresholds(raw: object) -> ContextConfidenceThresholds:
@@ -203,11 +276,14 @@ def _parse_objective_config(raw: object) -> RerankObjectiveConfig:
         raise ValueError("missing required key: coefficients")
     if "confidence_thresholds" not in mapping:
         raise ValueError("missing required key: confidence_thresholds")
+    if "lane_fusion" not in mapping:
+        raise ValueError("missing required key: lane_fusion")
     return RerankObjectiveConfig(
         objective_name=objective_name.strip(),
         objective_version=objective_version.strip(),
         coefficients=_parse_coefficients(mapping["coefficients"]),
         confidence_thresholds=_parse_confidence_thresholds(mapping["confidence_thresholds"]),
+        lane_fusion=_parse_lane_fusion(mapping["lane_fusion"]),
     )
 
 
@@ -251,10 +327,46 @@ def rerank_confidence_thresholds() -> ContextConfidenceThresholds:
     return load_rerank_objective_config().confidence_thresholds
 
 
-def is_source_evidence_doc(doc: Document) -> bool:
+LaneName = Literal[
+    "utterance_memory",
+    "reflection_hypothesis",
+    "promoted_context",
+    "source_evidence",
+]
+
+
+def _normalize_lane_name(raw: object) -> LaneName:
+    value = str(raw or "").strip()
+    if value in {RECORD_KIND_SOURCE_EVIDENCE, "source_evidence"}:
+        return RECORD_KIND_SOURCE_EVIDENCE
+    if value in {RECORD_KIND_PROMOTED_CONTEXT, "promoted_context"}:
+        return RECORD_KIND_PROMOTED_CONTEXT
+    if value in {RECORD_KIND_REFLECTION_HYPOTHESIS, "reflection"}:
+        return RECORD_KIND_REFLECTION_HYPOTHESIS
+    return RECORD_KIND_UTTERANCE_MEMORY
+
+
+def doc_lane(doc: Document) -> LaneName:
+    record_kind = _normalize_lane_name(doc.metadata.get("record_kind"))
+    if record_kind != RECORD_KIND_UTTERANCE_MEMORY:
+        return record_kind
+
     doc_type = str(doc.metadata.get("type") or "").strip()
-    record_kind = str(doc.metadata.get("record_kind") or "").strip()
-    return doc_type == "source_evidence" or record_kind == "source_evidence"
+    if doc_type == "source_evidence":
+        return RECORD_KIND_SOURCE_EVIDENCE
+    if doc_type == "promoted_context":
+        return RECORD_KIND_PROMOTED_CONTEXT
+    if doc_type == "reflection":
+        return RECORD_KIND_REFLECTION_HYPOTHESIS
+    return RECORD_KIND_UTTERANCE_MEMORY
+
+
+def is_source_evidence_doc(doc: Document) -> bool:
+    return doc_lane(doc) == RECORD_KIND_SOURCE_EVIDENCE
+
+
+def _lane_rank(lane: LaneName) -> int:
+    return _LANE_FUSION_ORDER.index(lane)
 
 
 def mix_source_evidence_with_memory_cards(
@@ -263,37 +375,57 @@ def mix_source_evidence_with_memory_cards(
     top_k: int,
     source_quota: int = 2,
 ) -> list[tuple[Document, float]]:
-    """Mix source evidence with memory cards while keeping deterministic fallback behavior."""
-    if not docs_and_scores:
+    """Compatibility wrapper for lane-based selection preserving legacy source quota behavior."""
+    lane_quotas: dict[LaneName, int] = {
+        RECORD_KIND_SOURCE_EVIDENCE: max(source_quota, 0),
+        RECORD_KIND_UTTERANCE_MEMORY: max(top_k - source_quota, 0),
+        RECORD_KIND_PROMOTED_CONTEXT: 0,
+        RECORD_KIND_REFLECTION_HYPOTHESIS: 0,
+    }
+    return fuse_ranked_candidates_by_lane(docs_and_scores=docs_and_scores, top_k=top_k, lane_quotas=lane_quotas)
+
+
+def _sorted_lane_candidates(docs_and_scores: list[tuple[Document, float]]) -> dict[LaneName, list[tuple[Document, float]]]:
+    lanes: dict[LaneName, list[tuple[Document, float]]] = {lane: [] for lane in _LANE_FUSION_ORDER}
+    for doc, score in docs_and_scores:
+        lanes[doc_lane(doc)].append((doc, score))
+    for lane in _LANE_FUSION_ORDER:
+        lanes[lane].sort(key=lambda item: _stable_rank_key(item[1], item[0]))
+    return lanes
+
+
+def fuse_ranked_candidates_by_lane(
+    *,
+    docs_and_scores: list[tuple[Document, float]],
+    top_k: int,
+    lane_quotas: dict[LaneName, int],
+) -> list[tuple[Document, float]]:
+    if top_k <= 0 or not docs_and_scores:
         return []
 
-    source_candidates: list[tuple[Document, float]] = []
-    memory_candidates: list[tuple[Document, float]] = []
-    for doc, score in docs_and_scores:
-        if is_source_evidence_doc(doc):
-            source_candidates.append((doc, score))
-        else:
-            memory_candidates.append((doc, score))
+    lanes = _sorted_lane_candidates(docs_and_scores)
+    selected: list[tuple[Document, float]] = []
+    consumed: dict[LaneName, int] = {lane: 0 for lane in _LANE_FUSION_ORDER}
 
-    if not source_candidates:
-        return docs_and_scores[:top_k]
+    for lane in _LANE_FUSION_ORDER:
+        quota = max(lane_quotas.get(lane, 0), 0)
+        if quota == 0:
+            continue
+        lane_docs = lanes[lane]
+        take = min(quota, top_k - len(selected), len(lane_docs))
+        if take <= 0:
+            continue
+        selected.extend(lane_docs[:take])
+        consumed[lane] = take
+        if len(selected) >= top_k:
+            return selected
 
-    ordered_source = sorted(source_candidates, key=lambda item: (-item[1], -_ts_epoch(item[0]), _card_rank(item[0]), _doc_id(item[0])))
-    ordered_memory = sorted(memory_candidates, key=lambda item: (-item[1], -_ts_epoch(item[0]), _card_rank(item[0]), _doc_id(item[0])))
-
-    mixed: list[tuple[Document, float]] = []
-    source_taken = min(source_quota, top_k)
-    mixed.extend(ordered_source[:source_taken])
-
-    remaining = top_k - len(mixed)
-    if remaining > 0:
-        mixed.extend(ordered_memory[:remaining])
-
-    remaining = top_k - len(mixed)
-    if remaining > 0:
-        mixed.extend(ordered_source[source_taken : source_taken + remaining])
-
-    return mixed
+    leftovers: list[tuple[Document, float]] = []
+    for lane in _LANE_FUSION_ORDER:
+        leftovers.extend(lanes[lane][consumed[lane] :])
+    leftovers.sort(key=lambda item: (_stable_rank_key(item[1], item[0]), _lane_rank(doc_lane(item[0]))))
+    selected.extend(leftovers[: max(top_k - len(selected), 0)])
+    return selected
 
 
 def adaptive_sigma_fractional(
@@ -372,14 +504,17 @@ def rerank_objective_score_components(
         sigma_seconds=sigma_seconds,
         neutral_temporal_prior=effective_coefficients.neutral_temporal_prior,
     )
+    inferred_lane = _normalize_lane_name(doc_type)
     type_prior = (
-        effective_coefficients.reflection_type_prior if doc_type == "reflection" else effective_coefficients.default_type_prior
+        effective_coefficients.reflection_type_prior if inferred_lane == RECORD_KIND_REFLECTION_HYPOTHESIS else effective_coefficients.default_type_prior
     )
+    lane_coefficients = effective_coefficients.lane_coefficients or DEFAULT_LANE_COEFFICIENTS
+    lane_prior = lane_coefficients.get(inferred_lane, 1.0)
     temporal_blend = (
         effective_coefficients.base_temporal_blend
         + (effective_coefficients.gaussian_temporal_blend * temporal_gaussian_weight)
     )
-    final_score = type_prior * float(sim_score) * temporal_blend
+    final_score = type_prior * lane_prior * float(sim_score) * temporal_blend
     return {
         "objective": _objective_label(active_config),
         "objective_version": active_config.objective_version,
@@ -388,6 +523,8 @@ def rerank_objective_score_components(
         "temporal_blend": float(temporal_blend),
         "timestamp_quality": timestamp_quality,
         "type_prior": float(type_prior),
+        "lane_prior": float(lane_prior),
+        "lane": inferred_lane,
         "final_score": float(final_score),
     }
 
@@ -479,16 +616,27 @@ def rerank_docs_with_time_and_type_outcome(
         scored.append((float(objective_components["final_score"]), doc, objective_components))
 
     scored.sort(key=lambda x: _stable_rank_key(x[0], x[1]))
-    docs = [d for _, d, _ in scored[:top_k]]
-    scored_candidates = [
-        {
+    fusion_config = load_rerank_objective_config().lane_fusion
+    lane_quotas: dict[LaneName, int] = {
+        lane: fusion_config.get(lane, 0)
+        for lane in _LANE_FUSION_ORDER
+    }
+    fused_docs_and_scores = fuse_ranked_candidates_by_lane(
+        docs_and_scores=[(doc, score) for score, doc, _ in scored],
+        top_k=top_k,
+        lane_quotas=lane_quotas,
+    )
+    docs = [doc for doc, _ in fused_docs_and_scores]
+    component_by_doc_id: dict[str, dict[str, float | str]] = {
+        _doc_id(doc): {
             "doc_id": _doc_id(doc),
             "doc_type": str(doc.metadata.get("type") or ""),
             "ts": str(doc.metadata.get("ts") or ""),
             **components,
         }
         for score, doc, components in scored
-    ]
+    }
+    scored_candidates = [component_by_doc_id.get(_doc_id(doc), {}) for doc, _ in fused_docs_and_scores]
 
     near_tie_candidates: list[dict[str, float | str]] = []
     ambiguity_detected = False
