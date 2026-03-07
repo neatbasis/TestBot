@@ -96,7 +96,7 @@ Default behavior is fail-closed (stop on first failure). Use `--continue-on-fail
 
 ### Turn analytics in canonical gate
 
-The canonical gate aligns with `scripts/release_gate.py` rollout controls for KPI checks via `--kpi-guardrail-mode {off,optional,blocking}` (default: `optional`). In `optional`, `scripts/aggregate_turn_analytics.py` and `scripts/validate_kpi_guardrails.py` run as non-blocking warnings; in `blocking`, the same failures block gate success; in `off`, both checks are skipped.
+The canonical gate (`scripts/all_green_gate.py`) supports KPI rollout controls via `--kpi-guardrail-mode {off,optional,blocking}` (default: `optional`). In `optional`, `scripts/aggregate_turn_analytics.py` and `scripts/validate_kpi_guardrails.py` run as non-blocking warnings; in `blocking`, the same failures block gate success; in `off`, both checks are skipped.
 
 | Test layer | Canonical command | Runtime dependency | CI gate level | Expected runtime | Pass criteria |
 | --- | --- | --- | --- | --- | --- |

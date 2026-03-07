@@ -120,7 +120,7 @@ Current acceptable ranges:
 
 ### Release-gate rollout plan for KPI validation
 
-`python scripts/release_gate.py` includes KPI guardrail validation in a phased mode:
+`python scripts/all_green_gate.py` includes KPI guardrail validation in a phased mode:
 
 1. **Optional phase (current)**: check runs as warning-only via `--kpi-guardrail-mode optional` (default).
 2. **Blocking phase (target)**: switch to `--kpi-guardrail-mode blocking` once two consecutive sprint KPI evidence reviews show zero regressions.
