@@ -1,98 +1,121 @@
 {
-  "status": "failed",
-  "exit_code": 1,
-  "continue_on_failure": true,
+  "status": "passed",
+  "exit_code": 0,
+  "continue_on_failure": false,
+  "warning_count": 1,
+  "stages": [
+    {
+      "stage": "product",
+      "duration_s": 3.158,
+      "exit_code": 0,
+      "first_failing_command": null,
+      "artifact_path": null
+    },
+    {
+      "stage": "safety",
+      "duration_s": 0.074,
+      "exit_code": 0,
+      "first_failing_command": null,
+      "artifact_path": null
+    },
+    {
+      "stage": "qa",
+      "duration_s": 7.073,
+      "exit_code": 1,
+      "first_failing_command": "/root/.pyenv/versions/3.11.14/bin/python scripts/validate_kpi_guardrails.py --summary logs/turn_analytics_summary.json --config config/kpi_guardrails.json",
+      "artifact_path": "logs/turn_analytics.jsonl"
+    }
+  ],
   "checks": [
     {
       "name": "product_behave",
+      "stage": "product",
       "command": "/root/.pyenv/versions/3.11.14/bin/python -m behave",
-      "status": "failed",
-      "exit_code": 1,
-      "duration_s": 2.221
-    },
-    {
-      "name": "product_eval_runtime_parity",
-      "command": "/root/.pyenv/versions/3.11.14/bin/python -m pytest tests/test_eval_runtime_parity.py",
       "status": "passed",
       "exit_code": 0,
-      "duration_s": 2.81
+      "duration_s": 1.953,
+      "artifact_path": null
     },
     {
       "name": "product_eval_recall_topk4",
+      "stage": "product",
       "command": "/root/.pyenv/versions/3.11.14/bin/python scripts/eval_recall.py --top-k 4",
       "status": "passed",
       "exit_code": 0,
-      "duration_s": 0.475
-    },
-    {
-      "name": "safety_behave_answer_contract_and_memory",
-      "command": "/root/.pyenv/versions/3.11.14/bin/python -m behave features/answer_contract.feature features/memory_recall.feature",
-      "status": "failed",
-      "exit_code": 1,
-      "duration_s": 2.022
-    },
-    {
-      "name": "safety_reflection_and_runtime_logging_pytests",
-      "command": "/root/.pyenv/versions/3.11.14/bin/python -m pytest tests/test_reflection_policy.py tests/test_runtime_logging_events.py",
-      "status": "passed",
-      "exit_code": 0,
-      "duration_s": 2.696
+      "duration_s": 1.205,
+      "artifact_path": null
     },
     {
       "name": "safety_validate_log_schema",
+      "stage": "safety",
       "command": "/root/.pyenv/versions/3.11.14/bin/python scripts/validate_log_schema.py",
       "status": "passed",
       "exit_code": 0,
-      "duration_s": 0.073
-    },
-    {
-      "name": "ops_runtime_modes_and_startup_status",
-      "command": "/root/.pyenv/versions/3.11.14/bin/python -m pytest tests/test_runtime_modes.py tests/test_startup_status.py",
-      "status": "passed",
-      "exit_code": 0,
-      "duration_s": 2.579
+      "duration_s": 0.074,
+      "artifact_path": null
     },
     {
       "name": "qa_pytest_not_live_smoke",
+      "stage": "qa",
       "command": "/root/.pyenv/versions/3.11.14/bin/python -m pytest -m 'not live_smoke'",
       "status": "passed",
       "exit_code": 0,
-      "duration_s": 5.444
-    },
-    {
-      "name": "qa_eval_fixtures_and_runtime_parity",
-      "command": "/root/.pyenv/versions/3.11.14/bin/python -m pytest tests/test_eval_fixtures.py tests/test_eval_runtime_parity.py",
-      "status": "passed",
-      "exit_code": 0,
-      "duration_s": 2.578
+      "duration_s": 6.482,
+      "artifact_path": null
     },
     {
       "name": "qa_validate_issue_links",
+      "stage": "qa",
       "command": "/root/.pyenv/versions/3.11.14/bin/python scripts/validate_issue_links.py --all-issue-files --base-ref 'HEAD~1'",
       "status": "passed",
       "exit_code": 0,
-      "duration_s": 0.137
+      "duration_s": 0.161,
+      "artifact_path": null
     },
     {
       "name": "qa_validate_issues",
+      "stage": "qa",
       "command": "/root/.pyenv/versions/3.11.14/bin/python scripts/validate_issues.py --all-issue-files --base-ref 'HEAD~1'",
       "status": "passed",
       "exit_code": 0,
-      "duration_s": 0.103
+      "duration_s": 0.106,
+      "artifact_path": null
     },
     {
       "name": "qa_validate_invariant_sync",
+      "stage": "qa",
       "command": "/root/.pyenv/versions/3.11.14/bin/python scripts/validate_invariant_sync.py",
       "status": "passed",
       "exit_code": 0,
-      "duration_s": 0.065
+      "duration_s": 0.058,
+      "artifact_path": null
     },
     {
       "name": "qa_validate_markdown_paths",
+      "stage": "qa",
       "command": "/root/.pyenv/versions/3.11.14/bin/python scripts/validate_markdown_paths.py",
       "status": "passed",
       "exit_code": 0,
-      "duration_s": 0.063
+      "duration_s": 0.065,
+      "artifact_path": null
+    },
+    {
+      "name": "qa_aggregate_turn_analytics",
+      "stage": "qa",
+      "command": "/root/.pyenv/versions/3.11.14/bin/python scripts/aggregate_turn_analytics.py --input logs/session.jsonl --output logs/turn_analytics.jsonl --summary-output logs/turn_analytics_summary.json",
+      "status": "passed",
+      "exit_code": 0,
+      "duration_s": 0.116,
+      "artifact_path": "logs/turn_analytics.jsonl"
+    },
+    {
+      "name": "qa_validate_kpi_guardrails",
+      "stage": "qa",
+      "command": "/root/.pyenv/versions/3.11.14/bin/python scripts/validate_kpi_guardrails.py --summary logs/turn_analytics_summary.json --config config/kpi_guardrails.json",
+      "status": "warning",
+      "exit_code": 1,
+      "duration_s": 0.085,
+      "artifact_path": null
     }
   ]
 }
