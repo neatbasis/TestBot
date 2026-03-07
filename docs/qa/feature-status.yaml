@@ -24,7 +24,7 @@ capabilities:
   runtime_dependency_flags:
   - SOURCE_INGEST_ENABLED
   - TESTBOT_RERANK_OBJECTIVE_CONFIG
-  current_status: implemented
+  current_status: partial
   roadmap_priority_refs:
   - P2
   - P4
@@ -43,7 +43,7 @@ capabilities:
   - safety_reflection_and_runtime_logging_pytests
   runtime_dependency_flags:
   - TESTBOT_DEBUG
-  current_status: implemented
+  current_status: partial
   roadmap_priority_refs:
   - P3
   issue_keywords:
@@ -61,7 +61,7 @@ capabilities:
   - qa_pytest_not_live_smoke
   runtime_dependency_flags:
   - TESTBOT_DEBUG
-  current_status: implemented
+  current_status: partial
   roadmap_priority_refs:
   - P3
   issue_keywords:
@@ -103,7 +103,7 @@ capabilities:
   - SOURCE_MARKDOWN_PATH
   - SOURCE_WIKIPEDIA_TOPIC
   - SOURCE_ARXIV_QUERY
-  current_status: implemented
+  current_status: partial
   roadmap_priority_refs:
   - P1
   - P2

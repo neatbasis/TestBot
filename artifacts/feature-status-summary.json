@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-03-06T22:51:56Z",
+  "generated_at_utc": "2026-03-07T01:26:56Z",
   "inputs": {
     "contract_path": "docs/qa/feature-status.yaml",
     "gate_summary_path": "artifacts/all-green-gate-summary.json",
@@ -9,41 +9,49 @@
   "source_file_metadata": {
     "contract": {
       "path": "docs/qa/feature-status.yaml",
-      "size_bytes": 4211,
-      "mtime_utc": "2026-03-06T22:50:44Z",
-      "sha256": "58c0d600f35f1b5d23aee6dce09143070e1a2badc48222c5387f12bd2bfa58ad"
+      "size_bytes": 4195,
+      "mtime_utc": "2026-03-07T01:26:52Z",
+      "sha256": "b1d9ffae9c8651b1a8d9f5442755fcba2d055cf10c786a264a4140cba37857d4"
     },
     "gate_summary": {
       "path": "artifacts/all-green-gate-summary.json",
       "size_bytes": 3259,
-      "mtime_utc": "2026-03-06T22:51:35Z",
+      "mtime_utc": "2026-03-07T00:33:32Z",
       "sha256": "8d57084a798ed0278fe04ddc515e0bfee3b3468487eeab4306c6212661c5b3b6"
     },
     "open_issues": [
       {
         "path": "docs/issues/ISSUE-0008-intent-grounding-gate-failures-block-merge.md",
         "size_bytes": 2930,
-        "mtime_utc": "2026-03-06T21:36:29Z",
+        "mtime_utc": "2026-03-07T00:33:32Z",
         "sha256": "d848db4ba2244dd191de3a7f68cbf8603865104b6f0d49f8aba1b1c12c0174e6"
       },
       {
         "path": "docs/issues/ISSUE-0009-knowing-grounded-answers-partial-provenance-gap.md",
-        "size_bytes": 2755,
-        "mtime_utc": "2026-03-06T21:36:29Z",
-        "sha256": "f4eba3c4be0b603db98f5603605a0fd1ed6a262eb9d0eafd7040f5a1b2a4bd29"
+        "size_bytes": 3351,
+        "mtime_utc": "2026-03-07T01:26:26Z",
+        "sha256": "8da01e34dd952ea83487ac92f178d3743b945cc49ce9ec15c1b47f1e8e0a4cc1"
       },
       {
         "path": "docs/issues/ISSUE-0010-unknowing-safe-fallback-partial-contract-gap.md",
-        "size_bytes": 2799,
-        "mtime_utc": "2026-03-06T21:36:29Z",
-        "sha256": "753f9b654e91878e3f58379ad1ba0513e8bdcd105268ec2d3ef5fcae06b02bb1"
+        "size_bytes": 3444,
+        "mtime_utc": "2026-03-07T01:26:26Z",
+        "sha256": "a567c450d61f181043b4e1491514bdc1ef35a140a988a25a7e344cb5f8f70d9d"
+      },
+      {
+        "path": "docs/issues/ISSUE-0011-turn-analytics-input-coverage-silent-drop.md",
+        "size_bytes": 3980,
+        "mtime_utc": "2026-03-07T00:33:32Z",
+        "sha256": "890a2f0e7cd701987ca1366d8006281d955599ded1bb2356c3088e459a90d37b"
       }
     ]
   },
-  "warnings": [],
+  "warnings": [
+    "Gate summary appears older than one or more source files (contract or open issue records); regenerate gate evidence for freshest status."
+  ],
   "summary": {
-    "implemented": 3,
-    "partial": 3,
+    "implemented": 2,
+    "partial": 4,
     "missing": 0
   },
   "capabilities": [
@@ -52,7 +60,7 @@
       "capability_name": "Knowing-mode grounded answer with provenance",
       "owner_module": "src/testbot/sat_chatbot_memory_v2.py",
       "effective_status": "partial",
-      "declared_status": "implemented",
+      "declared_status": "partial",
       "failed_gate_checks": [
         "product_behave",
         "safety_behave_answer_contract_and_memory"
@@ -62,6 +70,11 @@
           "id": "ISSUE-0009",
           "title": "Knowing grounded answers remain partial due to provenance/recall gate debt",
           "path": "docs/issues/ISSUE-0009-knowing-grounded-answers-partial-provenance-gap.md"
+        },
+        {
+          "id": "ISSUE-0010",
+          "title": "Unknowing safe fallback remains partial for explicit uncertainty contract completeness",
+          "path": "docs/issues/ISSUE-0010-unknowing-safe-fallback-partial-contract-gap.md"
         }
       ],
       "roadmap_priority_refs": [
@@ -95,11 +108,16 @@
       "capability_name": "Unknowing-mode explicit uncertainty and safe fallback",
       "owner_module": "src/testbot/reflection_policy.py",
       "effective_status": "partial",
-      "declared_status": "implemented",
+      "declared_status": "partial",
       "failed_gate_checks": [
         "product_behave"
       ],
       "relevant_open_issues": [
+        {
+          "id": "ISSUE-0009",
+          "title": "Knowing grounded answers remain partial due to provenance/recall gate debt",
+          "path": "docs/issues/ISSUE-0009-knowing-grounded-answers-partial-provenance-gap.md"
+        },
         {
           "id": "ISSUE-0010",
           "title": "Unknowing safe fallback remains partial for explicit uncertainty contract completeness",
@@ -129,7 +147,7 @@
       "capability_name": "Deterministic intent grounding and route selection",
       "owner_module": "src/testbot/intent_router.py",
       "effective_status": "partial",
-      "declared_status": "implemented",
+      "declared_status": "partial",
       "failed_gate_checks": [
         "product_behave"
       ],
@@ -195,10 +213,16 @@
       "capability_id": "external_source_ingestion",
       "capability_name": "External source ingestion connectors for grounding",
       "owner_module": "src/testbot/source_connectors.py",
-      "effective_status": "implemented",
-      "declared_status": "implemented",
+      "effective_status": "partial",
+      "declared_status": "partial",
       "failed_gate_checks": [],
-      "relevant_open_issues": [],
+      "relevant_open_issues": [
+        {
+          "id": "ISSUE-0011",
+          "title": "Turn analytics aggregation silently drops non-analytics session events without operator coverage diagnostics",
+          "path": "docs/issues/ISSUE-0011-turn-analytics-input-coverage-silent-drop.md"
+        }
+      ],
       "roadmap_priority_refs": [
         "P1",
         "P2"
@@ -256,6 +280,6 @@
       ]
     }
   ],
-  "open_issue_count": 3,
+  "open_issue_count": 4,
   "gate_checks_seen": 13
 }
