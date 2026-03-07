@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-03-07T15:52:26Z",
+  "generated_at_utc": "2026-03-07T16:19:34Z",
   "inputs": {
     "contract_path": "docs/qa/feature-status.yaml",
     "gate_summary_path": "artifacts/all-green-gate-summary.json",
@@ -10,44 +10,44 @@
     "contract": {
       "path": "docs/qa/feature-status.yaml",
       "size_bytes": 5949,
-      "mtime_utc": "2026-03-07T15:52:11Z",
+      "mtime_utc": "2026-03-07T16:19:16Z",
       "sha256": "bd91a78c1200ce076a0c6a5816a53e49208c0ca5e52e1d3c662a5de79ef9e5dc"
     },
     "gate_summary": {
       "path": "artifacts/all-green-gate-summary.json",
       "size_bytes": 3259,
-      "mtime_utc": "2026-03-07T13:43:34Z",
+      "mtime_utc": "2026-03-07T14:45:31Z",
       "sha256": "8d57084a798ed0278fe04ddc515e0bfee3b3468487eeab4306c6212661c5b3b6"
     },
     "open_issues": [
       {
         "path": "docs/issues/ISSUE-0008-intent-grounding-gate-failures-block-merge.md",
         "size_bytes": 3079,
-        "mtime_utc": "2026-03-07T15:52:11Z",
+        "mtime_utc": "2026-03-07T16:19:16Z",
         "sha256": "a03e2e1c0a698fa3c91161429fa8149406bb70b5c67f929c1601bd4f7e33a4f3"
       },
       {
         "path": "docs/issues/ISSUE-0009-knowing-grounded-answers-partial-provenance-gap.md",
         "size_bytes": 3999,
-        "mtime_utc": "2026-03-07T15:52:11Z",
+        "mtime_utc": "2026-03-07T16:19:16Z",
         "sha256": "5c6f7210c282b91d7b83d22baebedf4f7e28436222ab66f2a8aa6a644076c1bd"
       },
       {
         "path": "docs/issues/ISSUE-0010-unknowing-safe-fallback-partial-contract-gap.md",
         "size_bytes": 3879,
-        "mtime_utc": "2026-03-07T15:52:11Z",
+        "mtime_utc": "2026-03-07T16:19:16Z",
         "sha256": "23c8e3d10194d3f911594b45b54277f96efee032c6543155f0a885b1ea38ab18"
       },
       {
         "path": "docs/issues/ISSUE-0011-turn-analytics-input-coverage-silent-drop.md",
         "size_bytes": 4131,
-        "mtime_utc": "2026-03-07T15:52:11Z",
+        "mtime_utc": "2026-03-07T16:19:16Z",
         "sha256": "afe335214740c02bee77a56ab3d9d27da62dd7946e0dcefda9079d7013ebe740"
       },
       {
         "path": "docs/issues/ISSUE-0012-canonical-turn-pipeline-delivery-plan.md",
         "size_bytes": 4440,
-        "mtime_utc": "2026-03-07T15:51:22Z",
+        "mtime_utc": "2026-03-07T16:19:16Z",
         "sha256": "65b8cdacf926eab7620b5192281dccdb95b3db56dc44b3623b4f66fc315df511"
       }
     ]

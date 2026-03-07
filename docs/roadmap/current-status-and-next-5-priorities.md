@@ -15,11 +15,11 @@ This document answers four operational questions in one place:
 
 Evidence timestamp reference (artifact freshness):
 
-- `artifacts/feature-status-summary.json` → `generated_at_utc`: `2026-03-07T01:26:56Z`
-- `docs/qa/feature-status-report.md` reports the same generation moment (`Generated at (UTC): 2026-03-07T01:26:56Z`), so capability counts below are tied to that artifact run.
+- `artifacts/feature-status-summary.json` → `generated_at_utc`: `2026-03-07T16:19:34Z`
+- `docs/qa/feature-status-report.md` reports the same generation moment (`Generated at (UTC): 2026-03-07T16:19:34Z`), so capability counts below are tied to that artifact run.
 - `artifacts/all-green-gate-summary.json` is the gate execution artifact used for gate status and failed-check assertions below.
 
-Canonical machine-readable/source-of-truth status now lives in:
+Source-of-truth refresh discipline (use this order on each update):
 
 - Contract: `docs/qa/feature-status.yaml`
 - Generated report (canonical status view): `docs/qa/feature-status-report.md`
@@ -27,7 +27,7 @@ Canonical machine-readable/source-of-truth status now lives in:
 
 From the latest generated status artifacts:
 
-- Capability summary line (`docs/qa/feature-status-report.md`): **Implemented: 2 | Partial: 4 | Missing: 0**.
+- Capability summary line (`docs/qa/feature-status-report.md`): **Implemented: 2 | Partial: 4 | Missing: 3**.
 - Gate status (`artifacts/all-green-gate-summary.json` → top-level `status`): **failed**.
 - Failed checks in the same gate artifact:
   - `product_behave`
@@ -43,8 +43,12 @@ From the latest generated status artifacts:
 
 - Canonical gate evidence is currently **failed** due to `product_behave` and `safety_behave_answer_contract_and_memory`; treat behavior as not merge-ready until these checks are green in a newer artifact run.
 - Feature status output includes a staleness warning that gate evidence may be older than some source inputs; refresh gate artifacts before making final merge-readiness calls.
+- Canonical pipeline capability slices are explicitly incomplete in the latest status report and are tracked as **missing** blockers:
+  - `foundation` slice: **Canonical turn pipeline foundation (observe/encode/stabilize)** is missing.
+  - `decisioning` slice: **Canonical turn pipeline decisioning (context/intent/retrieve/policy)** is missing.
+  - `commit and auditability` slice: **Canonical turn pipeline commit and auditability (assemble/validate/render/commit)** is missing.
 
-### Historical blockers (resolved in prior runs)
+### Historical blockers (resolved in prior runs; retained for context only)
 
 The following are historical notes from prior runs. They are separate from current blockers above and do not imply that the current failing checks are resolved:
 
@@ -87,6 +91,13 @@ Interpretation rule:
 ## Next 5 highest-value capability families (priority order)
 
 Priority IDs in this document follow the canonical convention in `docs/roadmap/next-4-sprints-grounded-knowing.md#priority-id-convention`.
+
+Pipeline adoption focus for this priority set:
+
+- **Foundation** is advanced primarily by P1 and P2.
+- **Decisioning** is advanced primarily by P2 and P3.
+- **Commit and auditability** is advanced primarily by P4 and P5.
+- Until all three slices are no longer reported as missing in `docs/qa/feature-status-report.md`, treat these priorities as merge-readiness blockers, not optional improvements.
 
 ### P1 — Source connector interface + ingestion pipeline
 
