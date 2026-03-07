@@ -194,6 +194,7 @@ Lifecycle:
      - source-evidence document (`record_kind: source_evidence`, `type: source_evidence`)
 4. **Store provenance metadata**
    - Every stored source artifact carries: `source_type`, `source_uri`, `retrieved_at`, `trust_tier`.
+   - Source document ID resolution precedence is deterministic and idempotent: explicit `Document.id`, then metadata `doc_id`, then a derived fallback from stable identity material (`source_type`, `source_uri`, and normalized content hash). The fallback intentionally excludes `retrieved_at` so unchanged source content keeps the same ID across repeated ingests.
 5. **Advance cursor**
    - Connector updates its cursor/watermark after successful fetch+normalize (`update_cursor`).
 

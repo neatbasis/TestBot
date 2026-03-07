@@ -61,10 +61,11 @@ def _resolve_source_document_id(normalized_doc: Document, *, provenance: dict[st
     if metadata_doc_id:
         return metadata_doc_id
 
+    source_type = str(provenance.get("source_type") or "")
     source_uri = str(provenance.get("source_uri") or "")
-    retrieved_at = str(provenance.get("retrieved_at") or "")
-    content_hash = hashlib.sha256(normalized_doc.page_content.encode("utf-8")).hexdigest()[:16]
-    deterministic = f"{source_uri}|{retrieved_at}|{content_hash}"
+    normalized_content = normalized_doc.page_content.strip()
+    content_hash = hashlib.sha256(normalized_content.encode("utf-8")).hexdigest()[:16]
+    deterministic = f"{source_type}|{source_uri}|{content_hash}"
     return f"derived::{hashlib.sha256(deterministic.encode('utf-8')).hexdigest()[:24]}"
 
 

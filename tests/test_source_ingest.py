@@ -60,6 +60,31 @@ class _MissingIdConnector(_FakeConnector):
         return Document(id=None, page_content=self._item.content, metadata={"ts": self._item.metadata["ts"]})
 
 
+class _ChangingRetrievedAtMissingIdConnector(_FakeConnector):
+    def __init__(self) -> None:
+        super().__init__()
+        self._retrieved_at_values = ["2026-03-05T09:30:00Z", "2026-03-05T10:00:00Z"]
+        self._fetch_count = 0
+
+    def fetch(self, *, cursor: str | None, limit: int = 50) -> list[SourceItem]:
+        del cursor, limit
+        index = min(self._fetch_count, len(self._retrieved_at_values) - 1)
+        self._fetch_count += 1
+        return [
+            SourceItem(
+                item_id="evt-x",
+                content="Team sync moved.",
+                source_uri="calendar://work/evt-x",
+                retrieved_at=self._retrieved_at_values[index],
+                trust_tier="verified",
+                metadata={"ts": "2026-03-06T11:00:00Z"},
+            )
+        ]
+
+    def normalize(self, item: SourceItem) -> Document:
+        return Document(id=None, page_content=item.content, metadata={"ts": item.metadata["ts"]})
+
+
 class _TypedNormalizeConnector(_FakeConnector):
     def normalize(self, item: SourceItem) -> Document:
         return Document(
@@ -148,6 +173,19 @@ def test_source_ingestor_derives_stable_ids_when_normalized_id_and_doc_id_are_mi
     assert evidence_id == second.evidence_documents[0].id
     assert evidence_id == f"evidence::{memory_id}"
     assert len(store.docs) == 4
+
+
+def test_source_ingestor_derived_ids_ignore_retrieved_at_for_unchanged_content() -> None:
+    connector = _ChangingRetrievedAtMissingIdConnector()
+    store = _FakeStore()
+    ingestor = SourceIngestor(connector=connector, memory_store=store)
+
+    first = ingestor.ingest_once(cursor=None)
+    second = ingestor.ingest_once(cursor=None)
+
+    assert first.memory_documents[0].metadata["retrieved_at"] != second.memory_documents[0].metadata["retrieved_at"]
+    assert first.memory_documents[0].id == second.memory_documents[0].id
+    assert first.evidence_documents[0].id == second.evidence_documents[0].id
 
 
 def test_source_item_requires_mandatory_provenance_fields() -> None:
