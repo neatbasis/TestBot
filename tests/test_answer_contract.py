@@ -224,3 +224,31 @@ def test_rendered_context_supports_synthetic_citation_valid_draft_path() -> None
     assert "ts: 2026-03-06T08:15:00Z" in context
     assert has_required_memory_citation(synthetic_draft) is True
     assert validate_answer_contract(synthetic_draft) is True
+
+
+def test_non_memory_low_source_confidence_uses_unknown_fallback_without_source_citation() -> None:
+    state = PipelineState(
+        user_input="what happened in my source records?",
+        confidence_decision={
+            "context_confident": False,
+            "ambiguity_detected": False,
+            "source_confidence": 0.2,
+        },
+        resolved_intent="knowledge_question",
+    )
+
+    answer_state = stage_answer(
+        _UnlabeledGeneralKnowledgeLLM(),
+        state,
+        chat_history=deque(),
+        hits=[],
+        capability_status="ask_unavailable",
+        runtime_capability_status=_runtime_status(),
+        clock=None,
+    )
+
+    lowered = answer_state.final_answer.lower()
+    assert "not fully confident" in lowered
+    assert "source_uri:" not in answer_state.final_answer
+    assert answer_state.invariant_decisions["fallback_action"] == "ANSWER_UNKNOWN"
+    assert ProvenanceType.GENERAL_KNOWLEDGE in answer_state.provenance_types

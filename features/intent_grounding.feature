@@ -44,6 +44,20 @@ Feature: Intent-specific grounding and provenance behavior
     And the response should include a safe action path
     And the provenance and basis should include "UNKNOWN" and "Trivial fallback"
 
+  Scenario: low-confidence source evidence avoids direct source-backed claims
+    Given an intent response harness
+    When source evidence remains low-confidence after retrieval
+    Then the assistant returns a progressive unknowing response
+    And the response should not include "source_uri:"
+    And the provenance and basis should include "UNKNOWN" and "Trivial fallback"
+
+  Scenario: conflicting source evidence asks a targeted clarifying question
+    Given an intent response harness
+    When source evidence conflicts across candidate records
+    Then the assistant asks a targeted clarifying question
+    And the response should include "Which person, event, or time window should I focus on?"
+    And the provenance and basis should include "UNKNOWN" and "Trivial fallback"
+
 
   Scenario: affirmation follow-up preserves clarification intent continuity
     Given an intent response harness

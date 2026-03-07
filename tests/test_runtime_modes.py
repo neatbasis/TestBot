@@ -4,7 +4,7 @@ import json
 from types import SimpleNamespace
 from urllib.error import HTTPError
 
-from testbot.sat_chatbot_memory_v2 import _parse_args, _resolve_mode
+from testbot.sat_chatbot_memory_v2 import CLARIFY_ANSWER, _parse_args, _resolve_mode, resolve_turn_intent
 from testbot import sat_chatbot_memory_v2 as runtime
 
 
@@ -496,3 +496,31 @@ def test_main_reaches_cli_when_source_store_add_documents_raises(monkeypatch) ->
     assert logs[-1][0] == "source_ingest_failed"
     assert logs[-1][1]["exception_class"] == "RuntimeError"
     assert logs[-1][1]["exception_message"] == "embedding backend unavailable"
+
+
+def test_resolve_turn_intent_affirmation_preserves_clarification_intent() -> None:
+    prior_state = runtime.PipelineState(
+        user_input="what happened?",
+        resolved_intent="memory_recall",
+        prior_unresolved_intent="memory_recall",
+        final_answer=CLARIFY_ANSWER,
+    )
+
+    classified, resolved = resolve_turn_intent(utterance="yes", prior_pipeline_state=prior_state)
+
+    assert classified.value == "knowledge_question"
+    assert resolved.value == "memory_recall"
+
+
+def test_resolve_turn_intent_non_affirmation_does_not_preserve_prior_intent() -> None:
+    prior_state = runtime.PipelineState(
+        user_input="what happened?",
+        resolved_intent="memory_recall",
+        prior_unresolved_intent="memory_recall",
+        final_answer=CLARIFY_ANSWER,
+    )
+
+    classified, resolved = resolve_turn_intent(utterance="no, never mind", prior_pipeline_state=prior_state)
+
+    assert classified.value == "control"
+    assert resolved.value == "control"

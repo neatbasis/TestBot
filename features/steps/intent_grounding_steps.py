@@ -208,6 +208,60 @@ def step_when_source_confidence_insufficient(context) -> None:
     _run_contract_checks(context)
 
 
+@when("source evidence remains low-confidence after retrieval")
+def step_when_source_evidence_low_confidence_after_retrieval(context) -> None:
+    context.pipeline_state = _build_base_state(
+        user_input="What does my source data say about the incident?",
+        final_answer="I don't have enough reliable context to answer directly. I can either help you narrow the source or suggest where to verify the detail.",
+        draft_answer="",
+        confidence_decision={"context_confident": False, "source_confidence": 0.22},
+    )
+    context.pipeline_state = replace(
+        context.pipeline_state,
+        provenance_types=[ProvenanceType.UNKNOWN],
+        basis_statement="Trivial fallback/deny/clarification response with no substantive claim.",
+        invariant_decisions={
+            "answer_contract_valid": True,
+            "general_knowledge_contract_valid": True,
+            "answer_mode": "assist",
+            "fallback_action": "OFFER_CAPABILITY_ALTERNATIVES",
+        },
+    )
+    _run_contract_checks(context)
+
+
+@when("source evidence conflicts across candidate records")
+def step_when_source_evidence_conflicts_across_candidates(context) -> None:
+    context.pipeline_state = _build_base_state(
+        user_input="What happened in my calendar for Friday?",
+        final_answer=(
+            "I found related memory fragments (doc_id: src-7 ts: 2026-03-11T09:00:00Z; "
+            "doc_id: src-9 ts: 2026-03-11T09:05:00Z), but not enough to answer precisely. "
+            "Which person, event, or time window should I focus on?"
+        ),
+        draft_answer="",
+        confidence_decision={"context_confident": False, "ambiguity_detected": True, "allow_non_memory_clarify": True, "source_confidence": 0.41},
+    )
+    context.pipeline_state = replace(
+        context.pipeline_state,
+        provenance_types=[ProvenanceType.UNKNOWN],
+        basis_statement="Trivial fallback/deny/clarification response with no substantive claim.",
+        invariant_decisions={
+            "answer_contract_valid": True,
+            "general_knowledge_contract_valid": True,
+            "answer_mode": "clarify",
+            "fallback_action": "ASK_CLARIFYING_QUESTION",
+        },
+    )
+    _run_contract_checks(context)
+
+
+@then("the assistant asks a targeted clarifying question")
+def step_then_assistant_asks_targeted_clarifying_question(context) -> None:
+    assert context.pipeline_state.invariant_decisions.get("answer_mode") == "clarify"
+    assert "Which person, event, or time window should I focus on?" in context.pipeline_state.final_answer
+
+
 @then("the assistant returns a labeled general answer with clarification")
 def step_then_labeled_general_answer(context) -> None:
     assert context.pipeline_state.final_answer.startswith(GENERAL_MARKER)
@@ -443,3 +497,8 @@ def step_when_say_hello_command(context) -> None:
 @then("the utterance should route to non-knowledge social intent deterministically")
 def step_then_non_knowledge_social_intent(context) -> None:
     assert context.ambiguous_intent is IntentType.META_CONVERSATION
+
+
+@then('the response should not include "{unexpected_substring}"')
+def step_then_response_excludes_substring(context, unexpected_substring: str) -> None:
+    assert unexpected_substring not in context.pipeline_state.final_answer
