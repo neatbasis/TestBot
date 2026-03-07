@@ -26,3 +26,12 @@ This policy is deterministic and keyed by four runtime fields: `intent`, `memory
 - `ambiguity` maps to near-tie ambiguity from reranking.
 - `capability_status` reports whether Ask follow-up capability is available in the active channel.
 - For `non_memory`, low source-confidence can force `ANSWER_UNKNOWN`, which is rendered as explicit uncertainty language rather than direct memory fallback phrasing.
+
+
+## Reflection promotion normalization
+
+When reflection cards are evaluated for promotion into durable context, the evaluator must parse a structured payload and normalize every claim into `{text, category, reliability, source}`.
+
+- Promotion routing MUST use normalized `category` values (for example `clarified_intent`, `accepted_context`) rather than hard-coded substring checks.
+- Rejection reasons remain stable for observability and tests (`confidence_below_threshold`, `has_uncertainties`, `claim_uncertain_or_conflicting`, `contains_internal_debug`).
+- If parsing fails or fields are malformed, evaluation defaults to deterministic rejection via low-confidence behavior instead of attempting permissive guessing.
