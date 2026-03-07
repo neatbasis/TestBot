@@ -34,9 +34,11 @@ The `unknowing_safe_fallback` capability is still marked `partial`, but there is
 
 ## Work Plan
 
-- Tighten fallback action/messaging contracts for low-confidence and no-evidence branches.
-- Extend deterministic tests for uncertainty wording and provenance transparency in unknowing mode.
-- Keep capability linkage metadata current so reports show open issue traceability until closure.
+- [x] Capture production-debug evidence trace and map symptoms to ISSUE-0009/ISSUE-0010 acceptance criteria (`docs/issues/evidence/production-debug-cli-trace-2026-03-07.md`).
+- [ ] **Remaining delta: confident memory-recall recovery** — complete memory confidence recovery updates so upstream product behave no longer fails from memory ambiguity edge cases that cascade into fallback posture.
+- [ ] **Remaining delta: citation-context format** — ensure uncertainty/fallback outputs keep explicit provenance and basis formatting aligned with contract text across intent-grounding and runtime logging checks.
+- [ ] **Remaining delta: debug reason accuracy** — reconcile debug/trace reason strings so low-confidence and unknown branches report accurate reasons for fallback decisions.
+- [ ] Regenerate report/status artifacts with existing scripts only after acceptance criteria 1-3 are fully implemented and validated as passing.
 
 ## Verification
 

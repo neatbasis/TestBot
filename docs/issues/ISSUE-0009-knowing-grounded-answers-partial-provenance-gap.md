@@ -34,9 +34,11 @@ The `knowing_grounded_answers` capability remains `partial`. There is no active 
 
 ## Work Plan
 
-- Add targeted deterministic fixtures where provenance/basis output remains weak.
-- Align memory recall BDD and parity assertions to prevent drift between runtime and eval contracts.
-- Keep report artifacts regenerated after linkage updates.
+- [x] Capture production-debug evidence trace and map symptoms to ISSUE-0009/ISSUE-0010 acceptance criteria (`docs/issues/evidence/production-debug-cli-trace-2026-03-07.md`).
+- [ ] **Remaining delta: confident memory-recall recovery** — fix equivalent-candidate ambiguity/tie-break flow so `features/memory_recall.feature:22` passes consistently.
+- [ ] **Remaining delta: citation-context format** — align memory-hit citation/provenance formatting with deterministic contract expectations across BDD and pytest parity checks.
+- [ ] **Remaining delta: debug reason accuracy** — ensure debug/trace reason values reflect true confidence/ambiguity branch decisions for memory-recall turns.
+- [ ] Regenerate report/status artifacts with existing scripts only after acceptance criteria 1-3 are fully implemented and validated as passing.
 
 ## Verification
 
