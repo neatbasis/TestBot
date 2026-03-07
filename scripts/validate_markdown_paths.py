@@ -7,6 +7,8 @@ import re
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+CANONICAL_FEATURE_STATUS_PATH = REPO_ROOT / "docs" / "qa" / "feature-status.yaml"
+LEGACY_FEATURE_STATUS_PATH = REPO_ROOT / "docs" / "qa" / "feature-status.yml"
 
 # Matches markdown links like [text](path/to/file.md)
 LINK_PATTERN = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
@@ -42,6 +44,12 @@ def is_local_path(target: str) -> bool:
 
 def validate_links() -> int:
     failures: list[str] = []
+
+    if CANONICAL_FEATURE_STATUS_PATH.exists() and LEGACY_FEATURE_STATUS_PATH.exists():
+        failures.append(
+            "Canonical/legacy feature status files must not coexist: "
+            "docs/qa/feature-status.yaml and docs/qa/feature-status.yml"
+        )
 
     for md_file in iter_markdown_files():
         text = md_file.read_text(encoding="utf-8")
