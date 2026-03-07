@@ -957,6 +957,63 @@ def _gate_metrics(*, passed: bool, score: float, threshold: float) -> dict[str, 
     }
 
 
+def _nearest_failure_gate(*, gates: dict[str, dict[str, float | bool]]) -> dict[str, float | str] | None:
+    failed: list[tuple[str, float, float]] = []
+    for name, gate in gates.items():
+        passed = bool(gate.get("passed", False))
+        if passed:
+            continue
+        score = float(gate.get("score", 0.0) or 0.0)
+        threshold = float(gate.get("threshold", 0.0) or 0.0)
+        failed.append((name, score, threshold))
+    if not failed:
+        return None
+    nearest_name, nearest_score, nearest_threshold = min(
+        failed,
+        key=lambda item: max(0.0, item[2] - item[1]),
+    )
+    return {
+        "gate": nearest_name,
+        "current": round(nearest_score, 4),
+        "required": round(nearest_threshold, 4),
+        "margin_to_pass": round(max(0.0, nearest_threshold - nearest_score), 4),
+    }
+
+
+def _counterfactual_policy_passes(
+    *,
+    intent_label: str,
+    action: str,
+    context_confident: bool,
+    context_score: float,
+    hit_count: int,
+    ambiguity_detected: bool,
+    answer_contract_valid: bool,
+    general_knowledge_contract_valid: bool,
+) -> bool:
+    action_to_mode = {
+        "ROUTE_TO_ASK": "clarify",
+        "ASK_CLARIFYING_QUESTION": "clarify",
+        "ANSWER_UNKNOWN": "dont-know",
+        "ANSWER_TIME": "assist",
+        "OFFER_CAPABILITY_ALTERNATIVES": "assist",
+        "ANSWER_GENERAL_KNOWLEDGE": "assist",
+    }
+    mapped_mode = action_to_mode.get(action, "assist")
+    signal = _derive_reject_signal(
+        intent_label=intent_label,
+        answer_mode=mapped_mode,
+        fallback_action=action,
+        context_confident=context_confident,
+        context_score=context_score,
+        hit_count=hit_count,
+        ambiguity_detected=ambiguity_detected,
+        answer_contract_valid=answer_contract_valid,
+        general_knowledge_contract_valid=general_knowledge_contract_valid,
+    )
+    return signal.reject_code == "NONE"
+
+
 def _policy_action_universe(*, intent_label: str) -> list[str]:
     if intent_label == "memory_recall":
         return [
@@ -1107,6 +1164,75 @@ def _build_debug_turn_payload(*, state: PipelineState, intent_label: str, hits: 
     }
     policy_rationale = state.invariant_decisions.get("answer_policy_rationale", {})
 
+    top_final_score_gate = _gate_metrics(
+        passed=top_score >= top_threshold,
+        score=top_score,
+        threshold=top_threshold,
+    )
+    margin_gate = _gate_metrics(
+        passed=observed_margin >= margin_threshold,
+        score=observed_margin,
+        threshold=margin_threshold,
+    )
+    ambiguity_gate = _gate_metrics(
+        passed=not ambiguity_detected,
+        score=ambiguity_score,
+        threshold=ambiguity_threshold,
+    )
+    context_confident_gate = _gate_metrics(
+        passed=context_confident,
+        score=context_score,
+        threshold=1.0,
+    )
+    answer_contract_gate = _gate_metrics(
+        passed=answer_contract_valid,
+        score=1.0 if answer_contract_valid else 0.0,
+        threshold=1.0,
+    )
+    general_knowledge_contract_gate = _gate_metrics(
+        passed=general_knowledge_contract_valid,
+        score=1.0 if general_knowledge_contract_valid else 0.0,
+        threshold=1.0,
+    )
+
+    rejected_turn = reject_signal.reject_code != "NONE"
+    nearest_failure_gate = _nearest_failure_gate(
+        gates={
+            "top_final_score_gate": top_final_score_gate,
+            "margin_gate": margin_gate,
+            "ambiguity_gate": ambiguity_gate,
+            "context_confident_gate": context_confident_gate,
+            "answer_contract_gate": answer_contract_gate,
+            "general_knowledge_contract_gate": general_knowledge_contract_gate,
+        }
+    )
+
+    top_candidate_pass_thresholds = {
+        "top_final_score_min": round(max(top_threshold, top_score), 4),
+        "min_margin_to_second": round(max(margin_threshold, observed_margin), 4),
+        "context_score_target": 1.0,
+    }
+    clarify_policy_passes = _counterfactual_policy_passes(
+        intent_label=intent_label,
+        action="ASK_CLARIFYING_QUESTION",
+        context_confident=context_confident,
+        context_score=context_score,
+        hit_count=len(hits),
+        ambiguity_detected=ambiguity_detected,
+        answer_contract_valid=answer_contract_valid,
+        general_knowledge_contract_valid=general_knowledge_contract_valid,
+    )
+    route_to_ask_policy_passes = _counterfactual_policy_passes(
+        intent_label=intent_label,
+        action="ROUTE_TO_ASK",
+        context_confident=context_confident,
+        context_score=context_score,
+        hit_count=len(hits),
+        ambiguity_detected=ambiguity_detected,
+        answer_contract_valid=answer_contract_valid,
+        general_knowledge_contract_valid=general_knowledge_contract_valid,
+    )
+
     return {
         "debug.intent": {
             "resolved": intent_label,
@@ -1127,28 +1253,12 @@ def _build_debug_turn_payload(*, state: PipelineState, intent_label: str, hits: 
             "top_final_score": round(top_score, 4),
             "second_final_score": round(second_score, 4),
             "margin": round(observed_margin, 4),
-            "top_final_score_gate": _gate_metrics(
-                passed=top_score >= top_threshold,
-                score=top_score,
-                threshold=top_threshold,
-            ),
-            "margin_gate": _gate_metrics(
-                passed=observed_margin >= margin_threshold,
-                score=observed_margin,
-                threshold=margin_threshold,
-            ),
-            "ambiguity_gate": _gate_metrics(
-                passed=not ambiguity_detected,
-                score=ambiguity_score,
-                threshold=ambiguity_threshold,
-            ),
+            "top_final_score_gate": top_final_score_gate,
+            "margin_gate": margin_gate,
+            "ambiguity_gate": ambiguity_gate,
         },
         "debug.confidence": {
-            "context_confident_gate": _gate_metrics(
-                passed=context_confident,
-                score=context_score,
-                threshold=1.0,
-            ),
+            "context_confident_gate": context_confident_gate,
         },
         "debug.observation": {
             "candidate_evidence": {
@@ -1181,16 +1291,8 @@ def _build_debug_turn_payload(*, state: PipelineState, intent_label: str, hits: 
             }
         },
         "debug.contract": {
-            "answer_contract_gate": _gate_metrics(
-                passed=answer_contract_valid,
-                score=1.0 if answer_contract_valid else 0.0,
-                threshold=1.0,
-            ),
-            "general_knowledge_contract_gate": _gate_metrics(
-                passed=general_knowledge_contract_valid,
-                score=1.0 if general_knowledge_contract_valid else 0.0,
-                threshold=1.0,
-            ),
+            "answer_contract_gate": answer_contract_gate,
+            "general_knowledge_contract_gate": general_knowledge_contract_gate,
         },
         "debug.policy": {
             "chosen_action": fallback_action,
@@ -1206,6 +1308,15 @@ def _build_debug_turn_payload(*, state: PipelineState, intent_label: str, hits: 
                 },
                 "thresholds": policy_thresholds,
                 "answer_policy_inputs": policy_rationale if isinstance(policy_rationale, dict) else {},
+            },
+            "rejected_turn": rejected_turn,
+            "nearest_failure_gate": nearest_failure_gate,
+            "counterfactuals": {
+                "top_candidate_pass_thresholds": top_candidate_pass_thresholds,
+                "alternate_routing_policy_checks": {
+                    "ask_clarifying_question_passes": clarify_policy_passes,
+                    "route_to_ask_passes": route_to_ask_policy_passes,
+                },
             },
             "answer_mode": answer_mode,
             "fallback_action": fallback_action,

@@ -234,6 +234,27 @@ tests/test_live_smoke_ollama.py ..                     [100%]
 ===================== 2 passed in 1.75s =====================
 ```
 
+### Debug diagnostics for calibration (threshold tuning)
+
+When `TESTBOT_DEBUG=1` is enabled, turn traces include calibration-oriented reject diagnostics under `debug.policy`.
+These diagnostics are observability-only and do **not** change routing/answer decisions.
+
+For rejected turns, inspect:
+
+- `rejected_turn`: deterministic reject flag.
+- `nearest_failure_gate`: gate name, current value, required value, and `margin_to_pass`.
+- `counterfactuals.top_candidate_pass_thresholds`: threshold values where the current top candidate would satisfy the score/margin gates.
+- `counterfactuals.alternate_routing_policy_checks`: whether alternate routes (for example clarify/route-to-ask) would pass policy checks for the same state.
+
+Recommended workflow for safe tuning:
+
+1. Run canonical gate first: `python scripts/all_green_gate.py`.
+2. Reproduce representative debug traces with fixed fixtures (BDD + deterministic pytest).
+3. Use `nearest_failure_gate.margin_to_pass` and counterfactuals to propose threshold adjustments.
+4. Re-run full gate and confirm no regressions in guardrail-directed scenarios.
+
+Do not use counterfactual diagnostics to bypass contract checks or weaken required grounding/safety outcomes.
+
 Run governance and issue-linkage checks:
 
 ```bash
