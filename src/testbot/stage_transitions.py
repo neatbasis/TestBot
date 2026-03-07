@@ -15,6 +15,11 @@ NON_KNOWLEDGE_UNCERTAINTY_ANSWER = (
     "I'm not fully confident in a reliable answer right now. "
     "I can offer a best-effort response and suggest a quick way to verify it."
 )
+ASSIST_ALTERNATIVES_ANSWER = (
+    "I don't have enough reliable memory to answer directly. "
+    "I can either help you reconstruct the timeline from what you remember, "
+    "or suggest where to check next for the missing detail."
+)
 TRANSITION_VALIDATION_SCHEMA_VERSION = 2
 
 REQUIRED_ALIGNMENT_DIMENSIONS = (
@@ -57,7 +62,14 @@ def _is_scored_candidate_list(candidates: list[CandidateHit]) -> bool:
 
 def _is_non_trivial_answer(answer: str) -> bool:
     normalized = (answer or "").strip()
-    return normalized not in {"", FALLBACK_ANSWER, DENY_ANSWER, "Can you clarify which memory and time window you mean?", "I can disambiguate this with a quick follow-up question.", "I don't have enough reliable memory to answer directly. I can either help you reconstruct the timeline from what you remember, or suggest where to check next for the missing detail."}
+    return normalized not in {
+        "",
+        FALLBACK_ANSWER,
+        DENY_ANSWER,
+        "Can you clarify which memory and time window you mean?",
+        "I can disambiguate this with a quick follow-up question.",
+        ASSIST_ALTERNATIVES_ANSWER,
+    }
 
 
 def _has_allowed_provenance_types(state: PipelineState) -> bool:
@@ -98,6 +110,17 @@ def _has_explicit_unknowing_uncertainty_fallback(state: PipelineState) -> bool:
 
     final_answer = (state.final_answer or "").strip()
     return final_answer in {FALLBACK_ANSWER, NON_KNOWLEDGE_UNCERTAINTY_ANSWER}
+
+
+def _is_gk_contract_safe_fallback(state: PipelineState) -> bool:
+    answer_mode = str(state.invariant_decisions.get("answer_mode", ""))
+    final_answer = (state.final_answer or "").strip()
+
+    if answer_mode == "dont-know":
+        return final_answer in {FALLBACK_ANSWER, NON_KNOWLEDGE_UNCERTAINTY_ANSWER}
+    if answer_mode == "assist":
+        return final_answer == ASSIST_ALTERNATIVES_ANSWER
+    return False
 
 def _answer_mode_respects_intent(state: PipelineState) -> bool:
     answer_mode = str(state.invariant_decisions.get("answer_mode", ""))
@@ -253,7 +276,7 @@ def validate_answer_post(state: PipelineState) -> TransitionCheckResult:
             (
                 "inv_003_general_knowledge_contract_enforced",
                 lambda s: bool(s.invariant_decisions.get("general_knowledge_contract_valid", True))
-                or s.final_answer == FALLBACK_ANSWER,
+                or _is_gk_contract_safe_fallback(s),
             ),
             (
                 "inv_002_progressive_fallback_enforced",

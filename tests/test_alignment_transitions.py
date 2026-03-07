@@ -9,7 +9,12 @@ from testbot.sat_chatbot_memory_v2 import (
     evaluate_alignment_decision,
     stage_answer,
 )
-from testbot.stage_transitions import DENY_ANSWER, NON_KNOWLEDGE_UNCERTAINTY_ANSWER, validate_answer_post
+from testbot.stage_transitions import (
+    DENY_ANSWER,
+    FALLBACK_ANSWER,
+    NON_KNOWLEDGE_UNCERTAINTY_ANSWER,
+    validate_answer_post,
+)
 
 
 def _base_state() -> PipelineState:
@@ -126,6 +131,60 @@ def test_validate_answer_post_progressive_fallback_enforced_allows_confident_val
     result = validate_answer_post(state)
 
     assert result.passed, "progressive fallback should permit confident answers with a valid contract"
+
+def test_validate_answer_post_allows_assist_fallback_when_general_knowledge_contract_fails() -> None:
+    state = replace(
+        _base_state(),
+        final_answer=ASSIST_ALTERNATIVES_ANSWER,
+        invariant_decisions={
+            **_base_state().invariant_decisions,
+            "general_knowledge_contract_valid": False,
+            "answer_mode": "assist",
+        },
+        alignment_decision={**_base_state().alignment_decision, "final_alignment_decision": "allow"},
+    )
+
+    result = validate_answer_post(state)
+
+    assert result.passed
+
+
+def test_validate_answer_post_rejects_memory_grounded_fallback_when_general_knowledge_contract_fails() -> None:
+    state = replace(
+        _base_state(),
+        final_answer=FALLBACK_ANSWER,
+        invariant_decisions={
+            **_base_state().invariant_decisions,
+            "general_knowledge_contract_valid": False,
+            "answer_mode": "memory-grounded",
+        },
+        alignment_decision={**_base_state().alignment_decision, "final_alignment_decision": "fallback"},
+    )
+
+    result = validate_answer_post(state)
+
+    assert not result.passed
+    assert "inv_003_general_knowledge_contract_enforced" in result.failures
+
+
+def test_validate_answer_post_allows_dont_know_fallback_when_general_knowledge_contract_fails() -> None:
+    state = replace(
+        _base_state(),
+        final_answer=NON_KNOWLEDGE_UNCERTAINTY_ANSWER,
+        invariant_decisions={
+            **_base_state().invariant_decisions,
+            "general_knowledge_contract_valid": False,
+            "answer_mode": "dont-know",
+            "answer_contract_valid": False,
+        },
+        confidence_decision={"context_confident": False},
+        draft_answer="",
+        alignment_decision={**_base_state().alignment_decision, "final_alignment_decision": "allow"},
+    )
+
+    result = validate_answer_post(state)
+
+    assert result.passed
 
 
 def test_validate_answer_post_allows_deny_when_safety_dimension_fails() -> None:
