@@ -87,6 +87,12 @@ Feature: Intent-specific grounding and provenance behavior
     Then retrieval branch logging should show direct answer with skipped candidates
 
 
+  Scenario: self-identity recall follow-up forces retrieval before direct-answer shortcut
+    Given an intent response harness
+    When the user says "Hi! I'm sebastian" then asks "Who am I?"
+    Then identity recall guard should force memory retrieval branch evaluation
+
+
   Scenario: retrieval policy distinguishes empty evidence from scored-empty candidates
     Given an intent response harness
     When retrieval policy evaluates empty and scored-empty evidence states

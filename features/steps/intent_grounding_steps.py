@@ -7,6 +7,7 @@ from behave import given, then, when
 from langchain_core.documents import Document
 
 from testbot.history_packer import PackedHistory
+from testbot import sat_chatbot_memory_v2 as runtime
 from testbot.evidence_retrieval import EvidenceBundle, EvidenceRecord, retrieval_result
 from testbot.context_resolution import resolve as resolve_context
 from testbot.intent_resolution import IntentResolutionInput, resolve as resolve_intent
@@ -476,6 +477,34 @@ def step_then_conversational_prompt_retrieval_logging(context) -> None:
     assert branch_payload["retrieval_branch"] == "direct_answer"
     assert rewrite_payload.get("skipped") is True
     assert candidates_payload.get("skipped") is True
+
+@when('the user says "Hi! I'm sebastian" then asks "Who am I?"')
+def step_when_identity_recall_followup_pair(context) -> None:
+    context.identity_prior_state = PipelineState(
+        user_input="Hi! I'm sebastian",
+        candidate_facts={
+            "facts": [
+                {
+                    "key": "user_name",
+                    "value": "sebastian",
+                    "confidence": 0.95,
+                    "provenance": "user_utterance",
+                }
+            ]
+        },
+    )
+    context.identity_recall_force_retrieval = runtime._should_force_memory_retrieval_for_identity_recall(
+        utterance="Who am I?",
+        prior_state=context.identity_prior_state,
+        continuity_evidence=(),
+        context_history_anchors=(),
+    )
+
+
+@then("identity recall guard should force memory retrieval branch evaluation")
+def step_then_identity_recall_forces_memory_retrieval(context) -> None:
+    assert context.identity_recall_force_retrieval is True
+
 
 @when("the user asks an ambiguous control-help-memory phrase")
 def step_when_ambiguous_control_help_memory_phrase(context) -> None:
