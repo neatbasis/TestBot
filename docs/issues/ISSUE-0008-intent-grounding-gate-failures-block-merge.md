@@ -45,6 +45,8 @@ The initial merge-blocking failures were remediated, but `intent_grounding_route
 
 - Align remaining route-confidence hardening tasks with the staged canonical pipeline plan tracked in ISSUE-0012 (Sprint 4 decisioning checkpoint).
 
+- [x] Linked memory-recall follow-up safeguard: scored-empty evidence now remains `ask_for_clarification` on `memory_retrieval` (no silent downgrade to generic-knowledge path), with deterministic checks in `features/intent_grounding.feature`, `tests/test_intent_router.py`, and `tests/test_promotion_policy.py`.
+
 ## Verification
 
 - Command: `python -m behave features/intent_grounding.feature`

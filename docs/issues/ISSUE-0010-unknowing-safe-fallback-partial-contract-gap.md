@@ -55,6 +55,8 @@ The `unknowing_safe_fallback` capability is still marked `partial`. ISSUE-0010 i
 
 - Track fallback-contract completion as a dependency of ISSUE-0012 Sprint 4/5 review checkpoints for decision-answer alignment and commit-state consistency.
 
+- [x] Linked uncertainty/reason-code hardening: empty-evidence vs scored-empty distinctions now carry explicit reason codes through policy decisioning, and answer validation rejects rendered-class conflicts before fallback rendering/commit.
+
 ## Verification
 
 - Command: `python -m behave features/answer_contract.feature features/intent_grounding.feature`

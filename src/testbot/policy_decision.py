@@ -93,13 +93,13 @@ def decide_from_evidence(*, intent: IntentType, retrieval: RetrievalResult, repa
             decision_class=DecisionClass.CONTINUE_REPAIR_RECONSTRUCTION,
             retrieval_branch="memory_retrieval",
             rationale="pending repair state requires reconstruction continuation",
-            reasoning={"repair_required": True, "evidence_posture": retrieval.evidence_posture.value},
+            reasoning={"repair_required": True, "evidence_posture": retrieval.evidence_posture.value, **retrieval.reasoning},
         )
 
     bundle: EvidenceBundle = retrieval.evidence_bundle
-    if retrieval.evidence_posture == EvidencePosture.SCORED_NON_EMPTY and (
-        bundle.structured_facts or bundle.episodic_utterances or bundle.source_evidence
-    ):
+    has_policy_records = bool(bundle.records_for_policy())
+
+    if retrieval.evidence_posture == EvidencePosture.SCORED_NON_EMPTY and has_policy_records:
         return DecisionObject(
             decision_class=DecisionClass.ANSWER_FROM_MEMORY,
             retrieval_branch="memory_retrieval",
@@ -107,35 +107,46 @@ def decide_from_evidence(*, intent: IntentType, retrieval: RetrievalResult, repa
             reasoning={"evidence_posture": retrieval.evidence_posture.value, **retrieval.reasoning},
         )
 
-    if intent == IntentType.MEMORY_RECALL and retrieval.evidence_posture in {
-        EvidencePosture.EMPTY_EVIDENCE,
-        EvidencePosture.SCORED_EMPTY,
-        EvidencePosture.NOT_REQUESTED,
-    }:
+    if intent == IntentType.MEMORY_RECALL:
+        if retrieval.evidence_posture == EvidencePosture.EMPTY_EVIDENCE:
+            return DecisionObject(
+                decision_class=DecisionClass.ASK_FOR_CLARIFICATION,
+                retrieval_branch="memory_retrieval",
+                rationale="memory recall had no retrievable candidates and requires explicit clarification",
+                reasoning={"evidence_posture": retrieval.evidence_posture.value, "empty_vs_scored": "empty_evidence", **retrieval.reasoning},
+            )
+        if retrieval.evidence_posture == EvidencePosture.SCORED_EMPTY:
+            return DecisionObject(
+                decision_class=DecisionClass.ASK_FOR_CLARIFICATION,
+                retrieval_branch="memory_retrieval",
+                rationale="memory recall candidates were scored but all rejected; preserve memory recall with clarifier",
+                reasoning={"evidence_posture": retrieval.evidence_posture.value, "empty_vs_scored": "scored_empty", **retrieval.reasoning},
+            )
         return DecisionObject(
             decision_class=DecisionClass.ASK_FOR_CLARIFICATION,
             retrieval_branch="direct_answer",
-            rationale="memory recall without confident evidence requires clarification or assistive recovery",
-            reasoning={"evidence_posture": retrieval.evidence_posture.value, **retrieval.reasoning},
+            rationale="memory recall without retrieval request requires clarification",
+            reasoning={"evidence_posture": retrieval.evidence_posture.value, "empty_vs_scored": "not_requested", **retrieval.reasoning},
         )
 
-    if intent == IntentType.KNOWLEDGE_QUESTION and retrieval.evidence_posture in {
-        EvidencePosture.EMPTY_EVIDENCE,
-        EvidencePosture.SCORED_EMPTY,
-        EvidencePosture.NOT_REQUESTED,
-    }:
+    if intent == IntentType.KNOWLEDGE_QUESTION:
+        if retrieval.evidence_posture == EvidencePosture.EMPTY_EVIDENCE:
+            rationale = "knowledge question with empty evidence uses labeled general-knowledge path"
+            distinction = "empty_evidence"
+        elif retrieval.evidence_posture == EvidencePosture.SCORED_EMPTY:
+            rationale = "knowledge question with scored-empty evidence uses labeled general-knowledge path"
+            distinction = "scored_empty"
+        else:
+            rationale = "knowledge question without retrieval uses labeled general-knowledge path"
+            distinction = "not_requested"
         return DecisionObject(
             decision_class=DecisionClass.ANSWER_GENERAL_KNOWLEDGE_LABELED,
             retrieval_branch="direct_answer",
-            rationale="knowledge question with insufficient memory evidence uses labeled general-knowledge path",
-            reasoning={"evidence_posture": retrieval.evidence_posture.value, **retrieval.reasoning},
+            rationale=rationale,
+            reasoning={"evidence_posture": retrieval.evidence_posture.value, "empty_vs_scored": distinction, **retrieval.reasoning},
         )
 
-    if intent == IntentType.META_CONVERSATION and retrieval.evidence_posture in {
-        EvidencePosture.EMPTY_EVIDENCE,
-        EvidencePosture.SCORED_EMPTY,
-        EvidencePosture.NOT_REQUESTED,
-    }:
+    if intent == IntentType.META_CONVERSATION:
         return DecisionObject(
             decision_class=DecisionClass.ANSWER_GENERAL_KNOWLEDGE_LABELED,
             retrieval_branch="direct_answer",

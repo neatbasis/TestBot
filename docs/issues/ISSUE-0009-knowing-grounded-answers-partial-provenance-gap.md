@@ -56,6 +56,8 @@ The `knowing_grounded_answers` capability remains `partial`. ISSUE-0009 is the p
 
 - Sequence memory/provenance deltas against ISSUE-0012 Sprint 3 and Sprint 5 checkpoints so pre-route stabilization and answer validation changes are reviewed together.
 
+- [x] Linked provenance/reason-code hardening: evidence channels remain class-separated into policy decisioning and answer assembly/validation now reject decision-vs-rendered class conflicts to protect knowing-mode provenance contracts.
+
 ## Verification
 
 - Command: `python -m behave features/answer_contract.feature features/memory_recall.feature`

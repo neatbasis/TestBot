@@ -13,6 +13,7 @@ class ValidatedAnswer:
 
 REQUIRED_ASSEMBLY_KEYS = (
     "decision_class",
+    "rendered_class",
     "retrieval_branch",
     "rationale",
     "pending_repair_state",
@@ -20,6 +21,14 @@ REQUIRED_ASSEMBLY_KEYS = (
     "remaining_obligations",
     "confirmed_user_facts",
 )
+
+
+DECISION_TO_RENDERED_CLASS = {
+    "answer_from_memory": "answer_from_memory",
+    "ask_for_clarification": "ask_for_clarification",
+    "continue_repair_reconstruction": "continue_repair_reconstruction",
+    "answer_general_knowledge_labeled": "answer_general_knowledge_labeled",
+}
 
 
 def validate_answer_assembly_boundary(assembly: AnswerCandidate) -> ValidatedAnswer:
@@ -42,6 +51,14 @@ def validate_answer_assembly_boundary(assembly: AnswerCandidate) -> ValidatedAns
         failures.append("remaining_obligations_not_list")
     if not isinstance(as_mapping.get("confirmed_user_facts"), list):
         failures.append("confirmed_user_facts_not_list")
+
+    decision_class = str(as_mapping.get("decision_class") or "")
+    rendered_class = str(as_mapping.get("rendered_class") or "")
+    expected_rendered_class = DECISION_TO_RENDERED_CLASS.get(decision_class)
+    if not expected_rendered_class:
+        failures.append("decision_class_unknown")
+    elif rendered_class != expected_rendered_class:
+        failures.append("decision_rendered_class_conflict")
 
     return ValidatedAnswer(passed=not failures, failures=failures)
 

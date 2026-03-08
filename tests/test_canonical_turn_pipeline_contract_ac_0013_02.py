@@ -8,7 +8,7 @@ from testbot.evidence_retrieval import EvidenceBundle, RetrievalResult, retrieva
 from testbot.intent_resolution import IntentResolutionInput, ResolvedIntent, resolve as resolve_intent
 from testbot.intent_router import IntentType
 from testbot.pipeline_state import PipelineState
-from testbot.policy_decision import DecisionObject, decide_from_evidence
+from testbot.policy_decision import DecisionClass, DecisionObject, decide_from_evidence
 from testbot.stabilization import StabilizedTurnState, stabilize_pre_route
 from testbot.turn_observation import TurnObservation, observe_turn
 from testbot.memory_strata import derive_segment_descriptor
@@ -85,3 +85,28 @@ def test_ac_0013_02_canonical_turn_pipeline_type_preserving_stage_io() -> None:
     assert isinstance(committed, CommittedTurnState)
     assert committed_state.commit_receipt.get("committed") is True
     assert committed.commit_stage == "answer.commit"
+
+
+def test_answer_validation_rejects_rendered_class_conflict() -> None:
+    decision = DecisionObject(
+        decision_class=DecisionClass.ANSWER_FROM_MEMORY,
+        retrieval_branch="memory_retrieval",
+        rationale="test",
+    )
+    candidate = assemble_answer_contract(decision=decision, evidence_bundle=EvidenceBundle())
+    conflicted = AnswerCandidate(
+        decision_class=candidate.decision_class,
+        rendered_class="answer_general_knowledge_labeled",
+        retrieval_branch=candidate.retrieval_branch,
+        rationale=candidate.rationale,
+        evidence_counts=candidate.evidence_counts,
+        pending_repair_state=candidate.pending_repair_state,
+        resolved_obligations=candidate.resolved_obligations,
+        remaining_obligations=candidate.remaining_obligations,
+        confirmed_user_facts=candidate.confirmed_user_facts,
+    )
+
+    validated = validate_answer_assembly_boundary(conflicted)
+
+    assert validated.passed is False
+    assert "decision_rendered_class_conflict" in validated.failures
