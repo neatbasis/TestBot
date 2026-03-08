@@ -163,6 +163,13 @@ def latest_issue_mtime(issues: list[OpenIssue]) -> float | None:
     return max(issue.path.stat().st_mtime for issue in issues)
 
 
+def latest_roadmap_mtime(roadmap_dir: Path) -> float | None:
+    roadmap_files = list(roadmap_dir.glob("*.md"))
+    if not roadmap_files:
+        return None
+    return max(path.stat().st_mtime for path in roadmap_files)
+
+
 def effective_status(base_status: str, gate_failed: bool, has_open_issues: bool) -> str:
     normalized = base_status.strip().lower()
     if normalized == "planned":
@@ -330,6 +337,7 @@ def main() -> int:
         "contract": file_metadata(contract_path),
         "gate_summary": file_metadata(gate_path) if gate_path.exists() else None,
         "open_issues": [file_metadata(issue.path) for issue in open_issues],
+        "roadmap_files": [file_metadata(path) for path in sorted(roadmap_dir.glob("*.md"))],
     }
 
     gate_stale_warning: str | None = None
@@ -337,12 +345,14 @@ def main() -> int:
         gate_mtime = gate_path.stat().st_mtime
         contract_mtime = contract_path.stat().st_mtime
         latest_issue = latest_issue_mtime(open_issues)
+        latest_roadmap = latest_roadmap_mtime(roadmap_dir)
         stale_against_contract = gate_mtime < contract_mtime
         stale_against_issues = latest_issue is not None and gate_mtime < latest_issue
-        if stale_against_contract or stale_against_issues:
+        stale_against_roadmap = latest_roadmap is not None and gate_mtime < latest_roadmap
+        if stale_against_contract or stale_against_issues or stale_against_roadmap:
             gate_stale_warning = (
                 "Gate summary appears older than one or more source files "
-                "(contract or open issue records); regenerate gate evidence for freshest status. "
+                "(contract, open issue records, or roadmap files); regenerate gate evidence for freshest status. "
                 "Hint: run `python scripts/all_green_gate.py --continue-on-failure --json-output artifacts/all-green-gate-summary.json` "
                 "to refresh `artifacts/all-green-gate-summary.json`."
             )

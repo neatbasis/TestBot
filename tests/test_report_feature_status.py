@@ -172,7 +172,7 @@ def test_build_report_renders_gate_stale_warning_with_refresh_hint(tmp_path: Pat
         source_file_metadata={"contract": None, "gate_summary": None, "open_issues": []},
         gate_stale_warning=(
             "Gate summary appears older than one or more source files "
-            "(contract or open issue records); regenerate gate evidence for freshest status. "
+            "(contract, open issue records, or roadmap files); regenerate gate evidence for freshest status. "
             "Hint: run `python scripts/all_green_gate.py --continue-on-failure --json-output artifacts/all-green-gate-summary.json` "
             "to refresh `artifacts/all-green-gate-summary.json`."
         ),
@@ -180,3 +180,58 @@ def test_build_report_renders_gate_stale_warning_with_refresh_hint(tmp_path: Pat
 
     assert "Hint: run `python scripts/all_green_gate.py --continue-on-failure --json-output artifacts/all-green-gate-summary.json`" in report_markdown
     assert summary["warnings"]
+
+
+def test_main_marks_gate_stale_when_roadmap_newer(tmp_path: Path, monkeypatch) -> None:
+    repo_root = tmp_path
+    contract_path = repo_root / "docs" / "qa" / "feature-status.yaml"
+    contract_path.parent.mkdir(parents=True)
+    contract_path.write_text("capabilities: []\n", encoding="utf-8")
+
+    gate_summary_path = repo_root / "artifacts" / "all-green-gate-summary.json"
+    gate_summary_path.parent.mkdir(parents=True)
+    gate_summary_path.write_text('{"checks": []}\n', encoding="utf-8")
+
+    issues_dir = repo_root / "docs" / "issues"
+    issues_dir.mkdir(parents=True)
+
+    roadmap_path = repo_root / "docs" / "roadmap" / "current.md"
+    roadmap_path.parent.mkdir(parents=True)
+    roadmap_path.write_text("P1 ship quickly\n", encoding="utf-8")
+
+    output_summary = repo_root / "artifacts" / "feature-status-summary.json"
+
+    monkeypatch.setattr(report_feature_status, "REPO_ROOT", repo_root)
+    monkeypatch.setattr(
+        report_feature_status,
+        "parse_args",
+        lambda: type(
+            "Args",
+            (),
+            {
+                "contract": Path("docs/qa/feature-status.yaml"),
+                "gate_summary": Path("artifacts/all-green-gate-summary.json"),
+                "issues_dir": Path("docs/issues"),
+                "roadmap_dir": Path("docs/roadmap"),
+                "output": None,
+                "json_output": Path("artifacts/feature-status-summary.json"),
+            },
+        )(),
+    )
+
+    old = 1_700_000_000
+    new = old + 100
+    import os
+
+    os.utime(gate_summary_path, (old, old))
+    os.utime(contract_path, (old, old))
+    os.utime(roadmap_path, (new, new))
+
+    assert report_feature_status.main() == 0
+
+    summary_payload = json.loads(output_summary.read_text(encoding="utf-8"))
+    assert summary_payload["warnings"]
+    assert "roadmap files" in summary_payload["warnings"][0]
+    assert summary_payload["source_file_metadata"]["roadmap_files"] == [
+        report_feature_status.file_metadata(roadmap_path)
+    ]
