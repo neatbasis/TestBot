@@ -7,12 +7,14 @@
 - **Owner:** platform-qa
 - **Created:** 2026-03-08
 - **Target Sprint:** Sprint 6
+- **Canonical Cross-Reference:** ISSUE-0013 (primary bug-elimination stream), ISSUE-0012 (delivery-plan governance), ISSUE-0015 (quality/governance hardening review)
 - **Principle Alignment:** contract-first, invariant-driven, traceable, deterministic, ci-enforced
 
 ## Cross-Reference
 
 - Primary implementation/bug-elimination program: ISSUE-0013
 - Delivery-plan governance context: ISSUE-0012
+- Quality/governance hardening review stream: ISSUE-0015
 
 ## Problem Statement
 
