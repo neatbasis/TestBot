@@ -1,6 +1,6 @@
 from testbot.pipeline_state import PipelineState
 from testbot.sat_chatbot_memory_v2 import CLARIFY_ANSWER, ROUTE_TO_ASK_ANSWER, resolve_turn_intent
-from testbot.intent_router import IntentType, classify_intent, extract_intent_facets
+from testbot.intent_router import IntentType, classify_intent, extract_intent_facets, planning_pathway_for_intent
 from testbot.evidence_retrieval import EvidenceBundle, EvidenceRecord, retrieval_result
 from testbot.policy_decision import DecisionClass, decide_from_evidence
 
@@ -266,3 +266,21 @@ def test_policy_decision_object_memory_answer_for_scored_non_empty() -> None:
     decision = decide_from_evidence(intent=IntentType.MEMORY_RECALL, retrieval=retrieval)
 
     assert decision.decision_class is DecisionClass.ANSWER_FROM_MEMORY
+
+
+def test_extract_intent_facets_control_is_exclusive() -> None:
+    facets = extract_intent_facets("stop, can you help me remember what did I ask?")
+
+    assert facets.control is True
+    assert facets.memory is False
+    assert facets.capability is False
+    assert facets.temporal is False
+
+
+def test_planning_pathway_control_precedence_over_capability_facet() -> None:
+    descriptor = planning_pathway_for_intent(
+        IntentType.CONTROL,
+        extract_intent_facets("stop and use satellite"),
+    )
+
+    assert descriptor.pathway == "control"

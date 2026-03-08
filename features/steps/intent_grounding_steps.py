@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import deque
-from dataclasses import replace
+from dataclasses import dataclass, replace
 
 from behave import given, then, when
 from langchain_core.documents import Document
@@ -11,7 +11,7 @@ from testbot import sat_chatbot_memory_v2 as runtime
 from testbot.evidence_retrieval import EvidenceBundle, EvidenceRecord, retrieval_result
 from testbot.context_resolution import resolve as resolve_context
 from testbot.intent_resolution import IntentResolutionInput, resolve as resolve_intent
-from testbot.intent_router import IntentType, classify_intent, extract_intent_facets
+from testbot.intent_router import IntentFacets, IntentType, classify_intent, extract_intent_facets, planning_pathway_for_intent
 from testbot.policy_decision import DecisionClass, EvidencePosture, decide, decide_from_evidence
 from testbot.pipeline_state import CandidateHit, PipelineState, ProvenanceType
 from testbot.candidate_encoding import FactCandidate
@@ -27,6 +27,32 @@ from testbot.sat_chatbot_memory_v2 import (
 from testbot.stage_transitions import validate_answer_post, validate_answer_pre
 
 GENERAL_MARKER = "General definition (not from your memory):"
+
+
+@dataclass(frozen=True)
+class BDDTypedIntent:
+    intent_class: IntentType
+    facets: object
+    pathway: str
+
+
+def _parse_bool(raw: str) -> bool:
+    return str(raw).strip().lower() == "true"
+
+
+def _validate_typed_intent_contract(typed_intent: BDDTypedIntent) -> str | None:
+    facets = typed_intent.facets
+    if typed_intent.intent_class is IntentType.CONTROL and (facets.temporal or facets.memory or facets.capability):
+        return "control_cannot_include_other_facets"
+    if typed_intent.intent_class is IntentType.CAPABILITIES_HELP and not facets.capability:
+        return "capabilities_help_requires_capability"
+    if typed_intent.intent_class is IntentType.META_CONVERSATION and (facets.temporal or facets.memory):
+        return "meta_cannot_include_temporal_memory"
+    if typed_intent.intent_class is IntentType.TIME_QUERY and not facets.temporal:
+        return "time_query_requires_temporal"
+    if facets.control and typed_intent.intent_class is not IntentType.CONTROL:
+        return "control_facet_requires_control_intent"
+    return None
 
 
 def _stabilized_turn_state_for_bdd(utterance: str) -> StabilizedTurnState:
@@ -633,6 +659,71 @@ def step_when_unmatched_ambiguous_phrase(context) -> None:
 @then("the utterance should route to knowledge-question fallback deterministically")
 def step_then_unmatched_ambiguous_phrase(context) -> None:
     assert context.ambiguous_intent is IntentType.KNOWLEDGE_QUESTION
+
+
+@when("intent taxonomy mapping is evaluated for ambiguous prompts")
+def step_when_intent_taxonomy_mapping_evaluated_for_ambiguous_prompts(context) -> None:
+    context.typed_intent_mappings = []
+    for row in context.table:
+        prompt = row["prompt"]
+        intent = classify_intent(prompt)
+        facets = extract_intent_facets(prompt)
+        descriptor = planning_pathway_for_intent(intent, facets)
+        context.typed_intent_mappings.append(
+            {
+                "prompt": prompt,
+                "typed_intent": BDDTypedIntent(intent_class=intent, facets=facets, pathway=descriptor.pathway),
+                "expected_intent": row["expected_intent"],
+                "expected_pathway": row["expected_pathway"],
+                "expected_temporal": _parse_bool(row["temporal"]),
+                "expected_memory": _parse_bool(row["memory"]),
+                "expected_capability": _parse_bool(row["capability"]),
+                "expected_control": _parse_bool(row["control"]),
+            }
+        )
+
+
+@then("typed intent object fields should match the taxonomy mapping table")
+def step_then_typed_intent_fields_match_taxonomy_table(context) -> None:
+    assert context.typed_intent_mappings
+    for mapping in context.typed_intent_mappings:
+        typed_intent = mapping["typed_intent"]
+        assert typed_intent.intent_class.value == mapping["expected_intent"], mapping["prompt"]
+        assert typed_intent.pathway == mapping["expected_pathway"], mapping["prompt"]
+        assert typed_intent.facets.temporal is mapping["expected_temporal"], mapping["prompt"]
+        assert typed_intent.facets.memory is mapping["expected_memory"], mapping["prompt"]
+        assert typed_intent.facets.capability is mapping["expected_capability"], mapping["prompt"]
+        assert typed_intent.facets.control is mapping["expected_control"], mapping["prompt"]
+
+
+@when("typed intent objects are validated for class and facet compatibility")
+def step_when_typed_intent_objects_validated_for_class_and_facet_compatibility(context) -> None:
+    context.invalid_typed_intent_results = []
+    for row in context.table:
+        intent_class = IntentType(row["intent_class"])
+        facets = IntentFacets(
+            temporal=_parse_bool(row["temporal"]),
+            memory=_parse_bool(row["memory"]),
+            capability=_parse_bool(row["capability"]),
+            control=_parse_bool(row["control"]),
+        )
+        typed_intent = BDDTypedIntent(
+            intent_class=intent_class,
+            facets=facets,
+            pathway=planning_pathway_for_intent(intent_class, facets).pathway,
+        )
+        reason = _validate_typed_intent_contract(typed_intent)
+        context.invalid_typed_intent_results.append(
+            {"typed_intent": typed_intent, "reason": reason, "expected_reason": row["expected_reason"]}
+        )
+
+
+@then("invalid typed intent objects should be rejected with deterministic reasons")
+def step_then_invalid_typed_intent_objects_rejected_with_deterministic_reasons(context) -> None:
+    assert context.invalid_typed_intent_results
+    for result in context.invalid_typed_intent_results:
+        assert result["reason"] == result["expected_reason"]
+
 
 @when("the user asks an ambiguous prompt requiring divergent analysis")
 def step_when_ambiguous_prompt_divergent_analysis(context) -> None:

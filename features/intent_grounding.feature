@@ -139,6 +139,36 @@ Feature: Intent-specific grounding and provenance behavior
     When the user asks an unmatched ambiguous phrase
     Then the utterance should route to knowledge-question fallback deterministically
 
+  Scenario Outline: taxonomy contract maps ambiguous prompts to deterministic typed intents
+    Given an intent response harness
+    When intent taxonomy mapping is evaluated for ambiguous prompts
+      | prompt   | expected_intent   | expected_pathway   | temporal   | memory   | capability   | control   |
+      | <prompt> | <expected_intent> | <expected_pathway> | <temporal> | <memory> | <capability> | <control> |
+    Then typed intent object fields should match the taxonomy mapping table
+
+    Examples:
+      | prompt                                             | expected_intent   | expected_pathway | temporal | memory | capability | control |
+      | stop, can you help me remember what did I ask?     | control           | control          | false    | false  | false      | true    |
+      | use satellite about this chat                      | capabilities_help | capabilities     | false    | false  | true       | false   |
+      | what did I ask about satellite earlier             | memory_recall     | memory_recall    | false    | true   | true       | false   |
+      | how many minutes ago did we talk before?           | time_query        | time_query       | true     | true   | false      | false   |
+      | this seems mixed and maybe relevant                | knowledge_question| non_memory       | false    | false  | false      | false   |
+
+  Scenario Outline: taxonomy contract rejects invalid class and facet combinations
+    Given an intent response harness
+    When typed intent objects are validated for class and facet compatibility
+      | intent_class   | temporal   | memory   | capability   | control   | expected_reason   |
+      | <intent_class> | <temporal> | <memory> | <capability> | <control> | <expected_reason> |
+    Then invalid typed intent objects should be rejected with deterministic reasons
+
+    Examples:
+      | intent_class       | temporal | memory | capability | control | expected_reason                      |
+      | control            | false    | false  | true       | true    | control_cannot_include_other_facets |
+      | capabilities_help  | false    | false  | false      | false   | capabilities_help_requires_capability|
+      | meta_conversation  | true     | false  | false      | false   | meta_cannot_include_temporal_memory |
+      | time_query         | false    | true   | false      | false   | time_query_requires_temporal        |
+      | knowledge_question | false    | false  | false      | true    | control_facet_requires_control_intent|
+
   Scenario: ambiguous prompt enumerates explanation space before convergence
     Given an intent response harness
     When the user asks an ambiguous prompt requiring divergent analysis
