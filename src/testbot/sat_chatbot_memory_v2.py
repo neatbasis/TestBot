@@ -1147,6 +1147,7 @@ def _counterfactual_policy_passes(
         "ANSWER_UNKNOWN": "dont-know",
         "ANSWER_TIME": "assist",
         "OFFER_CAPABILITY_ALTERNATIVES": "assist",
+        "ANSWER_FROM_MEMORY": "memory-grounded",
         "ANSWER_GENERAL_KNOWLEDGE": "assist",
     }
     mapped_mode = action_to_mode.get(action, "assist")
@@ -1170,6 +1171,7 @@ def _policy_action_universe(*, intent_label: str) -> list[str]:
             "ROUTE_TO_ASK",
             "ASK_CLARIFYING_QUESTION",
             "OFFER_CAPABILITY_ALTERNATIVES",
+            "ANSWER_FROM_MEMORY",
             "ANSWER_GENERAL_KNOWLEDGE",
             "ANSWER_UNKNOWN",
         ]
@@ -1202,6 +1204,8 @@ def _policy_alternative_rejection_reason(
         if context_confident and not ambiguity_detected:
             return "unknown fallback rejected: confidence gates passed"
         return "unknown fallback rejected: policy preferred a more specific fallback path"
+    if action == "ANSWER_FROM_MEMORY":
+        return "memory-grounded path rejected: retrieval confidence or ambiguity policy did not permit direct answer"
     if action == "ANSWER_GENERAL_KNOWLEDGE":
         return "general-knowledge path rejected: retrieval/policy gates required fallback behavior"
     return "alternative rejected by deterministic fallback policy"
@@ -1968,7 +1972,7 @@ def _answer_routing_from_decision_object(
 ) -> AnswerRoutingDecision:
     match decision.decision_class:
         case DecisionClass.ANSWER_FROM_MEMORY:
-            fallback_action = "ANSWER_GENERAL_KNOWLEDGE"
+            fallback_action = "ANSWER_FROM_MEMORY"
             token = "LLM_DRAFT"
             clarification_allowed = False
         case DecisionClass.ASK_FOR_CLARIFICATION:

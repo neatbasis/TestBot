@@ -192,6 +192,32 @@ def test_policy_decision_object_general_knowledge_for_scored_empty() -> None:
     assert decision.reasoning["scored_empty"] is True
 
 
+def test_policy_decision_object_general_knowledge_for_empty_evidence_knowledge_question() -> None:
+    retrieval = retrieval_result(
+        evidence_bundle=EvidenceBundle(),
+        retrieval_candidates_considered=0,
+        hit_count=0,
+    )
+
+    decision = decide_from_evidence(intent=IntentType.KNOWLEDGE_QUESTION, retrieval=retrieval)
+
+    assert decision.decision_class is DecisionClass.ANSWER_GENERAL_KNOWLEDGE_LABELED
+    assert decision.reasoning["empty_evidence"] is True
+
+
+def test_policy_decision_object_memory_recall_scored_empty_prefers_clarification_over_general_knowledge() -> None:
+    retrieval = retrieval_result(
+        evidence_bundle=EvidenceBundle(),
+        retrieval_candidates_considered=3,
+        hit_count=0,
+    )
+
+    decision = decide_from_evidence(intent=IntentType.MEMORY_RECALL, retrieval=retrieval)
+
+    assert decision.decision_class is DecisionClass.ASK_FOR_CLARIFICATION
+    assert decision.reasoning["scored_empty"] is True
+
+
 def test_policy_decision_object_memory_answer_for_scored_non_empty() -> None:
     bundle = EvidenceBundle(structured_facts=(EvidenceRecord(ref_id="fact-1", score=0.9, content="user_name=Sam"),))
     retrieval = retrieval_result(

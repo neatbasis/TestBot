@@ -69,12 +69,12 @@ Feature: Answer citation contract enforcement
     Then stabilization candidate facts include "user_name" as "Sebastian"
 
 
-  Scenario: canonical decision object keeps memory retrieval on memory-grounded path
+  Scenario: known fact must not degrade to general-knowledge fallback
     Given a memory recall question with retrieval evidence available
     And a canonical decision object class "answer_from_memory"
     When stage answer runs with canonical decision authority
     Then the final answer remains memory-grounded
-    And the fallback action reflects the canonical decision mapping
+    And the fallback action remains memory-grounded for canonical routing
 
 
   Scenario: canonical routing authority is assigned only after stabilization

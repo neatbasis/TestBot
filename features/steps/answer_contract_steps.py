@@ -401,7 +401,7 @@ def step_then_final_answer_remains_memory_grounded(context) -> None:
     assert context.stage_answer_state.invariant_decisions.get("answer_mode") == "memory-grounded"
 
 
-@then("the fallback action reflects the canonical decision mapping")
-def step_then_fallback_action_reflects_canonical_mapping(context) -> None:
-    assert context.stage_answer_state.invariant_decisions.get("fallback_action") == "ANSWER_GENERAL_KNOWLEDGE"
+@then("the fallback action remains memory-grounded for canonical routing")
+def step_then_fallback_action_remains_memory_grounded_for_canonical_routing(context) -> None:
+    assert context.stage_answer_state.invariant_decisions.get("fallback_action") == "ANSWER_FROM_MEMORY"
     assert context.stage_answer_state.invariant_decisions.get("answer_policy_rationale", {}).get("authority") == "decision_object"
