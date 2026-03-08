@@ -147,7 +147,8 @@ capabilities:
   - 4605987
   - 76a88be
   - ee1727d
-  next_step_focus: Align decision object outcomes with answer-contract gates so known user facts are answered from grounded memory paths.
+  - issue0013-note-memory-write-contract-closure
+  next_step_focus: Monitor regressions and keep deterministic note-taking/memory-write contract coverage aligned with canonical stage_answer decision-object authority.
   acceptance_tests:
   - features/intent_grounding.feature
   - features/answer_contract.feature
@@ -158,7 +159,7 @@ capabilities:
   - qa_pytest_not_live_smoke
   runtime_dependency_flags:
   - TESTBOT_DEBUG
-  current_status: partial
+  current_status: implemented
   roadmap_priority_refs:
   - P3
   - P4

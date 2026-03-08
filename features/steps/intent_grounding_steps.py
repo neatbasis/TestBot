@@ -17,6 +17,7 @@ from testbot.sat_chatbot_memory_v2 import (
     ROUTE_TO_ASK_ANSWER,
     build_provenance_metadata,
     resolve_turn_intent,
+    stage_answer,
     validate_general_knowledge_contract,
 )
 from testbot.stage_transitions import validate_answer_post, validate_answer_pre
@@ -655,6 +656,7 @@ def step_when_policy_decision_objects_typed(context) -> None:
         decide_from_evidence(intent=IntentType.MEMORY_RECALL, retrieval=memory_retrieval),
         decide_from_evidence(intent=IntentType.KNOWLEDGE_QUESTION, retrieval=scored_empty),
         decide_from_evidence(intent=IntentType.META_CONVERSATION, retrieval=no_retrieval),
+        decide_from_evidence(intent=IntentType.MEMORY_RECALL, retrieval=scored_empty),
         decide_from_evidence(intent=IntentType.MEMORY_RECALL, retrieval=scored_empty, repair_required=True),
     ]
 
@@ -677,3 +679,68 @@ def step_then_decision_outcomes_include_clarify_and_repair(context) -> None:
 def step_then_fallback_reason_should_be(context, fallback_reason: str) -> None:
     rationale = context.pipeline_state.invariant_decisions.get("answer_policy_rationale", {})
     assert rationale.get("fallback_reason") == fallback_reason
+
+
+class _BDDMetaAckLLM:
+    class _Response:
+        content = "Got it — I can keep that in mind."
+
+    def invoke(self, _msgs):
+        return self._Response()
+
+
+def _resolve_contract_probe(utterance: str) -> dict[str, object]:
+    context = resolve_context(utterance=utterance, prior_pipeline_state=None)
+    intent_resolution = resolve_intent(utterance=utterance, context=context)
+    policy_decision = decide(
+        utterance=utterance,
+        intent=intent_resolution.resolved_intent,
+        retrieval_candidates_considered=0,
+        hit_count=0,
+    )
+    retrieval = retrieval_result(
+        evidence_bundle=EvidenceBundle(),
+        retrieval_candidates_considered=0,
+        hit_count=0,
+    )
+    decision_object = decide_from_evidence(intent=intent_resolution.resolved_intent, retrieval=retrieval)
+    answered = stage_answer(
+        _BDDMetaAckLLM(),
+        PipelineState(
+            user_input=utterance,
+            resolved_intent=intent_resolution.resolved_intent.value,
+            confidence_decision={"context_confident": False, "ambiguity_detected": False},
+        ),
+        chat_history=deque(),
+        hits=[],
+        capability_status="ask_unavailable",
+        selected_decision=decision_object,
+    )
+    return {
+        "intent": intent_resolution.resolved_intent.value,
+        "retrieval_branch": policy_decision.retrieval_branch,
+        "decision_class": decision_object.decision_class.value,
+        "fallback_action": str(answered.invariant_decisions.get("fallback_action", "")),
+        "answer_mode": str(answered.invariant_decisions.get("answer_mode", "")),
+    }
+
+
+@when("note-taking utterance contract probe is resolved through canonical decisioning")
+def step_when_note_taking_contract_probe(context) -> None:
+    context.contract_probe = _resolve_contract_probe("please make a note that i prefer tea")
+
+
+@when("memory-write utterance contract probe is resolved through canonical decisioning")
+def step_when_memory_write_contract_probe(context) -> None:
+    context.contract_probe = _resolve_contract_probe("remember this: i parked on level 3")
+
+
+@then('the canonical contract should resolve intent "{intent}" retrieval branch "{retrieval_branch}" decision class "{decision_class}" fallback action "{fallback_action}" and answer mode "{answer_mode}"')
+def step_then_canonical_contract_probe(context, intent: str, retrieval_branch: str, decision_class: str, fallback_action: str, answer_mode: str) -> None:
+    assert context.contract_probe == {
+        "intent": intent,
+        "retrieval_branch": retrieval_branch,
+        "decision_class": decision_class,
+        "fallback_action": fallback_action,
+        "answer_mode": answer_mode,
+    }

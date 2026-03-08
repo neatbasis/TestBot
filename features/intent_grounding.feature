@@ -158,3 +158,14 @@ Feature: Intent-specific grounding and provenance behavior
     When policy decision objects are resolved from typed evidence states
     Then the decision outcomes should include "answer_from_memory" and "answer_general_knowledge_labeled"
     And the decision outcomes should include "ask_for_clarification" and "continue_repair_reconstruction"
+
+
+  Scenario: note-taking utterance preserves direct-answer assist contract
+    Given an intent response harness
+    When note-taking utterance contract probe is resolved through canonical decisioning
+    Then the canonical contract should resolve intent "meta_conversation" retrieval branch "direct_answer" decision class "answer_general_knowledge_labeled" fallback action "ANSWER_GENERAL_KNOWLEDGE" and answer mode "assist"
+
+  Scenario: memory-write utterance preserves direct-answer assist contract
+    Given an intent response harness
+    When memory-write utterance contract probe is resolved through canonical decisioning
+    Then the canonical contract should resolve intent "meta_conversation" retrieval branch "direct_answer" decision class "answer_general_knowledge_labeled" fallback action "ANSWER_GENERAL_KNOWLEDGE" and answer mode "assist"

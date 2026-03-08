@@ -131,6 +131,18 @@ def decide_from_evidence(*, intent: IntentType, retrieval: RetrievalResult, repa
             reasoning={"evidence_posture": retrieval.evidence_posture.value, **retrieval.reasoning},
         )
 
+    if intent == IntentType.META_CONVERSATION and retrieval.evidence_posture in {
+        EvidencePosture.EMPTY_EVIDENCE,
+        EvidencePosture.SCORED_EMPTY,
+        EvidencePosture.NOT_REQUESTED,
+    }:
+        return DecisionObject(
+            decision_class=DecisionClass.ANSWER_GENERAL_KNOWLEDGE_LABELED,
+            retrieval_branch="direct_answer",
+            rationale="non-knowledge conversational intent remains assistive direct-answer without memory retrieval",
+            reasoning={"evidence_posture": retrieval.evidence_posture.value, **retrieval.reasoning},
+        )
+
     return DecisionObject(
         decision_class=DecisionClass.ASK_FOR_CLARIFICATION,
         retrieval_branch="direct_answer",

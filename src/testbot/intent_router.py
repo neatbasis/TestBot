@@ -51,6 +51,14 @@ _MEMORY_RECALL_PATTERNS = (
     r"\bwhat (was|were) (my|our)\b",
 )
 
+_MEMORY_WRITE_PATTERNS = (
+    r"^\s*(please\s+)?remember\s+(this|that)\b",
+    r"^\s*(please\s+)?(?:make\s+)?(?:a\s+)?note\b",
+    r"^\s*(please\s+)?(?:take\s+)?note\s+(this|that)\b",
+    r"^\s*(please\s+)?write\s+(this|that)\s+down\b",
+    r"^\s*(please\s+)?store\s+(this|that)\b",
+)
+
 _META_CONVERSATION_PATTERNS = (
     r"\b(about this chat|our conversation|this conversation|this chat)\b",
     r"\bwhat('?s| is) relevant\b",
@@ -144,6 +152,8 @@ def classify_intent(user_input: str | None) -> IntentType:
         return IntentType.CONTROL
     if _matches_any(normalized, _TIME_QUERY_PATTERNS):
         return IntentType.TIME_QUERY
+    if _matches_any(normalized, _MEMORY_WRITE_PATTERNS):
+        return IntentType.META_CONVERSATION
     if _matches_any(normalized, _MEMORY_RECALL_PATTERNS):
         return IntentType.MEMORY_RECALL
     if _matches_any(normalized, _PROFILE_UPDATE_PATTERNS):

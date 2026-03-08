@@ -142,3 +142,9 @@ The repository documents a canonical 11-stage turn pipeline and the doctrine "wr
   - `artifacts/all-green-gate-summary.json` generated at `2026-03-08T15:15:32Z` via `python scripts/all_green_gate.py --json-output artifacts/all-green-gate-summary.json`.
   - `docs/qa/feature-status-report.md` generated at `2026-03-08T15:15:35Z` and `artifacts/feature-status-summary.json` generated at `2026-03-08T15:15:35Z` via `python scripts/report_feature_status.py --output docs/qa/feature-status-report.md --json-output artifacts/feature-status-summary.json`.
   - Metadata check confirmed no staleness warnings: feature-status summary `warnings` is empty and report header/footer input metadata aligns with `docs/qa/feature-status.yaml` and open ISSUE-0013-linked issue records.
+
+
+- 2026-03-08: Decision-path closure evidence appended for note-taking and memory-write utterances in canonical routing:
+  - Deterministic intent routing now classifies explicit note-taking/memory-write commands as non-knowledge meta conversation (`src/testbot/intent_router.py`, `tests/test_intent_router.py`).
+  - Deterministic canonical contract probes now assert resolved intent, retrieval branch, decision-object class, fallback action, and final answer mode for both utterance classes (`features/intent_grounding.feature`, `features/steps/intent_grounding_steps.py`, `tests/test_runtime_logging_events.py`).
+  - Stage-answer authority regression coverage confirms decision-object mapping remains authoritative and avoids silent `ANSWER_GENERAL_KNOWLEDGE` fallback when grounded memory evidence is present (`tests/test_runtime_logging_events.py`).
