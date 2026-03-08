@@ -249,3 +249,80 @@ def test_normalize_and_validate_rows_accepts_pipeline_snapshot_sidecars_without_
     assert summary.invalid_rows == 0
     assert len(dataset) == 1
     assert dataset[0].action == "NONE"
+
+
+def test_aggregate_turn_dataset_multi_turn_commit_continuity_fields_preserved() -> None:
+    rows = [
+        {"event": "user_utterance_ingest", "utterance": "who am i?"},
+        {
+            "event": "intent_classified",
+            "schema_version": 3,
+            "intent": "memory_recall",
+            "ambiguity_score": 0.1,
+            "user_followup_signal_proxy": 0.1,
+        },
+        {
+            "event": "fallback_action_selected",
+            "schema_version": 3,
+            "intent": "memory_recall",
+            "ambiguity_score": 0.1,
+            "chosen_action": "NONE",
+            "user_followup_signal_proxy": 0.1,
+        },
+        {
+            "event": "commit_stage_recorded",
+            "schema_version": 3,
+            "stage": "answer.commit",
+            "pending_repair_state": {"required": False, "reason": "none"},
+            "resolved_obligations": ["repair_state_not_required"],
+            "confirmed_user_facts": ["name=Sam"],
+        },
+        {
+            "event": "provenance_summary",
+            "schema_version": 3,
+            "provenance_types": ["MEMORY"],
+            "used_memory_refs": ["name-fact-initial"],
+            "basis_statement": "turn one committed memory fact",
+        },
+        {"event": "user_utterance_ingest", "utterance": "what name did you commit?"},
+        {
+            "event": "intent_classified",
+            "schema_version": 3,
+            "intent": "memory_recall",
+            "ambiguity_score": 0.05,
+            "user_followup_signal_proxy": 0.05,
+        },
+        {
+            "event": "fallback_action_selected",
+            "schema_version": 3,
+            "intent": "memory_recall",
+            "ambiguity_score": 0.05,
+            "chosen_action": "NONE",
+            "user_followup_signal_proxy": 0.05,
+        },
+        {
+            "event": "commit_stage_recorded",
+            "schema_version": 3,
+            "stage": "answer.commit",
+            "pending_repair_state": {"required": False, "reason": "none"},
+            "resolved_obligations": ["repair_state_not_required"],
+            "confirmed_user_facts": ["name=Sam"],
+            "retrieval_continuity_evidence": ["commit.confirmed_user_facts:name=Sam"],
+        },
+        {
+            "event": "provenance_summary",
+            "schema_version": 3,
+            "provenance_types": ["MEMORY"],
+            "used_memory_refs": ["name-fact-continuity"],
+            "basis_statement": "turn two used committed continuity anchor",
+        },
+    ]
+
+    normalized_rows, summary = aggregator.normalize_and_validate_rows(rows)
+    dataset = aggregator.aggregate_turn_dataset(normalized_rows)
+
+    assert summary.invalid_rows == 0
+    assert len(dataset) == 2
+    assert [turn.intent for turn in dataset] == ["memory_recall", "memory_recall"]
+    assert [turn.action for turn in dataset] == ["NONE", "NONE"]
+    assert [turn.provenance_completeness for turn in dataset] == [1.0, 1.0]

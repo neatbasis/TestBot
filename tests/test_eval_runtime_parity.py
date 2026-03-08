@@ -15,6 +15,10 @@ assert _eval_spec and _eval_spec.loader
 eval_recall = importlib.util.module_from_spec(_eval_spec)
 _eval_spec.loader.exec_module(eval_recall)
 from testbot.eval_fixtures import cases_by_id
+from testbot.context_resolution import ContinuityPosture, resolve as resolve_context
+from testbot.intent_resolution import resolve as resolve_intent
+from testbot.intent_router import IntentType
+from testbot.pipeline_state import PipelineState
 from testbot.rerank import adaptive_sigma_fractional, rerank_docs_with_time_and_type_outcome
 from testbot.sat_chatbot_memory_v2 import has_sufficient_context_confidence
 
@@ -294,3 +298,29 @@ def test_eval_runtime_parity_fixture_families() -> None:
 def test_structured_mode_distinguishes_ambiguous_and_low_confidence_dont_know() -> None:
     assert _structured_mode({"intent": "dont-know", "ambiguity_detected": True}) == "dont-know-ambiguous"
     assert _structured_mode({"intent": "dont-know", "ambiguity_detected": False}) == "dont-know-low-confidence"
+
+
+def test_canonical_continuity_parity_consumes_prior_commit_artifacts_across_turns() -> None:
+    turn_one_state = PipelineState(
+        user_input="who am i?",
+        resolved_intent=IntentType.MEMORY_RECALL.value,
+        commit_receipt={
+            "commit_stage": "answer.commit",
+            "pending_repair_state": {"required": False, "reason": "none"},
+            "resolved_obligations": ["repair_state_not_required"],
+            "confirmed_user_facts": ["name=Sam"],
+        },
+        final_answer="Can you clarify which prior memory you mean?",
+    )
+
+    context = resolve_context(utterance="yes", prior_pipeline_state=turn_one_state)
+    intent_resolution = resolve_intent(utterance="yes", context=context)
+
+    assert context.continuity_posture is ContinuityPosture.PRESERVE_PRIOR_INTENT
+    assert context.history_anchors == ("prior_intent:memory_recall", "clarification_continuity")
+    assert intent_resolution.classified_intent is IntentType.KNOWLEDGE_QUESTION
+    assert intent_resolution.resolved_intent is IntentType.MEMORY_RECALL
+
+    committed_facts = turn_one_state.commit_receipt.get("confirmed_user_facts", [])
+    retrieval_evidence = [f"commit.confirmed_user_facts:{fact}" for fact in committed_facts]
+    assert retrieval_evidence == ["commit.confirmed_user_facts:name=Sam"]
