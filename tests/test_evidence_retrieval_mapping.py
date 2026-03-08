@@ -1,0 +1,69 @@
+from __future__ import annotations
+
+from langchain_core.documents import Document
+
+from testbot.evidence_retrieval import (
+    build_evidence_bundle_from_docs_and_scores,
+    build_evidence_bundle_from_hits,
+    retrieval_result,
+)
+from testbot.intent_router import IntentType
+from testbot.policy_decision import DecisionClass, decide_from_evidence
+
+
+def test_build_evidence_bundle_from_docs_and_scores_keeps_class_separation() -> None:
+    docs_and_scores = [
+        (Document(id="mem-1", page_content="I asked about Friday", metadata={"type": "user_utterance"}), 0.91),
+        (Document(id="reflect-1", page_content="possible ambiguity", metadata={"type": "reflection"}), 0.84),
+        (
+            Document(
+                id="promoted-1",
+                page_content="clarified desired reminder scope",
+                metadata={"type": "promoted_context", "promotion_category": "clarified_intent"},
+            ),
+            0.77,
+        ),
+        (
+            Document(
+                id="src-1",
+                page_content="calendar evidence",
+                metadata={"type": "source_evidence", "source_type": "calendar"},
+            ),
+            0.88,
+        ),
+        (Document(id="fact-1", page_content="name=Sam", metadata={"type": "profile_fact"}), 0.79),
+    ]
+
+    bundle = build_evidence_bundle_from_docs_and_scores(docs_and_scores)
+
+    assert [record.ref_id for record in bundle.episodic_utterances] == ["mem-1"]
+    assert [record.ref_id for record in bundle.reflections_hypotheses] == ["reflect-1"]
+    assert [record.ref_id for record in bundle.repair_anchors_offers] == ["promoted-1"]
+    assert [record.ref_id for record in bundle.source_evidence] == ["src-1"]
+    assert [record.ref_id for record in bundle.structured_facts] == ["fact-1"]
+
+
+def test_confident_hits_produce_non_empty_bundle_for_memory_recall_decision() -> None:
+    hits = [
+        Document(id="mem-2", page_content="You asked about package pickup", metadata={"type": "user_utterance"}),
+        Document(
+            id="src-2",
+            page_content="courier scan timeline",
+            metadata={"type": "source_evidence", "source_type": "tracking"},
+        ),
+    ]
+
+    bundle = build_evidence_bundle_from_hits(hits)
+    retrieval = retrieval_result(
+        evidence_bundle=bundle,
+        retrieval_candidates_considered=4,
+        hit_count=len(hits),
+    )
+
+    assert bundle.total_records() == 2
+    assert retrieval.evidence_bundle.total_records() == 2
+    assert retrieval.reasoning["channel_sizes"]["episodic_utterances"] == 1
+    assert retrieval.reasoning["channel_sizes"]["source_evidence"] == 1
+
+    decision = decide_from_evidence(intent=IntentType.MEMORY_RECALL, retrieval=retrieval)
+    assert decision.decision_class == DecisionClass.ANSWER_FROM_MEMORY
