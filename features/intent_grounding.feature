@@ -8,8 +8,10 @@ Feature: Intent-specific grounding and provenance behavior
     Given an intent response harness
     When a knowledge question misses memory context
     Then the assistant returns a labeled general answer with clarification
-    And the response should include "General definition (not from your memory):"
-    And the response should include "Can you clarify which domain"
+    And the rendered answer should include semantic markers
+      | marker                  |
+      | general_knowledge_label |
+      | clarification_prompt    |
     And the response records general-knowledge provenance and basis
     And the provenance and basis should include "GENERAL_KNOWLEDGE" and "General-knowledge basis:"
 
@@ -17,7 +19,9 @@ Feature: Intent-specific grounding and provenance behavior
     Given an intent response harness
     When the user asks "what did I ask?"
     Then the assistant replies from chat history
-    And the response should include "You asked about ontology earlier in this chat."
+    And the rendered answer should include semantic markers
+      | marker             |
+      | chat_history_recap |
     And the response records chat-history provenance and basis
     And the provenance and basis should include "CHAT_HISTORY" and "chat history"
 
@@ -25,7 +29,9 @@ Feature: Intent-specific grounding and provenance behavior
     Given an intent response harness
     When the user asks a relevance question
     Then the assistant returns a summarized relevance answer
-    And the response should include "Relevant summary:"
+    And the rendered answer should include semantic markers
+      | marker          |
+      | relevance_label |
     And the response includes a relevance basis assertion
     And the provenance and basis should include "CHAT_HISTORY" and "Relevance summary basis:"
 
@@ -40,8 +46,10 @@ Feature: Intent-specific grounding and provenance behavior
     Given an intent response harness
     When source confidence is insufficient for a knowing answer
     Then the assistant returns a progressive unknowing response
-    And the response should include explicit uncertainty language
-    And the response should include a safe action path
+    And the rendered answer should include semantic markers
+      | marker      |
+      | uncertainty |
+      | safe_action |
     And the provenance and basis should include "UNKNOWN" and "Trivial fallback"
     And the fallback reason should be "non_memory_low_source_confidence"
 
@@ -72,7 +80,7 @@ Feature: Intent-specific grounding and provenance behavior
     Given an intent response harness
     When source evidence conflicts across candidate records
     Then the assistant asks a targeted clarifying question
-    And the response should include "Which person, event, or time window should I focus on?"
+    And the rendered answer should include normative phrase "Which person, event, or time window should I focus on?"
     And the provenance and basis should include "UNKNOWN" and "Trivial fallback"
     And the fallback reason should be "ambiguous_memory_candidates_without_ask"
 
@@ -89,7 +97,9 @@ Feature: Intent-specific grounding and provenance behavior
     When a non-memory knowledge question has no ambiguity
     Then the response should remain in direct knowledge-answer flow
     And the response should not use clarifier mode
-    And the response should include "General definition (not from your memory):"
+    And the rendered answer should include semantic markers
+      | marker                  |
+      | general_knowledge_label |
 
   Scenario: definitional prompt uses retrieval-enabled branch logging
     Given an intent response harness
@@ -188,16 +198,20 @@ Feature: Intent-specific grounding and provenance behavior
     Given an intent response harness
     When the user asks an ambiguous prompt requiring divergent analysis
     Then the assistant enumerates plausible explanation spaces before converging
-    And the response should include "Possible explanations:"
-    And the response should include "Converged recommendation:"
+    And the rendered answer should include semantic markers
+      | marker                    |
+      | possible_explanations_tag |
+      | converged_recommendation  |
 
   Scenario: multi-framework prompt switches perspectives before final synthesis
     Given an intent response harness
     When the user asks for a multi-framework perspective switch
     Then the assistant presents multiple frameworks and a synthesized conclusion
-    And the response should include "Framework: systems"
-    And the response should include "Framework: behavioral"
-    And the response should include "Synthesis:"
+    And the rendered answer should include semantic markers
+      | marker                    |
+      | framework_systems         |
+      | framework_behavioral      |
+      | synthesis_label           |
 
 
   Scenario: self-identification utterance routes to non-knowledge intent

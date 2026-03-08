@@ -8,14 +8,13 @@ Feature: Capabilities help responses
     Given a capabilities help prompt "<prompt>"
     When the stage answer flow handles capabilities under HA unavailable with CLI fallback
     Then the prompt is classified as capabilities help intent
-    And the answer includes "Home Assistant satellite actions: unavailable"
-    And the answer includes "can continue in cli mode (CLI fallback is active)"
-    And the answer includes "cannot run satellite actions while Home Assistant is unavailable"
-    And the answer includes "Clarification/disambiguation: available"
-    And the answer includes "text clarification still available in CLI"
-    And the answer includes "interactive satellite ask flow unavailable in CLI mode"
-    And the answer includes "Satellite ask loop: unavailable"
-    And the answer includes "Debug visibility: disabled (set TESTBOT_DEBUG=1 to enable)"
+    And the rendered answer should include semantic markers
+      | marker                                  |
+      | capability_satellite_actions_unavailable |
+      | capability_cli_fallback_active          |
+      | capability_clarification_available      |
+      | capability_satellite_ask_unavailable    |
+      | capability_debug_disabled               |
 
     Examples:
       | prompt          |
@@ -26,21 +25,24 @@ Feature: Capabilities help responses
     Given a capabilities help prompt "what can you do"
     When the stage answer flow handles capabilities under HA available with satellite enabled
     Then the prompt is classified as capabilities help intent
-    And the answer includes "Home Assistant satellite actions: available"
-    And the answer includes "can use satellite speak/start-conversation actions"
-    And the answer includes "Satellite ask loop: available"
-    And the answer includes "Debug visibility: enabled (TESTBOT_DEBUG=1)"
-    And the answer includes "Memory recall: available"
-    And the answer includes "Grounded explanations: available"
+    And the rendered answer should include semantic markers
+      | marker                                |
+      | capability_satellite_actions_available |
+      | capability_satellite_ask_available    |
+      | capability_debug_enabled              |
+      | capability_memory_recall_available    |
+      | capability_grounded_explanations      |
 
 
   Scenario Outline: Direct satellite-action requests in CLI mode return capability alternatives
     Given a capabilities help prompt "<prompt>"
     When the stage answer flow handles capabilities under HA unavailable with CLI fallback
     Then the prompt is classified as capabilities help intent
-    And the answer includes "Runtime mode: requested=auto, effective=cli"
-    And the answer includes "satellite_action_request:"
-    And the answer includes "Action alternatives: continue in cli mode for text Q&A right now"
+    And the rendered answer should include semantic markers
+      | marker                            |
+      | capability_runtime_mode_cli       |
+      | capability_satellite_action_label |
+      | capability_action_alternatives    |
 
     Examples:
       | prompt                       |

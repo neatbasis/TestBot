@@ -25,6 +25,8 @@ def step_when_ha_unavailable_cli(context) -> None:
     context.intent = classify_intent(context.prompt)
     state = PipelineState(
         user_input=context.prompt,
+        classified_intent=IntentType.CAPABILITIES_HELP.value,
+        resolved_intent=IntentType.CAPABILITIES_HELP.value,
         confidence_decision={"context_confident": False, "ambiguity_detected": False},
     )
     context.answer_state = stage_answer(
@@ -55,6 +57,8 @@ def step_when_ha_available_satellite(context) -> None:
     context.intent = classify_intent(context.prompt)
     state = PipelineState(
         user_input=context.prompt,
+        classified_intent=IntentType.CAPABILITIES_HELP.value,
+        resolved_intent=IntentType.CAPABILITIES_HELP.value,
         confidence_decision={"context_confident": False, "ambiguity_detected": False},
     )
     context.answer_state = stage_answer(
