@@ -73,12 +73,19 @@ def test_orchestrator_executes_all_11_canonical_stages_in_order() -> None:
                         "reason": "stabilize.pre_route",
                     },
                 )
+            if name == "context.resolve":
+                ctx.artifacts["resolved_context"] = {"continuity_posture": "reevaluate"}
             if name == "intent.resolve":
                 assert ctx.artifacts.get("stabilized_turn_state") is not None
                 assert ctx.state.same_turn_exclusion.get("excluded_doc_ids") == ["turn-1", "ref-1"]
+                assert ctx.artifacts.get("resolved_context") == {"continuity_posture": "reevaluate"}
                 ctx.state = replace(ctx.state, resolved_intent="memory_recall")
             if name == "retrieve.evidence":
                 ctx.artifacts["retrieval_result"] = {"posture": "empty_evidence"}
+            if name == "answer.assemble":
+                ctx.artifacts["answer_assembly_contract"] = {"decision_class": "answer_from_memory"}
+            if name == "answer.validate":
+                ctx.artifacts["answer_validation_contract"] = type("Validation", (), {"passed": True})()
             return ctx
 
         stages.append(CanonicalStage(name=stage_name, handler=_handler))
@@ -107,13 +114,20 @@ def test_orchestrator_stabilizes_before_route_authority_assignment() -> None:
             if name == "stabilize.pre_route":
                 assert ctx.artifacts.get("policy_decision") is None
                 ctx.artifacts["stabilized_turn_state"] = {"turn_id": "turn-1"}
+            if name == "context.resolve":
+                ctx.artifacts["resolved_context"] = {"continuity_posture": "reevaluate"}
             if name == "intent.resolve":
                 assert ctx.artifacts.get("stabilized_turn_state") == {"turn_id": "turn-1"}
                 assert ctx.artifacts.get("policy_decision") is None
+                assert ctx.artifacts.get("resolved_context") == {"continuity_posture": "reevaluate"}
                 ctx.artifacts["policy_decision"] = {"retrieval_branch": "direct_answer"}
             if name == "retrieve.evidence":
                 assert ctx.artifacts.get("policy_decision") == {"retrieval_branch": "direct_answer"}
                 ctx.artifacts["retrieval_result"] = {"posture": "not_requested"}
+            if name == "answer.assemble":
+                ctx.artifacts["answer_assembly_contract"] = {"decision_class": "answer_from_memory"}
+            if name == "answer.validate":
+                ctx.artifacts["answer_validation_contract"] = type("Validation", (), {"passed": True})()
             return ctx
 
         stages.append(CanonicalStage(name=stage_name, handler=_handler))
@@ -177,6 +191,10 @@ def test_intent_stage_consumes_stabilized_and_context_artifacts_not_raw_input() 
                 ctx.state = replace(ctx.state, classified_intent="knowledge_question", resolved_intent="knowledge_question")
             if name == "retrieve.evidence":
                 ctx.artifacts["retrieval_result"] = {"posture": "empty_evidence"}
+            if name == "answer.assemble":
+                ctx.artifacts["answer_assembly_contract"] = {"decision_class": "answer_from_memory"}
+            if name == "answer.validate":
+                ctx.artifacts["answer_validation_contract"] = type("Validation", (), {"passed": True})()
             return ctx
 
         stages.append(CanonicalStage(name=stage_name, handler=_handler))
@@ -193,5 +211,5 @@ def test_orchestrator_rejects_intent_resolution_without_stabilization_artifacts(
     stages = [_make_stage(name) for name in CanonicalTurnOrchestrator.STAGE_ORDER]
     orchestrator = CanonicalTurnOrchestrator(stages=stages)
 
-    with pytest.raises(RuntimeError, match="intent.resolve requires turn_observation artifact"):
+    with pytest.raises(RuntimeError, match="stabilize.pre_route must produce stabilized_turn_state artifact"):
         orchestrator.run(context)
