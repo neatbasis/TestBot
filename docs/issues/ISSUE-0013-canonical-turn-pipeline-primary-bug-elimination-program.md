@@ -31,31 +31,49 @@ The repository documents a canonical 11-stage turn pipeline and the doctrine "wr
 
 ## Acceptance Criteria
 
-1. Main turn runtime enforces canonical stage ordering and removes direct raw-utterance-first routing (`U -> I`) from the primary loop.
-2. Typed artifacts exist and are used at stage boundaries for:
-   - `TurnObservation`, `SpeechActCandidate`, `FactCandidate`, `RepairCandidate`, `DialogueStateCandidate`, `StabilizedTurnState`, `ResolvedContext`, `ResolvedIntent`, `EvidenceBundle`, `DecisionObject`, `AnswerCandidate`, `ValidatedAnswer`, `CommittedTurnState`.
-3. `stabilize.pre_route` becomes the first durable semantic boundary and persists utterance card, candidate facts with provenance, candidate dialogue state, and durable references before route authority.
-4. Retrieval keeps evidence classes distinct in `EvidenceBundle` (structured facts, episodic utterances, repair anchors/offers, reflections/hypotheses, source evidence) and does not flatten to a single undifferentiated top-k before policy.
-5. Same-turn retrieval hygiene is enforced by construction:
-   - `same_turn_exclusion_doc_ids` is populated during stabilization,
-   - standard answer-evidence retrieval excludes same-turn artifacts,
-   - only explicitly permitted same-turn access classes (for example observation-state and repair anchors) are allowed.
-6. Durable memory strata are implemented and persisted:
-   - episodic,
-   - semantic,
-   - procedural/dialogue-state.
-7. Segment-level memory construction and retrieval are introduced with minimum segment types: contiguous topic, repair, task, self-profile, temporal episode; segment IDs and membership edges are persisted.
-8. `policy.decide` is explicitly typed and separated from `answer.assemble`; answer assembly consumes only the `DecisionObject` + `EvidenceBundle` contract and disallows free-form decision drift.
-9. `answer.commit` persists continuity-critical state (including pending repair state, obligations, and confirmed facts promotion path).
-10. Deterministic behavior scenarios pass for:
-    - observe-before-infer,
-    - stabilize-before-route,
-    - same-turn retrieval exclusion,
-    - self-identification persistence (for example `user_name=Sebastian`),
-    - repair-offer continuation (`What do you need?` after assistant repair offer),
-    - empty-evidence distinct from scored-empty,
-    - semantic-memory recall winning over raw utterance recall when both exist.
-11. `docs/qa/feature-status.yaml` canonical pipeline capability slices are advanced from `planned` to implemented maturity states that reflect delivered behavior.
+Status legend: `[ ] pending`, `[~] partial`, `[x] complete`.
+
+- [~] [AC-0013-01] Main turn runtime enforces canonical stage ordering and removes direct raw-utterance-first routing (`U -> I`) from the primary loop.
+  - evidence: `docs/architecture/canonical-turn-pipeline.md`
+  - evidence: `src/testbot/sat_chatbot_memory_v2.py`
+  - evidence: `src/testbot/intent_router.py`
+- [~] [AC-0013-02] Typed artifacts exist and are used at stage boundaries for `TurnObservation`, `SpeechActCandidate`, `FactCandidate`, `RepairCandidate`, `DialogueStateCandidate`, `StabilizedTurnState`, `ResolvedContext`, `ResolvedIntent`, `EvidenceBundle`, `DecisionObject`, `AnswerCandidate`, `ValidatedAnswer`, and `CommittedTurnState`.
+  - evidence: `src/testbot/stabilization.py`
+  - evidence: `src/testbot/evidence_retrieval.py`
+  - evidence: `tests/test_runtime_logging_events.py`
+- [~] [AC-0013-03] `stabilize.pre_route` becomes the first durable semantic boundary and persists utterance card, candidate facts with provenance, candidate dialogue state, and durable references before route authority.
+  - evidence: `src/testbot/stabilization.py`
+  - evidence: `tests/test_runtime_logging_events.py::test_chat_loop_logs_commit_stage_record_with_durable_commit_state`
+- [~] [AC-0013-04] Retrieval keeps evidence classes distinct in `EvidenceBundle` (structured facts, episodic utterances, repair anchors/offers, reflections/hypotheses, source evidence) and does not flatten to a single undifferentiated top-k before policy.
+  - evidence: `src/testbot/evidence_retrieval.py`
+  - evidence: `tests/test_evidence_retrieval_mapping.py`
+- [~] [AC-0013-05] Same-turn retrieval hygiene is enforced by construction: `same_turn_exclusion_doc_ids` is populated during stabilization, standard answer-evidence retrieval excludes same-turn artifacts, and only explicitly permitted same-turn access classes (for example observation-state and repair anchors) are allowed.
+  - evidence: `src/testbot/stabilization.py`
+  - evidence: `src/testbot/evidence_retrieval.py`
+  - evidence: `features/memory_recall.feature`
+- [~] [AC-0013-06] Durable memory strata are implemented and persisted for episodic, semantic, and procedural/dialogue-state memory.
+  - evidence: `src/testbot/memory_strata.py`
+  - evidence: `src/testbot/sat_chatbot_memory_v2.py`
+  - evidence: `tests/test_memory_segments_and_strata.py`
+- [~] [AC-0013-07] Segment-level memory construction and retrieval are introduced with minimum segment types (contiguous topic, repair, task, self-profile, temporal episode), and segment IDs and membership edges are persisted.
+  - evidence: `src/testbot/memory_strata.py`
+  - evidence: `src/testbot/vector_store.py`
+  - evidence: `tests/test_memory_segments_and_strata.py`
+- [~] [AC-0013-08] `policy.decide` is explicitly typed and separated from `answer.assemble`; answer assembly consumes only the `DecisionObject` + `EvidenceBundle` contract and disallows free-form decision drift.
+  - evidence: `src/testbot/intent_router.py`
+  - evidence: `tests/test_runtime_logging_events.py`
+  - evidence: `features/intent_grounding.feature`
+- [~] [AC-0013-09] `answer.commit` persists continuity-critical state, including pending repair state, obligations, and confirmed facts promotion path.
+  - evidence: `tests/test_runtime_logging_events.py::test_chat_loop_two_turn_commit_continuity_is_consumed_by_context_and_retrieval`
+  - evidence: `tests/test_turn_analytics_aggregator.py::test_aggregate_turn_dataset_multi_turn_commit_continuity_fields_preserved`
+- [~] [AC-0013-10] Deterministic behavior scenarios pass for observe-before-infer, stabilize-before-route, same-turn retrieval exclusion, self-identification persistence (for example `user_name=Sebastian`), repair-offer continuation (`What do you need?` after assistant repair offer), empty-evidence distinct from scored-empty, and semantic-memory recall winning over raw utterance recall when both exist.
+  - evidence: `features/intent_grounding.feature`
+  - evidence: `features/memory_recall.feature`
+  - evidence: `tests/test_runtime_logging_events.py`
+- [~] [AC-0013-11] `docs/qa/feature-status.yaml` canonical pipeline capability slices are advanced from `planned` to implemented maturity states that reflect delivered behavior.
+  - evidence: `docs/qa/feature-status.yaml`
+  - evidence: `docs/qa/feature-status-report.md`
+  - evidence: `artifacts/feature-status-summary.json`
 
 ## Work Plan
 
