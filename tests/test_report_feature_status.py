@@ -23,6 +23,7 @@ def test_issue_matches_keyword_checks_id_title_stem_and_content(tmp_path: Path) 
         title="Governance readiness gate traceability gap",
         status="open",
         path=issue_path,
+        content="placeholder",
         content_lower="mentions qa_validate_issue_links and deterministic evidence",
     )
 
@@ -44,6 +45,7 @@ def test_find_relevant_issues_prefers_explicit_open_issue_ids(tmp_path: Path) ->
         title="Knowing grounded answers remain partial",
         status="open",
         path=issue_path_9,
+        content="placeholder",
         content_lower="irrelevant",
     )
     issue_10 = report_feature_status.OpenIssue(
@@ -51,6 +53,7 @@ def test_find_relevant_issues_prefers_explicit_open_issue_ids(tmp_path: Path) ->
         title="Unknowing safe fallback remains partial",
         status="open",
         path=issue_path_10,
+        content="placeholder",
         content_lower="irrelevant",
     )
 
@@ -75,6 +78,7 @@ def test_find_relevant_issues_falls_back_to_keywords_without_fan_in(tmp_path: Pa
         title="Knowing grounded answers remain partial",
         status="open",
         path=issue_path_9,
+        content="placeholder",
         content_lower="mentions canonical pipeline foundation",
     )
     issue_13 = report_feature_status.OpenIssue(
@@ -82,6 +86,7 @@ def test_find_relevant_issues_falls_back_to_keywords_without_fan_in(tmp_path: Pa
         title="Implement canonical turn pipeline as the primary program",
         status="open",
         path=issue_path_13,
+        content="placeholder",
         content_lower="mentions canonical pipeline and many component slices",
     )
 
@@ -116,6 +121,7 @@ def test_build_report_links_partial_capability_to_issue_via_id_keyword(tmp_path:
         title="Governance readiness gate traceability is partial for capability-linked issue enforcement",
         status="open",
         path=issue_path,
+        content="placeholder",
         content_lower="open issue record body",
     )
 
@@ -296,3 +302,169 @@ def test_main_marks_gate_stale_when_roadmap_newer(tmp_path: Path, monkeypatch) -
     assert summary_payload["source_file_metadata"]["roadmap_files"] == [
         report_feature_status.file_metadata(roadmap_path)
     ]
+
+
+def test_parse_issue_acceptance_criteria_extracts_id_status_and_evidence(tmp_path: Path) -> None:
+    issue_path = tmp_path / "docs" / "issues" / "ISSUE-0013.md"
+    issue_path.parent.mkdir(parents=True)
+    content = """
+# ISSUE-0013
+- **ID:** ISSUE-0013
+- **Title:** Canonical pipeline
+- **Status:** open
+
+## Acceptance Criteria
+- [ ] [AC-0013-01] First criterion
+  - evidence: `docs/architecture/canonical-turn-pipeline.md`
+- [~] [AC-0013-02] Second criterion
+  - evidence: `src/testbot/stabilization.py`
+- [x] [AC-0013-03] Third criterion
+""".strip()
+    issue_path.write_text(content + "\n", encoding="utf-8")
+
+    issue = report_feature_status.OpenIssue(
+        issue_id="ISSUE-0013",
+        title="Canonical pipeline",
+        status="open",
+        path=issue_path,
+        content=content,
+        content_lower=content.lower(),
+    )
+
+    criteria = report_feature_status.parse_issue_acceptance_criteria(issue)
+    assert [criterion.criterion_id for criterion in criteria] == [
+        "AC-0013-01",
+        "AC-0013-02",
+        "AC-0013-03",
+    ]
+    assert [criterion.status for criterion in criteria] == ["pending", "partial", "complete"]
+    assert criteria[0].evidence_refs == ["docs/architecture/canonical-turn-pipeline.md"]
+    assert criteria[1].evidence_refs == ["src/testbot/stabilization.py"]
+    assert criteria[2].evidence_refs == []
+
+
+def test_build_report_includes_unresolved_criteria_in_markdown_and_json(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(report_feature_status, "REPO_ROOT", tmp_path)
+
+    issue_path = tmp_path / "docs" / "issues" / "ISSUE-0013-canonical.md"
+    issue_path.parent.mkdir(parents=True)
+    issue_content = """
+# ISSUE-0013
+- **ID:** ISSUE-0013
+- **Title:** Canonical pipeline
+- **Status:** open
+
+## Acceptance Criteria
+- [x] [AC-0013-01] Complete criterion
+- [~] [AC-0013-02] Partial criterion
+  - evidence: `tests/test_runtime_logging_events.py`
+""".strip()
+    issue_path.write_text(issue_content + "\n", encoding="utf-8")
+
+    issue = report_feature_status.OpenIssue(
+        issue_id="ISSUE-0013",
+        title="Canonical pipeline",
+        status="open",
+        path=issue_path,
+        content=issue_content,
+        content_lower=issue_content.lower(),
+    )
+    contract = {
+        "capabilities": [
+            {
+                "capability_id": "canonical_turn_pipeline_foundation",
+                "capability_name": "Canonical turn pipeline foundation",
+                "current_status": "partial",
+                "open_issues": ["ISSUE-0013"],
+                "criterion_refs": ["AC-0013-01", "AC-0013-02", "AC-0013-03"],
+            }
+        ]
+    }
+
+    report_markdown, summary = report_feature_status.build_report(
+        contract=contract,
+        gate_results={},
+        open_issues=[issue],
+        roadmap_priorities={},
+        generated_at_utc="2026-03-08T00:00:00Z",
+        input_paths={
+            "contract_path": "docs/qa/feature-status.yaml",
+            "gate_summary_path": "artifacts/all-green-gate-summary.json",
+            "issues_dir": "docs/issues",
+            "roadmap_dir": "docs/roadmap",
+        },
+        source_file_metadata={"contract": None, "gate_summary": None, "open_issues": []},
+        gate_stale_warning=None,
+    )
+
+    assert "unresolved criteria: AC-0013-02, AC-0013-03" in report_markdown
+    capability = summary["capabilities"][0]
+    assert capability["unresolved_criteria"] == ["AC-0013-02", "AC-0013-03"]
+    assert capability["criterion_status_breakdown"] == {
+        "pending": 0,
+        "partial": 1,
+        "complete": 1,
+        "unknown": 1,
+    }
+
+
+def test_build_report_handles_missing_criterion_markup_gracefully(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(report_feature_status, "REPO_ROOT", tmp_path)
+
+    issue_path = tmp_path / "docs" / "issues" / "ISSUE-0013-canonical.md"
+    issue_path.parent.mkdir(parents=True)
+    issue_content = """
+# ISSUE-0013
+- **ID:** ISSUE-0013
+- **Title:** Canonical pipeline
+- **Status:** open
+""".strip()
+    issue_path.write_text(issue_content + "\n", encoding="utf-8")
+
+    issue = report_feature_status.OpenIssue(
+        issue_id="ISSUE-0013",
+        title="Canonical pipeline",
+        status="open",
+        path=issue_path,
+        content=issue_content,
+        content_lower=issue_content.lower(),
+    )
+    contract = {
+        "capabilities": [
+            {
+                "capability_id": "canonical_turn_pipeline_foundation",
+                "capability_name": "Canonical turn pipeline foundation",
+                "current_status": "partial",
+                "open_issues": ["ISSUE-0013"],
+                "criterion_refs": ["AC-0013-01"],
+            }
+        ]
+    }
+
+    report_markdown, summary = report_feature_status.build_report(
+        contract=contract,
+        gate_results={},
+        open_issues=[issue],
+        roadmap_priorities={},
+        generated_at_utc="2026-03-08T00:00:00Z",
+        input_paths={
+            "contract_path": "docs/qa/feature-status.yaml",
+            "gate_summary_path": "artifacts/all-green-gate-summary.json",
+            "issues_dir": "docs/issues",
+            "roadmap_dir": "docs/roadmap",
+        },
+        source_file_metadata={"contract": None, "gate_summary": None, "open_issues": []},
+        gate_stale_warning=None,
+    )
+
+    capability = summary["capabilities"][0]
+    assert capability["criterion_obligations"] == [
+        {
+            "criterion_id": "AC-0013-01",
+            "issue_id": None,
+            "status": "unknown",
+            "evidence_refs": [],
+        }
+    ]
+    assert capability["unresolved_criteria"] == ["AC-0013-01"]
+    assert "unresolved criteria: AC-0013-01" in report_markdown

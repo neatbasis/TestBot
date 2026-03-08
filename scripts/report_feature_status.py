@@ -30,7 +30,57 @@ class OpenIssue:
     title: str
     status: str
     path: Path
+    content: str
     content_lower: str
+
+
+@dataclass
+class IssueCriterion:
+    criterion_id: str
+    status: str
+    evidence_refs: list[str]
+
+
+def parse_issue_acceptance_criteria(issue: OpenIssue) -> list[IssueCriterion]:
+    """Extract acceptance criteria entries from issue markdown.
+
+    Expected line format:
+    - [ ] [AC-0013-01] ...
+    - [~] [AC-0013-02] ...
+    - [x] [AC-0013-03] ...
+      - evidence: `path/or/ref`
+    """
+
+    marker_to_status = {" ": "pending", "~": "partial", "x": "complete", "X": "complete"}
+    criteria: list[IssueCriterion] = []
+    current: IssueCriterion | None = None
+
+    criterion_pattern = re.compile(r"^\s*-\s*\[([ ~xX])\]\s*\[([A-Za-z0-9-]+)\]\s*")
+    evidence_pattern = re.compile(r"^\s*-\s*evidence:\s*(.+?)\s*$", flags=re.IGNORECASE)
+
+    for line in issue.content.splitlines():
+        criterion_match = criterion_pattern.match(line)
+        if criterion_match:
+            marker, criterion_id = criterion_match.groups()
+            normalized_id = criterion_id.strip().upper()
+            if not re.match(r"^AC-\d{4}-\d{2}$", normalized_id):
+                current = None
+                continue
+            current = IssueCriterion(
+                criterion_id=normalized_id,
+                status=marker_to_status.get(marker, "pending"),
+                evidence_refs=[],
+            )
+            criteria.append(current)
+            continue
+
+        evidence_match = evidence_pattern.match(line)
+        if evidence_match and current is not None:
+            evidence = evidence_match.group(1).strip().strip("`")
+            if evidence:
+                current.evidence_refs.append(evidence)
+
+    return criteria
 
 
 def issue_matches_keyword(issue: OpenIssue, keyword: str) -> bool:
@@ -146,6 +196,7 @@ def collect_open_issues(issues_dir: Path) -> list[OpenIssue]:
                 title=title,
                 status=status,
                 path=issue_path,
+                content=content,
                 content_lower=content.lower(),
             )
         )
@@ -218,6 +269,13 @@ def build_report(
 
     rows: list[dict[str, Any]] = []
     counts = {"implemented": 0, "partial": 0, "missing": 0}
+    criteria_by_issue: dict[str, dict[str, IssueCriterion]] = {
+        issue.issue_id.upper(): {
+            criterion.criterion_id: criterion
+            for criterion in parse_issue_acceptance_criteria(issue)
+        }
+        for issue in open_issues
+    }
 
     for capability in capabilities:
         cap_id = capability["capability_id"]
@@ -228,6 +286,38 @@ def build_report(
         failed_checks = [name for name in gate_checks if gate_results.get(name) == "failed"]
 
         relevant_issues = find_relevant_issues(capability, open_issues)
+
+        raw_criterion_refs = capability.get("criterion_refs", capability.get("criteria_refs", []))
+        criterion_refs = [str(ref).strip().upper() for ref in raw_criterion_refs if str(ref).strip()]
+
+        criterion_obligations = []
+        status_breakdown = {"pending": 0, "partial": 0, "complete": 0, "unknown": 0}
+        unresolved_criteria: list[str] = []
+
+        for criterion_id in criterion_refs:
+            matched_issue_id = None
+            matched_criterion: IssueCriterion | None = None
+            for issue in relevant_issues:
+                candidate = criteria_by_issue.get(issue.issue_id.upper(), {}).get(criterion_id)
+                if candidate is not None:
+                    matched_issue_id = issue.issue_id
+                    matched_criterion = candidate
+                    break
+
+            status = matched_criterion.status if matched_criterion else "unknown"
+            evidence_refs = matched_criterion.evidence_refs if matched_criterion else []
+            status_breakdown[status if status in status_breakdown else "unknown"] += 1
+            if status != "complete":
+                unresolved_criteria.append(criterion_id)
+
+            criterion_obligations.append(
+                {
+                    "criterion_id": criterion_id,
+                    "issue_id": matched_issue_id,
+                    "status": status,
+                    "evidence_refs": evidence_refs,
+                }
+            )
 
         priority_refs = capability.get("roadmap_priority_refs", [])
         priority_sources: dict[str, list[str]] = {
@@ -261,6 +351,9 @@ def build_report(
                 "roadmap_priority_sources": priority_sources,
                 "acceptance_tests": capability.get("acceptance_tests", []),
                 "runtime_dependency_flags": capability.get("runtime_dependency_flags", []),
+                "criterion_obligations": criterion_obligations,
+                "criterion_status_breakdown": status_breakdown,
+                "unresolved_criteria": unresolved_criteria,
             }
         )
 
@@ -296,6 +389,8 @@ def build_report(
             )
         if row["roadmap_priority_refs"]:
             evidence_bits.append("roadmap: " + ", ".join(row["roadmap_priority_refs"]))
+        if row["unresolved_criteria"]:
+            evidence_bits.append("unresolved criteria: " + ", ".join(row["unresolved_criteria"]))
         if not evidence_bits:
             evidence_bits.append("no blocking signals from current inputs")
 
