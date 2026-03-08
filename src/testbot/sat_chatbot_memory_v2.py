@@ -83,12 +83,19 @@ from testbot.context_resolution import resolve as resolve_context
 from testbot.intent_resolution import IntentResolutionInput, resolve as resolve_intent
 from testbot.evidence_retrieval import (
     EvidenceBundle,
+    EvidencePosture,
     build_evidence_bundle_from_docs_and_scores,
     build_evidence_bundle_from_hits,
     continuity_evidence_from_prior_state,
     retrieval_result,
 )
-from testbot.policy_decision import DecisionClass, DecisionObject, decide as decide_policy, decide_from_evidence
+from testbot.policy_decision import (
+    DecisionClass,
+    DecisionObject,
+    RetrievalPolicyDecision,
+    decide as decide_policy,
+    decide_from_evidence,
+)
 from testbot.answer_assembly import assemble_answer_contract
 from testbot.answer_validation import validate_answer_assembly_boundary
 from testbot.answer_rendering import render_answer
@@ -622,9 +629,62 @@ _SELF_IDENTITY_DECLARATION_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"^\s*my\s+name\s+is\s+[\w'-]+(?:\s+[\w'-]+)*\s*[.!?]*\s*$", re.IGNORECASE),
 )
 
+_SELF_REFERENTIAL_IDENTITY_RECALL_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"^\s*who\s+am\s+i\b", re.IGNORECASE),
+    re.compile(r"^\s*what(?:\s+is|'s)\s+my\s+name\b", re.IGNORECASE),
+    re.compile(r"\bremind\s+me\s+(?:what\s+)?my\s+name\s+is\b", re.IGNORECASE),
+)
+
+_PRIOR_IDENTITY_CANDIDATE_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"\bi\s*(?:am|'m|’m)\s+[\w'-]+", re.IGNORECASE),
+    re.compile(r"\bmy\s+name\s+is\s+[\w'-]+", re.IGNORECASE),
+)
+
 
 def _is_self_identity_declaration(utterance: str) -> bool:
     return any(pattern.match(utterance or "") is not None for pattern in _SELF_IDENTITY_DECLARATION_PATTERNS)
+
+
+def _is_self_referential_identity_recall_query(utterance: str) -> bool:
+    return any(pattern.search(utterance or "") is not None for pattern in _SELF_REFERENTIAL_IDENTITY_RECALL_PATTERNS)
+
+
+def _should_force_memory_retrieval_for_identity_recall(
+    *,
+    utterance: str,
+    prior_state: PipelineState | None,
+    continuity_evidence: tuple[str, ...],
+    context_history_anchors: tuple[str, ...],
+) -> bool:
+    return _is_self_referential_identity_recall_query(utterance) and _has_prior_identity_candidates_or_continuity_markers(
+        prior_state=prior_state,
+        continuity_evidence=continuity_evidence,
+        context_history_anchors=context_history_anchors,
+    )
+
+
+def _has_prior_identity_candidates_or_continuity_markers(
+    *,
+    prior_state: PipelineState | None,
+    continuity_evidence: tuple[str, ...],
+    context_history_anchors: tuple[str, ...],
+) -> bool:
+    if any(anchor.startswith("commit.confirmed_user_facts:") for anchor in continuity_evidence):
+        return True
+    if any(anchor.startswith("commit.confirmed_user_facts:") for anchor in context_history_anchors):
+        return True
+    if prior_state is None:
+        return False
+
+    prior_candidate_facts = prior_state.candidate_facts if isinstance(prior_state.candidate_facts, dict) else {}
+    for fact in prior_candidate_facts.get("facts", []):
+        if not isinstance(fact, dict):
+            continue
+        if str(fact.get("key") or "").strip() == "user_name":
+            return True
+
+    prior_utterance = str(prior_state.user_input or "")
+    return any(pattern.search(prior_utterance) is not None for pattern in _PRIOR_IDENTITY_CANDIDATE_PATTERNS)
 
 
 def stage_rewrite_query(llm: ChatOllama, state: PipelineState) -> PipelineState:
@@ -2782,7 +2842,32 @@ def _run_canonical_turn_pipeline(
             utterance=stabilized_utterance or utterance,
             intent=intent_resolution.resolved_intent,
         )
+        guard_forced_memory_retrieval = False
+        if policy_decision.retrieval_branch == "direct_answer":
+            recall_query = stabilized_utterance or utterance
+            continuity_evidence = tuple(ctx.artifacts.get("retrieval_continuity_evidence", ()))
+            context_history_anchors = tuple(getattr(context_resolution, "history_anchors", ()))
+            if _should_force_memory_retrieval_for_identity_recall(
+                utterance=recall_query,
+                prior_state=prior_pipeline_state,
+                continuity_evidence=continuity_evidence,
+                context_history_anchors=context_history_anchors,
+            ):
+                guard_forced_memory_retrieval = True
+                policy_decision = RetrievalPolicyDecision(
+                    retrieval_branch="memory_retrieval",
+                    evidence_posture=EvidencePosture.EMPTY_EVIDENCE,
+                    rationale=(
+                        "self-referential identity recall with prior identity continuity artifacts "
+                        "forces memory retrieval evaluation"
+                    ),
+                    reasoning={
+                        **policy_decision.reasoning,
+                        "guard_forced_memory_retrieval": True,
+                    },
+                )
         ctx.artifacts["policy_decision"] = policy_decision
+        ctx.artifacts["guard_forced_memory_retrieval"] = guard_forced_memory_retrieval
         ctx.state = replace(
             ctx.state,
             classified_intent=intent_resolution.classified_intent.value,
@@ -2812,6 +2897,7 @@ def _run_canonical_turn_pipeline(
                 "stabilized_dialogue_state_count": len(stabilized.candidate_dialogue_state),
                 "context_continuity_posture": context_resolution.continuity_posture.value,
                 "context_history_anchors": list(context_resolution.history_anchors),
+                "guard_forced_memory_retrieval": bool(ctx.artifacts.get("guard_forced_memory_retrieval", False)),
             },
         )
         append_pipeline_snapshot("intent", ctx.state)

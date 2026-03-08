@@ -1017,6 +1017,122 @@ def test_chat_loop_logs_commit_stage_record_with_durable_commit_state(tmp_path, 
     assert isinstance(commit_row["confirmed_user_facts"], list)
 
 
+def test_chat_loop_identity_recall_after_self_identification_forces_retrieval_and_rerank(tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(runtime, "_validate_and_log_transition", lambda _result: None)
+    monkeypatch.setattr(runtime, "store_doc", lambda *args, **kwargs: None)
+    monkeypatch.setattr(runtime, "generate_reflection_yaml", lambda *args, **kwargs: "claims: []")
+    monkeypatch.setattr(runtime, "persist_promoted_context", lambda *args, **kwargs: [])
+    monkeypatch.setattr(runtime, "encode_stage", lambda _llm, state: replace(state, rewritten_query=state.user_input))
+
+    retrieve_calls: list[str] = []
+    rerank_calls: list[str] = []
+
+    def _stage_retrieve_identity(_store, state, **kwargs):
+        retrieve_calls.append(state.user_input)
+        del kwargs
+        doc = Document(
+            id="identity-sebastian",
+            page_content="name=sebastian",
+            metadata={"doc_id": "identity-sebastian", "type": "profile_fact"},
+        )
+        next_state = replace(
+            state,
+            retrieval_candidates=[CandidateHit(doc_id="identity-sebastian", score=0.99, card_type="profile_fact")],
+            confidence_decision={
+                **state.confidence_decision,
+                "retrieval_candidates_considered": 1,
+                "context_confident": True,
+                "ambiguity_detected": False,
+            },
+        )
+        return next_state, [(doc, 0.99)]
+
+    def _stage_rerank_identity(state, docs_and_scores, **kwargs):
+        rerank_calls.append(state.user_input)
+        del kwargs
+        hit_doc = docs_and_scores[0][0]
+        next_state = replace(
+            state,
+            reranked_hits=[CandidateHit(doc_id=str(hit_doc.id), score=0.99, card_type="profile_fact")],
+            confidence_decision={**state.confidence_decision, "context_confident": True, "ambiguity_detected": False},
+        )
+        return next_state, [hit_doc]
+
+    monkeypatch.setattr(runtime, "stage_retrieve", _stage_retrieve_identity)
+    monkeypatch.setattr(runtime, "stage_rerank", _stage_rerank_identity)
+    monkeypatch.setattr(
+        runtime,
+        "stage_answer",
+        lambda _llm, state, **kwargs: replace(
+            state,
+            draft_answer="Memory answer",
+            final_answer="From memory, your name is Sebastian.",
+            claims=["name=sebastian"],
+            basis_statement="identity continuity retrieval",
+        ),
+    )
+
+    prompts = iter(["Hi! I'm sebastian", "Who am I?", "stop"])
+    replies: list[str] = []
+    _run_chat_loop(
+        llm=_StaticLLM("From memory, your name is Sebastian."),
+        store=object(),
+        chat_history=deque(),
+        near_tie_delta=0.05,
+        io_channel="cli",
+        capability_status="ask_unavailable",
+        capability_snapshot=CapabilitySnapshot(
+            runtime={},
+            requested_mode="cli",
+            daemon_mode=False,
+            effective_mode="cli",
+            fallback_reason=None,
+            exit_reason=None,
+            ha_error=None,
+            ollama_error=None,
+            runtime_capability_status=RuntimeCapabilityStatus(
+                ollama_available=True,
+                ha_available=False,
+                effective_mode="cli",
+                requested_mode="cli",
+                daemon_mode=False,
+                fallback_reason=None,
+                memory_backend="inmemory",
+                debug_enabled=False,
+                debug_verbose=False,
+                text_clarification_available=True,
+                satellite_ask_available=False,
+            ),
+        ),
+        read_user_utterance=lambda: next(prompts, None),
+        send_assistant_text=lambda text: replies.append(text),
+        clock=_FIXED_CLOCK,
+    )
+
+    rows = [json.loads(line) for line in (tmp_path / "logs" / "session.jsonl").read_text(encoding="utf-8").splitlines() if line.strip()]
+    assert replies
+    assert retrieve_calls == ["Who am I?"]
+    assert rerank_calls == ["Who am I?"]
+
+    branch_rows = [row for row in rows if row.get("event") == "retrieval_branch_selected"]
+    assert len(branch_rows) == 2
+    assert branch_rows[0]["retrieval_branch"] == "direct_answer"
+    assert branch_rows[1]["retrieval_branch"] == "memory_retrieval"
+    assert branch_rows[1]["guard_forced_memory_retrieval"] is True
+
+    retrieval_rows = [row for row in rows if row.get("event") == "retrieval_candidates"]
+    assert retrieval_rows[0].get("skipped") is True
+    assert retrieval_rows[1].get("skipped") is not True
+
+    rerank_skipped_for_turn_two = [
+        row
+        for row in rows
+        if row.get("event") == "rerank_skipped" and row.get("utterance") == "Who am I?"
+    ]
+    assert rerank_skipped_for_turn_two == []
+
+
 def test_chat_loop_two_turn_commit_continuity_is_consumed_by_context_and_retrieval(tmp_path, monkeypatch) -> None:
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(runtime, "_validate_and_log_transition", lambda _result: None)
