@@ -405,3 +405,19 @@ def step_then_final_answer_remains_memory_grounded(context) -> None:
 def step_then_fallback_action_remains_memory_grounded_for_canonical_routing(context) -> None:
     assert context.stage_answer_state.invariant_decisions.get("fallback_action") == "ANSWER_FROM_MEMORY"
     assert context.stage_answer_state.invariant_decisions.get("answer_policy_rationale", {}).get("authority") == "decision_object"
+
+
+@then("stabilization artifacts are persisted before route authority assignment")
+def step_then_stabilization_artifacts_persisted_before_route_authority_assignment(context) -> None:
+    stage_audit = getattr(context.canonical_orchestrator_result, "stage_audit_trail", [])
+    assert "stabilize.pre_route" in stage_audit
+    assert "intent.resolve" in stage_audit
+    assert stage_audit.index("stabilize.pre_route") < stage_audit.index("intent.resolve")
+    assert context.canonical_stabilized_turn_state == {"turn_id": "turn-bdd-route-1"}
+
+
+@then("route authority cannot be finalized until stabilization outputs exist")
+def step_then_route_authority_cannot_finalize_until_stabilization_outputs_exist(context) -> None:
+    assert context.canonical_policy_decision_before_stabilize is None
+    assert context.canonical_policy_decision_after_intent == {"retrieval_branch": "direct_answer"}
+    assert context.canonical_policy_decision_seen_by_retrieve == {"retrieval_branch": "direct_answer"}

@@ -34,9 +34,9 @@ Feature: Memory recall behavior
 
   Scenario: observe and stabilize happen before route authority
     Given a canonical stage harness with a raw utterance "My name is Sebastian"
-    When canonical observe encode and stabilize execute
-    Then the stage artifacts include a typed turn observation
-    And stabilization provides same-turn exclusion doc ids before intent resolve
+    When canonical stages execute stabilize then intent resolve then retrieve
+    Then stabilization artifacts are persisted before route authority assignment
+    And route authority cannot be finalized until stabilization outputs exist
 
   Scenario: observe.turn stores user claims only as observation artifacts in-turn
     Given a canonical memory claim harness with claim "My favorite color is green"
