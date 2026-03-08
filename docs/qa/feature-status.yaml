@@ -174,7 +174,8 @@ capabilities:
   - 25cdf6b
   - 4605987
   - ee1727d
-  next_step_focus: Add deterministic tests proving committed-turn artifacts persist and are retrievable in subsequent canonical turns.
+  - issue0013-commit-audit-continuity-tests
+  next_step_focus: Monitor regressions and preserve deterministic commit-receipt persistence plus subsequent-turn retrieval continuity coverage in runtime and analytics tests.
   acceptance_tests:
   - features/answer_contract.feature
   - tests/test_runtime_logging_events.py
@@ -184,7 +185,7 @@ capabilities:
   - qa_pytest_not_live_smoke
   runtime_dependency_flags:
   - TESTBOT_DEBUG
-  current_status: partial
+  current_status: implemented
   roadmap_priority_refs:
   - P4
   - P5

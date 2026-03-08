@@ -322,6 +322,9 @@ def test_aggregate_turn_dataset_multi_turn_commit_continuity_fields_preserved() 
     dataset = aggregator.aggregate_turn_dataset(normalized_rows)
 
     assert summary.invalid_rows == 0
+    commit_rows = [row for row in normalized_rows if row.get("event") == "commit_stage_recorded"]
+    assert len(commit_rows) == 2
+    assert commit_rows[1]["retrieval_continuity_evidence"] == ["commit.confirmed_user_facts:name=Sam"]
     assert len(dataset) == 2
     assert [turn.intent for turn in dataset] == ["memory_recall", "memory_recall"]
     assert [turn.action for turn in dataset] == ["NONE", "NONE"]
