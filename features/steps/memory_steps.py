@@ -12,10 +12,13 @@ from testbot.eval_fixtures import best_candidate_doc_id, cases_by_id
 from testbot.pipeline_state import CandidateHit, PipelineState, ProvenanceType
 from testbot.rerank import adaptive_sigma_fractional, rerank_docs_with_time_and_type_outcome
 from testbot.turn_observation import observe_turn
-from testbot.candidate_encoding import encode_turn_candidates
+from testbot.candidate_encoding import FactCandidate, encode_turn_candidates
 from testbot.canonical_turn_orchestrator import CanonicalStage, CanonicalTurnContext, CanonicalTurnOrchestrator
 from testbot.memory_strata import derive_segment_descriptor
+from testbot.stabilization import StabilizedTurnState
 from testbot.intent_router import IntentType
+from testbot.context_resolution import resolve as resolve_context
+from testbot.intent_resolution import IntentResolutionInput, resolve as resolve_intent
 from testbot.policy_decision import DecisionClass, decide_from_evidence
 from testbot.evidence_retrieval import (
     EvidenceBundle,
@@ -707,6 +710,71 @@ def step_then_same_turn_retrieval_rejected(context) -> None:
         artifact_id in context.observed_artifact_ids for artifact_id in context.invalid_same_turn_retrieval
     )
     assert context.same_turn_retrieval_rejected is True
+
+
+@given("a canonical multi-antecedent commit-state harness")
+def step_given_multi_antecedent_commit_state_harness(context) -> None:
+    context.multi_antecedent_prior_state = PipelineState(
+        user_input="Apollo started in 2021 and Zephyr started in 2022",
+        final_answer="I can track both project starts.",
+        resolved_intent=IntentType.MEMORY_RECALL.value,
+        commit_receipt={
+            "confirmed_user_facts": ["project=Apollo:start=2021", "project=Zephyr:start=2022"],
+            "remaining_obligations": ["ask_which_project_for_pronoun"],
+            "pending_clarification": {"required": True, "question": "Which project does 'it' refer to?"},
+        },
+    )
+
+
+@when('a pronoun follow-up "when did it start" is evaluated at the next turn boundary')
+def step_when_pronoun_followup_multi_antecedent(context) -> None:
+    resolved_context = resolve_context(utterance="when did it start", prior_pipeline_state=context.multi_antecedent_prior_state)
+    context.multi_antecedent_intent_resolution = resolve_intent(
+        resolution_input=IntentResolutionInput(
+            stabilized_turn_state=_stabilized_turn_state_for_memory_bdd("when did it start"),
+            context=resolved_context,
+            fallback_utterance="when did it start",
+        )
+    )
+    context.multi_antecedent_commit_transition = {
+        "persisted": list(context.multi_antecedent_prior_state.commit_receipt.get("confirmed_user_facts", [])),
+        "cleared": ["selected_antecedent"],
+        "history_anchors": resolved_context.history_anchors,
+        "remaining_obligations": list(context.multi_antecedent_prior_state.commit_receipt.get("remaining_obligations", [])),
+    }
+
+
+@then("the follow-up should require disambiguation before committed context is reused")
+def step_then_multi_antecedent_requires_disambiguation(context) -> None:
+    assert context.multi_antecedent_intent_resolution.resolved_intent is IntentType.KNOWLEDGE_QUESTION
+    assert "ask_which_project_for_pronoun" in context.multi_antecedent_commit_transition["remaining_obligations"]
+
+
+@then("commit-state transitions should persist multi-antecedent facts and clear selected antecedent at the turn boundary")
+def step_then_multi_antecedent_commit_transition(context) -> None:
+    transition = context.multi_antecedent_commit_transition
+    assert transition["persisted"] == ["project=Apollo:start=2021", "project=Zephyr:start=2022"]
+    assert transition["cleared"] == ["selected_antecedent"]
+    assert "commit.confirmed_user_facts:project=Apollo:start=2021" in transition["history_anchors"]
+    assert "commit.confirmed_user_facts:project=Zephyr:start=2022" in transition["history_anchors"]
+
+
+def _stabilized_turn_state_for_memory_bdd(utterance: str) -> StabilizedTurnState:
+    return StabilizedTurnState(
+        turn_id="bdd-memory-turn",
+        utterance_card="UTTERANCE CARD",
+        utterance_doc_id="bdd-u",
+        reflection_doc_id="bdd-r",
+        dialogue_state_doc_id="bdd-d",
+        segment_type="episodic",
+        segment_id="bdd-seg",
+        segment_membership_edge_refs=[],
+        same_turn_exclusion_doc_ids=[],
+        candidate_facts=[FactCandidate(key="utterance_raw", value=utterance, confidence=1.0)],
+        candidate_speech_acts=[],
+        candidate_dialogue_state=[],
+    )
+
 
 @given("derived memory segments for follow-up self-profile turns")
 def step_given_derived_memory_segments(context) -> None:

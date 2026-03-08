@@ -9,7 +9,7 @@ from langchain_core.documents import Document
 from testbot.history_packer import PackedHistory
 from testbot import sat_chatbot_memory_v2 as runtime
 from testbot.evidence_retrieval import EvidenceBundle, EvidenceRecord, retrieval_result
-from testbot.context_resolution import resolve as resolve_context
+from testbot.context_resolution import ContinuityPosture, resolve as resolve_context
 from testbot.intent_resolution import IntentResolutionInput, resolve as resolve_intent
 from testbot.intent_router import IntentFacets, IntentType, classify_intent, extract_intent_facets, planning_pathway_for_intent
 from testbot.policy_decision import DecisionClass, EvidencePosture, decide, decide_from_evidence
@@ -935,6 +935,96 @@ def step_then_continuity_routing_preserves_only_affirmative(context) -> None:
     assert context.affirmative_resolution.resolved_intent is IntentType.CAPABILITIES_HELP
     assert context.non_affirmative_resolution.resolved_intent is context.non_affirmative_resolution.classified_intent
 
+
+@given("a prior clarification commit-state harness for capabilities help")
+def step_given_prior_clarification_commit_state_harness(context) -> None:
+    context.prior_clarification_state = PipelineState(
+        user_input="ask something via satellite",
+        final_answer=ROUTE_TO_ASK_ANSWER,
+        resolved_intent=IntentType.CAPABILITIES_HELP.value,
+        prior_unresolved_intent=IntentType.CAPABILITIES_HELP.value,
+        commit_receipt={
+            "pending_clarification": {"required": True, "question": "Do you want me to proceed via satellite?"},
+            "remaining_obligations": ["clarify_satellite_request"],
+            "confirmed_user_facts": [],
+        },
+    )
+
+
+@when('a topic shift turn is committed before delayed follow-up "yes"')
+def step_when_topic_shift_then_delayed_yes(context) -> None:
+    topic_shift_state = PipelineState(
+        user_input="also remind me to buy milk",
+        final_answer="Got it — reminder noted.",
+        resolved_intent=IntentType.META_CONVERSATION.value,
+        commit_receipt={
+            "pending_clarification": {"required": False, "question": ""},
+            "remaining_obligations": [],
+            "confirmed_user_facts": ["reminder=buy milk"],
+        },
+    )
+    delayed_context = resolve_context(utterance="yes", prior_pipeline_state=topic_shift_state)
+    context.delayed_yes_resolution = resolve_intent(
+        resolution_input=IntentResolutionInput(
+            stabilized_turn_state=_stabilized_turn_state_for_bdd("yes"),
+            context=delayed_context,
+            fallback_utterance="yes",
+        )
+    )
+    context.delayed_yes_commit_transitions = {
+        "persisted": list(topic_shift_state.commit_receipt.get("confirmed_user_facts", [])),
+        "cleared": ["clarification_continuity", "clarify_satellite_request"],
+        "history_anchors": delayed_context.history_anchors,
+        "continuity_posture": delayed_context.continuity_posture,
+    }
+
+
+@then("delayed follow-up should re-evaluate instead of preserving prior clarification intent")
+def step_then_delayed_yes_re_evaluates(context) -> None:
+    assert context.delayed_yes_resolution.classified_intent is IntentType.KNOWLEDGE_QUESTION
+    assert context.delayed_yes_resolution.resolved_intent is IntentType.KNOWLEDGE_QUESTION
+
+
+@then("commit-state transitions should clear stale clarification continuity at the topic-shift boundary")
+def step_then_delayed_yes_commit_transition_clears_stale_clarification(context) -> None:
+    transitions = context.delayed_yes_commit_transitions
+    assert transitions["persisted"] == ["reminder=buy milk"]
+    assert transitions["cleared"] == ["clarification_continuity", "clarify_satellite_request"]
+    assert "clarification_continuity" not in transitions["history_anchors"]
+    assert transitions["continuity_posture"] is not ContinuityPosture.PRESERVE_PRIOR_INTENT
+
+
+@when('a hostile follow-up "yeah sure whatever" is evaluated against prior clarification state')
+def step_when_hostile_followup_evaluated(context) -> None:
+    hostile_context = resolve_context(utterance="yeah sure whatever", prior_pipeline_state=context.prior_clarification_state)
+    context.hostile_resolution = resolve_intent(
+        resolution_input=IntentResolutionInput(
+            stabilized_turn_state=_stabilized_turn_state_for_bdd("yeah sure whatever"),
+            context=hostile_context,
+            fallback_utterance="yeah sure whatever",
+        )
+    )
+    context.hostile_commit_transitions = {
+        "persisted": list(context.prior_clarification_state.commit_receipt.get("remaining_obligations", [])),
+        "cleared": ["clarification_continuity"],
+        "history_anchors": hostile_context.history_anchors,
+        "continuity_posture": hostile_context.continuity_posture,
+    }
+
+
+@then("hostile affirmation should not preserve prior clarification intent")
+def step_then_hostile_affirmation_not_preserved(context) -> None:
+    assert context.hostile_resolution.resolved_intent is context.hostile_resolution.classified_intent
+    assert context.hostile_resolution.resolved_intent is IntentType.KNOWLEDGE_QUESTION
+
+
+@then("commit-state transitions should clear clarification obligations at the hostile follow-up boundary")
+def step_then_hostile_commit_transition_clears_obligations(context) -> None:
+    transitions = context.hostile_commit_transitions
+    assert transitions["persisted"] == ["clarify_satellite_request"]
+    assert transitions["cleared"] == ["clarification_continuity"]
+    assert "clarification_continuity" not in transitions["history_anchors"]
+    assert transitions["continuity_posture"] is ContinuityPosture.REEVALUATE
 
 
 @when("policy decision objects are resolved from typed evidence states")

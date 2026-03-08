@@ -72,6 +72,12 @@ Feature: Memory recall behavior
     And retrieval incorrectly returns just-observed artifact id "obs-turn-memory-1-claim-1" in the same turn
     Then same-turn retrieval should be rejected as invalid durable memory
 
+  Scenario: multi-antecedent pronoun follow-up requires disambiguation before committed-context reuse
+    Given a canonical multi-antecedent commit-state harness
+    When a pronoun follow-up "when did it start" is evaluated at the next turn boundary
+    Then the follow-up should require disambiguation before committed context is reused
+    And commit-state transitions should persist multi-antecedent facts and clear selected antecedent at the turn boundary
+
 
   Scenario: segment-aware continuity groups multi-turn self-profile memory
     Given derived memory segments for follow-up self-profile turns

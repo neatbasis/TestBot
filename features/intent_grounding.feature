@@ -90,6 +90,20 @@ Feature: Intent-specific grounding and provenance behavior
     When the user asks to ask something via satellite and follows up with "yes"
     Then the resolved follow-up intent should preserve capabilities help continuity
 
+  Scenario: delayed yes after topic shift does not preserve stale clarification continuity
+    Given an intent response harness
+    And a prior clarification commit-state harness for capabilities help
+    When a topic shift turn is committed before delayed follow-up "yes"
+    Then delayed follow-up should re-evaluate instead of preserving prior clarification intent
+    And commit-state transitions should clear stale clarification continuity at the topic-shift boundary
+
+  Scenario: hostile or sarcastic affirmation does not auto-preserve clarification continuity
+    Given an intent response harness
+    And a prior clarification commit-state harness for capabilities help
+    When a hostile follow-up "yeah sure whatever" is evaluated against prior clarification state
+    Then hostile affirmation should not preserve prior clarification intent
+    And commit-state transitions should clear clarification obligations at the hostile follow-up boundary
+
 
 
   Scenario: non-memory question with no ambiguity does not trigger clarifier
