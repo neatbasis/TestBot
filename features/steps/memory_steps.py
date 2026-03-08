@@ -13,6 +13,7 @@ from testbot.pipeline_state import CandidateHit, PipelineState, ProvenanceType
 from testbot.rerank import adaptive_sigma_fractional, rerank_docs_with_time_and_type_outcome
 from testbot.turn_observation import observe_turn
 from testbot.candidate_encoding import encode_turn_candidates
+from testbot.canonical_turn_orchestrator import CanonicalStage, CanonicalTurnContext, CanonicalTurnOrchestrator
 
 from testbot.sat_chatbot_memory_v2 import has_sufficient_context_confidence, stage_rerank
 from testbot.stage_transitions import (
@@ -455,3 +456,75 @@ def step_then_deterministic_citation_context_formatting(context) -> None:
     refs = list(context.pipeline_state.used_memory_refs)
     assert refs == sorted(refs)
     assert all("@" in ref for ref in refs)
+
+
+@when("canonical stages execute stabilize then intent resolve then retrieve")
+def step_when_canonical_stages_execute_stabilize_intent_retrieve(context) -> None:
+    canonical_context = CanonicalTurnContext(
+        state=context.canonical_stage_state,
+        artifacts={"policy_decision": None},
+    )
+
+    def _observe(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        return ctx
+
+    def _encode(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        return ctx
+
+    def _stabilize(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        context.canonical_policy_decision_before_stabilize = ctx.artifacts.get("policy_decision")
+        ctx.artifacts["stabilized_turn_state"] = {"turn_id": "turn-bdd-route-1"}
+        context.canonical_stabilized_turn_state = ctx.artifacts["stabilized_turn_state"]
+        return ctx
+
+    def _context_resolve(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        return ctx
+
+    def _intent_resolve(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        assert ctx.artifacts.get("stabilized_turn_state") == {"turn_id": "turn-bdd-route-1"}
+        ctx.artifacts["policy_decision"] = {"retrieval_branch": "direct_answer"}
+        context.canonical_policy_decision_after_intent = ctx.artifacts["policy_decision"]
+        return ctx
+
+    def _retrieve(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        context.canonical_policy_decision_seen_by_retrieve = ctx.artifacts.get("policy_decision")
+        ctx.artifacts["retrieval_result"] = {"posture": "not_requested"}
+        return ctx
+
+    def _noop(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        return ctx
+
+    orchestrator = CanonicalTurnOrchestrator(
+        stages=[
+            CanonicalStage("observe.turn", _observe),
+            CanonicalStage("encode.candidates", _encode),
+            CanonicalStage("stabilize.pre_route", _stabilize),
+            CanonicalStage("context.resolve", _context_resolve),
+            CanonicalStage("intent.resolve", _intent_resolve),
+            CanonicalStage("retrieve.evidence", _retrieve),
+            CanonicalStage("policy.decide", _noop),
+            CanonicalStage("answer.assemble", _noop),
+            CanonicalStage("answer.validate", _noop),
+            CanonicalStage("answer.render", _noop),
+            CanonicalStage("answer.commit", _noop),
+        ]
+    )
+    context.canonical_orchestrator_result = orchestrator.run(canonical_context)
+
+
+@then("intent resolve assigns policy decision after stabilization")
+def step_then_intent_resolve_assigns_policy_decision_after_stabilization(context) -> None:
+    assert context.canonical_policy_decision_before_stabilize is None
+    assert context.canonical_stabilized_turn_state["turn_id"] == "turn-bdd-route-1"
+    assert context.canonical_policy_decision_after_intent == {"retrieval_branch": "direct_answer"}
+
+
+@then("retrieve observes the post-stabilization policy decision")
+def step_then_retrieve_observes_post_stabilization_policy_decision(context) -> None:
+    assert context.canonical_policy_decision_seen_by_retrieve == {"retrieval_branch": "direct_answer"}
+    assert context.canonical_orchestrator_result.stage_audit_trail[2:6] == [
+        "stabilize.pre_route",
+        "context.resolve",
+        "intent.resolve",
+        "retrieve.evidence",
+    ]

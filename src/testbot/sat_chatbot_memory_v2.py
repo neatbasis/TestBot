@@ -2568,9 +2568,8 @@ def _run_canonical_turn_pipeline(
     store: MemoryStore,
     state: PipelineState,
     utterance: str,
-    classified_intent: IntentType,
-    resolved_intent: IntentType,
-    intent_label: str,
+    provisional_classified_intent: IntentType,
+    prior_pipeline_state: PipelineState | None,
     turn_id: str,
     near_tie_delta: float,
     chat_history: deque[ChatMsg],
@@ -2579,15 +2578,12 @@ def _run_canonical_turn_pipeline(
     clock: Clock,
     io_channel: str = "cli",
 ) -> tuple[PipelineState, list[Document]]:
-    policy_decision = decide_policy(utterance=utterance, intent=resolved_intent)
     context = CanonicalTurnContext(
         state=state,
         artifacts={
             "utterance": utterance,
-            "intent_label": intent_label,
-            "intent_classified": classified_intent.value,
-            "intent_resolved": resolved_intent.value,
-            "policy_decision": policy_decision,
+            "intent_classified_provisional": provisional_classified_intent.value,
+            "policy_decision": None,
             "turn_id": turn_id,
             "docs_and_scores": [],
             "hits": [],
@@ -2611,18 +2607,11 @@ def _run_canonical_turn_pipeline(
         return ctx
 
     def _encode_candidates(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
-        if ctx.artifacts["policy_decision"].requires_retrieval:
-            _validate_and_log_transition(validate_encode_pre(ctx.state))
-            rewritten_state = encode_stage(llm, ctx.state)
-            _validate_and_log_transition(validate_encode_post(rewritten_state))
-            rewritten_query = rewritten_state.rewritten_query
-            append_session_log("query_rewrite_output", {"utterance": utterance, "query": rewritten_query})
-        else:
-            rewritten_query = ctx.state.user_input
-            append_session_log(
-                "query_rewrite_output",
-                {"utterance": utterance, "query": rewritten_query, "skipped": True},
-            )
+        _validate_and_log_transition(validate_encode_pre(ctx.state))
+        rewritten_state = encode_stage(llm, ctx.state)
+        _validate_and_log_transition(validate_encode_post(rewritten_state))
+        rewritten_query = rewritten_state.rewritten_query
+        append_session_log("query_rewrite_output", {"utterance": utterance, "query": rewritten_query})
 
         encoded = encode_turn_candidates(
             ctx.state,
@@ -2639,7 +2628,7 @@ def _run_canonical_turn_pipeline(
         return ctx
 
     def _stabilize_pre_route(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
-        planning_descriptor = planning_pathway_for_intent(resolved_intent, extract_intent_facets(utterance))
+        planning_descriptor = planning_pathway_for_intent(provisional_classified_intent, extract_intent_facets(utterance))
         response_plan = build_response_plan(descriptor=planning_descriptor, user_input=utterance)
         reflection_yaml = generate_reflection_yaml(llm, speaker="user", text=utterance)
         ctx.state, stabilized = stabilize_pre_route(
@@ -2660,16 +2649,47 @@ def _run_canonical_turn_pipeline(
         return ctx
 
     def _intent_resolve(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        stabilized: StabilizedTurnState = ctx.artifacts["stabilized_turn_state"]
+        stabilized_utterance = str(ctx.state.user_input or utterance)
+        context_resolution = resolve_context(
+            utterance=stabilized_utterance,
+            prior_pipeline_state=prior_pipeline_state,
+        )
+        intent_resolution = resolve_intent(utterance=stabilized_utterance, context=context_resolution)
+        policy_decision = decide_policy(
+            utterance=stabilized_utterance,
+            intent=intent_resolution.resolved_intent,
+        )
+        ctx.artifacts["policy_decision"] = policy_decision
+        ctx.state = replace(
+            ctx.state,
+            classified_intent=intent_resolution.classified_intent.value,
+            resolved_intent=intent_resolution.resolved_intent.value,
+            policy_decision={
+                "policy": "post_stabilization_intent_resolution",
+                "decision": policy_decision.retrieval_branch,
+                "intent_classified": intent_resolution.classified_intent.value,
+                "intent_resolved": intent_resolution.resolved_intent.value,
+                "retrieval_branch": policy_decision.retrieval_branch,
+                "evidence_posture": policy_decision.evidence_posture.value,
+            },
+        )
+        intent_label = _intent_label(intent_resolution.resolved_intent)
         append_session_log(
             "retrieval_branch_selected",
             {
                 "utterance": utterance,
                 "intent": intent_label,
-                "intent_classified": classified_intent.value,
-                "intent_resolved": resolved_intent.value,
+                "intent_classified": intent_resolution.classified_intent.value,
+                "intent_resolved": intent_resolution.resolved_intent.value,
                 "retrieval_branch": ctx.artifacts["policy_decision"].retrieval_branch,
                 "decision_rationale": ctx.artifacts["policy_decision"].rationale,
                 "evidence_posture": ctx.artifacts["policy_decision"].evidence_posture.value,
+                "stabilized_turn_id": stabilized.turn_id,
+                "stabilized_candidate_fact_count": len(stabilized.candidate_facts),
+                "stabilized_dialogue_state_count": len(stabilized.candidate_dialogue_state),
+                "context_continuity_posture": context_resolution.continuity_posture.value,
+                "context_history_anchors": list(context_resolution.history_anchors),
             },
         )
         append_pipeline_snapshot("intent", ctx.state)
@@ -2694,12 +2714,6 @@ def _run_canonical_turn_pipeline(
             _validate_and_log_transition(validate_retrieve_post(ctx.state))
             ctx.artifacts["docs_and_scores"] = docs_and_scores
             considered = int(ctx.state.confidence_decision.get("retrieval_candidates_considered", len(docs_and_scores)) or 0)
-            ctx.artifacts["policy_decision"] = decide_policy(
-                utterance=utterance,
-                intent=resolved_intent,
-                retrieval_candidates_considered=considered,
-                hit_count=0,
-            )
             prerank_bundle = build_evidence_bundle_from_docs_and_scores(docs_and_scores)
             ctx.artifacts["pre_rerank_evidence_bundle"] = prerank_bundle
             ctx.artifacts["retrieval_result"] = retrieval_result(
@@ -2740,6 +2754,7 @@ def _run_canonical_turn_pipeline(
         return ctx
 
     def _policy_decide(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        resolved_intent = IntentType(ctx.state.resolved_intent)
         if ctx.artifacts["policy_decision"].requires_retrieval:
             _validate_and_log_transition(validate_rerank_pre(ctx.state))
             stabilized: StabilizedTurnState = ctx.artifacts["stabilized_turn_state"]
@@ -2791,7 +2806,7 @@ def _run_canonical_turn_pipeline(
                 {
                     "utterance": utterance,
                     "reason": "intent_routed_to_direct_answer",
-                    "intent": intent_label,
+                    "intent": state.resolved_intent,
                     "retrieval_branch": ctx.artifacts["policy_decision"].retrieval_branch,
                 },
             )
@@ -2853,9 +2868,9 @@ def _run_canonical_turn_pipeline(
             "intent_classified",
             {
                 "utterance": utterance,
-                "intent": intent_label,
-                "intent_classified": classified_intent.value,
-                "intent_resolved": resolved_intent.value,
+                "intent": state.resolved_intent,
+                "intent_classified": state.classified_intent,
+                "intent_resolved": state.resolved_intent,
                 "ambiguity_score": ambiguity_score,
                 "user_followup_signal_proxy": round(ambiguity_score, 4),
             },
@@ -2954,25 +2969,21 @@ def _run_chat_loop(
             send_assistant_text("Stopping. Bye.")
             break
 
-        classified_intent, resolved_intent = resolve_turn_intent(
-            utterance=utterance,
-            prior_pipeline_state=prior_pipeline_state,
-        )
+        provisional_classified_intent = classify_intent(utterance)
         intent_classifier_metrics = {
-            "intent_predicted": classified_intent.value,
+            "intent_predicted": provisional_classified_intent.value,
             "intent_classifier_confidence": _intent_classifier_confidence(
                 utterance=utterance,
-                predicted_intent=classified_intent,
+                predicted_intent=provisional_classified_intent,
             ),
             "intent_classifier_threshold": INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD,
         }
-        intent_label = _intent_label(resolved_intent)
 
         state = PipelineState(
             user_input=utterance,
             last_user_message_ts=last_user_message_ts,
-            classified_intent=classified_intent.value,
-            resolved_intent=resolved_intent.value,
+            classified_intent=provisional_classified_intent.value,
+            resolved_intent="",
             prior_unresolved_intent=(
                 prior_pipeline_state.prior_unresolved_intent
                 if prior_pipeline_state is not None
@@ -2988,9 +2999,8 @@ def _run_chat_loop(
             store=store,
             state=state,
             utterance=utterance,
-            classified_intent=classified_intent,
-            resolved_intent=resolved_intent,
-            intent_label=intent_label,
+            provisional_classified_intent=provisional_classified_intent,
+            prior_pipeline_state=prior_pipeline_state,
             turn_id=turn_id,
             near_tie_delta=near_tie_delta,
             chat_history=chat_history,
@@ -3011,9 +3021,9 @@ def _run_chat_loop(
             "fallback_action_selected",
             {
                 "utterance": utterance,
-                "intent": intent_label,
-                "intent_classified": classified_intent.value,
-                "intent_resolved": resolved_intent.value,
+                "intent": state.resolved_intent,
+                "intent_classified": state.classified_intent,
+                "intent_resolved": state.resolved_intent,
                 "ambiguity_score": ambiguity_score,
                 "chosen_action": chosen_action,
                 "user_followup_signal_proxy": followup_proxy,
@@ -3023,9 +3033,9 @@ def _run_chat_loop(
             "provenance_summary",
             {
                 "utterance": utterance,
-                "intent": intent_label,
-                "intent_classified": classified_intent.value,
-                "intent_resolved": resolved_intent.value,
+                "intent": state.resolved_intent,
+                "intent_classified": state.classified_intent,
+                "intent_resolved": state.resolved_intent,
                 "ambiguity_score": ambiguity_score,
                 "chosen_action": chosen_action,
                 "user_followup_signal_proxy": followup_proxy,
@@ -3041,9 +3051,9 @@ def _run_chat_loop(
             "alignment_decision_evaluated",
             {
                 "utterance": utterance,
-                "intent": intent_label,
-                "intent_classified": classified_intent.value,
-                "intent_resolved": resolved_intent.value,
+                "intent": state.resolved_intent,
+                "intent_classified": state.classified_intent,
+                "intent_resolved": state.resolved_intent,
                 "alignment_decision": state.alignment_decision.to_dict(),
                 "alignment_dimension_inputs_raw": state.alignment_decision.get("dimension_inputs", {}).get("raw", {}),
                 "alignment_dimension_inputs_normalized": state.alignment_decision.get("dimension_inputs", {}).get("normalized", {}),
@@ -3052,7 +3062,7 @@ def _run_chat_loop(
         )
 
         if capability_snapshot.runtime_capability_status.debug_enabled:
-            debug_payload = _build_debug_turn_payload(state=state, intent_label=intent_label, hits=hits)
+            debug_payload = _build_debug_turn_payload(state=state, intent_label=state.resolved_intent, hits=hits)
             debug_trace = _format_debug_turn_trace_payload(
                 payload=debug_payload,
                 verbose=capability_snapshot.runtime_capability_status.debug_verbose,
@@ -3068,7 +3078,7 @@ def _run_chat_loop(
             send_assistant_text(debug_trace)
 
         unresolved_intent = (
-            resolved_intent.value
+            state.resolved_intent
             if is_clarification_answer(state.final_answer) or _is_capabilities_help_answer(state.final_answer)
             else ""
         )
