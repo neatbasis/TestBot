@@ -7,7 +7,7 @@ from testbot.policy_decision import DecisionClass, DecisionObject
 
 
 @dataclass(frozen=True)
-class AnswerAssemblyResult:
+class AnswerCandidate:
     """Contract-first answer assembly output.
 
     Assembly is intentionally restricted to decision + evidence contracts so
@@ -24,7 +24,7 @@ class AnswerAssemblyResult:
     confirmed_user_facts: list[str]
 
 
-def assemble_answer_contract(*, decision: DecisionObject, evidence_bundle: EvidenceBundle) -> AnswerAssemblyResult:
+def assemble_answer_contract(*, decision: DecisionObject, evidence_bundle: EvidenceBundle) -> AnswerCandidate:
     evidence_counts = {
         "structured_facts": len(evidence_bundle.structured_facts),
         "episodic_utterances": len(evidence_bundle.episodic_utterances),
@@ -43,7 +43,7 @@ def assemble_answer_contract(*, decision: DecisionObject, evidence_bundle: Evide
     else:
         resolved_obligations.append("repair_state_not_required")
 
-    return AnswerAssemblyResult(
+    return AnswerCandidate(
         decision_class=decision.decision_class.value,
         retrieval_branch=decision.retrieval_branch,
         rationale=decision.rationale,
@@ -57,3 +57,7 @@ def assemble_answer_contract(*, decision: DecisionObject, evidence_bundle: Evide
         confirmed_user_facts=confirmed_user_facts,
     )
 
+
+
+# Backward-compatible alias while canonical naming converges.
+AnswerAssemblyResult = AnswerCandidate

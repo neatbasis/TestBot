@@ -29,17 +29,26 @@ class DialogueStateCandidate:
 
 
 @dataclass(frozen=True)
+class RepairCandidate:
+    label: str
+    confidence: float
+    rationale: str
+
+
+@dataclass(frozen=True)
 class EncodedTurnCandidates:
     rewritten_query: str
     speech_acts: list[SpeechActCandidate] = field(default_factory=list)
     facts: list[FactCandidate] = field(default_factory=list)
     dialogue_state: list[DialogueStateCandidate] = field(default_factory=list)
+    repairs: list[RepairCandidate] = field(default_factory=list)
 
     def as_artifact_payload(self) -> dict[str, object]:
         return {
             "facts": [asdict(fact) for fact in self.facts],
             "speech_acts": [asdict(candidate) for candidate in self.speech_acts],
             "dialogue_state": [asdict(candidate) for candidate in self.dialogue_state],
+            "repairs": [asdict(candidate) for candidate in self.repairs],
         }
 
 

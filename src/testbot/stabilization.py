@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import uuid
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 
-from testbot.candidate_encoding import EncodedTurnCandidates
+from testbot.candidate_encoding import DialogueStateCandidate, EncodedTurnCandidates, FactCandidate, RepairCandidate, SpeechActCandidate
 from typing import Callable
 
 from testbot.memory_cards import make_reflection_card, make_utterance_card, store_doc
@@ -24,9 +24,10 @@ class StabilizedTurnState:
     segment_id: str
     segment_membership_edge_refs: list[str]
     same_turn_exclusion_doc_ids: list[str]
-    candidate_facts: list[dict[str, object]]
-    candidate_speech_acts: list[dict[str, object]]
-    candidate_dialogue_state: list[dict[str, object]]
+    candidate_facts: list[FactCandidate]
+    candidate_speech_acts: list[SpeechActCandidate]
+    candidate_dialogue_state: list[DialogueStateCandidate]
+    candidate_repairs: list[RepairCandidate] = field(default_factory=list)
 
 
 def stabilize_pre_route(
@@ -128,8 +129,8 @@ def stabilize_pre_route(
         + list(dialogue_state_metadata.get("segment_membership_edge_refs") or [])
     )
     stabilized_candidate_facts = [
-        {"key": "utterance_raw", "value": observation.utterance, "confidence": 1.0, "provenance": "stabilize.pre_route"},
-        *[asdict(candidate) for candidate in encoded.facts],
+        FactCandidate(key="utterance_raw", value=observation.utterance, confidence=1.0, provenance="stabilize.pre_route"),
+        *encoded.facts,
     ]
 
     stabilized = StabilizedTurnState(
@@ -143,8 +144,9 @@ def stabilize_pre_route(
         segment_membership_edge_refs=segment_membership_edge_refs,
         same_turn_exclusion_doc_ids=same_turn_exclusion_doc_ids,
         candidate_facts=stabilized_candidate_facts,
-        candidate_speech_acts=[asdict(candidate) for candidate in encoded.speech_acts],
-        candidate_dialogue_state=[asdict(candidate) for candidate in encoded.dialogue_state],
+        candidate_speech_acts=list(encoded.speech_acts),
+        candidate_dialogue_state=list(encoded.dialogue_state),
+        candidate_repairs=list(encoded.repairs),
     )
 
     next_state = PipelineState(
@@ -153,9 +155,10 @@ def stabilize_pre_route(
             "rewritten_query": encoded.rewritten_query,
             "response_plan": response_plan,
             "candidate_facts": {
-                "facts": stabilized.candidate_facts,
-                "speech_acts": stabilized.candidate_speech_acts,
-                "dialogue_state": stabilized.candidate_dialogue_state,
+                "facts": [asdict(candidate) for candidate in stabilized.candidate_facts],
+                "speech_acts": [asdict(candidate) for candidate in stabilized.candidate_speech_acts],
+                "dialogue_state": [asdict(candidate) for candidate in stabilized.candidate_dialogue_state],
+                "repairs": [asdict(candidate) for candidate in stabilized.candidate_repairs],
                 "turn_id": observation.turn_id,
                 "utterance_card": utterance_card,
                 "utterance_doc_id": utterance_doc_id,
