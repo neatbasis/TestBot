@@ -80,5 +80,5 @@ Feature: Answer citation contract enforcement
   Scenario: canonical routing authority is assigned only after stabilization
     Given a canonical stage harness with a raw utterance "hello there"
     When canonical stages execute stabilize then intent resolve then retrieve
-    Then intent resolve assigns policy decision after stabilization
-    And retrieve observes the post-stabilization policy decision
+    Then stabilization artifacts are persisted before route authority assignment
+    And route authority cannot be finalized until stabilization outputs exist

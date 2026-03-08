@@ -202,3 +202,9 @@ Feature: Intent-specific grounding and provenance behavior
     Given an intent response harness
     When memory-write utterance contract probe is resolved through canonical decisioning
     Then the canonical contract should resolve intent "meta_conversation" retrieval branch "direct_answer" decision class "answer_general_knowledge_labeled" fallback action "ANSWER_GENERAL_KNOWLEDGE" and answer mode "assist"
+
+  Scenario: intent-heavy routing waits for stabilization outputs before authority finalization
+    Given a canonical stage harness with a raw utterance "could you ask satellite to message sebastian"
+    When canonical stages execute stabilize then intent resolve then retrieve
+    Then stabilization artifacts are persisted before route authority assignment
+    And route authority cannot be finalized until stabilization outputs exist
