@@ -116,3 +116,55 @@ Review scope was limited to open issues (`open` or `in_progress`) and issue-gove
 ## Closure Notes
 
 - 2026-03-08: Opened from open-issue review focused on canonical pipeline streams, with ISSUE-0014 assessed as strong runtime narrative but incomplete quality/governance control artifact.
+
+
+- 2026-03-08: Follow-up review completed after ISSUE-0014/ISSUE-0013 governance hardening and status artifact refresh.
+
+## 2026-03-08 Follow-up Delta (ISSUE-0014 / ISSUE-0013)
+
+### What changed in ISSUE-0014
+
+- Added explicit quality/governance control sections now required by this issue:
+  - `Defect Taxonomy` (primary vs cascade failure classes)
+  - `Earliest Invalid State`
+  - `Stage Contract Clauses` for rewrite/intent/routing/commit
+  - `Quality-System Gap Analysis`
+  - `Required Observability Fields`
+- Added explicit non-closure governance linkage: ISSUE-0013 identity-continuity milestones remain non-closable while ISSUE-0014 behavioral proof is incomplete.
+- Verification commands in ISSUE-0014 now explicitly bind deterministic BDD/pytest/all-green evidence expectations to closure claims.
+
+### What changed in ISSUE-0013
+
+- Cross-reference pointers now explicitly include ISSUE-0014 (active red identity-continuity regression) and ISSUE-0015 (active red quality/governance hardening review).
+- Acceptance criteria include explicit linkage gate `AC-0013-11`: identity-continuity closure in ISSUE-0013 is dependent on ISSUE-0014 Phase 1 behavioral evidence and cannot be satisfied by structural instrumentation progress alone.
+- Closure notes now preserve reopened state and non-overclaim posture, including regenerated feature-status evidence that keeps canonical pipeline slices at `partial` while unresolved behavioral regressions remain.
+
+## Validator Outcomes (Executed from repo root)
+
+1. `python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main`
+   - Result: **pass**
+   - Output notes: base ref `origin/main` unavailable in local clone, validator fell back to `HEAD~1`.
+2. `python scripts/validate_issues.py --all-issue-files --base-ref origin/main`
+   - Result: **pass**
+   - Output notes: PR-body validation skipped because `--pr-body-file` was not provided; base ref fallback to `HEAD~1`.
+3. `python scripts/report_feature_status.py --output docs/qa/feature-status-report.md --json-output artifacts/feature-status-summary.json`
+   - Result: **pass** (artifacts regenerated)
+   - Output notes: report warns gate summary is older than one or more source files and recommends refreshing `artifacts/all-green-gate-summary.json` via all-green gate rerun.
+
+## ISSUE-0015 Acceptance Criteria Status (Explicit)
+
+### Now satisfied
+
+- **AC1:** satisfied — ISSUE-0014 now includes explicit defect taxonomy.
+- **AC2:** satisfied — ISSUE-0014 now declares the earliest invalid state.
+- **AC3:** satisfied — ISSUE-0014 now defines testable rewrite/intent/routing/commit stage contracts.
+- **AC4:** satisfied — ISSUE-0014 now includes explicit quality-system gap analysis.
+- **AC5:** satisfied — ISSUE-0014 now mandates required observability keys.
+- **AC6:** satisfied — ISSUE-0014 and ISSUE-0013 now include binding governance linkage language preventing structural-only closure claims.
+- **AC7:** satisfied — deterministic regression coverage requirements and verification commands are explicitly specified in ISSUE-0014.
+- **AC8:** satisfied — issue-link and issue-structure validators pass after updates; metadata/linkage consistency preserved.
+
+### Still open
+
+- **No ISSUE-0015 acceptance criteria remain open.**
+- Tracking note: ISSUE-0014 and ISSUE-0013 remain open as implementation/behavioral proof streams even though ISSUE-0015 governance-hardening acceptance criteria are now satisfied.
