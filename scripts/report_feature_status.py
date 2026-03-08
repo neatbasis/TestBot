@@ -41,9 +41,32 @@ def issue_matches_keyword(issue: OpenIssue, keyword: str) -> bool:
         issue.issue_id.lower(),
         issue.title.lower(),
         issue.path.stem.lower(),
-        issue.content_lower,
     )
     return any(normalized in field for field in searchable_fields)
+
+
+def find_relevant_issues(capability: dict[str, Any], open_issues: list[OpenIssue]) -> list[OpenIssue]:
+    issue_by_id = {issue.issue_id.upper(): issue for issue in open_issues}
+
+    explicit_issue_ids = [str(issue_id).strip() for issue_id in capability.get("open_issues", [])]
+    explicit_issue_ids = [issue_id for issue_id in explicit_issue_ids if issue_id]
+    if explicit_issue_ids:
+        return [
+            issue_by_id[issue_id.upper()]
+            for issue_id in explicit_issue_ids
+            if issue_id.upper() in issue_by_id
+        ]
+
+    keywords = [str(keyword).strip().lower() for keyword in capability.get("issue_keywords", [])]
+    keywords = [keyword for keyword in keywords if keyword]
+    if not keywords:
+        return []
+
+    relevant_issues: list[OpenIssue] = []
+    for issue in open_issues:
+        if any(issue_matches_keyword(issue, keyword) for keyword in keywords):
+            relevant_issues.append(issue)
+    return relevant_issues
 
 
 def parse_args() -> argparse.Namespace:
@@ -204,12 +227,7 @@ def build_report(
         gate_checks = capability.get("gate_checks", [])
         failed_checks = [name for name in gate_checks if gate_results.get(name) == "failed"]
 
-        keywords = [kw.lower() for kw in capability.get("issue_keywords", [])]
-        relevant_issues = []
-        if keywords:
-            for issue in open_issues:
-                if any(issue_matches_keyword(issue, kw) for kw in keywords):
-                    relevant_issues.append(issue)
+        relevant_issues = find_relevant_issues(capability, open_issues)
 
         priority_refs = capability.get("roadmap_priority_refs", [])
         priority_sources: dict[str, list[str]] = {

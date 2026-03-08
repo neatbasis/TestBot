@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-03-08T15:48:15Z",
+  "generated_at_utc": "2026-03-08T15:55:56Z",
   "inputs": {
     "contract_path": "docs/qa/feature-status.yaml",
     "gate_summary_path": "artifacts/all-green-gate-summary.json",
@@ -9,77 +9,77 @@
   "source_file_metadata": {
     "contract": {
       "path": "docs/qa/feature-status.yaml",
-      "size_bytes": 7121,
-      "mtime_utc": "2026-03-08T15:47:55Z",
-      "sha256": "bc500000e63b098356596d07a3993a7fc7c4c80ab1d8f46979c8858f4e76b85f"
+      "size_bytes": 7126,
+      "mtime_utc": "2026-03-08T15:55:13Z",
+      "sha256": "3af06802594f7c45b6151f608348d36e722c6adb1a0c252c9ea2f1a733834576"
     },
     "gate_summary": {
       "path": "artifacts/all-green-gate-summary.json",
-      "size_bytes": 3772,
-      "mtime_utc": "2026-03-08T15:48:11Z",
-      "sha256": "38f70e4069871d71874f30ea58a3fd81bcfdf1f5a676636f634f17e095f0d0a6"
+      "size_bytes": 3770,
+      "mtime_utc": "2026-03-08T15:55:52Z",
+      "sha256": "099ab0ae1cf9c1b17a8f3a1db784e49b581ab0db12f7d37b73ecaa2585178698"
     },
     "open_issues": [
       {
         "path": "docs/issues/ISSUE-0008-intent-grounding-gate-failures-block-merge.md",
         "size_bytes": 3235,
-        "mtime_utc": "2026-03-08T14:44:32Z",
+        "mtime_utc": "2026-03-08T14:55:01Z",
         "sha256": "8b1e1371a464108442cb985281b490001bb94336de7bcbac9a3fb68abdf9fa06"
       },
       {
         "path": "docs/issues/ISSUE-0009-knowing-grounded-answers-partial-provenance-gap.md",
         "size_bytes": 4803,
-        "mtime_utc": "2026-03-08T14:44:32Z",
+        "mtime_utc": "2026-03-08T14:55:01Z",
         "sha256": "a465708daef99a0e38d79a283c6cf9483d393c30265560abfede469c2e22a1ed"
       },
       {
         "path": "docs/issues/ISSUE-0010-unknowing-safe-fallback-partial-contract-gap.md",
         "size_bytes": 4673,
-        "mtime_utc": "2026-03-08T14:44:32Z",
+        "mtime_utc": "2026-03-08T14:55:01Z",
         "sha256": "7e5017cb505bd0e384650142e0b1326946149abec8c430b1b9a0cca34eda303d"
       },
       {
         "path": "docs/issues/ISSUE-0011-turn-analytics-input-coverage-silent-drop.md",
         "size_bytes": 4287,
-        "mtime_utc": "2026-03-08T14:44:32Z",
+        "mtime_utc": "2026-03-08T14:55:01Z",
         "sha256": "86162dd0afeba256f0340815ec62d9cfcf45283360a95cbb2712ba700857d981"
       },
       {
         "path": "docs/issues/ISSUE-0012-canonical-turn-pipeline-delivery-plan.md",
         "size_bytes": 4596,
-        "mtime_utc": "2026-03-08T14:44:32Z",
+        "mtime_utc": "2026-03-08T14:55:01Z",
         "sha256": "d73f54eda8811870fd3ce738037bf78654b50eb4b60c4a5af138d1cf1804ce28"
       },
       {
         "path": "docs/issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md",
         "size_bytes": 16221,
-        "mtime_utc": "2026-03-08T15:47:20Z",
-        "sha256": "474e4ce8bc5310792fcf1e45b27b7a554d6842df8781b5f785fc78707f1d7005"
+        "mtime_utc": "2026-03-08T15:53:46Z",
+        "sha256": "c70c66abf8aadde39610fcf7e92bd6e091b5092f21ca9faba70096544a57518c"
       }
     ],
     "roadmap_files": [
       {
         "path": "docs/roadmap/alignment-drift-technical-debt-2026-03-05.md",
         "size_bytes": 5622,
-        "mtime_utc": "2026-03-08T14:44:32Z",
+        "mtime_utc": "2026-03-08T14:55:01Z",
         "sha256": "02618bdff7d1b35cdbe05736f9e42202981edf2d1204d7d7ef3232899575c530"
       },
       {
         "path": "docs/roadmap/current-status-and-next-5-priorities.md",
         "size_bytes": 8470,
-        "mtime_utc": "2026-03-08T14:44:32Z",
+        "mtime_utc": "2026-03-08T14:55:01Z",
         "sha256": "d8aa997d61c9db9c731ea7c24ceb4d41c7e8f078dd2e502c5f648b12ec645311"
       },
       {
         "path": "docs/roadmap/next-4-sprints-grounded-knowing.md",
         "size_bytes": 13756,
-        "mtime_utc": "2026-03-08T14:44:32Z",
+        "mtime_utc": "2026-03-08T14:55:01Z",
         "sha256": "a725406dcffd4aa1da3a269fe78806032b8360ae64e64c7f879eb277712d4a3c"
       },
       {
         "path": "docs/roadmap/reflective-milestone-10-sprints.md",
         "size_bytes": 9579,
-        "mtime_utc": "2026-03-08T14:44:32Z",
+        "mtime_utc": "2026-03-08T14:55:01Z",
         "sha256": "f8b41b80b9e06c2144db690373aee3bfcd1910999904b5ad086fe63576252da0"
       }
     ]
@@ -103,21 +103,6 @@
           "id": "ISSUE-0009",
           "title": "Knowing grounded answers remain partial due to provenance/recall gate debt",
           "path": "docs/issues/ISSUE-0009-knowing-grounded-answers-partial-provenance-gap.md"
-        },
-        {
-          "id": "ISSUE-0010",
-          "title": "Unknowing safe fallback remains partial for explicit uncertainty contract completeness",
-          "path": "docs/issues/ISSUE-0010-unknowing-safe-fallback-partial-contract-gap.md"
-        },
-        {
-          "id": "ISSUE-0012",
-          "title": "Canonical turn pipeline delivery plan requires staged implementation and mandatory code review checkpoints",
-          "path": "docs/issues/ISSUE-0012-canonical-turn-pipeline-delivery-plan.md"
-        },
-        {
-          "id": "ISSUE-0013",
-          "title": "Implement canonical turn pipeline as the primary bug-elimination program",
-          "path": "docs/issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md"
         }
       ],
       "roadmap_priority_refs": [
@@ -155,24 +140,9 @@
       "failed_gate_checks": [],
       "relevant_open_issues": [
         {
-          "id": "ISSUE-0009",
-          "title": "Knowing grounded answers remain partial due to provenance/recall gate debt",
-          "path": "docs/issues/ISSUE-0009-knowing-grounded-answers-partial-provenance-gap.md"
-        },
-        {
           "id": "ISSUE-0010",
           "title": "Unknowing safe fallback remains partial for explicit uncertainty contract completeness",
           "path": "docs/issues/ISSUE-0010-unknowing-safe-fallback-partial-contract-gap.md"
-        },
-        {
-          "id": "ISSUE-0012",
-          "title": "Canonical turn pipeline delivery plan requires staged implementation and mandatory code review checkpoints",
-          "path": "docs/issues/ISSUE-0012-canonical-turn-pipeline-delivery-plan.md"
-        },
-        {
-          "id": "ISSUE-0013",
-          "title": "Implement canonical turn pipeline as the primary bug-elimination program",
-          "path": "docs/issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md"
         }
       ],
       "roadmap_priority_refs": [
@@ -205,16 +175,6 @@
           "id": "ISSUE-0008",
           "title": "Intent-grounding router remains partial for deterministic route confidence",
           "path": "docs/issues/ISSUE-0008-intent-grounding-gate-failures-block-merge.md"
-        },
-        {
-          "id": "ISSUE-0012",
-          "title": "Canonical turn pipeline delivery plan requires staged implementation and mandatory code review checkpoints",
-          "path": "docs/issues/ISSUE-0012-canonical-turn-pipeline-delivery-plan.md"
-        },
-        {
-          "id": "ISSUE-0013",
-          "title": "Implement canonical turn pipeline as the primary bug-elimination program",
-          "path": "docs/issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md"
         }
       ],
       "roadmap_priority_refs": [
@@ -275,18 +235,7 @@
       "effective_status": "partial",
       "declared_status": "partial",
       "failed_gate_checks": [],
-      "relevant_open_issues": [
-        {
-          "id": "ISSUE-0011",
-          "title": "Turn analytics aggregation silently drops non-analytics session events without operator coverage diagnostics",
-          "path": "docs/issues/ISSUE-0011-turn-analytics-input-coverage-silent-drop.md"
-        },
-        {
-          "id": "ISSUE-0013",
-          "title": "Implement canonical turn pipeline as the primary bug-elimination program",
-          "path": "docs/issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md"
-        }
-      ],
+      "relevant_open_issues": [],
       "roadmap_priority_refs": [
         "P1",
         "P2"
@@ -325,31 +274,6 @@
       "declared_status": "implemented",
       "failed_gate_checks": [],
       "relevant_open_issues": [
-        {
-          "id": "ISSUE-0008",
-          "title": "Intent-grounding router remains partial for deterministic route confidence",
-          "path": "docs/issues/ISSUE-0008-intent-grounding-gate-failures-block-merge.md"
-        },
-        {
-          "id": "ISSUE-0009",
-          "title": "Knowing grounded answers remain partial due to provenance/recall gate debt",
-          "path": "docs/issues/ISSUE-0009-knowing-grounded-answers-partial-provenance-gap.md"
-        },
-        {
-          "id": "ISSUE-0010",
-          "title": "Unknowing safe fallback remains partial for explicit uncertainty contract completeness",
-          "path": "docs/issues/ISSUE-0010-unknowing-safe-fallback-partial-contract-gap.md"
-        },
-        {
-          "id": "ISSUE-0011",
-          "title": "Turn analytics aggregation silently drops non-analytics session events without operator coverage diagnostics",
-          "path": "docs/issues/ISSUE-0011-turn-analytics-input-coverage-silent-drop.md"
-        },
-        {
-          "id": "ISSUE-0012",
-          "title": "Canonical turn pipeline delivery plan requires staged implementation and mandatory code review checkpoints",
-          "path": "docs/issues/ISSUE-0012-canonical-turn-pipeline-delivery-plan.md"
-        },
         {
           "id": "ISSUE-0013",
           "title": "Implement canonical turn pipeline as the primary bug-elimination program",
@@ -390,31 +314,6 @@
       "failed_gate_checks": [],
       "relevant_open_issues": [
         {
-          "id": "ISSUE-0008",
-          "title": "Intent-grounding router remains partial for deterministic route confidence",
-          "path": "docs/issues/ISSUE-0008-intent-grounding-gate-failures-block-merge.md"
-        },
-        {
-          "id": "ISSUE-0009",
-          "title": "Knowing grounded answers remain partial due to provenance/recall gate debt",
-          "path": "docs/issues/ISSUE-0009-knowing-grounded-answers-partial-provenance-gap.md"
-        },
-        {
-          "id": "ISSUE-0010",
-          "title": "Unknowing safe fallback remains partial for explicit uncertainty contract completeness",
-          "path": "docs/issues/ISSUE-0010-unknowing-safe-fallback-partial-contract-gap.md"
-        },
-        {
-          "id": "ISSUE-0011",
-          "title": "Turn analytics aggregation silently drops non-analytics session events without operator coverage diagnostics",
-          "path": "docs/issues/ISSUE-0011-turn-analytics-input-coverage-silent-drop.md"
-        },
-        {
-          "id": "ISSUE-0012",
-          "title": "Canonical turn pipeline delivery plan requires staged implementation and mandatory code review checkpoints",
-          "path": "docs/issues/ISSUE-0012-canonical-turn-pipeline-delivery-plan.md"
-        },
-        {
           "id": "ISSUE-0013",
           "title": "Implement canonical turn pipeline as the primary bug-elimination program",
           "path": "docs/issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md"
@@ -452,31 +351,6 @@
       "declared_status": "implemented",
       "failed_gate_checks": [],
       "relevant_open_issues": [
-        {
-          "id": "ISSUE-0008",
-          "title": "Intent-grounding router remains partial for deterministic route confidence",
-          "path": "docs/issues/ISSUE-0008-intent-grounding-gate-failures-block-merge.md"
-        },
-        {
-          "id": "ISSUE-0009",
-          "title": "Knowing grounded answers remain partial due to provenance/recall gate debt",
-          "path": "docs/issues/ISSUE-0009-knowing-grounded-answers-partial-provenance-gap.md"
-        },
-        {
-          "id": "ISSUE-0010",
-          "title": "Unknowing safe fallback remains partial for explicit uncertainty contract completeness",
-          "path": "docs/issues/ISSUE-0010-unknowing-safe-fallback-partial-contract-gap.md"
-        },
-        {
-          "id": "ISSUE-0011",
-          "title": "Turn analytics aggregation silently drops non-analytics session events without operator coverage diagnostics",
-          "path": "docs/issues/ISSUE-0011-turn-analytics-input-coverage-silent-drop.md"
-        },
-        {
-          "id": "ISSUE-0012",
-          "title": "Canonical turn pipeline delivery plan requires staged implementation and mandatory code review checkpoints",
-          "path": "docs/issues/ISSUE-0012-canonical-turn-pipeline-delivery-plan.md"
-        },
         {
           "id": "ISSUE-0013",
           "title": "Implement canonical turn pipeline as the primary bug-elimination program",
