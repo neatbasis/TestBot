@@ -38,3 +38,13 @@ Feature: Memory recall behavior
     Then the stage artifacts include a typed turn observation
     And stabilization provides same-turn exclusion doc ids before intent resolve
 
+
+  Scenario: segment-aware continuity groups multi-turn self-profile memory
+    Given derived memory segments for follow-up self-profile turns
+    Then the segment id remains stable across those turns
+
+  Scenario: strata-aware retrieval prefers semantic memory over episodic utterance
+    Given a segment with semantic and episodic memory candidates
+    When evidence is bundled for policy consumption
+    Then semantic memory is retained as canonical evidence for that segment
+    And raw episodic utterance evidence for that segment is de-prioritized

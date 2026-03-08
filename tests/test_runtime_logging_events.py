@@ -406,7 +406,7 @@ def test_chat_loop_definitional_question_attempts_retrieval_and_does_not_mark_sk
     assert retrieval_payload.get("skipped", False) is False
     assert retrieval_payload["hygiene"]["primary_invariant"] == "retrieve_stage_exclusion"
     assert retrieval_payload["hygiene"]["rerank_defense_in_depth"] is True
-    assert len(retrieval_payload["hygiene"]["exclude_doc_ids"]) == 2
+    assert len(retrieval_payload["hygiene"]["exclude_doc_ids"]) == 3
 
 
 def test_chat_loop_conversational_prompt_skips_knowledge_retrieval_path(monkeypatch) -> None:

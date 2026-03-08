@@ -21,6 +21,10 @@ class EvidenceRecord:
     score: float = 0.0
     content: str = ""
     source_type: str = ""
+    memory_stratum: str = ""
+    segment_type: str = ""
+    segment_id: str = ""
+    segment_membership_edge_refs: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -79,6 +83,10 @@ def _to_evidence_record(*, doc: Document, score: float) -> EvidenceRecord:
         score=float(score),
         content=str(doc.page_content or ""),
         source_type=str(metadata.get("source_type") or metadata.get("type") or metadata.get("record_kind") or ""),
+        memory_stratum=str(metadata.get("memory_stratum") or ""),
+        segment_type=str(metadata.get("segment_type") or ""),
+        segment_id=str(metadata.get("segment_id") or ""),
+        segment_membership_edge_refs=tuple(str(v) for v in (metadata.get("segment_membership_edge_refs") or [])),
     )
 
 
@@ -126,18 +134,40 @@ def build_evidence_bundle_from_docs_and_scores(
         else:
             structured_facts.append(record)
 
-    return EvidenceBundle(
-        structured_facts=tuple(structured_facts),
-        episodic_utterances=tuple(episodic_utterances),
-        repair_anchors_offers=tuple(repair_anchors_offers),
-        reflections_hypotheses=tuple(reflections_hypotheses),
-        source_evidence=tuple(source_evidence),
+    return apply_memory_strata_precedence(
+        EvidenceBundle(
+            structured_facts=tuple(structured_facts),
+            episodic_utterances=tuple(episodic_utterances),
+            repair_anchors_offers=tuple(repair_anchors_offers),
+            reflections_hypotheses=tuple(reflections_hypotheses),
+            source_evidence=tuple(source_evidence),
+        )
     )
 
 
+
+
+def apply_memory_strata_precedence(bundle: EvidenceBundle) -> EvidenceBundle:
+    semantic = [record for record in bundle.structured_facts if record.memory_stratum == "semantic"]
+    if not semantic:
+        return bundle
+
+    retained_episodic = [
+        record
+        for record in bundle.episodic_utterances
+        if not record.segment_id or record.segment_id not in {entry.segment_id for entry in semantic if entry.segment_id}
+    ]
+    return EvidenceBundle(
+        structured_facts=bundle.structured_facts,
+        episodic_utterances=tuple(retained_episodic),
+        repair_anchors_offers=bundle.repair_anchors_offers,
+        reflections_hypotheses=bundle.reflections_hypotheses,
+        source_evidence=bundle.source_evidence,
+    )
+
 def build_evidence_bundle_from_hits(hits: list[Document]) -> EvidenceBundle:
     # Hits already represent post-rerank confident records, so use a neutral fixed score.
-    return build_evidence_bundle_from_docs_and_scores([(doc, 1.0) for doc in hits])
+    return apply_memory_strata_precedence(build_evidence_bundle_from_docs_and_scores([(doc, 1.0) for doc in hits]))
 
 
 def retrieval_result(

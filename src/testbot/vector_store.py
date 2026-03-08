@@ -20,6 +20,8 @@ class MemoryStore(Protocol):
         exclude_doc_ids: set[str] | None = None,
         exclude_source_ids: set[str] | None = None,
         exclude_turn_scoped_ids: set[str] | None = None,
+        segment_ids: set[str] | None = None,
+        segment_types: set[str] | None = None,
     ) -> list[tuple[Document, float]]: ...
 
 
@@ -92,6 +94,8 @@ class InMemoryMemoryStore:
         exclude_doc_ids: set[str] | None = None,
         exclude_source_ids: set[str] | None = None,
         exclude_turn_scoped_ids: set[str] | None = None,
+        segment_ids: set[str] | None = None,
+        segment_types: set[str] | None = None,
     ) -> list[tuple[Document, float]]:
         hits = self.store.similarity_search_with_score(query, k=k + 12)
         return _filter_hits_for_exclusions(
@@ -100,6 +104,8 @@ class InMemoryMemoryStore:
             exclude_doc_ids=exclude_doc_ids,
             exclude_source_ids=exclude_source_ids,
             exclude_turn_scoped_ids=exclude_turn_scoped_ids,
+            segment_ids=segment_ids,
+            segment_types=segment_types,
         )
 
 
@@ -171,10 +177,14 @@ class ElasticsearchMemoryStore:
         exclude_doc_ids: set[str] | None = None,
         exclude_source_ids: set[str] | None = None,
         exclude_turn_scoped_ids: set[str] | None = None,
+        segment_ids: set[str] | None = None,
+        segment_types: set[str] | None = None,
     ) -> list[tuple[Document, float]]:
         exclude_doc_ids = _normalize_exclusion_ids(exclude_doc_ids)
         exclude_source_ids = _normalize_exclusion_ids(exclude_source_ids)
         exclude_turn_scoped_ids = _normalize_exclusion_ids(exclude_turn_scoped_ids)
+        segment_ids = _normalize_exclusion_ids(segment_ids)
+        segment_types = _normalize_exclusion_ids(segment_types)
 
         must_not: list[dict[str, object]] = []
         if exclude_doc_ids:
@@ -188,13 +198,19 @@ class ElasticsearchMemoryStore:
             must_not.append({"terms": {"metadata.doc_id": scoped}})
             must_not.append({"terms": {"metadata.source_doc_id": scoped}})
 
+        must: list[dict[str, object]] = [{"match_all": {}}]
+        if segment_ids:
+            must.append({"terms": {"metadata.segment_id": sorted(segment_ids)}})
+        if segment_types:
+            must.append({"terms": {"metadata.segment_type": sorted(segment_types)}})
+
         query_vector = self._embeddings.embed_query(query)
         res = self._es.search(
             index=self._index,
             size=k,
             query={
                 "script_score": {
-                    "query": {"bool": {"must": [{"match_all": {}}], "must_not": must_not}},
+                    "query": {"bool": {"must": must, "must_not": must_not}},
                     "script": {
                         "source": "cosineSimilarity(params.query_vector, 'embedding') + 1.0",
                         "params": {"query_vector": query_vector},
@@ -221,6 +237,8 @@ class ElasticsearchMemoryStore:
             exclude_doc_ids=exclude_doc_ids,
             exclude_source_ids=exclude_source_ids,
             exclude_turn_scoped_ids=exclude_turn_scoped_ids,
+            segment_ids=segment_ids,
+            segment_types=segment_types,
         )
 
 
@@ -247,6 +265,8 @@ class PromotingMemoryStore:
         exclude_doc_ids: set[str] | None = None,
         exclude_source_ids: set[str] | None = None,
         exclude_turn_scoped_ids: set[str] | None = None,
+        segment_ids: set[str] | None = None,
+        segment_types: set[str] | None = None,
     ) -> list[tuple[Document, float]]:
         primary_hits = self.primary.similarity_search_with_score(
             query,
@@ -254,6 +274,8 @@ class PromotingMemoryStore:
             exclude_doc_ids=exclude_doc_ids,
             exclude_source_ids=exclude_source_ids,
             exclude_turn_scoped_ids=exclude_turn_scoped_ids,
+            segment_ids=segment_ids,
+            segment_types=segment_types,
         )
         if primary_hits:
             return primary_hits
@@ -264,6 +286,8 @@ class PromotingMemoryStore:
             exclude_doc_ids=exclude_doc_ids,
             exclude_source_ids=exclude_source_ids,
             exclude_turn_scoped_ids=exclude_turn_scoped_ids,
+            segment_ids=segment_ids,
+            segment_types=segment_types,
         )
         if fallback_hits:
             promoted_docs: list[Document] = []
@@ -291,6 +315,8 @@ def _is_excluded_document(
     exclude_doc_ids: set[str],
     exclude_source_ids: set[str],
     exclude_turn_scoped_ids: set[str],
+    segment_ids: set[str],
+    segment_types: set[str],
 ) -> bool:
     metadata = doc.metadata if isinstance(doc.metadata, dict) else {}
     doc_id = str(doc.id or metadata.get("doc_id") or "").strip()
@@ -304,6 +330,12 @@ def _is_excluded_document(
         value in exclude_turn_scoped_ids for value in (doc_id, source_doc_id, turn_doc_id) if value
     ):
         return True
+    doc_segment_id = str(metadata.get("segment_id") or "").strip()
+    doc_segment_type = str(metadata.get("segment_type") or "").strip()
+    if segment_ids and doc_segment_id not in segment_ids:
+        return True
+    if segment_types and doc_segment_type not in segment_types:
+        return True
     return False
 
 
@@ -314,10 +346,14 @@ def _filter_hits_for_exclusions(
     exclude_doc_ids: set[str] | None,
     exclude_source_ids: set[str] | None,
     exclude_turn_scoped_ids: set[str] | None,
+    segment_ids: set[str] | None,
+    segment_types: set[str] | None,
 ) -> list[tuple[Document, float]]:
     doc_ids = _normalize_exclusion_ids(exclude_doc_ids)
     source_ids = _normalize_exclusion_ids(exclude_source_ids)
     turn_ids = _normalize_exclusion_ids(exclude_turn_scoped_ids)
+    normalized_segment_ids = _normalize_exclusion_ids(segment_ids)
+    normalized_segment_types = _normalize_exclusion_ids(segment_types)
     filtered = [
         (doc, score)
         for doc, score in hits
@@ -326,6 +362,8 @@ def _filter_hits_for_exclusions(
             exclude_doc_ids=doc_ids,
             exclude_source_ids=source_ids,
             exclude_turn_scoped_ids=turn_ids,
+            segment_ids=normalized_segment_ids,
+            segment_types=normalized_segment_types,
         )
     ]
     return filtered[:k]

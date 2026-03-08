@@ -14,6 +14,8 @@ from testbot.rerank import adaptive_sigma_fractional, rerank_docs_with_time_and_
 from testbot.turn_observation import observe_turn
 from testbot.candidate_encoding import encode_turn_candidates
 from testbot.canonical_turn_orchestrator import CanonicalStage, CanonicalTurnContext, CanonicalTurnOrchestrator
+from testbot.memory_strata import derive_segment_descriptor
+from testbot.evidence_retrieval import build_evidence_bundle_from_docs_and_scores
 
 from testbot.sat_chatbot_memory_v2 import has_sufficient_context_confidence, stage_rerank
 from testbot.stage_transitions import (
@@ -528,3 +530,60 @@ def step_then_retrieve_observes_post_stabilization_policy_decision(context) -> N
         "intent.resolve",
         "retrieve.evidence",
     ]
+
+
+@given("derived memory segments for follow-up self-profile turns")
+def step_given_derived_memory_segments(context) -> None:
+    first = derive_segment_descriptor(utterance="My name is Sebastian", has_dialogue_state=True)
+    second = derive_segment_descriptor(
+        utterance="My name is Sebastian and I prefer tea",
+        prior_descriptor=first,
+        has_dialogue_state=True,
+    )
+    context.segment_descriptors = (first, second)
+
+
+@then("the segment id remains stable across those turns")
+def step_then_segment_id_stable(context) -> None:
+    first, second = context.segment_descriptors
+    assert first.segment_id == second.segment_id
+
+
+@given("a segment with semantic and episodic memory candidates")
+def step_given_segment_strata_candidates(context) -> None:
+    segment = derive_segment_descriptor(utterance="What is my name?")
+    context.segment_bundle = build_evidence_bundle_from_docs_and_scores(
+        [
+            (
+                Document(
+                    id="semantic-name",
+                    page_content="name=Sebastian",
+                    metadata={"type": "profile_fact", "memory_stratum": "semantic", "segment_id": segment.segment_id},
+                ),
+                0.82,
+            ),
+            (
+                Document(
+                    id="episodic-name",
+                    page_content="My name is Sebastian",
+                    metadata={"type": "user_utterance", "memory_stratum": "episodic", "segment_id": segment.segment_id},
+                ),
+                0.95,
+            ),
+        ]
+    )
+
+
+@when("evidence is bundled for policy consumption")
+def step_when_evidence_bundled(context) -> None:
+    assert context.segment_bundle.total_records() >= 1
+
+
+@then("semantic memory is retained as canonical evidence for that segment")
+def step_then_semantic_retained(context) -> None:
+    assert [record.ref_id for record in context.segment_bundle.structured_facts] == ["semantic-name"]
+
+
+@then("raw episodic utterance evidence for that segment is de-prioritized")
+def step_then_episodic_deprioritized(context) -> None:
+    assert context.segment_bundle.episodic_utterances == ()

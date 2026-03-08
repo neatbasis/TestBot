@@ -152,3 +152,10 @@ The repository documents a canonical 11-stage turn pipeline and the doctrine "wr
 - 2026-03-08: Canonical reporting artifacts regenerated after commit/audit status refresh:
   - `artifacts/all-green-gate-summary.json` generated at `2026-03-08T15:48:11Z` via `python scripts/all_green_gate.py --json-output artifacts/all-green-gate-summary.json` (gate passed with KPI guardrail warning mode active).
   - `docs/qa/feature-status-report.md` and `artifacts/feature-status-summary.json` generated at `2026-03-08T15:48:15Z` via `python scripts/report_feature_status.py --output docs/qa/feature-status-report.md --json-output artifacts/feature-status-summary.json`.
+
+
+- 2026-03-08: Segment-aware strata persistence evidence added for criteria 6/7/10 traceability:
+  - Runtime persistence now stamps explicit memory strata (`episodic`, `semantic`, `procedural_dialogue_state`) and segment metadata (`segment_type`, `segment_id`, `segment_membership_edge_refs`) during stabilization and commit persistence paths (`src/testbot/stabilization.py`, `src/testbot/sat_chatbot_memory_v2.py`, `src/testbot/memory_strata.py`).
+  - Retrieval path now accepts and enforces segment constraints for canonical recall (`src/testbot/sat_chatbot_memory_v2.py`, `src/testbot/vector_store.py`).
+  - Evidence bundling now preserves segment-aware fields and applies strata precedence so semantic memory wins over same-segment episodic utterance recall (`src/testbot/evidence_retrieval.py`).
+  - Deterministic proof coverage added for segment continuity, segment-constrained retrieval, and semantic-over-episodic precedence (`tests/test_memory_segments_and_strata.py`, `tests/test_evidence_retrieval_mapping.py`, `features/memory_recall.feature`, `features/steps/memory_steps.py`).
