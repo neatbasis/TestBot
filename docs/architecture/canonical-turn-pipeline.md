@@ -249,6 +249,57 @@ A pipeline adoption change is complete when all are true:
 6. Validation enforces retrieval/policy/answer-class alignment.
 7. BDD scenarios and deterministic tests in `features/` + `tests/` are updated for stakeholder-visible behavior changes.
 
+
+## Intent taxonomy contract
+
+This section defines the deterministic contract for top-level intent classification and typed facet composition used by `intent.resolve`.
+
+### 1) Allowed intent classes
+
+Canonical top-level classes are constrained to:
+
+- `knowledge_question`
+- `meta_conversation`
+- `capabilities_help`
+- `memory_recall`
+- `time_query`
+- `control`
+
+Any other class label is invalid for canonical routing.
+
+### 2) Allowed facet combinations
+
+Facets are secondary typed signals (`temporal`, `memory`, `capability`, `control`) and must satisfy:
+
+| Intent class | Allowed facet contract |
+| --- | --- |
+| `control` | `control=true`; `temporal=false`, `memory=false`, `capability=false` |
+| `time_query` | `temporal=true`; `control=false`; `memory` optional; `capability` optional |
+| `memory_recall` | `memory=true`; `control=false`; `temporal` optional; `capability` optional |
+| `capabilities_help` | `capability=true`; `control=false`; `temporal=false`; `memory=false` |
+| `meta_conversation` | `control=false`; `temporal=false`; `memory=false`; `capability` optional |
+| `knowledge_question` | `control=false`; `temporal` optional; `memory` optional; `capability` optional |
+
+Invalid combinations are rejected as taxonomy violations (deterministic error reasons should be emitted by validation).
+
+### 3) Precedence rules for overlaps
+
+When an utterance activates multiple cues, overlap resolution order is:
+
+1. `control`
+2. `time_query`
+3. `memory_recall`
+4. `capabilities_help`
+5. `meta_conversation`
+6. `knowledge_question` (default/fallback)
+
+Operationally for the overlap classes requested by stakeholders:
+
+- `control` supersedes `capabilities_help`, `meta_conversation`, and `knowledge_question`.
+- `capabilities_help` supersedes `meta_conversation` and `knowledge_question` when capability-action phrasing is explicit.
+- `meta_conversation` supersedes `knowledge_question` for chat/process reflection prompts.
+- `knowledge_question` remains the deterministic fallback when no higher-precedence class matches.
+
 ## Example traces
 
 The following trace classes are intended to be **mutually exclusive and commonly exhaustive** for canonical turn handling at `intent.resolve` time.

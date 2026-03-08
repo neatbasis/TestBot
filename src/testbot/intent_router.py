@@ -180,6 +180,10 @@ def extract_intent_facets(user_input: str | None) -> IntentFacets:
     if not normalized:
         return IntentFacets()
 
+    control = _matches_any(normalized, _CONTROL_PATTERNS) or _matches_any(normalized, _GREETING_COMMAND_PATTERNS)
+    if control:
+        return IntentFacets(control=True)
+
     return IntentFacets(
         temporal=_matches_any(normalized, _TIME_QUERY_PATTERNS),
         memory=_matches_any(normalized, _MEMORY_RECALL_PATTERNS),
@@ -188,24 +192,21 @@ def extract_intent_facets(user_input: str | None) -> IntentFacets:
             or is_satellite_action_request(normalized)
             or _matches_any(normalized, _CAPABILITIES_HELP_PATTERNS)
         ),
-        control=(
-            _matches_any(normalized, _CONTROL_PATTERNS)
-            or _matches_any(normalized, _GREETING_COMMAND_PATTERNS)
-        ),
+        control=False,
     )
 
 
 def planning_pathway_for_intent(intent: IntentType, facets: IntentFacets) -> PlanningDescriptor:
     """Map intent + facets to a deterministic response-planning descriptor."""
 
-    if intent == IntentType.MEMORY_RECALL:
+    if intent == IntentType.CONTROL or facets.control:
+        pathway = "control"
+    elif intent == IntentType.MEMORY_RECALL:
         pathway = "memory_recall"
     elif intent == IntentType.TIME_QUERY:
         pathway = "time_query"
     elif intent == IntentType.CAPABILITIES_HELP or facets.capability:
         pathway = "capabilities"
-    elif intent == IntentType.CONTROL or facets.control:
-        pathway = "control"
     else:
         pathway = "non_memory"
 
