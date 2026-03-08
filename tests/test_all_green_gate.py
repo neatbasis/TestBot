@@ -213,6 +213,12 @@ def test_run_gate_enforces_blocking_turn_analytics_checks(monkeypatch: pytest.Mo
     assert exit_code == 1
 
 
+def test_build_checks_includes_pipeline_stage_conformance_validator() -> None:
+    checks = all_green_gate.build_checks(base_ref="origin/main", kpi_guardrail_mode="optional")
+
+    check = next(check for check in checks if check.name == "safety_validate_pipeline_stage_conformance")
+    assert check.command[1:] == ["scripts/validate_pipeline_stage_conformance.py"]
+
 def test_build_checks_default_profile_has_expected_check_names() -> None:
     checks = all_green_gate.build_checks(base_ref="origin/main", kpi_guardrail_mode="optional")
 
@@ -220,6 +226,7 @@ def test_build_checks_default_profile_has_expected_check_names() -> None:
         "product_behave",
         "product_eval_recall_topk4",
         "safety_validate_log_schema",
+        "safety_validate_pipeline_stage_conformance",
         "qa_pytest_not_live_smoke",
         "qa_validate_issue_links",
         "qa_validate_issues",

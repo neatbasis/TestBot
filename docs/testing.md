@@ -107,7 +107,7 @@ The canonical gate (`scripts/all_green_gate.py`) supports KPI rollout controls v
 
 | Test layer | Canonical command | Runtime dependency | CI gate level | Expected runtime | Pass criteria |
 | --- | --- | --- | --- | --- | --- |
-| Single merge/readiness gate (fast profile) | `python scripts/all_green_gate.py` | Python dev extras (`behave`, `pytest`) plus local docs/issues/fixtures and git metadata | **Required (canonical gate)** | ~30-150s depending on test volume | Exit code `0`; category-level blocking checks pass (BDD, deterministic pytest, recall eval, governance + invariant mirror/path/schema validators) without redundant targeted overlap commands. **Interpret feature-status evidence as behavior confidence only when this gate includes a successful BDD run.** |
+| Single merge/readiness gate (fast profile) | `python scripts/all_green_gate.py` | Python dev extras (`behave`, `pytest`) plus local docs/issues/fixtures and git metadata | **Required (canonical gate)** | ~30-150s depending on test volume | Exit code `0`; category-level blocking checks pass (BDD, deterministic pytest, recall eval, governance + invariant mirror/path/schema + pipeline-stage conformance validators) without redundant targeted overlap commands. **Interpret feature-status evidence as behavior confidence only when this gate includes a successful BDD run.** |
 | BDD acceptance (`behave`) | `python -m behave` _(requires `pip install -e .[dev]` first)_ | Python dev extras (`behave`) and local deterministic fixtures | **Executed by canonical gate (component check)** | ~10-60s for current feature set | Exit code `0`; no failed/undefined steps; acceptance scenarios for changed behavior pass. |
 | Deterministic unit/component (`pytest`) | `python -m pytest -m "not live_smoke"` | Python dev extras (`pytest`); no network or external services | **Executed by canonical gate (component check)** | ~5-30s for fast deterministic scope | Exit code `0`; no flaky network-bound failures; logic and wiring tests for changed code pass. |
 | Eval/runtime parity check (`pytest`) | `python -m pytest tests/test_eval_runtime_parity.py` | Python dev extras (`pytest`) and fixed fixtures (`eval/cases.jsonl`, `tests/fixtures/candidate_sets.jsonl`) | **Executed by canonical gate in `--check-profile exhaustive`** | ~1-5s | Exit code `0`; runtime path scoring and eval adapter path stay aligned for ordering, top-1, and fallback intent decisions. |
@@ -171,6 +171,13 @@ Validate invariant mirror sync only (non-zero on mismatch):
 
 ```bash
 python scripts/sync_invariants_mirror.py --check
+```
+
+
+Run pipeline stage conformance validator directly:
+
+```bash
+python scripts/validate_pipeline_stage_conformance.py
 ```
 
 Run BDD scenarios directly (requires canonical contributor install `pip install -e .[dev]` first):
