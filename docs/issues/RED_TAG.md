@@ -11,6 +11,7 @@ This file indexes all `severity: red` issues requiring escalated visibility.
 ## Canonical pipeline routing note
 
 - Canonical pipeline defects must be tagged and escalated against ISSUE-0013 first; link dependent issue IDs only after ISSUE-0013 routing is recorded.
+- ISSUE-0013 may remain `Severity: amber` while still acting as canonical routing anchor; only `Severity: red` issues belong in Active/Resolved lists below.
 
 ## Recurring triage note template
 

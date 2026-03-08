@@ -8,6 +8,7 @@
 - **Created:** 2026-03-07
 - **Target Sprint:** Sprint 3-5
 - **Canonical Cross-Reference:** `ISSUE-0012-canonical-turn-pipeline-delivery-plan.md`
+- **Cross-Reference Pointers:** ISSUE-0014 (active red identity-continuity regression), ISSUE-0015 (active red quality/governance hardening review)
 - **Principle Alignment:** contract-first, invariant-driven, traceable, deterministic, ci-enforced, ontology-aware
 
 ## Problem Statement

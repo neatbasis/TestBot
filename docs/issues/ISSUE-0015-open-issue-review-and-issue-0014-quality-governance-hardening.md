@@ -7,6 +7,7 @@
 - **Owner:** platform-qa
 - **Created:** 2026-03-08
 - **Target Sprint:** Sprint 6
+- **Canonical Cross-Reference:** ISSUE-0014 (defect narrative under review), ISSUE-0013 (primary implementation stream), ISSUE-0012 (delivery-plan governance)
 - **Principle Alignment:** contract-first, invariant-driven, traceable, deterministic, ci-enforced, user-centric
 
 ## Canonical Cross-Reference
@@ -101,7 +102,7 @@ Review scope was limited to open issues (`open` or `in_progress`) and issue-gove
 2. Add or refine linked acceptance criteria in ISSUE-0013 where ISSUE-0014 evidence changes closure assumptions.
 3. Add any missing telemetry requirements to the relevant issue records and implementation tasks.
 4. Run issue-governance validators and regenerate feature-status artifacts to confirm linkage consistency.
-5. Record closure evidence in ISSUE-0015 and then mark resolved only after ISSUE-0014 text is hardened and traceable.
+5. Record closure evidence in ISSUE-0015 and mark ISSUE-0015 resolved only after ISSUE-0014 governance text is hardened and traceable; ISSUE-0014 itself remains open until its behavioral acceptance criteria and verification evidence are complete.
 
 ## Verification
 
