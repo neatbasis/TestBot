@@ -5,6 +5,7 @@ from enum import StrEnum
 
 from langchain_core.documents import Document
 
+from testbot.pipeline_state import PipelineState
 from testbot.stabilization import StabilizedTurnState
 
 
@@ -71,6 +72,32 @@ class RetrievalResult:
     hit_count: int
     rationale: str
     reasoning: dict[str, object] = field(default_factory=dict)
+
+
+def continuity_evidence_from_prior_state(prior_pipeline_state: PipelineState | None) -> tuple[str, ...]:
+    """Extract deterministic retrieval continuity evidence from prior committed state."""
+
+    if prior_pipeline_state is None:
+        return ()
+
+    commit_receipt = prior_pipeline_state.commit_receipt.to_dict()
+    anchors: list[str] = []
+
+    for fact in commit_receipt.get("confirmed_user_facts", []):
+        normalized = str(fact).strip()
+        if normalized:
+            anchors.append(f"commit.confirmed_user_facts:{normalized}")
+
+    for obligation in commit_receipt.get("remaining_obligations", []):
+        normalized = str(obligation).strip()
+        if normalized:
+            anchors.append(f"commit.remaining_obligations:{normalized}")
+
+    pending_repair_state = commit_receipt.get("pending_repair_state", {})
+    if isinstance(pending_repair_state, dict) and pending_repair_state.get("required"):
+        anchors.append("commit.pending_repair_state:required")
+
+    return tuple(dict.fromkeys(anchors))
 
 
 def build_evidence_bundle(

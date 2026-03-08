@@ -64,8 +64,13 @@ Status legend: `[ ] pending`, `[~] partial`, `[x] complete`.
   - evidence: `tests/test_runtime_logging_events.py`
   - evidence: `features/intent_grounding.feature`
 - [~] [AC-0013-09] `answer.commit` persists continuity-critical state, including pending repair state, obligations, and confirmed facts promotion path.
+  - evidence: `src/testbot/answer_commit.py`
+  - evidence: `src/testbot/context_resolution.py`
+  - evidence: `src/testbot/evidence_retrieval.py`
   - evidence: `tests/test_runtime_logging_events.py::test_chat_loop_two_turn_commit_continuity_is_consumed_by_context_and_retrieval`
+  - evidence: `tests/test_runtime_logging_events.py::test_resolve_context_consumes_commit_receipt_continuity_deterministically`
   - evidence: `tests/test_turn_analytics_aggregator.py::test_aggregate_turn_dataset_multi_turn_commit_continuity_fields_preserved`
+  - evidence: `tests/test_turn_analytics_aggregator.py::test_normalize_and_validate_rows_preserves_commit_audit_payload_completeness`
 - [~] [AC-0013-10] Deterministic behavior scenarios pass for observe-before-infer, stabilize-before-route, same-turn retrieval exclusion, self-identification persistence (for example `user_name=Sebastian`), repair-offer continuation (`What do you need?` after assistant repair offer), empty-evidence distinct from scored-empty, and semantic-memory recall winning over raw utterance recall when both exist.
   - evidence: `features/intent_grounding.feature`
   - evidence: `features/memory_recall.feature`
@@ -188,3 +193,12 @@ Status legend: `[ ] pending`, `[~] partial`, `[x] complete`.
 
 
 - 2026-03-08: Regression-hardening pass added explicit acceptance traceability for `AC-0013-01`, `AC-0013-03`, `AC-0013-05`, and `AC-0013-10` across canonical routing entrypoints and deterministic behavior coverage (`src/testbot/canonical_turn_orchestrator.py`, `src/testbot/sat_chatbot_memory_v2.py`, `src/testbot/stabilization.py`, `features/memory_recall.feature`, `tests/test_canonical_turn_orchestrator.py`, `tests/test_runtime_logging_events.py`).
+
+
+- 2026-03-08: AC-0013-09 continuity proof set expanded and locked with deterministic two-turn + repair-followup coverage.
+  - AC-0013-09 proof (commit persistence contract): `src/testbot/answer_commit.py`; runtime commit audit log assertions in `tests/test_runtime_logging_events.py::test_chat_loop_logs_commit_stage_record_with_durable_commit_state`.
+  - AC-0013-09 proof (next-turn continuity consumption): `src/testbot/context_resolution.py`, `src/testbot/evidence_retrieval.py`; deterministic assertion in `tests/test_runtime_logging_events.py::test_resolve_context_consumes_commit_receipt_continuity_deterministically`.
+  - AC-0013-09 proof (two-turn continuity + audit payload completeness): `tests/test_runtime_logging_events.py::test_chat_loop_two_turn_commit_continuity_is_consumed_by_context_and_retrieval`, `tests/test_turn_analytics_aggregator.py::test_aggregate_turn_dataset_multi_turn_commit_continuity_fields_preserved`, and `tests/test_turn_analytics_aggregator.py::test_normalize_and_validate_rows_preserves_commit_audit_payload_completeness`.
+- 2026-03-08: AC-0013-11 evidence regenerated from current gate/report inputs without over-claiming implementation closure.
+  - AC-0013-11 proof (canonical gate evidence): `artifacts/all-green-gate-summary.json` regenerated via `python scripts/all_green_gate.py --json-output artifacts/all-green-gate-summary.json` and now records current failing `product_behave` checks.
+  - AC-0013-11 proof (status report + JSON summary): `docs/qa/feature-status-report.md` and `artifacts/feature-status-summary.json` regenerated via `python scripts/report_feature_status.py --output docs/qa/feature-status-report.md --json-output artifacts/feature-status-summary.json` and continue to classify canonical pipeline slices as `partial`.

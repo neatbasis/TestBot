@@ -85,6 +85,7 @@ from testbot.evidence_retrieval import (
     EvidenceBundle,
     build_evidence_bundle_from_docs_and_scores,
     build_evidence_bundle_from_hits,
+    continuity_evidence_from_prior_state,
     retrieval_result,
 )
 from testbot.policy_decision import DecisionClass, DecisionObject, decide as decide_policy, decide_from_evidence
@@ -2734,7 +2735,22 @@ def _run_canonical_turn_pipeline(
             utterance=stabilized_utterance or utterance,
             prior_pipeline_state=prior_pipeline_state,
         )
+        continuity_evidence = continuity_evidence_from_prior_state(prior_pipeline_state)
         ctx.artifacts["resolved_context"] = context_resolution
+        ctx.artifacts["retrieval_continuity_evidence"] = continuity_evidence
+        ctx.state = replace(
+            ctx.state,
+            resolved_context={
+                "history_anchors": list(context_resolution.history_anchors),
+                "ambiguity_flags": list(context_resolution.ambiguity_flags),
+                "continuity_posture": context_resolution.continuity_posture.value,
+                "prior_intent": context_resolution.prior_intent.value if context_resolution.prior_intent is not None else "",
+            },
+            confidence_decision={
+                **ctx.state.confidence_decision,
+                "retrieval_continuity_evidence": list(continuity_evidence),
+            },
+        )
         append_pipeline_snapshot("context", ctx.state)
         return ctx
 
@@ -2985,6 +3001,7 @@ def _run_canonical_turn_pipeline(
                 "resolved_obligations": ctx.state.commit_receipt.get("resolved_obligations", []),
                 "remaining_obligations": ctx.state.commit_receipt.get("remaining_obligations", []),
                 "confirmed_user_facts": ctx.state.commit_receipt.get("confirmed_user_facts", []),
+                "retrieval_continuity_evidence": list(ctx.artifacts.get("retrieval_continuity_evidence", ())),
             },
         )
         append_session_log(

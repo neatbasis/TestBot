@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-03-08T16:52:08Z",
+  "generated_at_utc": "2026-03-08T18:50:16Z",
   "inputs": {
     "contract_path": "docs/qa/feature-status.yaml",
     "gate_summary_path": "artifacts/all-green-gate-summary.json",
@@ -9,85 +9,85 @@
   "source_file_metadata": {
     "contract": {
       "path": "docs/qa/feature-status.yaml",
-      "size_bytes": 7222,
-      "mtime_utc": "2026-03-08T16:50:26Z",
-      "sha256": "da2a695adcae3e71d588e66b1403e6c9aaa42c6b77684fca142a5fb76117a82b"
+      "size_bytes": 8183,
+      "mtime_utc": "2026-03-08T18:49:43Z",
+      "sha256": "24b6f82c7bbe18655f32cf734239a2e9090e8c10a4d957babc7a8a44c25e7421"
     },
     "gate_summary": {
       "path": "artifacts/all-green-gate-summary.json",
-      "size_bytes": 3770,
-      "mtime_utc": "2026-03-08T16:52:02Z",
-      "sha256": "8369caff991355edfe667a1c10f0251c8b5e74686a629ded076a5c6f73557948"
+      "size_bytes": 3734,
+      "mtime_utc": "2026-03-08T18:50:12Z",
+      "sha256": "b591fc49627db733fe8a3545f3730a71acafbe1119d22be40405c789b4577281"
     },
     "open_issues": [
       {
         "path": "docs/issues/ISSUE-0008-intent-grounding-gate-failures-block-merge.md",
-        "size_bytes": 3235,
-        "mtime_utc": "2026-03-08T15:15:15Z",
-        "sha256": "8b1e1371a464108442cb985281b490001bb94336de7bcbac9a3fb68abdf9fa06"
+        "size_bytes": 3548,
+        "mtime_utc": "2026-03-08T18:44:40Z",
+        "sha256": "a61f4ad43d249708f003a03cf6a57e3b07650f9a280f6757e51636d1cff65145"
       },
       {
         "path": "docs/issues/ISSUE-0009-knowing-grounded-answers-partial-provenance-gap.md",
-        "size_bytes": 4803,
-        "mtime_utc": "2026-03-08T15:15:15Z",
-        "sha256": "a465708daef99a0e38d79a283c6cf9483d393c30265560abfede469c2e22a1ed"
+        "size_bytes": 5041,
+        "mtime_utc": "2026-03-08T18:44:40Z",
+        "sha256": "0da64f9ab02283394b8471104f3a5b523c282e121d50c428514be5b1d2f0cb04"
       },
       {
         "path": "docs/issues/ISSUE-0010-unknowing-safe-fallback-partial-contract-gap.md",
-        "size_bytes": 4673,
-        "mtime_utc": "2026-03-08T15:15:15Z",
-        "sha256": "7e5017cb505bd0e384650142e0b1326946149abec8c430b1b9a0cca34eda303d"
+        "size_bytes": 4915,
+        "mtime_utc": "2026-03-08T18:44:40Z",
+        "sha256": "1321cdcbe0796c16fe2a3587b050db322ef11ca3b376a42e435c6f721cddc238"
       },
       {
         "path": "docs/issues/ISSUE-0011-turn-analytics-input-coverage-silent-drop.md",
         "size_bytes": 4287,
-        "mtime_utc": "2026-03-08T15:15:15Z",
+        "mtime_utc": "2026-03-08T16:50:29Z",
         "sha256": "86162dd0afeba256f0340815ec62d9cfcf45283360a95cbb2712ba700857d981"
       },
       {
         "path": "docs/issues/ISSUE-0012-canonical-turn-pipeline-delivery-plan.md",
         "size_bytes": 4596,
-        "mtime_utc": "2026-03-08T15:15:15Z",
+        "mtime_utc": "2026-03-08T16:50:29Z",
         "sha256": "d73f54eda8811870fd3ce738037bf78654b50eb4b60c4a5af138d1cf1804ce28"
       },
       {
         "path": "docs/issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md",
-        "size_bytes": 19023,
-        "mtime_utc": "2026-03-08T16:51:45Z",
-        "sha256": "b58e3345991192bac61675261e128f8c4cdace5c927ace32f87d68a35c075d1a"
+        "size_bytes": 23588,
+        "mtime_utc": "2026-03-08T18:49:34Z",
+        "sha256": "4fb90f97601dc8e811cc4e504aa4d4d7c2e66a6a1c77ba56d11a2dc19d301c3b"
       }
     ],
     "roadmap_files": [
       {
         "path": "docs/roadmap/alignment-drift-technical-debt-2026-03-05.md",
         "size_bytes": 5622,
-        "mtime_utc": "2026-03-08T15:15:15Z",
+        "mtime_utc": "2026-03-08T16:50:29Z",
         "sha256": "02618bdff7d1b35cdbe05736f9e42202981edf2d1204d7d7ef3232899575c530"
       },
       {
         "path": "docs/roadmap/current-status-and-next-5-priorities.md",
         "size_bytes": 8470,
-        "mtime_utc": "2026-03-08T15:15:15Z",
+        "mtime_utc": "2026-03-08T16:50:29Z",
         "sha256": "d8aa997d61c9db9c731ea7c24ceb4d41c7e8f078dd2e502c5f648b12ec645311"
       },
       {
         "path": "docs/roadmap/next-4-sprints-grounded-knowing.md",
         "size_bytes": 13756,
-        "mtime_utc": "2026-03-08T15:15:15Z",
+        "mtime_utc": "2026-03-08T16:50:29Z",
         "sha256": "a725406dcffd4aa1da3a269fe78806032b8360ae64e64c7f879eb277712d4a3c"
       },
       {
         "path": "docs/roadmap/reflective-milestone-10-sprints.md",
         "size_bytes": 9579,
-        "mtime_utc": "2026-03-08T15:15:15Z",
+        "mtime_utc": "2026-03-08T16:50:29Z",
         "sha256": "f8b41b80b9e06c2144db690373aee3bfcd1910999904b5ad086fe63576252da0"
       }
     ]
   },
   "warnings": [],
   "summary": {
-    "implemented": 2,
-    "partial": 7,
+    "implemented": 1,
+    "partial": 8,
     "missing": 0
   },
   "capabilities": [
@@ -97,7 +97,9 @@
       "owner_module": "src/testbot/canonical_turn_orchestrator.py",
       "effective_status": "partial",
       "declared_status": "partial",
-      "failed_gate_checks": [],
+      "failed_gate_checks": [
+        "product_behave"
+      ],
       "relevant_open_issues": [
         {
           "id": "ISSUE-0009",
@@ -129,7 +131,15 @@
       "runtime_dependency_flags": [
         "SOURCE_INGEST_ENABLED",
         "TESTBOT_RERANK_OBJECTIVE_CONFIG"
-      ]
+      ],
+      "criterion_obligations": [],
+      "criterion_status_breakdown": {
+        "pending": 0,
+        "partial": 0,
+        "complete": 0,
+        "unknown": 0
+      },
+      "unresolved_criteria": []
     },
     {
       "capability_id": "unknowing_safe_fallback",
@@ -137,7 +147,9 @@
       "owner_module": "src/testbot/reflection_policy.py",
       "effective_status": "partial",
       "declared_status": "partial",
-      "failed_gate_checks": [],
+      "failed_gate_checks": [
+        "product_behave"
+      ],
       "relevant_open_issues": [
         {
           "id": "ISSUE-0010",
@@ -161,7 +173,15 @@
       ],
       "runtime_dependency_flags": [
         "TESTBOT_DEBUG"
-      ]
+      ],
+      "criterion_obligations": [],
+      "criterion_status_breakdown": {
+        "pending": 0,
+        "partial": 0,
+        "complete": 0,
+        "unknown": 0
+      },
+      "unresolved_criteria": []
     },
     {
       "capability_id": "intent_grounding_router",
@@ -169,7 +189,10 @@
       "owner_module": "src/testbot/sat_chatbot_memory_v2.py::context.resolve|intent.resolve|retrieve.evidence|policy.decide",
       "effective_status": "partial",
       "declared_status": "partial",
-      "failed_gate_checks": [],
+      "failed_gate_checks": [
+        "product_behave",
+        "qa_pytest_not_live_smoke"
+      ],
       "relevant_open_issues": [
         {
           "id": "ISSUE-0008",
@@ -193,15 +216,25 @@
       ],
       "runtime_dependency_flags": [
         "TESTBOT_DEBUG"
-      ]
+      ],
+      "criterion_obligations": [],
+      "criterion_status_breakdown": {
+        "pending": 0,
+        "partial": 0,
+        "complete": 0,
+        "unknown": 0
+      },
+      "unresolved_criteria": []
     },
     {
       "capability_id": "time_aware_memory_ranking",
       "capability_name": "Time-aware memory retrieval and reranking",
       "owner_module": "src/testbot/rerank.py",
-      "effective_status": "implemented",
+      "effective_status": "partial",
       "declared_status": "implemented",
-      "failed_gate_checks": [],
+      "failed_gate_checks": [
+        "qa_pytest_not_live_smoke"
+      ],
       "relevant_open_issues": [],
       "roadmap_priority_refs": [
         "P2",
@@ -226,7 +259,15 @@
       ],
       "runtime_dependency_flags": [
         "TESTBOT_RERANK_OBJECTIVE_CONFIG"
-      ]
+      ],
+      "criterion_obligations": [],
+      "criterion_status_breakdown": {
+        "pending": 0,
+        "partial": 0,
+        "complete": 0,
+        "unknown": 0
+      },
+      "unresolved_criteria": []
     },
     {
       "capability_id": "external_source_ingestion",
@@ -234,7 +275,9 @@
       "owner_module": "src/testbot/source_connectors.py",
       "effective_status": "partial",
       "declared_status": "partial",
-      "failed_gate_checks": [],
+      "failed_gate_checks": [
+        "qa_pytest_not_live_smoke"
+      ],
       "relevant_open_issues": [],
       "roadmap_priority_refs": [
         "P1",
@@ -264,7 +307,15 @@
         "SOURCE_MARKDOWN_PATH",
         "SOURCE_WIKIPEDIA_TOPIC",
         "SOURCE_ARXIV_QUERY"
-      ]
+      ],
+      "criterion_obligations": [],
+      "criterion_status_breakdown": {
+        "pending": 0,
+        "partial": 0,
+        "complete": 0,
+        "unknown": 0
+      },
+      "unresolved_criteria": []
     },
     {
       "capability_id": "canonical_turn_pipeline_foundation",
@@ -272,7 +323,10 @@
       "owner_module": "src/testbot/turn_observation.py|src/testbot/candidate_encoding.py|src/testbot/stabilization.py",
       "effective_status": "partial",
       "declared_status": "partial",
-      "failed_gate_checks": [],
+      "failed_gate_checks": [
+        "product_behave",
+        "qa_pytest_not_live_smoke"
+      ],
       "relevant_open_issues": [
         {
           "id": "ISSUE-0013",
@@ -303,6 +357,81 @@
       ],
       "runtime_dependency_flags": [
         "TESTBOT_DEBUG"
+      ],
+      "criterion_obligations": [
+        {
+          "criterion_id": "AC-0013-01",
+          "issue_id": "ISSUE-0013",
+          "status": "partial",
+          "evidence_refs": [
+            "docs/architecture/canonical-turn-pipeline.md",
+            "src/testbot/sat_chatbot_memory_v2.py",
+            "src/testbot/intent_router.py"
+          ]
+        },
+        {
+          "criterion_id": "AC-0013-02",
+          "issue_id": "ISSUE-0013",
+          "status": "partial",
+          "evidence_refs": [
+            "src/testbot/stabilization.py",
+            "src/testbot/evidence_retrieval.py",
+            "tests/test_runtime_logging_events.py"
+          ]
+        },
+        {
+          "criterion_id": "AC-0013-03",
+          "issue_id": "ISSUE-0013",
+          "status": "partial",
+          "evidence_refs": [
+            "src/testbot/stabilization.py",
+            "tests/test_runtime_logging_events.py::test_chat_loop_logs_commit_stage_record_with_durable_commit_state"
+          ]
+        },
+        {
+          "criterion_id": "AC-0013-05",
+          "issue_id": "ISSUE-0013",
+          "status": "partial",
+          "evidence_refs": [
+            "src/testbot/stabilization.py",
+            "src/testbot/evidence_retrieval.py",
+            "features/memory_recall.feature"
+          ]
+        },
+        {
+          "criterion_id": "AC-0013-06",
+          "issue_id": "ISSUE-0013",
+          "status": "partial",
+          "evidence_refs": [
+            "src/testbot/memory_strata.py",
+            "src/testbot/sat_chatbot_memory_v2.py",
+            "tests/test_memory_segments_and_strata.py"
+          ]
+        },
+        {
+          "criterion_id": "AC-0013-07",
+          "issue_id": "ISSUE-0013",
+          "status": "partial",
+          "evidence_refs": [
+            "src/testbot/memory_strata.py",
+            "src/testbot/vector_store.py",
+            "tests/test_memory_segments_and_strata.py"
+          ]
+        }
+      ],
+      "criterion_status_breakdown": {
+        "pending": 0,
+        "partial": 6,
+        "complete": 0,
+        "unknown": 0
+      },
+      "unresolved_criteria": [
+        "AC-0013-01",
+        "AC-0013-02",
+        "AC-0013-03",
+        "AC-0013-05",
+        "AC-0013-06",
+        "AC-0013-07"
       ]
     },
     {
@@ -311,7 +440,10 @@
       "owner_module": "src/testbot/context_resolution.py|src/testbot/intent_resolution.py|src/testbot/evidence_retrieval.py|src/testbot/policy_decision.py",
       "effective_status": "partial",
       "declared_status": "partial",
-      "failed_gate_checks": [],
+      "failed_gate_checks": [
+        "product_behave",
+        "qa_pytest_not_live_smoke"
+      ],
       "relevant_open_issues": [
         {
           "id": "ISSUE-0013",
@@ -341,6 +473,81 @@
       ],
       "runtime_dependency_flags": [
         "TESTBOT_DEBUG"
+      ],
+      "criterion_obligations": [
+        {
+          "criterion_id": "AC-0013-01",
+          "issue_id": "ISSUE-0013",
+          "status": "partial",
+          "evidence_refs": [
+            "docs/architecture/canonical-turn-pipeline.md",
+            "src/testbot/sat_chatbot_memory_v2.py",
+            "src/testbot/intent_router.py"
+          ]
+        },
+        {
+          "criterion_id": "AC-0013-02",
+          "issue_id": "ISSUE-0013",
+          "status": "partial",
+          "evidence_refs": [
+            "src/testbot/stabilization.py",
+            "src/testbot/evidence_retrieval.py",
+            "tests/test_runtime_logging_events.py"
+          ]
+        },
+        {
+          "criterion_id": "AC-0013-04",
+          "issue_id": "ISSUE-0013",
+          "status": "partial",
+          "evidence_refs": [
+            "src/testbot/evidence_retrieval.py",
+            "tests/test_evidence_retrieval_mapping.py"
+          ]
+        },
+        {
+          "criterion_id": "AC-0013-05",
+          "issue_id": "ISSUE-0013",
+          "status": "partial",
+          "evidence_refs": [
+            "src/testbot/stabilization.py",
+            "src/testbot/evidence_retrieval.py",
+            "features/memory_recall.feature"
+          ]
+        },
+        {
+          "criterion_id": "AC-0013-08",
+          "issue_id": "ISSUE-0013",
+          "status": "partial",
+          "evidence_refs": [
+            "src/testbot/intent_router.py",
+            "tests/test_runtime_logging_events.py",
+            "features/intent_grounding.feature"
+          ]
+        },
+        {
+          "criterion_id": "AC-0013-10",
+          "issue_id": "ISSUE-0013",
+          "status": "partial",
+          "evidence_refs": [
+            "features/intent_grounding.feature",
+            "features/memory_recall.feature",
+            "tests/test_runtime_logging_events.py"
+          ]
+        }
+      ],
+      "criterion_status_breakdown": {
+        "pending": 0,
+        "partial": 6,
+        "complete": 0,
+        "unknown": 0
+      },
+      "unresolved_criteria": [
+        "AC-0013-01",
+        "AC-0013-02",
+        "AC-0013-04",
+        "AC-0013-05",
+        "AC-0013-08",
+        "AC-0013-10"
       ]
     },
     {
@@ -349,7 +556,10 @@
       "owner_module": "src/testbot/answer_assembly.py|src/testbot/answer_validation.py|src/testbot/answer_rendering.py|src/testbot/answer_commit.py",
       "effective_status": "partial",
       "declared_status": "partial",
-      "failed_gate_checks": [],
+      "failed_gate_checks": [
+        "product_behave",
+        "qa_pytest_not_live_smoke"
+      ],
       "relevant_open_issues": [
         {
           "id": "ISSUE-0013",
@@ -378,6 +588,53 @@
       ],
       "runtime_dependency_flags": [
         "TESTBOT_DEBUG"
+      ],
+      "criterion_obligations": [
+        {
+          "criterion_id": "AC-0013-02",
+          "issue_id": "ISSUE-0013",
+          "status": "partial",
+          "evidence_refs": [
+            "src/testbot/stabilization.py",
+            "src/testbot/evidence_retrieval.py",
+            "tests/test_runtime_logging_events.py"
+          ]
+        },
+        {
+          "criterion_id": "AC-0013-09",
+          "issue_id": "ISSUE-0013",
+          "status": "partial",
+          "evidence_refs": [
+            "src/testbot/answer_commit.py",
+            "src/testbot/context_resolution.py",
+            "src/testbot/evidence_retrieval.py",
+            "tests/test_runtime_logging_events.py::test_chat_loop_two_turn_commit_continuity_is_consumed_by_context_and_retrieval",
+            "tests/test_runtime_logging_events.py::test_resolve_context_consumes_commit_receipt_continuity_deterministically",
+            "tests/test_turn_analytics_aggregator.py::test_aggregate_turn_dataset_multi_turn_commit_continuity_fields_preserved",
+            "tests/test_turn_analytics_aggregator.py::test_normalize_and_validate_rows_preserves_commit_audit_payload_completeness"
+          ]
+        },
+        {
+          "criterion_id": "AC-0013-11",
+          "issue_id": "ISSUE-0013",
+          "status": "partial",
+          "evidence_refs": [
+            "docs/qa/feature-status.yaml",
+            "docs/qa/feature-status-report.md",
+            "artifacts/feature-status-summary.json"
+          ]
+        }
+      ],
+      "criterion_status_breakdown": {
+        "pending": 0,
+        "partial": 3,
+        "complete": 0,
+        "unknown": 0
+      },
+      "unresolved_criteria": [
+        "AC-0013-02",
+        "AC-0013-09",
+        "AC-0013-11"
       ]
     },
     {
@@ -404,7 +661,15 @@
       ],
       "runtime_dependency_flags": [
         "base_ref_policy:default_origin/main_with_canonical_fallback_HEAD~1_then_HEAD"
-      ]
+      ],
+      "criterion_obligations": [],
+      "criterion_status_breakdown": {
+        "pending": 0,
+        "partial": 0,
+        "complete": 0,
+        "unknown": 0
+      },
+      "unresolved_criteria": []
     }
   ],
   "open_issue_count": 6,

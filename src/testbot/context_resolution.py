@@ -47,6 +47,30 @@ def _parse_prior_intent(prior_pipeline_state: PipelineState | None) -> IntentTyp
         return None
 
 
+def _commit_continuity_anchors(prior_pipeline_state: PipelineState | None) -> tuple[str, ...]:
+    if prior_pipeline_state is None:
+        return ()
+
+    commit_receipt = prior_pipeline_state.commit_receipt.to_dict()
+    anchors: list[str] = []
+
+    for fact in commit_receipt.get("confirmed_user_facts", []):
+        normalized = str(fact).strip()
+        if normalized:
+            anchors.append(f"commit.confirmed_user_facts:{normalized}")
+
+    pending_repair_state = commit_receipt.get("pending_repair_state", {})
+    if isinstance(pending_repair_state, dict) and pending_repair_state.get("required"):
+        anchors.append("commit.pending_repair_state:required")
+
+    for obligation in commit_receipt.get("remaining_obligations", []):
+        normalized = str(obligation).strip()
+        if normalized:
+            anchors.append(f"commit.remaining_obligations:{normalized}")
+
+    return tuple(dict.fromkeys(anchors))
+
+
 def resolve(*, utterance: str, prior_pipeline_state: PipelineState | None) -> ResolvedContext:
     prior_intent = _parse_prior_intent(prior_pipeline_state)
     anchors: list[str] = []
@@ -54,6 +78,8 @@ def resolve(*, utterance: str, prior_pipeline_state: PipelineState | None) -> Re
 
     if prior_intent is not None:
         anchors.append(f"prior_intent:{prior_intent.value}")
+
+    anchors.extend(_commit_continuity_anchors(prior_pipeline_state))
 
     if _is_short_affirmation(utterance):
         flags.append("short_affirmation")
