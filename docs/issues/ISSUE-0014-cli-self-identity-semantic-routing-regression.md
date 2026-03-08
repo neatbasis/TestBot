@@ -1,0 +1,131 @@
+# ISSUE-0014: CLI self-identity turns are stabilized structurally but semantically misrouted before memory retrieval and durable fact promotion
+
+- **ID:** ISSUE-0014
+- **Title:** CLI self-identity turns are stabilized structurally but semantically misrouted before memory retrieval and durable fact promotion
+- **Status:** open
+- **Severity:** red
+- **Owner:** platform-qa
+- **Created:** 2026-03-08
+- **Target Sprint:** Sprint 6
+- **Principle Alignment:** contract-first, invariant-driven, traceable, deterministic, ci-enforced
+
+## Cross-Reference
+
+- Primary implementation/bug-elimination program: ISSUE-0013
+- Delivery-plan governance context: ISSUE-0012
+
+## Problem Statement
+
+Recent production-style CLI debug logs show the canonical turn pipeline now preserves richer pre-route structure (observation, candidate encoding, stabilization, segment constraints, same-turn exclusion), but the turn is still semantically misinterpreted before retrieval/decisioning can activate memory-grounded behavior. This causes self-identity declarations and immediate self-referential follow-ups to be handled as generic direct-answer knowledge turns instead of memory/context turns.
+
+## Observed Behavior
+
+### Turn 1: `Hi! I'm sebastian`
+
+- Observation and stabilization artifacts are created with durable turn structure (utterance records, stabilized facts, segment/retrieval constraints, same-turn exclusion hygiene).
+- Query rewrite inverts user meaning from self-identification into assistant-focused Q&A.
+- The turn is then classified as `knowledge_question` and routed to `direct_answer` with `evidence_posture=not_requested`.
+- Retrieval and rerank stages are skipped.
+- No durable identity confirmation is promoted (`confirmed_user_facts=[]`).
+- Answer contract fails and fallback response path is emitted.
+
+### Turn 2: `Who am I?`
+
+- The follow-up is again classified as `knowledge_question`, routed to `direct_answer`, and skips retrieval/rerank.
+- Existing continuity signals (including last-user timestamp and prior turn commit trail) do not recover memory/self-reference intent.
+- The final response again follows empty-evidence fallback behavior.
+
+## Expected Behavior
+
+### Turn 1 expected (`Hi! I'm sebastian`)
+
+- Rewrite must preserve user meaning and must not convert self-identification into assistant-focused intent.
+- Intent resolution should classify this as identity/profile declaration context (not generic `knowledge_question`).
+- Decisioning should preserve a memory-usable path so durable user fact candidates can be promoted at commit (`user_name=sebastian` or equivalent normalized fact).
+
+### Turn 2 expected (`Who am I?`)
+
+- Context + intent resolution should treat this as self-referential memory recall dependent on prior committed user facts.
+- Retrieval should be requested and evaluated against stabilized/committed continuity artifacts.
+- Policy + answer assembly should produce memory-grounded identity recall (or explicit clarification if evidence is genuinely insufficient), not default direct-answer fallback due to skipped retrieval.
+
+## Root-Cause Hypothesis
+
+1. **Rewrite-stage semantic inversion defect**
+   - The rewrite transform introduces meaning drift that changes discourse object type (self-identification statement -> assistant-knowledge question).
+2. **Intent/context underweighting of stabilized and continuity signals**
+   - Decisioning appears to over-trust rewritten text and/or coarse intent defaults while underusing stabilized candidate facts and commit continuity anchors.
+3. **Premature direct-answer routing**
+   - `direct_answer` branch assignment occurs before memory/self-reference checks are fully resolved, forcing retrieval/rerank skips and starving downstream policy stages of evidence.
+4. **Commit promotion gap for identity facts under misroute conditions**
+   - Even with stabilization artifacts present, misrouting prevents promotion of `confirmed_user_facts`, so next-turn identity recall cannot succeed deterministically.
+
+## Invariant Breach Language
+
+This issue represents a runtime breach (or high-risk near-breach) of canonical pipeline invariants and doctrine:
+
+- **Observe-before-infer / Stabilize-before-route:** preserved structurally but not honored semantically when downstream routing ignores stabilized identity signals.
+- **Intent derived from enriched state, not raw/transformed text alone:** violated when rewrite-drifted text dominates intent resolution.
+- **Retrieval-policy coherence:** violated when self-referential memory turns are labeled non-memory and routed to `direct_answer` with retrieval not requested.
+- **Decision-answer alignment:** degraded when known memory-recall posture is effectively converted into generic fallback behavior due to early branch misclassification.
+
+## Evidence
+
+- Session log artifact: [`docs/issues/evidence/production-debug-cli-session-log-2026-03-08-21-23.jsonl`](evidence/production-debug-cli-session-log-2026-03-08-21-23.jsonl)
+- Analyst notes mapped to canonical stages and defects (batch 21:23): [`docs/issues/evidence/production-debug-cli-session-log-notes-2026-03-08-21-23.md`](evidence/production-debug-cli-session-log-notes-2026-03-08-21-23.md)
+- Additional analyst findings (batch 21:52): [`docs/issues/evidence/production-debug-cli-session-log-notes-2026-03-08-21-52.md`](evidence/production-debug-cli-session-log-notes-2026-03-08-21-52.md)
+
+Key observed indicators in evidence include:
+
+- rewrite inversion to assistant-focused query text,
+- `retrieval_branch_selected=direct_answer`,
+- retrieval/rerank skip events,
+- empty `confirmed_user_facts`,
+- fallback completion despite available stabilization structure.
+
+
+### Additional findings from evidence batch 21:52
+
+- Confirms that foundation instrumentation improvements are real, but semantically insufficient without downstream decisioning correction.
+- Reaffirms rewrite-stage semantic inversion as the earliest high-leverage failure that cascades into retrieval and commit starvation.
+- Reaffirms that self-reference follow-up (`Who am I?`) remains misrouted as generic direct-answer instead of memory/context identity recall despite continuity traces.
+- Reaffirms that commit receipts exist but fail to promote identity facts into `confirmed_user_facts` under current misroute path.
+
+## Impact
+
+- Self-identity and self-reference flows remain unreliable in production-like CLI runs.
+- Canonical pipeline foundation improvements do not convert into user-visible memory-grounded behavior.
+- ISSUE-0013 acceptance-criteria closure remains blocked for decisioning + commit semantics tied to identity continuity.
+
+## Acceptance Criteria
+
+1. Add deterministic BDD and pytest coverage for the exact reproduction pair:
+   - `Hi! I'm sebastian`
+   - `Who am I?`
+   asserting rewrite semantic preservation, memory-appropriate intent resolution, retrieval activation, and durable fact promotion.
+2. Rewrite layer must preserve discourse object type for self-identification utterances.
+3. Intent/context resolution must prefer stabilized identity facts and continuity anchors over generic knowledge fallback defaults for self-reference follow-ups.
+4. Retrieval branch must not default to `direct_answer` for self-referential identity recall turns when continuity artifacts exist.
+5. Commit receipts must include confirmed identity facts when stabilization extracted durable identity candidates and no explicit contradiction exists.
+6. Canonical gate evidence (`python scripts/all_green_gate.py`) and feature-status reporting must reflect closure progress without over-claiming implemented status.
+
+## Work Plan
+
+- Add/extend feature scenarios in `features/memory_recall.feature` and `features/intent_grounding.feature` for identity declaration + recall continuity.
+- Add deterministic regression tests covering rewrite invariance, intent routing, retrieval branch selection, and commit receipt promotion fields.
+- Tighten decisioning logic so self-reference identity turns cannot bypass retrieval solely via rewrite-drifted phrasing.
+- Re-run canonical gates and regenerate status artifacts after behavior is corrected.
+- Record closure evidence under ISSUE-0013 with explicit AC traceability.
+
+## Verification
+
+- Command: `python -m behave features/memory_recall.feature features/intent_grounding.feature`
+  - Expected: identity declaration + recall continuity scenarios pass.
+- Command: `python -m pytest -m "not live_smoke"`
+  - Expected: regression tests for rewrite/intent/retrieval/commit continuity pass.
+- Command: `python scripts/all_green_gate.py --json-output artifacts/all-green-gate-summary.json`
+  - Expected: gate reflects resolved regression without masking unrelated failures.
+
+## Closure Notes
+
+- 2026-03-08: Opened from production-style CLI session evidence showing stabilization progress with persistent semantic routing and fact-promotion defects in identity continuity turns.
