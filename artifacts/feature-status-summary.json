@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-03-08T11:55:00Z",
+  "generated_at_utc": "2026-03-08T15:15:35Z",
   "inputs": {
     "contract_path": "docs/qa/feature-status.yaml",
     "gate_summary_path": "artifacts/all-green-gate-summary.json",
@@ -9,58 +9,82 @@
   "source_file_metadata": {
     "contract": {
       "path": "docs/qa/feature-status.yaml",
-      "size_bytes": 6897,
-      "mtime_utc": "2026-03-08T11:53:43Z",
-      "sha256": "199a5181fe0650fdc9ca0057d4f0f6e67d90088f563e3e3d6ca22676a3a913f2"
+      "size_bytes": 6949,
+      "mtime_utc": "2026-03-08T15:14:50Z",
+      "sha256": "8f001311dda2d0d868b86a2c67b8fad5f4397fd293f95af5db5eb6acbefc9502"
     },
     "gate_summary": {
       "path": "artifacts/all-green-gate-summary.json",
-      "size_bytes": 3769,
-      "mtime_utc": "2026-03-08T11:52:45Z",
-      "sha256": "7bb02eb7193d2f047c0db08e10cb18f37fffae4003ffe9579b4cbcbfcc055ae3"
+      "size_bytes": 3772,
+      "mtime_utc": "2026-03-08T15:15:32Z",
+      "sha256": "b98e0ffc731383e595ee6335598c8624377ede6263d6afddebb2b4f6f3385d62"
     },
     "open_issues": [
       {
         "path": "docs/issues/ISSUE-0008-intent-grounding-gate-failures-block-merge.md",
         "size_bytes": 3235,
-        "mtime_utc": "2026-03-08T11:52:45Z",
+        "mtime_utc": "2026-03-08T14:18:59Z",
         "sha256": "8b1e1371a464108442cb985281b490001bb94336de7bcbac9a3fb68abdf9fa06"
       },
       {
         "path": "docs/issues/ISSUE-0009-knowing-grounded-answers-partial-provenance-gap.md",
         "size_bytes": 4803,
-        "mtime_utc": "2026-03-08T11:52:45Z",
+        "mtime_utc": "2026-03-08T14:18:59Z",
         "sha256": "a465708daef99a0e38d79a283c6cf9483d393c30265560abfede469c2e22a1ed"
       },
       {
         "path": "docs/issues/ISSUE-0010-unknowing-safe-fallback-partial-contract-gap.md",
         "size_bytes": 4673,
-        "mtime_utc": "2026-03-08T11:52:45Z",
+        "mtime_utc": "2026-03-08T14:18:59Z",
         "sha256": "7e5017cb505bd0e384650142e0b1326946149abec8c430b1b9a0cca34eda303d"
       },
       {
         "path": "docs/issues/ISSUE-0011-turn-analytics-input-coverage-silent-drop.md",
         "size_bytes": 4287,
-        "mtime_utc": "2026-03-08T11:52:45Z",
+        "mtime_utc": "2026-03-08T14:18:59Z",
         "sha256": "86162dd0afeba256f0340815ec62d9cfcf45283360a95cbb2712ba700857d981"
       },
       {
         "path": "docs/issues/ISSUE-0012-canonical-turn-pipeline-delivery-plan.md",
         "size_bytes": 4596,
-        "mtime_utc": "2026-03-08T11:52:45Z",
+        "mtime_utc": "2026-03-08T14:18:59Z",
         "sha256": "d73f54eda8811870fd3ce738037bf78654b50eb4b60c4a5af138d1cf1804ce28"
       },
       {
         "path": "docs/issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md",
-        "size_bytes": 12170,
-        "mtime_utc": "2026-03-08T11:54:05Z",
-        "sha256": "15810391f83d4a2375a82cc2f6e2aefca190cda8c9db20e51118cca7d922f750"
+        "size_bytes": 13667,
+        "mtime_utc": "2026-03-08T15:14:50Z",
+        "sha256": "b917ef7bab352d226fbc173380d1ef7dd539e393dc1f0c8f76a925677f539bea"
+      }
+    ],
+    "roadmap_files": [
+      {
+        "path": "docs/roadmap/alignment-drift-technical-debt-2026-03-05.md",
+        "size_bytes": 5622,
+        "mtime_utc": "2026-03-08T14:18:59Z",
+        "sha256": "02618bdff7d1b35cdbe05736f9e42202981edf2d1204d7d7ef3232899575c530"
+      },
+      {
+        "path": "docs/roadmap/current-status-and-next-5-priorities.md",
+        "size_bytes": 8470,
+        "mtime_utc": "2026-03-08T14:18:59Z",
+        "sha256": "d8aa997d61c9db9c731ea7c24ceb4d41c7e8f078dd2e502c5f648b12ec645311"
+      },
+      {
+        "path": "docs/roadmap/next-4-sprints-grounded-knowing.md",
+        "size_bytes": 13756,
+        "mtime_utc": "2026-03-08T14:18:59Z",
+        "sha256": "a725406dcffd4aa1da3a269fe78806032b8360ae64e64c7f879eb277712d4a3c"
+      },
+      {
+        "path": "docs/roadmap/reflective-milestone-10-sprints.md",
+        "size_bytes": 9579,
+        "mtime_utc": "2026-03-08T14:18:59Z",
+        "sha256": "f8b41b80b9e06c2144db690373aee3bfcd1910999904b5ad086fe63576252da0"
       }
     ]
   },
-  "warnings": [
-    "Gate summary appears older than one or more source files (contract or open issue records); regenerate gate evidence for freshest status. Hint: run `python scripts/all_green_gate.py --continue-on-failure --json-output artifacts/all-green-gate-summary.json` to refresh `artifacts/all-green-gate-summary.json`."
-  ],
+  "warnings": [],
   "summary": {
     "implemented": 2,
     "partial": 7,
@@ -298,7 +322,7 @@
       "capability_name": "Canonical turn pipeline foundation (observe/encode/stabilize)",
       "owner_module": "src/testbot/turn_observation.py|src/testbot/candidate_encoding.py|src/testbot/stabilization.py",
       "effective_status": "partial",
-      "declared_status": "partial",
+      "declared_status": "implemented",
       "failed_gate_checks": [],
       "relevant_open_issues": [
         {
