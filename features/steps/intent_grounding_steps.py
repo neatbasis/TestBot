@@ -29,6 +29,7 @@ GENERAL_MARKER = "General definition (not from your memory):"
 def _stabilized_turn_state_for_bdd(utterance: str) -> StabilizedTurnState:
     return StabilizedTurnState(
         turn_id="bdd-turn",
+        utterance_card="UTTERANCE CARD",
         utterance_doc_id="bdd-u",
         reflection_doc_id="bdd-r",
         dialogue_state_doc_id="bdd-d",

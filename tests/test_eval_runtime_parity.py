@@ -317,6 +317,7 @@ def test_canonical_continuity_parity_consumes_prior_commit_artifacts_across_turn
     context = resolve_context(utterance="yes", prior_pipeline_state=turn_one_state)
     runtime_stabilized = runtime.StabilizedTurnState(
         turn_id="turn-2",
+        utterance_card="UTTERANCE CARD",
         utterance_doc_id="u2",
         reflection_doc_id="r2",
         dialogue_state_doc_id="d2",

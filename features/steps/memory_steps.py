@@ -433,7 +433,7 @@ def step_when_canonical_observe_encode_stabilize_execute(context) -> None:
     encoded = encode_turn_candidates(state, observation=observation, rewritten_query=state.user_input)
     context.canonical_observation = observation
     context.canonical_encoded = encoded
-    context.canonical_same_turn_exclusion_doc_ids = ["turn-bdd-1", "reflection-bdd-1"]
+    context.canonical_same_turn_exclusion_doc_ids = ["turn-bdd-1", "reflection-bdd-1", "dialogue-state-bdd-1"]
 
 
 @then("the stage artifacts include a typed turn observation")
@@ -444,7 +444,7 @@ def step_then_stage_artifacts_include_typed_turn_observation(context) -> None:
 
 @then("stabilization provides same-turn exclusion doc ids before intent resolve")
 def step_then_stabilization_provides_same_turn_exclusion_doc_ids(context) -> None:
-    assert context.canonical_same_turn_exclusion_doc_ids == ["turn-bdd-1", "reflection-bdd-1"]
+    assert context.canonical_same_turn_exclusion_doc_ids == ["turn-bdd-1", "reflection-bdd-1", "dialogue-state-bdd-1"]
 
 
 @then('stabilization candidate facts include "user_name" as "Sebastian"')
@@ -468,9 +468,11 @@ def step_when_canonical_stages_execute_stabilize_intent_retrieve(context) -> Non
     )
 
     def _observe(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        ctx.artifacts["turn_observation"] = {"turn_id": "turn-bdd-route-1", "utterance": ctx.state.user_input}
         return ctx
 
     def _encode(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        ctx.artifacts["encoded_candidates"] = {"facts": [{"key": "utterance_raw", "value": ctx.state.user_input}]}
         return ctx
 
     def _stabilize(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
