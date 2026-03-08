@@ -26,9 +26,11 @@ Feature: Answer citation contract enforcement
     And an unlabeled general-knowledge draft answer with failed confidence gate
     When stage answer enforces the general-knowledge contract
     Then the final answer should be knowledge-safe fallback
-    And the final answer should include explicit uncertainty language
-    And the final answer should include a safe action path
-    And the final answer should not ask "Which person, event, or time window should I focus on?"
+    And the rendered answer should include semantic markers
+      | marker         |
+      | uncertainty    |
+      | safe_action    |
+    And the rendered answer should not include normative phrase "Which person, event, or time window should I focus on?"
     And the response records knowledge-safe fallback provenance transparency
 
   Scenario: ambiguous memory recall uses ask route when ask capability is available
