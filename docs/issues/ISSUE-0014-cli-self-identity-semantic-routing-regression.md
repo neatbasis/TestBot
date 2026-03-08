@@ -129,3 +129,35 @@ Key observed indicators in evidence include:
 ## Closure Notes
 
 - 2026-03-08: Opened from production-style CLI session evidence showing stabilization progress with persistent semantic routing and fact-promotion defects in identity continuity turns.
+
+## Cross-Functional Session Preparation (Sprint 6)
+
+- Session plan artifact: [`docs/sessions/ISSUE-0014-cross-functional-session-plan.md`](../sessions/ISSUE-0014-cross-functional-session-plan.md)
+- Session length: 90-120 minutes
+- Scope locked: identity declaration + self-reference recall regression in CLI canonical pipeline.
+
+### Owner Matrix (D1)
+
+| Role | Team | Assigned Owner | Backup |
+|---|---|---|---|
+| Facilitator | platform-qa | _TBD_ | _TBD_ |
+| Scribe | release governance | _TBD_ | _TBD_ |
+| Rewrite owner | runtime/pipeline engineering | _TBD_ | _TBD_ |
+| Intent/routing owner | runtime/pipeline engineering | _TBD_ | _TBD_ |
+| Commit/persistence owner | runtime/pipeline engineering | _TBD_ | _TBD_ |
+| Test/BDD owner | test/BDD ownership | _TBD_ | _TBD_ |
+
+### Session Execution Contract (D0-D8)
+
+1. D0 Plan: confirm scope, artifacts, and goals (root cause, containment, corrective actions, verification).
+2. D1 Team: finalize role assignments and update the matrix above in-issue.
+3. D2 Problem Description: complete 5W2H with exact reproducer:
+   - Turn 1: `Hi! I'm sebastian`
+   - Turn 2: `Who am I?`
+   - Must record observed vs expected for rewrite -> intent -> branch selection -> retrieval/rerank -> commit promotion -> response.
+4. D3 Interim Containment: define temporary rewrite + routing guards and pair each with deterministic regression tests.
+5. D4 Root Cause Analysis: confirm evidence-led fault tree and causal chain via trace checkpoints.
+6. D5 Permanent Corrective Actions: approve owner/file-mapped changes in `src/testbot/`, `features/`, and `tests/`.
+7. D6 Implement & Validate: execute required validation gates and produce AC traceability evidence.
+8. D7 Prevent Recurrence: add regression/invariant coverage and governance updates if impacted.
+9. D8 Closure & Recognition: close only after ISSUE-0014 AC completion + gate evidence; publish lessons learned and Sprint 6 postmortem summary.
