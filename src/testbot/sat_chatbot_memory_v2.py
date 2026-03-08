@@ -21,6 +21,13 @@ from homeassistant_api import Client
 
 from testbot.clock import Clock, SystemClock
 from testbot.memory_cards import make_reflection_card, make_utterance_card, store_doc, utc_now_iso
+from testbot.memory_strata import (
+    MemoryStratum,
+    SegmentDescriptor,
+    SegmentType,
+    apply_persistence_metadata,
+    derive_segment_descriptor,
+)
 from testbot.pipeline_state import CandidateHit, PipelineState, ProvenanceType, append_pipeline_snapshot
 from testbot.promotion_policy import persist_promoted_context
 from testbot.reflection_policy import CapabilityStatus, decide_fallback_action
@@ -639,16 +646,22 @@ def stage_retrieve(
     exclude_doc_ids: set[str] | None = None,
     exclude_source_ids: set[str] | None = None,
     exclude_turn_scoped_ids: set[str] | None = None,
+    segment_ids: set[str] | None = None,
+    segment_types: set[str] | None = None,
 ) -> tuple[PipelineState, list[tuple[Document, float]]]:
     normalized_exclude_doc_ids = {value for value in (exclude_doc_ids or set()) if value}
     normalized_exclude_source_ids = {value for value in (exclude_source_ids or set()) if value}
     normalized_exclude_turn_scoped_ids = {value for value in (exclude_turn_scoped_ids or set()) if value}
+    normalized_segment_ids = {value for value in (segment_ids or set()) if value}
+    normalized_segment_types = {value for value in (segment_types or set()) if value}
     raw_docs_and_scores = store.similarity_search_with_score(
         state.rewritten_query,
         k=18,
         exclude_doc_ids=normalized_exclude_doc_ids,
         exclude_source_ids=normalized_exclude_source_ids,
         exclude_turn_scoped_ids=normalized_exclude_turn_scoped_ids,
+        segment_ids=normalized_segment_ids,
+        segment_types=normalized_segment_types,
     )
     docs_and_scores = mix_source_evidence_with_memory_cards(raw_docs_and_scores, top_k=12, source_quota=3)
     retrieval_candidates = [doc_to_candidate_hit(doc, score) for doc, score in docs_and_scores]
@@ -660,6 +673,8 @@ def stage_retrieve(
         "retrieval_exclude_source_ids": sorted(normalized_exclude_source_ids),
         "retrieval_exclude_turn_scoped_ids": sorted(normalized_exclude_turn_scoped_ids),
         "retrieval_exclusion_invariant": "retrieve_stage_primary",
+        "retrieval_segment_ids": sorted(normalized_segment_ids),
+        "retrieval_segment_types": sorted(normalized_segment_types),
     }
     return replace(
         state,
@@ -2088,18 +2103,24 @@ def answer_commit_persistence(
         doc_id=a_id,
         channel=io_channel,
     )
+    commit_segment = derive_segment_descriptor(utterance=state.user_input, has_dialogue_state=False)
     store_doc(
         store,
         doc_id=a_id,
         content=a_card,
-        metadata={
-            "ts": a_ts,
-            "type": "assistant_utterance",
-            "speaker": "assistant",
-            "channel": io_channel,
-            "doc_id": a_id,
-            "raw": state.final_answer,
-        },
+        metadata=apply_persistence_metadata(
+            metadata={
+                "ts": a_ts,
+                "type": "assistant_utterance",
+                "speaker": "assistant",
+                "channel": io_channel,
+                "doc_id": a_id,
+                "raw": state.final_answer,
+            },
+            stratum=MemoryStratum.EPISODIC,
+            segment=commit_segment,
+            member_doc_id=a_id,
+        ),
     )
 
     a_ref_yaml = generate_reflection_yaml(llm, speaker="assistant", text=state.final_answer)
@@ -2116,13 +2137,18 @@ def answer_commit_persistence(
         store,
         doc_id=a_ref_id,
         content=a_ref_card,
-        metadata={
-            "ts": a_ref_ts,
-            "type": "reflection",
-            "about": "assistant",
-            "source_doc_id": a_id,
-            "doc_id": a_ref_id,
-        },
+        metadata=apply_persistence_metadata(
+            metadata={
+                "ts": a_ref_ts,
+                "type": "reflection",
+                "about": "assistant",
+                "source_doc_id": a_id,
+                "doc_id": a_ref_id,
+            },
+            stratum=MemoryStratum.SEMANTIC,
+            segment=commit_segment,
+            member_doc_id=a_ref_id,
+        ),
     )
 
     promoted_doc_ids = persist_promoted_context(
@@ -2635,6 +2661,28 @@ def _run_canonical_turn_pipeline(
         planning_descriptor = planning_pathway_for_intent(provisional_classified_intent, extract_intent_facets(utterance))
         response_plan = build_response_plan(descriptor=planning_descriptor, user_input=utterance)
         reflection_yaml = generate_reflection_yaml(llm, speaker="user", text=utterance)
+        prior_candidate_facts = ctx.state.candidate_facts if isinstance(ctx.state.candidate_facts, dict) else {}
+        prior_segment_id = str(prior_candidate_facts.get("segment_id") or "")
+        prior_segment_type = str(prior_candidate_facts.get("segment_type") or "")
+        prior_segment = None
+        if prior_segment_id and prior_segment_type:
+            continuity_probe = derive_segment_descriptor(
+                utterance=utterance,
+                has_dialogue_state=bool(ctx.artifacts["encoded_candidates"].dialogue_state),
+            )
+            try:
+                prior_segment = SegmentDescriptor(
+                    segment_type=SegmentType(prior_segment_type),
+                    segment_id=prior_segment_id,
+                    continuity_key=continuity_probe.continuity_key,
+                )
+            except ValueError:
+                prior_segment = None
+        segment = derive_segment_descriptor(
+            utterance=utterance,
+            prior_descriptor=prior_segment,
+            has_dialogue_state=bool(ctx.artifacts["encoded_candidates"].dialogue_state),
+        )
         ctx.state, stabilized = stabilize_pre_route(
             store=store,
             state=ctx.state,
@@ -2642,6 +2690,7 @@ def _run_canonical_turn_pipeline(
             encoded=ctx.artifacts["encoded_candidates"],
             response_plan=plan_to_dict(response_plan),
             reflection_yaml=reflection_yaml,
+            segment=segment,
             store_doc_fn=store_doc,
         )
         ctx.artifacts["stabilized_turn_state"] = stabilized
@@ -2708,12 +2757,17 @@ def _run_canonical_turn_pipeline(
                 ctx.artifacts["stabilized_turn_state"].utterance_doc_id,
             }
             retrieval_exclude_turn_scoped_ids = same_turn_exclusion_doc_ids
+            segment_constraints = ctx.state.candidate_facts.get("retrieval_constraints", {})
+            retrieval_segment_ids = set(segment_constraints.get("segment_ids", []))
+            retrieval_segment_types = set(segment_constraints.get("segment_types", []))
             ctx.state, docs_and_scores = stage_retrieve(
                 store,
                 ctx.state,
                 exclude_doc_ids=retrieval_exclude_doc_ids,
                 exclude_source_ids=retrieval_exclude_source_ids,
                 exclude_turn_scoped_ids=retrieval_exclude_turn_scoped_ids,
+                segment_ids=retrieval_segment_ids,
+                segment_types=retrieval_segment_types,
             )
             _validate_and_log_transition(validate_retrieve_post(ctx.state))
             ctx.artifacts["docs_and_scores"] = docs_and_scores
@@ -2740,6 +2794,8 @@ def _run_canonical_turn_pipeline(
                         "exclude_turn_scoped_ids": sorted(retrieval_exclude_turn_scoped_ids),
                         "primary_invariant": "retrieve_stage_exclusion",
                         "rerank_defense_in_depth": True,
+                        "segment_ids": sorted(retrieval_segment_ids),
+                        "segment_types": sorted(retrieval_segment_types),
                     },
                 },
             )

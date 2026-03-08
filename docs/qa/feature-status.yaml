@@ -151,7 +151,8 @@ capabilities:
   - 76a88be
   - ee1727d
   - issue0013-note-memory-write-contract-closure
-  next_step_focus: Monitor regressions and keep deterministic note-taking/memory-write contract coverage aligned with canonical stage_answer decision-object authority.
+  - issue0013-segment-aware-strata-retrieval
+  next_step_focus: Monitor regressions and keep deterministic note-taking/memory-write plus segment-aware strata retrieval coverage aligned with canonical stage_answer decision-object authority.
   acceptance_tests:
   - features/intent_grounding.feature
   - features/answer_contract.feature

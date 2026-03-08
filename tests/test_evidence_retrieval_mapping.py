@@ -13,7 +13,20 @@ from testbot.policy_decision import DecisionClass, decide_from_evidence
 
 def test_build_evidence_bundle_from_docs_and_scores_keeps_class_separation() -> None:
     docs_and_scores = [
-        (Document(id="mem-1", page_content="I asked about Friday", metadata={"type": "user_utterance"}), 0.91),
+        (
+            Document(
+                id="mem-1",
+                page_content="I asked about Friday",
+                metadata={
+                    "type": "user_utterance",
+                    "memory_stratum": "episodic",
+                    "segment_type": "contiguous_topic",
+                    "segment_id": "seg-1",
+                    "segment_membership_edge_refs": ["edge:seg-1:mem-1"],
+                },
+            ),
+            0.91,
+        ),
         (Document(id="reflect-1", page_content="possible ambiguity", metadata={"type": "reflection"}), 0.84),
         (
             Document(
@@ -37,6 +50,9 @@ def test_build_evidence_bundle_from_docs_and_scores_keeps_class_separation() -> 
     bundle = build_evidence_bundle_from_docs_and_scores(docs_and_scores)
 
     assert [record.ref_id for record in bundle.episodic_utterances] == ["mem-1"]
+    assert bundle.episodic_utterances[0].segment_id == "seg-1"
+    assert bundle.episodic_utterances[0].segment_type == "contiguous_topic"
+    assert bundle.episodic_utterances[0].segment_membership_edge_refs == ("edge:seg-1:mem-1",)
     assert [record.ref_id for record in bundle.reflections_hypotheses] == ["reflect-1"]
     assert [record.ref_id for record in bundle.repair_anchors_offers] == ["promoted-1"]
     assert [record.ref_id for record in bundle.source_evidence] == ["src-1"]
