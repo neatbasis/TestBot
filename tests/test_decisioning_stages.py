@@ -1,9 +1,26 @@
 from testbot.context_resolution import ContinuityPosture, resolve as resolve_context
-from testbot.intent_resolution import resolve as resolve_intent
+from testbot.intent_resolution import IntentResolutionInput, resolve as resolve_intent
 from testbot.intent_router import IntentType
 from testbot.pipeline_state import PipelineState
 from testbot.policy_decision import EvidencePosture, decide
 from testbot.sat_chatbot_memory_v2 import ROUTE_TO_ASK_ANSWER
+from testbot.stabilization import StabilizedTurnState
+
+
+def _stabilized(utterance: str) -> StabilizedTurnState:
+    return StabilizedTurnState(
+        turn_id="turn-1",
+        utterance_doc_id="u1",
+        reflection_doc_id="r1",
+        dialogue_state_doc_id="d1",
+        segment_type="episodic",
+        segment_id="seg-1",
+        segment_membership_edge_refs=[],
+        same_turn_exclusion_doc_ids=[],
+        candidate_facts=[{"key": "utterance_raw", "value": utterance, "confidence": 1.0}],
+        candidate_speech_acts=[],
+        candidate_dialogue_state=[],
+    )
 
 
 def test_context_resolution_exposes_typed_continuity_inputs() -> None:
@@ -30,10 +47,19 @@ def test_intent_resolution_consumes_context_continuity_posture() -> None:
         prior_unresolved_intent=IntentType.CAPABILITIES_HELP.value,
     )
 
-    affirmative = resolve_intent(utterance="yes", context=resolve_context(utterance="yes", prior_pipeline_state=prior_state))
+    affirmative = resolve_intent(
+        resolution_input=IntentResolutionInput(
+            stabilized_turn_state=_stabilized("yes"),
+            context=resolve_context(utterance="yes", prior_pipeline_state=prior_state),
+            fallback_utterance="yes",
+        )
+    )
     non_affirmative = resolve_intent(
-        utterance="what is ontology?",
-        context=resolve_context(utterance="what is ontology?", prior_pipeline_state=prior_state),
+        resolution_input=IntentResolutionInput(
+            stabilized_turn_state=_stabilized("what is ontology?"),
+            context=resolve_context(utterance="what is ontology?", prior_pipeline_state=prior_state),
+            fallback_utterance="what is ontology?",
+        )
     )
 
     assert affirmative.classified_intent is IntentType.KNOWLEDGE_QUESTION

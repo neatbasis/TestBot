@@ -9,10 +9,11 @@ from langchain_core.documents import Document
 from testbot.history_packer import PackedHistory
 from testbot.evidence_retrieval import EvidenceBundle, EvidenceRecord, retrieval_result
 from testbot.context_resolution import resolve as resolve_context
-from testbot.intent_resolution import resolve as resolve_intent
+from testbot.intent_resolution import IntentResolutionInput, resolve as resolve_intent
 from testbot.intent_router import IntentType, classify_intent, extract_intent_facets
 from testbot.policy_decision import EvidencePosture, decide, decide_from_evidence
 from testbot.pipeline_state import CandidateHit, PipelineState, ProvenanceType
+from testbot.stabilization import StabilizedTurnState
 from testbot.sat_chatbot_memory_v2 import (
     ROUTE_TO_ASK_ANSWER,
     build_provenance_metadata,
@@ -23,6 +24,22 @@ from testbot.sat_chatbot_memory_v2 import (
 from testbot.stage_transitions import validate_answer_post, validate_answer_pre
 
 GENERAL_MARKER = "General definition (not from your memory):"
+
+
+def _stabilized_turn_state_for_bdd(utterance: str) -> StabilizedTurnState:
+    return StabilizedTurnState(
+        turn_id="bdd-turn",
+        utterance_doc_id="bdd-u",
+        reflection_doc_id="bdd-r",
+        dialogue_state_doc_id="bdd-d",
+        segment_type="episodic",
+        segment_id="bdd-seg",
+        segment_membership_edge_refs=[],
+        same_turn_exclusion_doc_ids=[],
+        candidate_facts=[{"key": "utterance_raw", "value": utterance, "confidence": 1.0}],
+        candidate_speech_acts=[],
+        candidate_dialogue_state=[],
+    )
 
 
 @given("an intent response harness")
@@ -618,10 +635,13 @@ def step_when_intent_continuity_evaluated_for_followups(context) -> None:
     )
     affirmative_context = resolve_context(utterance="yes", prior_pipeline_state=prior_state)
     non_affirmative_context = resolve_context(utterance="no, never mind", prior_pipeline_state=prior_state)
-    context.affirmative_resolution = resolve_intent(utterance="yes", context=affirmative_context)
+    context.affirmative_resolution = resolve_intent(resolution_input=IntentResolutionInput(stabilized_turn_state=_stabilized_turn_state_for_bdd("yes"), context=affirmative_context, fallback_utterance="yes"))
     context.non_affirmative_resolution = resolve_intent(
-        utterance="no, never mind",
-        context=non_affirmative_context,
+        resolution_input=IntentResolutionInput(
+            stabilized_turn_state=_stabilized_turn_state_for_bdd("no, never mind"),
+            context=non_affirmative_context,
+            fallback_utterance="no, never mind",
+        )
     )
 
 
@@ -691,7 +711,7 @@ class _BDDMetaAckLLM:
 
 def _resolve_contract_probe(utterance: str) -> dict[str, object]:
     context = resolve_context(utterance=utterance, prior_pipeline_state=None)
-    intent_resolution = resolve_intent(utterance=utterance, context=context)
+    intent_resolution = resolve_intent(resolution_input=IntentResolutionInput(stabilized_turn_state=_stabilized_turn_state_for_bdd(utterance), context=context, fallback_utterance=utterance))
     policy_decision = decide(
         utterance=utterance,
         intent=intent_resolution.resolved_intent,

@@ -148,3 +148,31 @@ def test_canonical_answer_from_memory_decision_maps_to_memory_grounded_route() -
     assert routing.fallback_action == "ANSWER_FROM_MEMORY"
     assert routing.canonical_response_token == "LLM_DRAFT"
     assert routing.rationale["decision_class"] == "answer_from_memory"
+
+
+def test_intent_stage_consumes_stabilized_and_context_artifacts_not_raw_input() -> None:
+    state = PipelineState(user_input="RAW_INPUT_SHOULD_NOT_ROUTE")
+    context = CanonicalTurnContext(state=state)
+
+    stages: list[CanonicalStage] = []
+    for stage_name in CanonicalTurnOrchestrator.STAGE_ORDER:
+
+        def _handler(ctx: CanonicalTurnContext, name: str = stage_name) -> CanonicalTurnContext:
+            if name == "stabilize.pre_route":
+                ctx.artifacts["stabilized_turn_state"] = {"candidate_facts": [{"key": "utterance_raw", "value": "what is ontology?"}]}
+            if name == "context.resolve":
+                ctx.artifacts["resolved_context"] = {"continuity_posture": "reevaluate"}
+            if name == "intent.resolve":
+                assert ctx.artifacts["stabilized_turn_state"]["candidate_facts"][0]["value"] == "what is ontology?"
+                assert ctx.artifacts["resolved_context"]["continuity_posture"] == "reevaluate"
+                assert ctx.state.user_input == "RAW_INPUT_SHOULD_NOT_ROUTE"
+                ctx.state = replace(ctx.state, classified_intent="knowledge_question", resolved_intent="knowledge_question")
+            if name == "retrieve.evidence":
+                ctx.artifacts["retrieval_result"] = {"posture": "empty_evidence"}
+            return ctx
+
+        stages.append(CanonicalStage(name=stage_name, handler=_handler))
+
+    final_context = CanonicalTurnOrchestrator(stages=stages).run(context)
+
+    assert final_context.state.resolved_intent == "knowledge_question"

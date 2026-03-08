@@ -126,6 +126,11 @@ def stabilize_pre_route(
         + list(reflection_metadata.get("segment_membership_edge_refs") or [])
         + list(dialogue_state_metadata.get("segment_membership_edge_refs") or [])
     )
+    stabilized_candidate_facts = [
+        {"key": "utterance_raw", "value": observation.utterance, "confidence": 1.0, "provenance": "stabilize.pre_route"},
+        *[asdict(candidate) for candidate in encoded.facts],
+    ]
+
     stabilized = StabilizedTurnState(
         turn_id=observation.turn_id,
         utterance_doc_id=utterance_doc_id,
@@ -135,7 +140,7 @@ def stabilize_pre_route(
         segment_id=segment.segment_id,
         segment_membership_edge_refs=segment_membership_edge_refs,
         same_turn_exclusion_doc_ids=same_turn_exclusion_doc_ids,
-        candidate_facts=[asdict(candidate) for candidate in encoded.facts],
+        candidate_facts=stabilized_candidate_facts,
         candidate_speech_acts=[asdict(candidate) for candidate in encoded.speech_acts],
         candidate_dialogue_state=[asdict(candidate) for candidate in encoded.dialogue_state],
     )
