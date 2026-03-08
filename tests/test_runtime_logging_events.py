@@ -9,7 +9,9 @@ from langchain_core.documents import Document
 
 from testbot.pipeline_state import PipelineState
 from testbot.pipeline_state import AlignmentDecision
+from testbot.pipeline_state import CandidateHit
 from testbot import sat_chatbot_memory_v2 as runtime
+from testbot.context_resolution import ContinuityPosture, ResolvedContext
 from testbot.intent_router import IntentType
 from testbot.policy_decision import DecisionClass, DecisionObject, EvidencePosture, decide
 from testbot.sat_chatbot_memory_v2 import (
@@ -987,6 +989,114 @@ def test_chat_loop_logs_commit_stage_record_with_durable_commit_state(tmp_path, 
     assert isinstance(commit_row["resolved_obligations"], list)
     assert isinstance(commit_row["remaining_obligations"], list)
     assert isinstance(commit_row["confirmed_user_facts"], list)
+
+
+def test_chat_loop_two_turn_commit_continuity_is_consumed_by_context_and_retrieval(tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(runtime, "_validate_and_log_transition", lambda _result: None)
+    monkeypatch.setattr(runtime, "store_doc", lambda *args, **kwargs: None)
+    monkeypatch.setattr(runtime, "generate_reflection_yaml", lambda *args, **kwargs: "claims: []")
+    monkeypatch.setattr(runtime, "persist_promoted_context", lambda *args, **kwargs: [])
+    monkeypatch.setattr(runtime, "encode_stage", lambda _llm, state: replace(state, rewritten_query=state.user_input))
+
+    context_calls: list[PipelineState | None] = []
+    continuity_anchor: str = ""
+
+    def _resolve_context_with_commit_anchor(*, utterance: str, prior_pipeline_state: PipelineState | None) -> ResolvedContext:
+        nonlocal continuity_anchor
+        del utterance
+        context_calls.append(prior_pipeline_state)
+        if prior_pipeline_state is None:
+            return ResolvedContext(history_anchors=(), ambiguity_flags=(), continuity_posture=ContinuityPosture.REEVALUATE, prior_intent=None)
+
+        commit_receipt = prior_pipeline_state.commit_receipt
+        prior_facts = list(commit_receipt.get("confirmed_user_facts", []))
+        assert prior_facts == ["name=Sam"]
+        assert commit_receipt.get("pending_repair_state") == {"required": False, "reason": "none"}
+        assert commit_receipt.get("resolved_obligations") == ["repair_state_not_required"]
+        continuity_anchor = f"commit.confirmed_user_facts:{prior_facts[0]}"
+        return ResolvedContext(
+            history_anchors=(continuity_anchor,),
+            ambiguity_flags=(),
+            continuity_posture=ContinuityPosture.REEVALUATE,
+            prior_intent=IntentType.MEMORY_RECALL,
+        )
+
+    monkeypatch.setattr(runtime, "resolve_context", _resolve_context_with_commit_anchor)
+
+    def _stage_retrieve_with_continuity(_store, state, **kwargs):
+        del kwargs
+        if state.user_input == "what did i say my name is?":
+            assert continuity_anchor == ""
+            doc = Document(id="name-fact-initial", page_content="name=Sam", metadata={"doc_id": "name-fact-initial", "type": "profile_fact"})
+        else:
+            assert continuity_anchor == "commit.confirmed_user_facts:name=Sam"
+            doc = Document(id="name-fact-continuity", page_content="name=Sam", metadata={"doc_id": "name-fact-continuity", "type": "profile_fact", "source_doc_id": "name-fact-initial"})
+        next_state = replace(
+            state,
+            retrieval_candidates=[CandidateHit(doc_id=str(doc.id), score=0.99, card_type="profile_fact")],
+            confidence_decision={**state.confidence_decision, "retrieval_candidates_considered": 1, "context_confident": True, "ambiguity_detected": False},
+        )
+        return next_state, [(doc, 0.99)]
+
+    monkeypatch.setattr(runtime, "stage_retrieve", _stage_retrieve_with_continuity)
+    monkeypatch.setattr(runtime, "stage_rerank", lambda state, docs_and_scores, **kwargs: (replace(state, reranked_hits=[CandidateHit(doc_id=str(docs_and_scores[0][0].id), score=0.99, card_type="profile_fact")], confidence_decision={**state.confidence_decision, "context_confident": True, "ambiguity_detected": False}), [docs_and_scores[0][0]]))
+    monkeypatch.setattr(runtime, "stage_answer", lambda _llm, state, **kwargs: replace(state, draft_answer="Memory answer", final_answer="From committed facts, your name is Sam.", claims=["name=Sam"], basis_statement="prior commit continuity"))
+
+    prompts = iter(["what did i say my name is?", "what did i say my name is again?", "stop"])
+    replies: list[str] = []
+    _run_chat_loop(
+        llm=_StaticLLM("From committed facts, your name is Sam."),
+        store=object(),
+        chat_history=deque(),
+        near_tie_delta=0.05,
+        io_channel="cli",
+        capability_status="ask_unavailable",
+        capability_snapshot=CapabilitySnapshot(
+            runtime={},
+            requested_mode="cli",
+            daemon_mode=False,
+            effective_mode="cli",
+            fallback_reason=None,
+            exit_reason=None,
+            ha_error=None,
+            ollama_error=None,
+            runtime_capability_status=RuntimeCapabilityStatus(
+                ollama_available=True,
+                ha_available=False,
+                effective_mode="cli",
+                requested_mode="cli",
+                daemon_mode=False,
+                fallback_reason=None,
+                memory_backend="inmemory",
+                debug_enabled=False,
+                debug_verbose=False,
+                text_clarification_available=True,
+                satellite_ask_available=False,
+            ),
+        ),
+        read_user_utterance=lambda: next(prompts, None),
+        send_assistant_text=lambda text: replies.append(text),
+        clock=_FIXED_CLOCK,
+    )
+
+    rows = [json.loads(line) for line in (tmp_path / "logs" / "session.jsonl").read_text(encoding="utf-8").splitlines() if line.strip()]
+    commit_rows = [row for row in rows if row.get("event") == "commit_stage_recorded"]
+    assert len(commit_rows) == 2
+    for commit_row in commit_rows:
+        assert commit_row["stage"] == "answer.commit"
+        assert commit_row["pending_repair_state"] == {"required": False, "reason": "none"}
+        assert commit_row["resolved_obligations"] == ["repair_state_not_required"]
+        assert commit_row["confirmed_user_facts"] == ["name=Sam"]
+
+    branch_rows = [row for row in rows if row.get("event") == "retrieval_branch_selected"]
+    assert branch_rows[0]["context_history_anchors"] == []
+    assert branch_rows[1]["context_history_anchors"] == ["commit.confirmed_user_facts:name=Sam"]
+
+    retrieval_rows = [row for row in rows if row.get("event") == "retrieval_candidates"]
+    assert retrieval_rows[1]["top_candidates"][0]["doc_id"] == "name-fact-continuity"
+    assert context_calls[0] is None
+    assert context_calls[1] is not None
 
 
 def test_build_provenance_metadata_sorts_memory_and_source_references_deterministically() -> None:
