@@ -20,12 +20,14 @@ Feature: Memory recall behavior
     When the user asks about eval case "no-memory-match"
     Then the assistant returns an assistive fallback response
 
+  @Rule:AmbiguityHandling
   Scenario: equivalent candidates remain ambiguous after tie-break
     Given a deterministic in-memory recall harness
     When equivalent top candidates remain after tie-break
     Then the assistant returns a bridging clarification response
 
 
+  @Rule:FallbackSemantics
   Scenario: empty and scored-empty typed states keep distinct downstream fallback contracts
     Given a deterministic in-memory recall harness
     When typed memory fallback contracts are resolved for empty and scored-empty evidence
@@ -36,6 +38,7 @@ Feature: Memory recall behavior
     And the memory evidence-state mapping should include fallback strategy "ANSWER_UNKNOWN" for "E.scored_empty"
     And the memory evidence-state mapping should include fallback strategy "OFFER_ASSIST_ALTERNATIVES" for "E.scored_empty_non_memory"
 
+  @Rule:TemporalRouting
   Scenario: pronoun temporal follow-up resolves anchor before routing
     Given a deterministic in-memory recall harness
     And recall candidates include a recent anchor and older distractor
@@ -72,6 +75,7 @@ Feature: Memory recall behavior
     And retrieval incorrectly returns just-observed artifact id "obs-turn-memory-1-claim-1" in the same turn
     Then same-turn retrieval should be rejected as invalid durable memory
 
+  @Rule:AmbiguityHandling
   Scenario: multi-antecedent pronoun follow-up requires disambiguation before committed-context reuse
     Given a canonical multi-antecedent commit-state harness
     When a pronoun follow-up "when did it start" is evaluated at the next turn boundary

@@ -165,6 +165,17 @@ Tag guidance:
 - `@Priority:<High|Medium|Low>`: supports triage.
 - `@fast`/`@slow`: enables fast local loops.
 
+Rule-governance traceability convention (verification governance):
+
+- `@Rule:AmbiguityHandling`
+- `@Rule:TemporalRouting`
+- `@Rule:SourceBackedAnswer`
+- `@Rule:FallbackSemantics`
+
+For canonical primary/secondary verification surfaces and overlap-resolution precedence, use
+[`docs/architecture/behavior-governance.md`](../docs/architecture/behavior-governance.md).
+This matrix governs test/spec traceability only and does not override architecture or canonical issue/program sources of truth.
+
 ---
 
 ## 8) Reference scenarios (canonical)

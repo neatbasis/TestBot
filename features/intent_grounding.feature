@@ -35,6 +35,7 @@ Feature: Intent-specific grounding and provenance behavior
     And the response includes a relevance basis assertion
     And the provenance and basis should include "CHAT_HISTORY" and "Relevance summary basis:"
 
+  @Rule:SourceBackedAnswer
   Scenario: source-backed knowing answer includes source citation provenance
     Given an intent response harness
     When the user asks a source-backed knowing question
@@ -42,6 +43,8 @@ Feature: Intent-specific grounding and provenance behavior
     And the provenance and basis should include "MEMORY" and "source evidence"
     And the source provenance includes "calendar://work/event-42" and "calendar"
 
+  @Rule:SourceBackedAnswer
+  @Rule:FallbackSemantics
   Scenario: source confidence insufficient triggers progressive unknowing response
     Given an intent response harness
     When source confidence is insufficient for a knowing answer
@@ -53,6 +56,8 @@ Feature: Intent-specific grounding and provenance behavior
     And the provenance and basis should include "UNKNOWN" and "Trivial fallback"
     And the fallback reason should be "non_memory_low_source_confidence"
 
+  @Rule:SourceBackedAnswer
+  @Rule:FallbackSemantics
   Scenario: low-confidence source evidence avoids direct source-backed claims
     Given an intent response harness
     When source evidence remains low-confidence after retrieval
@@ -61,21 +66,26 @@ Feature: Intent-specific grounding and provenance behavior
     And the provenance and basis should include "UNKNOWN" and "Trivial fallback"
     And the fallback reason should be "insufficient_reliable_memory"
 
+  @Rule:SourceBackedAnswer
   Scenario: assembled answer object combines memory and source evidence with explicit fields
     Given an intent response harness
     When memory and source evidence are assembled into a knowing response
     Then the assembled answer object includes memory and source evidence references
 
+  @Rule:SourceBackedAnswer
   Scenario: assembled answer object enforces required attribution fields by evidence type
     Given an intent response harness
     When memory and source evidence are assembled into a knowing response
     Then the assembled answer object includes required attribution fields for each evidence type
 
+  @Rule:SourceBackedAnswer
   Scenario: assembled answer object resolves evidence conflicts to clarification posture
     Given an intent response harness
     When assembled evidence inputs disagree for the same intent response
     Then the assembled answer object records conflict-resolution fallback behavior
 
+  @Rule:AmbiguityHandling
+  @Rule:FallbackSemantics
   Scenario: conflicting source evidence asks a targeted clarifying question
     Given an intent response harness
     When source evidence conflicts across candidate records
@@ -173,6 +183,7 @@ Feature: Intent-specific grounding and provenance behavior
     When the user asks an ambiguous satellite-versus-meta phrase
     Then the utterance should route to capabilities help intent deterministically
 
+  @Rule:AmbiguityHandling
   Scenario: unmatched ambiguous phrasing falls back to knowledge question
     Given an intent response harness
     When the user asks an unmatched ambiguous phrase
@@ -208,6 +219,7 @@ Feature: Intent-specific grounding and provenance behavior
       | time_query         | false    | true   | false      | false   | time_query_requires_temporal        |
       | knowledge_question | false    | false  | false      | true    | control_facet_requires_control_intent|
 
+  @Rule:AmbiguityHandling
   Scenario: ambiguous prompt enumerates explanation space before convergence
     Given an intent response harness
     When the user asks an ambiguous prompt requiring divergent analysis
@@ -249,6 +261,7 @@ Feature: Intent-specific grounding and provenance behavior
     When the user provides a say-hello command
     Then the utterance should route to control intent deterministically
 
+  @Rule:TemporalRouting
   Scenario: mixed temporal and memory phrasing preserves time intent with memory facet visibility
     Given an intent response harness
     When the user asks a mixed temporal-memory phrase
