@@ -173,7 +173,7 @@ Rule-governance traceability convention (verification governance):
 - `@Rule:FallbackSemantics`
 
 For canonical primary/secondary verification surfaces and overlap-resolution precedence, use
-[`docs/testing/rule-ownership-matrix.md`](../docs/testing/rule-ownership-matrix.md).
+[`docs/architecture/behavior-governance.md`](../docs/architecture/behavior-governance.md).
 This matrix governs test/spec traceability only and does not override architecture or canonical issue/program sources of truth.
 
 ---
