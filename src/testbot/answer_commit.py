@@ -19,6 +19,59 @@ class CommittedTurnState:
     confirmed_user_facts: list[str]
 
 
+def _normalize_identity_candidate(raw_value: str) -> str:
+    collapsed = " ".join(str(raw_value or "").strip().split())
+    if not collapsed:
+        return ""
+    return " ".join(token.capitalize() for token in collapsed.split(" "))
+
+
+def _extract_stabilized_identity_fact(state: PipelineState) -> str:
+    facts = state.candidate_facts.get("facts", [])
+    if not isinstance(facts, list):
+        return ""
+
+    identity_candidates: list[str] = []
+    for fact in facts:
+        if not isinstance(fact, dict):
+            continue
+        if str(fact.get("key") or "").strip() != "user_name":
+            continue
+        normalized = _normalize_identity_candidate(str(fact.get("value") or ""))
+        if normalized:
+            identity_candidates.append(normalized)
+
+    unique_candidates = tuple(dict.fromkeys(identity_candidates))
+    if not unique_candidates:
+        return ""
+    if len(unique_candidates) > 1:
+        return ""
+    return f"name={unique_candidates[0]}"
+
+
+def _has_identity_contradiction(confirmed_user_facts: list[str], candidate_identity_fact: str) -> bool:
+    if not candidate_identity_fact:
+        return False
+
+    prefix = "name="
+    candidate_identity = candidate_identity_fact[len(prefix) :]
+    for fact in confirmed_user_facts:
+        normalized_fact = str(fact).strip()
+        if not normalized_fact.startswith(prefix):
+            continue
+        if normalized_fact[len(prefix) :] != candidate_identity:
+            return True
+    return False
+
+
+def _merge_confirmed_user_facts(*, assembly: AnswerCandidate, state: PipelineState) -> list[str]:
+    merged = [str(fact).strip() for fact in assembly.confirmed_user_facts if str(fact).strip()]
+    stabilized_identity_fact = _extract_stabilized_identity_fact(state)
+    if stabilized_identity_fact and not _has_identity_contradiction(merged, stabilized_identity_fact):
+        merged.append(stabilized_identity_fact)
+    return list(dict.fromkeys(merged))
+
+
 def commit_answer_stage(
     state: PipelineState,
     *,
@@ -30,6 +83,8 @@ def commit_answer_stage(
     if not validation.passed:
         raise ValueError("cannot commit answer before validation boundary passes")
 
+    committed_facts = _merge_confirmed_user_facts(assembly=assembly, state=state)
+
     commit_receipt = CommitReceiptArtifact.from_mapping(
         {
             "committed": True,
@@ -39,7 +94,7 @@ def commit_answer_stage(
             "pending_repair_state": assembly.pending_repair_state,
             "resolved_obligations": list(assembly.resolved_obligations),
             "remaining_obligations": list(assembly.remaining_obligations),
-            "confirmed_user_facts": list(assembly.confirmed_user_facts),
+            "confirmed_user_facts": committed_facts,
         }
     )
     turn_id = str(state.candidate_facts.get("turn_id") or state.commit_receipt.get("turn_id") or "")
@@ -50,7 +105,7 @@ def commit_answer_stage(
         pending_repair_state=dict(assembly.pending_repair_state),
         resolved_obligations=list(assembly.resolved_obligations),
         remaining_obligations=list(assembly.remaining_obligations),
-        confirmed_user_facts=list(assembly.confirmed_user_facts),
+        confirmed_user_facts=committed_facts,
     )
     return (
         replace(
