@@ -139,6 +139,12 @@ Feature: Intent-specific grounding and provenance behavior
     When the user provides a self-identification utterance
     Then the utterance should route to non-knowledge social intent deterministically
 
+  Scenario: self-identification rewrite preserves user discourse object
+    Given an intent response harness
+    When the user provides a self-identification utterance for rewrite
+    Then rewrite output should preserve identity declaration wording
+    And rewrite output should not be assistant-focused for self-identification input
+
   Scenario: greeting utterance routes to non-knowledge intent
     Given an intent response harness
     When the user provides a greeting utterance

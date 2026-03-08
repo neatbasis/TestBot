@@ -617,7 +617,20 @@ def doc_to_candidate_hit(doc: Document, score: float) -> CandidateHit:
     )
 
 
+_SELF_IDENTITY_DECLARATION_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"^\s*i\s*(?:am|'m|’m)\s+[\w'-]+(?:\s+[\w'-]+)*\s*[.!?]*\s*$", re.IGNORECASE),
+    re.compile(r"^\s*my\s+name\s+is\s+[\w'-]+(?:\s+[\w'-]+)*\s*[.!?]*\s*$", re.IGNORECASE),
+)
+
+
+def _is_self_identity_declaration(utterance: str) -> bool:
+    return any(pattern.match(utterance or "") is not None for pattern in _SELF_IDENTITY_DECLARATION_PATTERNS)
+
+
 def stage_rewrite_query(llm: ChatOllama, state: PipelineState) -> PipelineState:
+    if _is_self_identity_declaration(state.user_input):
+        return replace(state, rewritten_query=state.user_input)
+
     try:
         rewritten_query = llm.invoke(QUERY_REWRITE_PROMPT.format_messages(input=state.user_input)).content.strip() or state.user_input
     except Exception as exc:
