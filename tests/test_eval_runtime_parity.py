@@ -16,7 +16,8 @@ eval_recall = importlib.util.module_from_spec(_eval_spec)
 _eval_spec.loader.exec_module(eval_recall)
 from testbot.eval_fixtures import cases_by_id
 from testbot.context_resolution import ContinuityPosture, resolve as resolve_context
-from testbot.intent_resolution import resolve as resolve_intent
+from testbot import sat_chatbot_memory_v2 as runtime
+from testbot.intent_resolution import IntentResolutionInput, resolve as resolve_intent
 from testbot.intent_router import IntentType
 from testbot.pipeline_state import PipelineState
 from testbot.rerank import adaptive_sigma_fractional, rerank_docs_with_time_and_type_outcome
@@ -314,7 +315,20 @@ def test_canonical_continuity_parity_consumes_prior_commit_artifacts_across_turn
     )
 
     context = resolve_context(utterance="yes", prior_pipeline_state=turn_one_state)
-    intent_resolution = resolve_intent(utterance="yes", context=context)
+    runtime_stabilized = runtime.StabilizedTurnState(
+        turn_id="turn-2",
+        utterance_doc_id="u2",
+        reflection_doc_id="r2",
+        dialogue_state_doc_id="d2",
+        segment_type="episodic",
+        segment_id="seg-2",
+        segment_membership_edge_refs=[],
+        same_turn_exclusion_doc_ids=[],
+        candidate_facts=[{"key": "utterance_raw", "value": "yes", "confidence": 1.0}],
+        candidate_speech_acts=[],
+        candidate_dialogue_state=[],
+    )
+    intent_resolution = resolve_intent(resolution_input=IntentResolutionInput(stabilized_turn_state=runtime_stabilized, context=context, fallback_utterance="yes"))
 
     assert context.continuity_posture is ContinuityPosture.PRESERVE_PRIOR_INTENT
     assert context.history_anchors == ("prior_intent:memory_recall", "clarification_continuity")

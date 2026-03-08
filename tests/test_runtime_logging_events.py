@@ -1211,3 +1211,75 @@ def test_stage_answer_selected_decision_clarify_keeps_policy_and_answer_aligned(
 
     assert answered.invariant_decisions.get("fallback_action") == "ASK_CLARIFYING_QUESTION"
     assert answered.invariant_decisions.get("answer_mode") == "clarify"
+
+
+def test_chat_loop_does_not_use_pre_pipeline_intent_classifier_route_authority(monkeypatch) -> None:
+    events: list[tuple[str, dict[str, object]]] = []
+
+    monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: events.append((event, payload)))
+    monkeypatch.setattr(runtime, "_validate_and_log_transition", lambda _result: None)
+    monkeypatch.setattr(runtime, "store_doc", lambda *args, **kwargs: None)
+    monkeypatch.setattr(runtime, "persist_promoted_context", lambda *args, **kwargs: [])
+    monkeypatch.setattr(
+        runtime,
+        "classify_intent",
+        lambda _utterance: (_ for _ in ()).throw(AssertionError("early classify_intent call is forbidden in chat loop")),
+    )
+
+    def _stub_pipeline(**kwargs):
+        state = kwargs["state"]
+        return (
+            replace(
+                state,
+                classified_intent=IntentType.META_CONVERSATION.value,
+                resolved_intent=IntentType.META_CONVERSATION.value,
+                final_answer="Hi!",
+                invariant_decisions={"fallback_action": "NONE", "answer_mode": "assist"},
+                confidence_decision={"stage_audit_trail": list(runtime.CanonicalTurnOrchestrator.STAGE_ORDER)},
+                provenance_types=[],
+                basis_statement="none",
+                claims=[],
+            ),
+            [],
+        )
+
+    monkeypatch.setattr(runtime, "_run_canonical_turn_pipeline", _stub_pipeline)
+
+    prompts = iter(["hello there", "stop"])
+    _run_chat_loop(
+        llm=_StaticLLM("ignored"),
+        store=object(),
+        chat_history=deque(),
+        near_tie_delta=0.05,
+        io_channel="cli",
+        capability_status="ask_unavailable",
+        capability_snapshot=CapabilitySnapshot(
+            runtime={},
+            requested_mode="cli",
+            daemon_mode=False,
+            effective_mode="cli",
+            fallback_reason=None,
+            exit_reason=None,
+            ha_error=None,
+            ollama_error=None,
+            runtime_capability_status=RuntimeCapabilityStatus(
+                ollama_available=True,
+                ha_available=False,
+                effective_mode="cli",
+                requested_mode="cli",
+                daemon_mode=False,
+                fallback_reason=None,
+                memory_backend="inmemory",
+                debug_enabled=False,
+                debug_verbose=False,
+                text_clarification_available=True,
+                satellite_ask_available=False,
+            ),
+        ),
+        read_user_utterance=lambda: next(prompts, None),
+        send_assistant_text=lambda _text: None,
+        clock=_FIXED_CLOCK,
+    )
+
+    ingest_payload = next(payload for event, payload in events if event == "user_utterance_ingest")
+    assert ingest_payload["utterance"] == "hello there"

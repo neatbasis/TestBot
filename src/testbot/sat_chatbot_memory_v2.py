@@ -80,7 +80,7 @@ from testbot.turn_observation import observe_turn
 from testbot.candidate_encoding import encode_turn_candidates
 from testbot.stabilization import StabilizedTurnState, stabilize_pre_route
 from testbot.context_resolution import resolve as resolve_context
-from testbot.intent_resolution import resolve as resolve_intent
+from testbot.intent_resolution import IntentResolutionInput, resolve as resolve_intent
 from testbot.evidence_retrieval import (
     EvidenceBundle,
     build_evidence_bundle_from_docs_and_scores,
@@ -904,7 +904,26 @@ def _is_clarification_or_capability_confirmation_answer(text: str) -> bool:
 
 def resolve_turn_intent(*, utterance: str, prior_pipeline_state: PipelineState | None) -> tuple[IntentType, IntentType]:
     context_resolution = resolve_context(utterance=utterance, prior_pipeline_state=prior_pipeline_state)
-    intent_resolution = resolve_intent(utterance=utterance, context=context_resolution)
+    stabilized_turn_state = StabilizedTurnState(
+        turn_id="offline-resolve-turn-intent",
+        utterance_doc_id="",
+        reflection_doc_id="",
+        dialogue_state_doc_id="",
+        segment_type="",
+        segment_id="",
+        segment_membership_edge_refs=[],
+        same_turn_exclusion_doc_ids=[],
+        candidate_facts=[{"key": "utterance_raw", "value": utterance}],
+        candidate_speech_acts=[],
+        candidate_dialogue_state=[],
+    )
+    intent_resolution = resolve_intent(
+        resolution_input=IntentResolutionInput(
+            stabilized_turn_state=stabilized_turn_state,
+            context=context_resolution,
+            fallback_utterance=utterance,
+        )
+    )
     return intent_resolution.classified_intent, intent_resolution.resolved_intent
 
 
@@ -2598,7 +2617,6 @@ def _run_canonical_turn_pipeline(
     store: MemoryStore,
     state: PipelineState,
     utterance: str,
-    provisional_classified_intent: IntentType,
     prior_pipeline_state: PipelineState | None,
     turn_id: str,
     near_tie_delta: float,
@@ -2612,7 +2630,6 @@ def _run_canonical_turn_pipeline(
         state=state,
         artifacts={
             "utterance": utterance,
-            "intent_classified_provisional": provisional_classified_intent.value,
             "policy_decision": None,
             "turn_id": turn_id,
             "docs_and_scores": [],
@@ -2658,7 +2675,7 @@ def _run_canonical_turn_pipeline(
         return ctx
 
     def _stabilize_pre_route(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
-        planning_descriptor = planning_pathway_for_intent(provisional_classified_intent, extract_intent_facets(utterance))
+        planning_descriptor = planning_pathway_for_intent(IntentType(state.classified_intent), extract_intent_facets(utterance))
         response_plan = build_response_plan(descriptor=planning_descriptor, user_input=utterance)
         reflection_yaml = generate_reflection_yaml(llm, speaker="user", text=utterance)
         prior_candidate_facts = ctx.state.candidate_facts if isinstance(ctx.state.candidate_facts, dict) else {}
@@ -2698,19 +2715,43 @@ def _run_canonical_turn_pipeline(
         return ctx
 
     def _context_resolve(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        stabilized: StabilizedTurnState = ctx.artifacts["stabilized_turn_state"]
+        stabilized_utterance = next(
+            (
+                str(fact.get("value") or "")
+                for fact in stabilized.candidate_facts
+                if str(fact.get("key") or "") == "utterance_raw"
+            ),
+            "",
+        )
+        context_resolution = resolve_context(
+            utterance=stabilized_utterance or utterance,
+            prior_pipeline_state=prior_pipeline_state,
+        )
+        ctx.artifacts["resolved_context"] = context_resolution
         append_pipeline_snapshot("context", ctx.state)
         return ctx
 
     def _intent_resolve(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
         stabilized: StabilizedTurnState = ctx.artifacts["stabilized_turn_state"]
-        stabilized_utterance = str(ctx.state.user_input or utterance)
-        context_resolution = resolve_context(
-            utterance=stabilized_utterance,
-            prior_pipeline_state=prior_pipeline_state,
+        stabilized_utterance = next(
+            (
+                str(fact.get("value") or "")
+                for fact in stabilized.candidate_facts
+                if str(fact.get("key") or "") == "utterance_raw"
+            ),
+            "",
         )
-        intent_resolution = resolve_intent(utterance=stabilized_utterance, context=context_resolution)
+        context_resolution = ctx.artifacts["resolved_context"]
+        intent_resolution = resolve_intent(
+            resolution_input=IntentResolutionInput(
+                stabilized_turn_state=stabilized,
+                context=context_resolution,
+                fallback_utterance=utterance,
+            )
+        )
         policy_decision = decide_policy(
-            utterance=stabilized_utterance,
+            utterance=stabilized_utterance or utterance,
             intent=intent_resolution.resolved_intent,
         )
         ctx.artifacts["policy_decision"] = policy_decision
@@ -3029,27 +3070,17 @@ def _run_chat_loop(
             send_assistant_text("Stopping. Bye.")
             break
 
-        provisional_classified_intent = classify_intent(utterance)
-        intent_classifier_metrics = {
-            "intent_predicted": provisional_classified_intent.value,
-            "intent_classifier_confidence": _intent_classifier_confidence(
-                utterance=utterance,
-                predicted_intent=provisional_classified_intent,
-            ),
-            "intent_classifier_threshold": INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD,
-        }
-
         state = PipelineState(
             user_input=utterance,
             last_user_message_ts=last_user_message_ts,
-            classified_intent=provisional_classified_intent.value,
+            classified_intent=IntentType.KNOWLEDGE_QUESTION.value,
             resolved_intent="",
             prior_unresolved_intent=(
                 prior_pipeline_state.prior_unresolved_intent
                 if prior_pipeline_state is not None
                 else ""
             ),
-            confidence_decision=intent_classifier_metrics,
+            confidence_decision={},
         )
         append_pipeline_snapshot("ingest", state)
         turn_id = str(uuid.uuid4())
@@ -3059,7 +3090,6 @@ def _run_chat_loop(
             store=store,
             state=state,
             utterance=utterance,
-            provisional_classified_intent=provisional_classified_intent,
             prior_pipeline_state=prior_pipeline_state,
             turn_id=turn_id,
             near_tie_delta=near_tie_delta,
