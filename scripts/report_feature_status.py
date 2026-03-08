@@ -41,6 +41,48 @@ class IssueCriterion:
     evidence_refs: list[str]
 
 
+@dataclass
+class FeatureScenarioTrace:
+    feature_path: str
+    scenario_name: str
+    issue_tags: list[str]
+    ac_tags: list[str]
+
+
+def collect_feature_scenario_traceability(features_dir: Path) -> list[FeatureScenarioTrace]:
+    traces: list[FeatureScenarioTrace] = []
+    issue_pattern = re.compile(r"@ISSUE-\d{4}\b", flags=re.IGNORECASE)
+    ac_pattern = re.compile(r"@AC-\d{4}-\d{2}\b", flags=re.IGNORECASE)
+
+    for feature_path in sorted(features_dir.glob("*.feature")):
+        lines = feature_path.read_text(encoding="utf-8").splitlines()
+        for index, line in enumerate(lines):
+            scenario_match = re.match(r"^\s*Scenario(?: Outline)?:\s*(.+?)\s*$", line)
+            if scenario_match is None:
+                continue
+
+            scenario_name = scenario_match.group(1)
+            tag_lines: list[str] = []
+            cursor = index - 1
+            while cursor >= 0 and not lines[cursor].strip():
+                cursor -= 1
+            while cursor >= 0 and lines[cursor].lstrip().startswith("@"):
+                tag_lines.append(lines[cursor])
+                cursor -= 1
+            tags_blob = " ".join(tag_lines)
+
+            traces.append(
+                FeatureScenarioTrace(
+                    feature_path=feature_path.relative_to(REPO_ROOT).as_posix(),
+                    scenario_name=scenario_name,
+                    issue_tags=sorted({tag.upper() for tag in issue_pattern.findall(tags_blob)}),
+                    ac_tags=sorted({tag.upper() for tag in ac_pattern.findall(tags_blob)}),
+                )
+            )
+
+    return traces
+
+
 def parse_issue_acceptance_criteria(issue: OpenIssue) -> list[IssueCriterion]:
     """Extract acceptance criteria entries from issue markdown.
 
@@ -144,6 +186,12 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=Path("docs/roadmap"),
         help="Directory containing roadmap markdown docs.",
+    )
+    parser.add_argument(
+        "--features-dir",
+        type=Path,
+        default=Path("features"),
+        help="Directory containing feature files used for scenario-level traceability checks.",
     )
     parser.add_argument(
         "--output",
@@ -260,6 +308,7 @@ def build_report(
     gate_results: dict[str, str],
     open_issues: list[OpenIssue],
     roadmap_priorities: dict[str, list[str]],
+    scenario_traces: list[FeatureScenarioTrace],
     generated_at_utc: str,
     input_paths: dict[str, str],
     source_file_metadata: dict[str, Any],
@@ -269,6 +318,7 @@ def build_report(
 
     rows: list[dict[str, Any]] = []
     counts = {"implemented": 0, "partial": 0, "missing": 0}
+    scenario_traceability_warnings: list[dict[str, str]] = []
     criteria_by_issue: dict[str, dict[str, IssueCriterion]] = {
         issue.issue_id.upper(): {
             criterion.criterion_id: criterion
@@ -319,6 +369,28 @@ def build_report(
                 }
             )
 
+        acceptance_test_paths = {
+            str(path).strip() for path in capability.get("acceptance_tests", []) if str(path).strip()
+        }
+        for trace in scenario_traces:
+            if trace.feature_path not in acceptance_test_paths:
+                continue
+            missing: list[str] = []
+            if not trace.issue_tags:
+                missing.append("ISSUE")
+            if not trace.ac_tags:
+                missing.append("AC")
+            if missing:
+                scenario_traceability_warnings.append(
+                    {
+                        "capability_id": cap_id,
+                        "capability_name": cap_name,
+                        "feature_path": trace.feature_path,
+                        "scenario_name": trace.scenario_name,
+                        "missing_tags": ", ".join(missing),
+                    }
+                )
+
         priority_refs = capability.get("roadmap_priority_refs", [])
         priority_sources: dict[str, list[str]] = {
             ref: roadmap_priorities.get(ref, []) for ref in priority_refs
@@ -354,6 +426,11 @@ def build_report(
                 "criterion_obligations": criterion_obligations,
                 "criterion_status_breakdown": status_breakdown,
                 "unresolved_criteria": unresolved_criteria,
+                "unmapped_scenarios": [
+                    warning
+                    for warning in scenario_traceability_warnings
+                    if warning["capability_id"] == cap_id
+                ],
             }
         )
 
@@ -366,7 +443,8 @@ def build_report(
             f"contract=`{input_paths['contract_path']}`, "
             f"gate_summary=`{input_paths['gate_summary_path']}`, "
             f"issues_dir=`{input_paths['issues_dir']}`, "
-            f"roadmap_dir=`{input_paths['roadmap_dir']}`"
+            f"roadmap_dir=`{input_paths['roadmap_dir']}`, "
+            f"features_dir=`{input_paths['features_dir']}`"
         ),
         "",
         f"Implemented: **{counts['implemented']}** | Partial: **{counts['partial']}** | Missing: **{counts['missing']}**",
@@ -391,6 +469,10 @@ def build_report(
             evidence_bits.append("roadmap: " + ", ".join(row["roadmap_priority_refs"]))
         if row["unresolved_criteria"]:
             evidence_bits.append("unresolved criteria: " + ", ".join(row["unresolved_criteria"]))
+        if row["unmapped_scenarios"]:
+            evidence_bits.append(
+                f"unmapped scenarios: {len(row['unmapped_scenarios'])}"
+            )
         if not evidence_bits:
             evidence_bits.append("no blocking signals from current inputs")
 
@@ -409,18 +491,26 @@ def build_report(
         f"contract=`{input_paths['contract_path']}`, "
         f"gate_summary=`{input_paths['gate_summary_path']}`, "
         f"issues_dir=`{input_paths['issues_dir']}`, "
-        f"roadmap_dir=`{input_paths['roadmap_dir']}`"
+        f"roadmap_dir=`{input_paths['roadmap_dir']}`, "
+        f"features_dir=`{input_paths['features_dir']}`"
     )
+
+    warnings: list[str] = [gate_stale_warning] if gate_stale_warning else []
+    if scenario_traceability_warnings:
+        warnings.append(
+            "One or more acceptance-test scenarios are missing scenario-level traceability tags (@ISSUE-xxxx and/or @AC-xxxx-yy)."
+        )
 
     summary_payload = {
         "generated_at_utc": generated_at_utc,
         "inputs": input_paths,
         "source_file_metadata": source_file_metadata,
-        "warnings": [gate_stale_warning] if gate_stale_warning else [],
+        "warnings": warnings,
         "summary": counts,
         "capabilities": rows,
         "open_issue_count": len(open_issues),
         "gate_checks_seen": len(gate_results),
+        "unmapped_scenarios": scenario_traceability_warnings,
     }
 
     return "\n".join(lines) + "\n", summary_payload
@@ -433,11 +523,13 @@ def main() -> int:
     gate_path = args.gate_summary if args.gate_summary.is_absolute() else REPO_ROOT / args.gate_summary
     issues_dir = args.issues_dir if args.issues_dir.is_absolute() else REPO_ROOT / args.issues_dir
     roadmap_dir = args.roadmap_dir if args.roadmap_dir.is_absolute() else REPO_ROOT / args.roadmap_dir
+    features_dir = args.features_dir if args.features_dir.is_absolute() else REPO_ROOT / args.features_dir
 
     contract = load_yaml(contract_path)
     gate_results = load_gate_results(gate_path)
     open_issues = collect_open_issues(issues_dir)
     roadmap_priorities = collect_roadmap_priorities(roadmap_dir)
+    scenario_traces = collect_feature_scenario_traceability(features_dir)
 
     generated_at_utc = datetime.now(tz=UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
     input_paths = {
@@ -445,12 +537,14 @@ def main() -> int:
         "gate_summary_path": gate_path.relative_to(REPO_ROOT).as_posix(),
         "issues_dir": issues_dir.relative_to(REPO_ROOT).as_posix(),
         "roadmap_dir": roadmap_dir.relative_to(REPO_ROOT).as_posix(),
+        "features_dir": features_dir.relative_to(REPO_ROOT).as_posix(),
     }
     source_file_metadata: dict[str, Any] = {
         "contract": file_metadata(contract_path),
         "gate_summary": file_metadata(gate_path) if gate_path.exists() else None,
         "open_issues": [file_metadata(issue.path) for issue in open_issues],
         "roadmap_files": [file_metadata(path) for path in sorted(roadmap_dir.glob("*.md"))],
+        "feature_files": [file_metadata(path) for path in sorted(features_dir.glob("*.feature"))],
     }
 
     gate_stale_warning: str | None = None
@@ -475,6 +569,7 @@ def main() -> int:
         gate_results=gate_results,
         open_issues=open_issues,
         roadmap_priorities=roadmap_priorities,
+        scenario_traces=scenario_traces,
         generated_at_utc=generated_at_utc,
         input_paths=input_paths,
         source_file_metadata=source_file_metadata,

@@ -130,12 +130,14 @@ def test_build_report_links_partial_capability_to_issue_via_id_keyword(tmp_path:
         gate_results={},
         open_issues=[issue],
         roadmap_priorities={"P5": ["docs/roadmap/current-status-and-next-5-priorities.md"]},
+        scenario_traces=[],
         generated_at_utc="2026-03-06T00:00:00Z",
         input_paths={
             "contract_path": "docs/qa/feature-status.yaml",
             "gate_summary_path": "artifacts/all-green-gate-summary.json",
             "issues_dir": "docs/issues",
             "roadmap_dir": "docs/roadmap",
+            "features_dir": "features",
         },
         source_file_metadata={"contract": None, "gate_summary": None, "open_issues": []},
         gate_stale_warning=None,
@@ -206,6 +208,7 @@ capabilities:
                 "gate_summary": Path("artifacts/all-green-gate-summary.json"),
                 "issues_dir": Path("docs/issues"),
                 "roadmap_dir": Path("docs/roadmap"),
+                "features_dir": Path("features"),
                 "output": Path("docs/qa/feature-status-report.md"),
                 "json_output": Path("artifacts/feature-status-summary.json"),
             },
@@ -229,12 +232,14 @@ def test_build_report_renders_gate_stale_warning_with_refresh_hint(tmp_path: Pat
         gate_results={},
         open_issues=[],
         roadmap_priorities={},
+        scenario_traces=[],
         generated_at_utc="2026-03-07T00:00:00Z",
         input_paths={
             "contract_path": "docs/qa/feature-status.yaml",
             "gate_summary_path": "artifacts/all-green-gate-summary.json",
             "issues_dir": "docs/issues",
             "roadmap_dir": "docs/roadmap",
+            "features_dir": "features",
         },
         source_file_metadata={"contract": None, "gate_summary": None, "open_issues": []},
         gate_stale_warning=(
@@ -280,6 +285,7 @@ def test_main_marks_gate_stale_when_roadmap_newer(tmp_path: Path, monkeypatch) -
                 "gate_summary": Path("artifacts/all-green-gate-summary.json"),
                 "issues_dir": Path("docs/issues"),
                 "roadmap_dir": Path("docs/roadmap"),
+                "features_dir": Path("features"),
                 "output": None,
                 "json_output": Path("artifacts/feature-status-summary.json"),
             },
@@ -386,12 +392,14 @@ def test_build_report_includes_unresolved_criteria_in_markdown_and_json(tmp_path
         gate_results={},
         open_issues=[issue],
         roadmap_priorities={},
+        scenario_traces=[],
         generated_at_utc="2026-03-08T00:00:00Z",
         input_paths={
             "contract_path": "docs/qa/feature-status.yaml",
             "gate_summary_path": "artifacts/all-green-gate-summary.json",
             "issues_dir": "docs/issues",
             "roadmap_dir": "docs/roadmap",
+            "features_dir": "features",
         },
         source_file_metadata={"contract": None, "gate_summary": None, "open_issues": []},
         gate_stale_warning=None,
@@ -446,12 +454,14 @@ def test_build_report_handles_missing_criterion_markup_gracefully(tmp_path: Path
         gate_results={},
         open_issues=[issue],
         roadmap_priorities={},
+        scenario_traces=[],
         generated_at_utc="2026-03-08T00:00:00Z",
         input_paths={
             "contract_path": "docs/qa/feature-status.yaml",
             "gate_summary_path": "artifacts/all-green-gate-summary.json",
             "issues_dir": "docs/issues",
             "roadmap_dir": "docs/roadmap",
+            "features_dir": "features",
         },
         source_file_metadata={"contract": None, "gate_summary": None, "open_issues": []},
         gate_stale_warning=None,
@@ -468,3 +478,93 @@ def test_build_report_handles_missing_criterion_markup_gracefully(tmp_path: Path
     ]
     assert capability["unresolved_criteria"] == ["AC-0013-01"]
     assert "unresolved criteria: AC-0013-01" in report_markdown
+
+
+def test_collect_feature_scenario_traceability_extracts_issue_and_ac_tags(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(report_feature_status, "REPO_ROOT", tmp_path)
+
+    features_dir = tmp_path / "features"
+    features_dir.mkdir(parents=True)
+    feature_path = features_dir / "traceability.feature"
+    feature_path.write_text(
+        """
+@Rule:Example
+Feature: Traceability parsing
+
+  @ISSUE-1234 @AC-1234-01
+  Scenario: tagged scenario
+    Given setup
+
+  @Rule:Other
+  Scenario: missing trace tags
+    Given setup
+""".strip()
+        + "\n",
+        encoding="utf-8",
+    )
+
+    traces = report_feature_status.collect_feature_scenario_traceability(features_dir)
+    assert len(traces) == 2
+    assert traces[0].scenario_name == "tagged scenario"
+    assert traces[0].issue_tags == ["@ISSUE-1234"]
+    assert traces[0].ac_tags == ["@AC-1234-01"]
+    assert traces[1].scenario_name == "missing trace tags"
+    assert traces[1].issue_tags == []
+    assert traces[1].ac_tags == []
+
+
+def test_build_report_surfaces_unmapped_scenarios_for_missing_issue_ac_tags(
+    tmp_path: Path, monkeypatch
+) -> None:
+    monkeypatch.setattr(report_feature_status, "REPO_ROOT", tmp_path)
+
+    contract = {
+        "capabilities": [
+            {
+                "capability_id": "intent_grounding_router",
+                "capability_name": "Deterministic intent grounding and route selection",
+                "current_status": "implemented",
+                "acceptance_tests": ["features/intent_grounding.feature"],
+            }
+        ]
+    }
+
+    scenario_traces = [
+        report_feature_status.FeatureScenarioTrace(
+            feature_path="features/intent_grounding.feature",
+            scenario_name="tagged",
+            issue_tags=["@ISSUE-0008"],
+            ac_tags=["@AC-0008-01"],
+        ),
+        report_feature_status.FeatureScenarioTrace(
+            feature_path="features/intent_grounding.feature",
+            scenario_name="untagged",
+            issue_tags=[],
+            ac_tags=[],
+        ),
+    ]
+
+    report_markdown, summary = report_feature_status.build_report(
+        contract=contract,
+        gate_results={},
+        open_issues=[],
+        roadmap_priorities={},
+        scenario_traces=scenario_traces,
+        generated_at_utc="2026-03-08T00:00:00Z",
+        input_paths={
+            "contract_path": "docs/qa/feature-status.yaml",
+            "gate_summary_path": "artifacts/all-green-gate-summary.json",
+            "issues_dir": "docs/issues",
+            "roadmap_dir": "docs/roadmap",
+            "features_dir": "features",
+        },
+        source_file_metadata={"contract": None, "gate_summary": None, "open_issues": []},
+        gate_stale_warning=None,
+    )
+
+    assert "unmapped scenarios: 1" in report_markdown
+    assert summary["warnings"]
+    assert len(summary["unmapped_scenarios"]) == 1
+    assert summary["unmapped_scenarios"][0]["scenario_name"] == "untagged"
+    capability = summary["capabilities"][0]
+    assert len(capability["unmapped_scenarios"]) == 1
