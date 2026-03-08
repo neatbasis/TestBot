@@ -112,6 +112,31 @@ def test_stage_rewrite_query_invoke_failure_falls_back_and_logs(monkeypatch) -> 
     assert "rewrite down" in events[0][1]["error_message"]
 
 
+
+
+def test_stage_rewrite_query_self_identification_preserves_original_user_declaration() -> None:
+    class _AssistantFocusedRewriteLLM:
+        def invoke(self, _msgs):
+            return type("_Resp", (), {"content": "What is your name?"})()
+
+    state = PipelineState(user_input="I'm Taylor")
+
+    rewritten = stage_rewrite_query(_AssistantFocusedRewriteLLM(), state)
+
+    assert rewritten.rewritten_query == "I'm Taylor"
+
+
+def test_stage_rewrite_query_self_identification_guard_skips_llm_invoke() -> None:
+    class _FailIfInvokedLLM:
+        def invoke(self, _msgs):
+            raise AssertionError("rewrite LLM should not be invoked for self-identification declarations")
+
+    state = PipelineState(user_input="My name is Jordan")
+
+    rewritten = stage_rewrite_query(_FailIfInvokedLLM(), state)
+
+    assert rewritten.rewritten_query == "My name is Jordan"
+
 def test_stage_answer_invoke_failure_uses_deterministic_fallback_and_logs(monkeypatch) -> None:
     events: list[tuple[str, dict]] = []
     monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: events.append((event, payload)))

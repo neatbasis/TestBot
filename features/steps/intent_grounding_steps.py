@@ -20,6 +20,7 @@ from testbot.sat_chatbot_memory_v2 import (
     build_provenance_metadata,
     resolve_turn_intent,
     stage_answer,
+    stage_rewrite_query,
     validate_general_knowledge_contract,
 )
 from testbot.stage_transitions import validate_answer_post, validate_answer_pre
@@ -557,6 +558,35 @@ def step_then_presents_frameworks_and_synthesis(context) -> None:
 def step_when_self_identification_utterance(context) -> None:
     context.ambiguous_intent = classify_intent("my name is taylor")
 
+
+
+
+class _SelfIdentificationRewriteLLM:
+    def __init__(self, content: str) -> None:
+        self._content = content
+
+    def invoke(self, _msgs):
+        return type("_Resp", (), {"content": self._content})()
+
+
+@when("the user provides a self-identification utterance for rewrite")
+def step_when_self_identification_for_rewrite(context) -> None:
+    context.self_identification_input = "My name is Taylor"
+    state = PipelineState(user_input=context.self_identification_input)
+    rewritten = stage_rewrite_query(_SelfIdentificationRewriteLLM("What is the assistant's name?"), state)
+    context.rewrite_output = rewritten.rewritten_query
+
+
+@then("rewrite output should preserve identity declaration wording")
+def step_then_rewrite_preserves_identity_declaration(context) -> None:
+    assert context.rewrite_output == context.self_identification_input
+
+
+@then("rewrite output should not be assistant-focused for self-identification input")
+def step_then_rewrite_not_assistant_focused_for_identity(context) -> None:
+    lowered = context.rewrite_output.lower()
+    assert "assistant" not in lowered
+    assert "your name" not in lowered
 
 @when("the user provides a greeting utterance")
 def step_when_greeting_utterance(context) -> None:
