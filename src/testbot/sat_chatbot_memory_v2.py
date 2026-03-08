@@ -75,7 +75,7 @@ from testbot.stabilization import StabilizedTurnState, stabilize_pre_route
 from testbot.context_resolution import resolve as resolve_context
 from testbot.intent_resolution import resolve as resolve_intent
 from testbot.evidence_retrieval import EvidenceBundle, retrieval_result
-from testbot.policy_decision import decide as decide_policy, decide_from_evidence
+from testbot.policy_decision import DecisionClass, DecisionObject, decide as decide_policy, decide_from_evidence
 from testbot.answer_assembly import assemble_answer_contract
 from testbot.answer_validation import validate_answer_assembly_boundary
 from testbot.answer_rendering import render_answer
@@ -1956,6 +1956,52 @@ def answer_commit(
     )
 
 
+def _answer_routing_from_decision_object(
+    decision: DecisionObject,
+    *,
+    capability_status: CapabilityStatus,
+) -> AnswerRoutingDecision:
+    match decision.decision_class:
+        case DecisionClass.ANSWER_FROM_MEMORY:
+            fallback_action = "ANSWER_GENERAL_KNOWLEDGE"
+            token = "LLM_DRAFT"
+            clarification_allowed = False
+        case DecisionClass.ASK_FOR_CLARIFICATION:
+            fallback_action = "ASK_CLARIFYING_QUESTION"
+            token = "PARTIAL_MEMORY_CLARIFIER"
+            clarification_allowed = True
+        case DecisionClass.CONTINUE_REPAIR_RECONSTRUCTION:
+            fallback_action = "ASK_CLARIFYING_QUESTION"
+            token = "PARTIAL_MEMORY_CLARIFIER"
+            clarification_allowed = True
+        case DecisionClass.ANSWER_GENERAL_KNOWLEDGE_LABELED:
+            fallback_action = "ANSWER_GENERAL_KNOWLEDGE"
+            token = "LLM_DRAFT"
+            clarification_allowed = False
+
+    return AnswerRoutingDecision(
+        fallback_action=fallback_action,
+        canonical_response_token=token,
+        route_to_ask_expected=False,
+        clarification_allowed=clarification_allowed,
+        rationale={
+            "authority": "decision_object",
+            "decision_class": decision.decision_class.value,
+            "decision_rationale": decision.rationale,
+            "decision_reasoning": dict(decision.reasoning),
+            "capability_status": capability_status,
+            "fallback_reason": "decision_object_mapping",
+            "considered_alternatives": [
+                {
+                    "action": fallback_action,
+                    "status": "selected",
+                    "reason": "selected by canonical decision_object authority",
+                }
+            ],
+        },
+    )
+
+
 def stage_answer(
     llm: ChatOllama,
     state: PipelineState,
@@ -1963,24 +2009,31 @@ def stage_answer(
     chat_history: deque[ChatMsg],
     hits: list[Document],
     capability_status: CapabilityStatus,
+    selected_decision: DecisionObject | None = None,
     runtime_capability_status: RuntimeCapabilityStatus | None = None,
     clock: Clock | None = None,
     timezone: str = "Europe/Helsinki",
 ) -> PipelineState:
-    resolved_intent = IntentType(state.resolved_intent or classify_intent(state.user_input).value)
-    answer_routing = resolve_answer_routing(
-        AnswerPolicyInput(
-            intent=_intent_class_for_policy(resolved_intent),
-            confidence_decision=state.confidence_decision,
+    if selected_decision is not None:
+        answer_routing = _answer_routing_from_decision_object(
+            selected_decision,
             capability_status=capability_status,
-            source_confidence=(
-                float(state.confidence_decision["source_confidence"])
-                if "source_confidence" in state.confidence_decision
-                else None
+        )
+    else:
+        resolved_intent = IntentType(state.resolved_intent or classify_intent(state.user_input).value)
+        answer_routing = resolve_answer_routing(
+            AnswerPolicyInput(
+                intent=_intent_class_for_policy(resolved_intent),
+                confidence_decision=state.confidence_decision,
+                capability_status=capability_status,
+                source_confidence=(
+                    float(state.confidence_decision["source_confidence"])
+                    if "source_confidence" in state.confidence_decision
+                    else None
+                ),
             ),
-        ),
-        fallback_decider=decide_fallback_action,
-    )
+            fallback_decider=decide_fallback_action,
+        )
     assembled = answer_assemble(
         llm,
         state,
@@ -2744,6 +2797,7 @@ def _run_canonical_turn_pipeline(
             chat_history=chat_history,
             hits=ctx.artifacts["hits"],
             capability_status=capability_status,
+            selected_decision=ctx.artifacts["decision_object"],
             runtime_capability_status=capability_snapshot.runtime_capability_status,
             clock=clock,
         )

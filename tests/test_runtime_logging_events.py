@@ -11,7 +11,7 @@ from testbot.pipeline_state import PipelineState
 from testbot.pipeline_state import AlignmentDecision
 from testbot import sat_chatbot_memory_v2 as runtime
 from testbot.intent_router import IntentType
-from testbot.policy_decision import EvidencePosture, decide
+from testbot.policy_decision import DecisionClass, DecisionObject, EvidencePosture, decide
 from testbot.sat_chatbot_memory_v2 import (
     ASSIST_ALTERNATIVES_ANSWER,
     NON_KNOWLEDGE_UNCERTAINTY_ANSWER,
@@ -1007,3 +1007,67 @@ def test_build_provenance_metadata_sorts_memory_and_source_references_determinis
     assert used_memory_refs == ["mem-a@2026-03-10T09:00:00Z", "mem-b@2026-03-10T10:00:00Z"]
     assert used_source_refs == ["src-a", "src-b"]
     assert [item["doc_id"] for item in source_attr] == ["src-a", "src-b"]
+
+
+def test_stage_answer_uses_selected_decision_object_for_memory_action() -> None:
+    state = PipelineState(
+        user_input="what did i note about release prep?",
+        resolved_intent=IntentType.MEMORY_RECALL.value,
+        confidence_decision={
+            "context_confident": False,
+            "ambiguity_detected": True,
+        },
+    )
+
+    answered = stage_answer(
+        _StaticLLM("From memory, I found: release prep includes checklist review. doc_id: mem-7, ts: 2026-03-01T12:00:00Z"),
+        state,
+        chat_history=deque(),
+        hits=[
+            Document(
+                page_content="release prep includes checklist review",
+                metadata={"doc_id": "mem-7", "ts": "2026-03-01T12:00:00Z"},
+            )
+        ],
+        capability_status="ask_unavailable",
+        selected_decision=DecisionObject(
+            decision_class=DecisionClass.ANSWER_FROM_MEMORY,
+            retrieval_branch="memory_retrieval",
+            rationale="confident evidence bundle supports memory-grounded answer",
+            reasoning={"evidence_posture": "scored_non_empty"},
+        ),
+        clock=_FIXED_CLOCK,
+    )
+
+    assert answered.invariant_decisions.get("fallback_action") == "ANSWER_GENERAL_KNOWLEDGE"
+    assert answered.final_answer.startswith("From memory, I found:")
+    assert answered.invariant_decisions.get("answer_policy_rationale", {}).get("authority") == "decision_object"
+
+
+def test_stage_answer_selected_decision_clarify_keeps_policy_and_answer_aligned() -> None:
+    state = PipelineState(
+        user_input="what did i say?",
+        resolved_intent=IntentType.MEMORY_RECALL.value,
+        confidence_decision={
+            "context_confident": True,
+            "ambiguity_detected": False,
+        },
+    )
+
+    answered = stage_answer(
+        _StaticLLM("ignored"),
+        state,
+        chat_history=deque(),
+        hits=[],
+        capability_status="ask_unavailable",
+        selected_decision=DecisionObject(
+            decision_class=DecisionClass.ASK_FOR_CLARIFICATION,
+            retrieval_branch="direct_answer",
+            rationale="insufficient evidence requires clarification",
+            reasoning={"evidence_posture": "scored_empty"},
+        ),
+        clock=_FIXED_CLOCK,
+    )
+
+    assert answered.invariant_decisions.get("fallback_action") == "ASK_CLARIFYING_QUESTION"
+    assert answered.invariant_decisions.get("answer_mode") == "clarify"
