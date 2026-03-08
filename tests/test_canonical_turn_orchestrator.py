@@ -7,6 +7,8 @@ import pytest
 from testbot.candidate_encoding import encode_turn_candidates
 from testbot.canonical_turn_orchestrator import CanonicalStage, CanonicalTurnContext, CanonicalTurnOrchestrator
 from testbot.pipeline_state import PipelineState
+from testbot.policy_decision import DecisionClass, DecisionObject
+from testbot.sat_chatbot_memory_v2 import _answer_routing_from_decision_object
 from testbot.turn_observation import observe_turn
 
 
@@ -131,3 +133,18 @@ def test_encode_turn_candidates_extracts_name_fact_for_stabilization() -> None:
 
     assert any(fact.key == "user_name" and fact.value == "Sebastian" for fact in encoded.facts)
     assert encoded.dialogue_state and encoded.dialogue_state[0].label == "self_identification"
+
+
+def test_canonical_answer_from_memory_decision_maps_to_memory_grounded_route() -> None:
+    decision = DecisionObject(
+        decision_class=DecisionClass.ANSWER_FROM_MEMORY,
+        retrieval_branch="memory_retrieval",
+        rationale="confident evidence bundle supports memory-grounded answer",
+        reasoning={"evidence_posture": "scored_non_empty"},
+    )
+
+    routing = _answer_routing_from_decision_object(decision, capability_status="ask_unavailable")
+
+    assert routing.fallback_action == "ANSWER_FROM_MEMORY"
+    assert routing.canonical_response_token == "LLM_DRAFT"
+    assert routing.rationale["decision_class"] == "answer_from_memory"

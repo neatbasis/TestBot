@@ -107,6 +107,18 @@ def decide_from_evidence(*, intent: IntentType, retrieval: RetrievalResult, repa
             reasoning={"evidence_posture": retrieval.evidence_posture.value, **retrieval.reasoning},
         )
 
+    if intent == IntentType.MEMORY_RECALL and retrieval.evidence_posture in {
+        EvidencePosture.EMPTY_EVIDENCE,
+        EvidencePosture.SCORED_EMPTY,
+        EvidencePosture.NOT_REQUESTED,
+    }:
+        return DecisionObject(
+            decision_class=DecisionClass.ASK_FOR_CLARIFICATION,
+            retrieval_branch="direct_answer",
+            rationale="memory recall without confident evidence requires clarification or assistive recovery",
+            reasoning={"evidence_posture": retrieval.evidence_posture.value, **retrieval.reasoning},
+        )
+
     if intent == IntentType.KNOWLEDGE_QUESTION and retrieval.evidence_posture in {
         EvidencePosture.EMPTY_EVIDENCE,
         EvidencePosture.SCORED_EMPTY,

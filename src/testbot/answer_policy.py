@@ -27,6 +27,7 @@ def _policy_action_universe(intent: IntentClass) -> list[FallbackAction]:
             "ROUTE_TO_ASK",
             "ASK_CLARIFYING_QUESTION",
             "OFFER_CAPABILITY_ALTERNATIVES",
+            "ANSWER_FROM_MEMORY",
             "ANSWER_GENERAL_KNOWLEDGE",
             "ANSWER_UNKNOWN",
         ]
@@ -50,6 +51,8 @@ def _policy_alternative_reason(*, action: FallbackAction, chosen: FallbackAction
         return "time answer rejected: intent was not a time query"
     if action == "ANSWER_UNKNOWN":
         return "unknown fallback rejected: policy selected a more specific action"
+    if action == "ANSWER_FROM_MEMORY":
+        return "memory-grounded route rejected: disambiguation or recovery policy had priority"
     return "general-knowledge route rejected: fallback policy gates did not select it"
 
 
@@ -119,8 +122,10 @@ def resolve_answer_routing(
         and (not route_to_ask_expected or policy_input.capability_status == "ask_available")
     )
 
-    if fallback_action == "ROUTE_TO_ASK":
-        token: CanonicalResponseToken = "ROUTE_TO_ASK_ANSWER"
+    if fallback_action == "ANSWER_FROM_MEMORY":
+        token: CanonicalResponseToken = "LLM_DRAFT"
+    elif fallback_action == "ROUTE_TO_ASK":
+        token = "ROUTE_TO_ASK_ANSWER"
     elif fallback_action == "ASK_CLARIFYING_QUESTION" and clarification_allowed:
         token = "PARTIAL_MEMORY_CLARIFIER"
     elif fallback_action == "ASK_CLARIFYING_QUESTION":

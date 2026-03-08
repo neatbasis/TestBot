@@ -7,6 +7,7 @@ from typing import Literal
 IntentClass = Literal["memory_recall", "time_query", "non_memory"]
 CapabilityStatus = Literal["ask_available", "ask_unavailable"]
 FallbackAction = Literal[
+    "ANSWER_FROM_MEMORY",
     "ANSWER_TIME",
     "ANSWER_GENERAL_KNOWLEDGE",
     "ANSWER_UNKNOWN",
@@ -51,7 +52,7 @@ def decide_fallback_action(
     if not memory_hit:
         return "OFFER_CAPABILITY_ALTERNATIVES"
 
-    return "ANSWER_GENERAL_KNOWLEDGE"
+    return "ANSWER_FROM_MEMORY"
 
 
 def fallback_reason(
@@ -78,4 +79,6 @@ def fallback_reason(
         return "capability_alternatives_required"
     if fallback_action == "ANSWER_TIME":
         return "time_query_direct_answer"
+    if fallback_action == "ANSWER_FROM_MEMORY":
+        return "memory_recall_confident_grounded_hit"
     return "direct_answer_path"

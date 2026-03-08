@@ -1039,7 +1039,7 @@ def test_stage_answer_uses_selected_decision_object_for_memory_action() -> None:
         clock=_FIXED_CLOCK,
     )
 
-    assert answered.invariant_decisions.get("fallback_action") == "ANSWER_GENERAL_KNOWLEDGE"
+    assert answered.invariant_decisions.get("fallback_action") == "ANSWER_FROM_MEMORY"
     assert answered.final_answer.startswith("From memory, I found:")
     assert answered.invariant_decisions.get("answer_policy_rationale", {}).get("authority") == "decision_object"
 
