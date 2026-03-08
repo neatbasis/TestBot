@@ -53,6 +53,21 @@ Feature: Intent-specific grounding and provenance behavior
     And the provenance and basis should include "UNKNOWN" and "Trivial fallback"
     And the fallback reason should be "insufficient_reliable_memory"
 
+  Scenario: assembled answer object combines memory and source evidence with explicit fields
+    Given an intent response harness
+    When memory and source evidence are assembled into a knowing response
+    Then the assembled answer object includes memory and source evidence references
+
+  Scenario: assembled answer object enforces required attribution fields by evidence type
+    Given an intent response harness
+    When memory and source evidence are assembled into a knowing response
+    Then the assembled answer object includes required attribution fields for each evidence type
+
+  Scenario: assembled answer object resolves evidence conflicts to clarification posture
+    Given an intent response harness
+    When assembled evidence inputs disagree for the same intent response
+    Then the assembled answer object records conflict-resolution fallback behavior
+
   Scenario: conflicting source evidence asks a targeted clarifying question
     Given an intent response harness
     When source evidence conflicts across candidate records
