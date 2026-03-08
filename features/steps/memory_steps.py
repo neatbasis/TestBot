@@ -15,7 +15,14 @@ from testbot.turn_observation import observe_turn
 from testbot.candidate_encoding import encode_turn_candidates
 from testbot.canonical_turn_orchestrator import CanonicalStage, CanonicalTurnContext, CanonicalTurnOrchestrator
 from testbot.memory_strata import derive_segment_descriptor
-from testbot.evidence_retrieval import build_evidence_bundle_from_docs_and_scores
+from testbot.intent_router import IntentType
+from testbot.policy_decision import DecisionClass, decide_from_evidence
+from testbot.evidence_retrieval import (
+    EvidenceBundle,
+    EvidencePosture,
+    build_evidence_bundle_from_docs_and_scores,
+    retrieval_result,
+)
 
 from testbot.sat_chatbot_memory_v2 import has_sufficient_context_confidence, stage_rerank
 from testbot.stage_transitions import (
@@ -39,6 +46,21 @@ ASSIST_FALLBACK = "I don't have enough reliable memory to answer directly. I can
 BRIDGING_CLARIFIER = "I found related memory fragments (fragment A; fragment B), but not enough to answer precisely. Which person, event, or time window should I focus on?"
 CITATION_PATTERN = re.compile(r"doc_id\s*[:=]\s*[^,\]\)\n]+.*?ts\s*[:=]\s*[^,\]\)\n]+", re.IGNORECASE)
 
+
+def _assert_evidence_state_fields(
+    state_contract: dict[str, object],
+    *,
+    typed_state: str,
+    evidence_posture: str,
+    decision_class: str,
+    provenance_label: str,
+    fallback_strategy: str,
+) -> None:
+    assert state_contract.get("typed_state") == typed_state
+    assert state_contract.get("evidence_posture") == evidence_posture
+    assert state_contract.get("decision_class") == decision_class
+    assert state_contract.get("provenance_label") == provenance_label
+    assert state_contract.get("fallback_strategy") == fallback_strategy
 
 def _validate_answer_contract(text: str) -> bool:
     normalized = (text or "").strip()
@@ -349,6 +371,82 @@ def step_then_assistive_fallback(context) -> None:
     assert context.parity_signals["ambiguity_detected"] is False
 
 
+
+
+@when("typed memory fallback contracts are resolved for empty and scored-empty evidence")
+def step_when_typed_memory_fallback_contracts_resolved(context) -> None:
+    empty_retrieval = retrieval_result(
+        evidence_bundle=EvidenceBundle(),
+        retrieval_candidates_considered=0,
+        hit_count=0,
+    )
+    scored_empty_retrieval = retrieval_result(
+        evidence_bundle=EvidenceBundle(),
+        retrieval_candidates_considered=2,
+        hit_count=0,
+    )
+
+    empty_decision = decide_from_evidence(intent=IntentType.MEMORY_RECALL, retrieval=empty_retrieval)
+    scored_empty_decision = decide_from_evidence(intent=IntentType.MEMORY_RECALL, retrieval=scored_empty_retrieval)
+
+    context.memory_typed_fallback_mapping = {
+        "E.empty": {
+            "typed_state": "E.empty",
+            "evidence_posture": empty_retrieval.evidence_posture.value,
+            "decision_class": empty_decision.decision_class.value,
+            "provenance_label": "UNKNOWN",
+            "fallback_strategy": "ASK_CLARIFIER",
+        },
+        "E.scored_empty": {
+            "typed_state": "E.scored_empty",
+            "evidence_posture": scored_empty_retrieval.evidence_posture.value,
+            "decision_class": scored_empty_decision.decision_class.value,
+            "provenance_label": "UNKNOWN",
+            "fallback_strategy": "ANSWER_UNKNOWN",
+        },
+        "E.scored_empty_non_memory": {
+            "typed_state": "E.scored_empty_non_memory",
+            "evidence_posture": scored_empty_retrieval.evidence_posture.value,
+            "decision_class": DecisionClass.ANSWER_GENERAL_KNOWLEDGE_LABELED.value,
+            "provenance_label": "UNKNOWN",
+            "fallback_strategy": "OFFER_ASSIST_ALTERNATIVES",
+        },
+    }
+
+
+@then("typed evidence states should remain distinct for empty and scored-empty in memory recall")
+def step_then_typed_evidence_states_distinct_memory(context) -> None:
+    empty_contract = context.memory_typed_fallback_mapping["E.empty"]
+    scored_empty_contract = context.memory_typed_fallback_mapping["E.scored_empty"]
+    assert empty_contract["typed_state"] != scored_empty_contract["typed_state"]
+    assert empty_contract["evidence_posture"] == EvidencePosture.EMPTY_EVIDENCE.value
+    assert scored_empty_contract["evidence_posture"] == EvidencePosture.SCORED_EMPTY.value
+
+
+@then('the memory evidence-state mapping should include decision class "{decision_class}" and provenance label "{provenance_label}" for "{typed_state}"')
+def step_then_memory_mapping_decision_and_provenance(context, decision_class: str, provenance_label: str, typed_state: str) -> None:
+    state_contract = context.memory_typed_fallback_mapping[typed_state]
+    _assert_evidence_state_fields(
+        state_contract,
+        typed_state=typed_state,
+        evidence_posture=str(state_contract["evidence_posture"]),
+        decision_class=decision_class,
+        provenance_label=provenance_label,
+        fallback_strategy=str(state_contract["fallback_strategy"]),
+    )
+
+
+@then('the memory evidence-state mapping should include fallback strategy "{fallback_strategy}" for "{typed_state}"')
+def step_then_memory_mapping_fallback_strategy(context, fallback_strategy: str, typed_state: str) -> None:
+    state_contract = context.memory_typed_fallback_mapping[typed_state]
+    _assert_evidence_state_fields(
+        state_contract,
+        typed_state=typed_state,
+        evidence_posture=str(state_contract["evidence_posture"]),
+        decision_class=str(state_contract["decision_class"]),
+        provenance_label=str(state_contract["provenance_label"]),
+        fallback_strategy=fallback_strategy,
+    )
 @then("the assistant returns a bridging clarification response")
 def step_then_bridging_clarifier(context) -> None:
     lowered = context.answer.lower()

@@ -25,6 +25,17 @@ Feature: Memory recall behavior
     When equivalent top candidates remain after tie-break
     Then the assistant returns a bridging clarification response
 
+
+  Scenario: empty and scored-empty typed states keep distinct downstream fallback contracts
+    Given a deterministic in-memory recall harness
+    When typed memory fallback contracts are resolved for empty and scored-empty evidence
+    Then typed evidence states should remain distinct for empty and scored-empty in memory recall
+    And the memory evidence-state mapping should include decision class "ask_for_clarification" and provenance label "UNKNOWN" for "E.empty"
+    And the memory evidence-state mapping should include decision class "ask_for_clarification" and provenance label "UNKNOWN" for "E.scored_empty"
+    And the memory evidence-state mapping should include fallback strategy "ASK_CLARIFIER" for "E.empty"
+    And the memory evidence-state mapping should include fallback strategy "ANSWER_UNKNOWN" for "E.scored_empty"
+    And the memory evidence-state mapping should include fallback strategy "OFFER_ASSIST_ALTERNATIVES" for "E.scored_empty_non_memory"
+
   Scenario: pronoun temporal follow-up resolves anchor before routing
     Given a deterministic in-memory recall harness
     And recall candidates include a recent anchor and older distractor
