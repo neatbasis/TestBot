@@ -123,6 +123,8 @@ Current acceptable ranges:
 ### Release-gate rollout plan for KPI validation
 
 `python scripts/all_green_gate.py` includes KPI guardrail validation in a phased mode:
+`behave` preflight in the same gate is a hard prerequisite for treating feature-status evidence as behavior-confidence evidence; missing `behave` means the status signal is not confidence-ready until `python -m pip install -e .[dev]` is applied.
+
 
 1. **Optional phase (current)**: check runs as warning-only via `--kpi-guardrail-mode optional` (default).
 2. **Blocking phase (target)**: switch to `--kpi-guardrail-mode blocking` once two consecutive sprint KPI evidence reviews show zero regressions.

@@ -40,6 +40,13 @@ class CheckResult:
     artifact_path: str | None
 
 
+def with_remediation(summary: dict[str, object], *messages: str) -> dict[str, object]:
+    remediation = [message for message in messages if message]
+    if remediation:
+        summary["remediation"] = remediation
+    return summary
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -397,7 +404,10 @@ def main() -> int:
     args = parse_args()
     preflight_result = preflight_bdd_dependencies()
     if preflight_result is not None:
-        summary = summarize(results=[preflight_result], continue_on_failure=args.continue_on_failure)
+        summary = with_remediation(
+            summarize(results=[preflight_result], continue_on_failure=args.continue_on_failure),
+            BEHAVE_REMEDIATION_MESSAGE,
+        )
         summary_json = json.dumps(summary, indent=2)
         print(summary_json)
         print(f"\n{BEHAVE_REMEDIATION_MESSAGE}")
