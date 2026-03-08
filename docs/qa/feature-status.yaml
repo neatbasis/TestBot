@@ -122,7 +122,7 @@ capabilities:
   - b3d4337
   - aeacea5
   - a725984
-  next_step_focus: Close deterministic self-identification and durable fact-ingestion gaps before promoting status beyond partial.
+  next_step_focus: Resolve production CLI regressions where self-identification utterances still route as knowledge_question and do not yield durable recall continuity.
   acceptance_tests:
   - features/memory_recall.feature
   - features/answer_contract.feature
@@ -134,7 +134,7 @@ capabilities:
   - qa_pytest_not_live_smoke
   runtime_dependency_flags:
   - TESTBOT_DEBUG
-  current_status: implemented
+  current_status: partial
   roadmap_priority_refs:
   - P3
   - P4
@@ -152,7 +152,7 @@ capabilities:
   - ee1727d
   - issue0013-note-memory-write-contract-closure
   - issue0013-segment-aware-strata-retrieval
-  next_step_focus: Monitor regressions and keep deterministic note-taking/memory-write plus segment-aware strata retrieval coverage aligned with canonical stage_answer decision-object authority.
+  next_step_focus: Fix CLI/runtime decisioning drift where memory/temporal follow-ups are reclassified as knowledge_question/direct_answer and fail to preserve memory-recall intent continuity.
   acceptance_tests:
   - features/intent_grounding.feature
   - features/answer_contract.feature
@@ -163,7 +163,7 @@ capabilities:
   - qa_pytest_not_live_smoke
   runtime_dependency_flags:
   - TESTBOT_DEBUG
-  current_status: implemented
+  current_status: partial
   roadmap_priority_refs:
   - P3
   - P4
@@ -189,7 +189,7 @@ capabilities:
   - qa_pytest_not_live_smoke
   runtime_dependency_flags:
   - TESTBOT_DEBUG
-  current_status: implemented
+  current_status: partial
   roadmap_priority_refs:
   - P4
   - P5
