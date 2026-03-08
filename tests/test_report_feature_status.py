@@ -29,7 +29,68 @@ def test_issue_matches_keyword_checks_id_title_stem_and_content(tmp_path: Path) 
     assert report_feature_status.issue_matches_keyword(issue, "ISSUE-4242")
     assert report_feature_status.issue_matches_keyword(issue, "traceability gap")
     assert report_feature_status.issue_matches_keyword(issue, "governance-gap")
-    assert report_feature_status.issue_matches_keyword(issue, "qa_validate_issue_links")
+    assert not report_feature_status.issue_matches_keyword(issue, "qa_validate_issue_links")
+
+
+def test_find_relevant_issues_prefers_explicit_open_issue_ids(tmp_path: Path) -> None:
+    issue_path_9 = tmp_path / "docs" / "issues" / "ISSUE-0009-knowing-gap.md"
+    issue_path_9.parent.mkdir(parents=True)
+    issue_path_9.write_text("placeholder", encoding="utf-8")
+    issue_path_10 = tmp_path / "docs" / "issues" / "ISSUE-0010-unknowing-gap.md"
+    issue_path_10.write_text("placeholder", encoding="utf-8")
+
+    issue_9 = report_feature_status.OpenIssue(
+        issue_id="ISSUE-0009",
+        title="Knowing grounded answers remain partial",
+        status="open",
+        path=issue_path_9,
+        content_lower="irrelevant",
+    )
+    issue_10 = report_feature_status.OpenIssue(
+        issue_id="ISSUE-0010",
+        title="Unknowing safe fallback remains partial",
+        status="open",
+        path=issue_path_10,
+        content_lower="irrelevant",
+    )
+
+    capability = {
+        "open_issues": [" ISSUE-0010 "],
+        "issue_keywords": ["ISSUE-0009", "knowing"],
+    }
+
+    relevant = report_feature_status.find_relevant_issues(capability, [issue_9, issue_10])
+    assert [issue.issue_id for issue in relevant] == ["ISSUE-0010"]
+
+
+def test_find_relevant_issues_falls_back_to_keywords_without_fan_in(tmp_path: Path) -> None:
+    issue_path_9 = tmp_path / "docs" / "issues" / "ISSUE-0009-knowing-gap.md"
+    issue_path_9.parent.mkdir(parents=True)
+    issue_path_9.write_text("placeholder", encoding="utf-8")
+    issue_path_13 = tmp_path / "docs" / "issues" / "ISSUE-0013-canonical-pipeline.md"
+    issue_path_13.write_text("placeholder", encoding="utf-8")
+
+    issue_9 = report_feature_status.OpenIssue(
+        issue_id="ISSUE-0009",
+        title="Knowing grounded answers remain partial",
+        status="open",
+        path=issue_path_9,
+        content_lower="mentions canonical pipeline foundation",
+    )
+    issue_13 = report_feature_status.OpenIssue(
+        issue_id="ISSUE-0013",
+        title="Implement canonical turn pipeline as the primary program",
+        status="open",
+        path=issue_path_13,
+        content_lower="mentions canonical pipeline and many component slices",
+    )
+
+    capability = {
+        "issue_keywords": ["ISSUE-0009", "knowing_grounded_answers"],
+    }
+
+    relevant = report_feature_status.find_relevant_issues(capability, [issue_9, issue_13])
+    assert [issue.issue_id for issue in relevant] == ["ISSUE-0009"]
 
 
 def test_build_report_links_partial_capability_to_issue_via_id_keyword(tmp_path: Path, monkeypatch) -> None:

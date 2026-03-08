@@ -30,9 +30,10 @@ capabilities:
   roadmap_priority_refs:
   - P2
   - P4
+  open_issues:
+  - ISSUE-0009
   issue_keywords:
   - ISSUE-0009
-  - knowing_grounded_answers
 - capability_id: unknowing_safe_fallback
   capability_name: Unknowing-mode explicit uncertainty and safe fallback
   owner_module: src/testbot/reflection_policy.py
@@ -48,9 +49,10 @@ capabilities:
   current_status: partial
   roadmap_priority_refs:
   - P3
+  open_issues:
+  - ISSUE-0010
   issue_keywords:
   - ISSUE-0010
-  - unknowing_safe_fallback
 - capability_id: intent_grounding_router
   capability_name: Deterministic intent grounding and route selection
   owner_module: src/testbot/sat_chatbot_memory_v2.py::context.resolve|intent.resolve|retrieve.evidence|policy.decide
@@ -66,9 +68,10 @@ capabilities:
   current_status: partial
   roadmap_priority_refs:
   - P3
+  open_issues:
+  - ISSUE-0008
   issue_keywords:
   - ISSUE-0008
-  - intent_grounding_router
 - capability_id: time_aware_memory_ranking
   capability_name: Time-aware memory retrieval and reranking
   owner_module: src/testbot/rerank.py
