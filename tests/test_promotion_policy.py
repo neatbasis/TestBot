@@ -210,3 +210,13 @@ def test_decision_object_supports_repair_reconstruction_outcome() -> None:
     decision = decide_from_evidence(intent=IntentType.MEMORY_RECALL, retrieval=retrieval, repair_required=True)
 
     assert decision.decision_class is DecisionClass.CONTINUE_REPAIR_RECONSTRUCTION
+
+
+def test_memory_recall_scored_empty_does_not_downgrade_to_general_knowledge_path() -> None:
+    retrieval = retrieval_result(evidence_bundle=EvidenceBundle(), retrieval_candidates_considered=4, hit_count=0)
+
+    decision = decide_from_evidence(intent=IntentType.MEMORY_RECALL, retrieval=retrieval)
+
+    assert decision.decision_class is DecisionClass.ASK_FOR_CLARIFICATION
+    assert decision.retrieval_branch == "memory_retrieval"
+    assert decision.reasoning["empty_vs_scored"] == "scored_empty"

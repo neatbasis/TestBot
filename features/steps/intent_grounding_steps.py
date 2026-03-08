@@ -11,7 +11,7 @@ from testbot.evidence_retrieval import EvidenceBundle, EvidenceRecord, retrieval
 from testbot.context_resolution import resolve as resolve_context
 from testbot.intent_resolution import IntentResolutionInput, resolve as resolve_intent
 from testbot.intent_router import IntentType, classify_intent, extract_intent_facets
-from testbot.policy_decision import EvidencePosture, decide, decide_from_evidence
+from testbot.policy_decision import DecisionClass, EvidencePosture, decide, decide_from_evidence
 from testbot.pipeline_state import CandidateHit, PipelineState, ProvenanceType
 from testbot.candidate_encoding import FactCandidate
 from testbot.stabilization import StabilizedTurnState
@@ -626,6 +626,24 @@ def step_then_retrieval_policy_postures_distinct(context) -> None:
     assert context.empty_evidence_policy.evidence_posture is EvidencePosture.EMPTY_EVIDENCE
     assert context.scored_empty_policy.evidence_posture is EvidencePosture.SCORED_EMPTY
 
+
+
+
+@when("memory-recall follow-up is evaluated under scored-empty evidence")
+def step_when_memory_followup_scored_empty(context) -> None:
+    retrieval = retrieval_result(
+        evidence_bundle=EvidenceBundle(),
+        retrieval_candidates_considered=3,
+        hit_count=0,
+    )
+    context.memory_followup_decision = decide_from_evidence(intent=IntentType.MEMORY_RECALL, retrieval=retrieval)
+
+
+@then("memory-recall follow-up policy should keep clarification decision class and memory retrieval branch")
+def step_then_memory_followup_no_downgrade(context) -> None:
+    assert context.memory_followup_decision.decision_class is DecisionClass.ASK_FOR_CLARIFICATION
+    assert context.memory_followup_decision.retrieval_branch == "memory_retrieval"
+    assert context.memory_followup_decision.reasoning.get("empty_vs_scored") == "scored_empty"
 
 @when("intent continuity is evaluated for affirmative and non-affirmative follow-ups")
 def step_when_intent_continuity_evaluated_for_followups(context) -> None:

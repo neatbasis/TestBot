@@ -35,6 +35,22 @@ class EvidenceBundle:
     reflections_hypotheses: tuple[EvidenceRecord, ...] = ()
     source_evidence: tuple[EvidenceRecord, ...] = ()
 
+    def records_for_policy(self) -> tuple[EvidenceRecord, ...]:
+        """Return class-separated evidence in deterministic policy precedence order.
+
+        Policy selection consumes channel-preserving evidence rather than flattened
+        top-k lists so memory recall follow-ups cannot silently degrade into
+        generic-knowledge handling before branching.
+        """
+
+        return (
+            *self.structured_facts,
+            *self.episodic_utterances,
+            *self.repair_anchors_offers,
+            *self.reflections_hypotheses,
+            *self.source_evidence,
+        )
+
     def total_records(self) -> int:
         return sum(
             (
@@ -197,6 +213,7 @@ def retrieval_result(
         reasoning={
             "empty_evidence": posture is EvidencePosture.EMPTY_EVIDENCE,
             "scored_empty": posture is EvidencePosture.SCORED_EMPTY,
+            "policy_records_total": len(evidence_bundle.records_for_policy()),
             "channel_sizes": {
                 "structured_facts": len(evidence_bundle.structured_facts),
                 "episodic_utterances": len(evidence_bundle.episodic_utterances),

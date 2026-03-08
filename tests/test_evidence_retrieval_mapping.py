@@ -3,6 +3,7 @@ from __future__ import annotations
 from langchain_core.documents import Document
 
 from testbot.evidence_retrieval import (
+    EvidenceBundle,
     build_evidence_bundle_from_docs_and_scores,
     build_evidence_bundle_from_hits,
     retrieval_result,
@@ -57,6 +58,13 @@ def test_build_evidence_bundle_from_docs_and_scores_keeps_class_separation() -> 
     assert [record.ref_id for record in bundle.repair_anchors_offers] == ["promoted-1"]
     assert [record.ref_id for record in bundle.source_evidence] == ["src-1"]
     assert [record.ref_id for record in bundle.structured_facts] == ["fact-1"]
+    assert [record.ref_id for record in bundle.records_for_policy()] == [
+        "fact-1",
+        "mem-1",
+        "promoted-1",
+        "reflect-1",
+        "src-1",
+    ]
 
 
 def test_confident_hits_produce_non_empty_bundle_for_memory_recall_decision() -> None:
@@ -83,3 +91,17 @@ def test_confident_hits_produce_non_empty_bundle_for_memory_recall_decision() ->
 
     decision = decide_from_evidence(intent=IntentType.MEMORY_RECALL, retrieval=retrieval)
     assert decision.decision_class == DecisionClass.ANSWER_FROM_MEMORY
+
+
+def test_memory_recall_scored_empty_remains_clarification_not_generic_knowledge() -> None:
+    retrieval = retrieval_result(
+        evidence_bundle=EvidenceBundle(),
+        retrieval_candidates_considered=2,
+        hit_count=0,
+    )
+
+    decision = decide_from_evidence(intent=IntentType.MEMORY_RECALL, retrieval=retrieval)
+
+    assert decision.decision_class is DecisionClass.ASK_FOR_CLARIFICATION
+    assert decision.retrieval_branch == "memory_retrieval"
+    assert decision.reasoning["empty_vs_scored"] == "scored_empty"

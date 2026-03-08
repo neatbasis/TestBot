@@ -15,6 +15,7 @@ class AnswerCandidate:
     """
 
     decision_class: str
+    rendered_class: str
     retrieval_branch: str
     rationale: str
     evidence_counts: dict[str, int]
@@ -43,8 +44,10 @@ def assemble_answer_contract(*, decision: DecisionObject, evidence_bundle: Evide
     else:
         resolved_obligations.append("repair_state_not_required")
 
+    rendered_class = decision.decision_class.value
     return AnswerCandidate(
         decision_class=decision.decision_class.value,
+        rendered_class=rendered_class,
         retrieval_branch=decision.retrieval_branch,
         rationale=decision.rationale,
         evidence_counts=evidence_counts,

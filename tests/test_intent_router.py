@@ -223,9 +223,25 @@ def test_policy_decision_object_memory_recall_scored_empty_prefers_clarification
     decision = decide_from_evidence(intent=IntentType.MEMORY_RECALL, retrieval=retrieval)
 
     assert decision.decision_class is DecisionClass.ASK_FOR_CLARIFICATION
+    assert decision.retrieval_branch == "memory_retrieval"
     assert decision.reasoning["scored_empty"] is True
+    assert decision.reasoning["empty_vs_scored"] == "scored_empty"
 
 
+
+def test_policy_decision_object_memory_recall_empty_evidence_preserves_memory_branch_and_reason_code() -> None:
+    retrieval = retrieval_result(
+        evidence_bundle=EvidenceBundle(),
+        retrieval_candidates_considered=0,
+        hit_count=0,
+    )
+
+    decision = decide_from_evidence(intent=IntentType.MEMORY_RECALL, retrieval=retrieval)
+
+    assert decision.decision_class is DecisionClass.ASK_FOR_CLARIFICATION
+    assert decision.retrieval_branch == "memory_retrieval"
+    assert decision.reasoning["empty_evidence"] is True
+    assert decision.reasoning["empty_vs_scored"] == "empty_evidence"
 
 
 def test_policy_decision_object_meta_conversation_not_requested_uses_assistive_direct_answer_decision() -> None:
