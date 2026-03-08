@@ -27,6 +27,7 @@ KPI evidence updates are mandatory for red-tag triage. If any KPI guardrail fail
 
 ## Active
 
+- ISSUE-0014 — **CLI self-identity turns are stabilized structurally but semantically misrouted before memory retrieval and durable fact promotion**: Open red-tag regression; evidence indicates rewrite-stage semantic inversion and self-reference misrouting prevent retrieval activation and confirmed-user-fact promotion.
 
 ## Resolved
 
