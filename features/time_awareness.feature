@@ -4,11 +4,13 @@ Feature: Time-aware routing and deterministic responses
   As a resident
   I want time-intent questions routed through a dedicated assist mode
 
+  @ISSUE-0005 @AC-0005-01
   Scenario: elapsed minutes from previous user turn
     Given a frozen time in Europe/Helsinki
     When the user asks how many minutes ago the previous message was
     Then the response should mention elapsed minutes from the previous turn
 
+  @ISSUE-0005 @AC-0005-02
   Scenario: resolve tomorrow in Europe/Helsinki
     Given a frozen time in Europe/Helsinki
     When the user asks what is tomorrow
