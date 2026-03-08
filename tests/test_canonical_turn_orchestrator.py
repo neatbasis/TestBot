@@ -88,6 +88,35 @@ def test_orchestrator_executes_all_11_canonical_stages_in_order() -> None:
     assert final_context.state.resolved_intent == "memory_recall"
 
 
+
+
+def test_orchestrator_stabilizes_before_route_authority_assignment() -> None:
+    state = PipelineState(user_input="hello")
+    context = CanonicalTurnContext(state=state, artifacts={"policy_decision": None})
+
+    stages: list[CanonicalStage] = []
+    for stage_name in CanonicalTurnOrchestrator.STAGE_ORDER:
+
+        def _handler(ctx: CanonicalTurnContext, name: str = stage_name) -> CanonicalTurnContext:
+            if name == "stabilize.pre_route":
+                assert ctx.artifacts.get("policy_decision") is None
+                ctx.artifacts["stabilized_turn_state"] = {"turn_id": "turn-1"}
+            if name == "intent.resolve":
+                assert ctx.artifacts.get("stabilized_turn_state") == {"turn_id": "turn-1"}
+                assert ctx.artifacts.get("policy_decision") is None
+                ctx.artifacts["policy_decision"] = {"retrieval_branch": "direct_answer"}
+            if name == "retrieve.evidence":
+                assert ctx.artifacts.get("policy_decision") == {"retrieval_branch": "direct_answer"}
+                ctx.artifacts["retrieval_result"] = {"posture": "not_requested"}
+            return ctx
+
+        stages.append(CanonicalStage(name=stage_name, handler=_handler))
+
+    orchestrator = CanonicalTurnOrchestrator(stages=stages)
+    final_context = orchestrator.run(context)
+
+    assert final_context.artifacts["policy_decision"] == {"retrieval_branch": "direct_answer"}
+
 def test_encode_turn_candidates_extracts_name_fact_for_stabilization() -> None:
     state = PipelineState(user_input="My name is Sebastian")
     observation = observe_turn(

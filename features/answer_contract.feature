@@ -75,3 +75,10 @@ Feature: Answer citation contract enforcement
     When stage answer runs with canonical decision authority
     Then the final answer remains memory-grounded
     And the fallback action reflects the canonical decision mapping
+
+
+  Scenario: canonical routing authority is assigned only after stabilization
+    Given a canonical stage harness with a raw utterance "hello there"
+    When canonical stages execute stabilize then intent resolve then retrieve
+    Then intent resolve assigns policy decision after stabilization
+    And retrieve observes the post-stabilization policy decision
