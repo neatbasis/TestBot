@@ -10,6 +10,8 @@ report:
   - Markdown report includes header/footer Generated at (UTC) and input file paths.
   - Markdown may emit a warning when gate summary evidence is older than contract
     or open issue files.
+  - Capability obligation_refs/criteria entries are canonical issue acceptance-criterion
+    IDs only; criterion text and completion state remain authoritative in issue records.
 capabilities:
 - capability_id: knowing_grounded_answers
   capability_name: Knowing-mode grounded answer with provenance
@@ -140,6 +142,15 @@ capabilities:
   - P4
   open_issues:
   - ISSUE-0013
+  obligation_refs:
+  - issue_id: ISSUE-0013
+    criteria:
+    - AC-0013-01
+    - AC-0013-02
+    - AC-0013-03
+    - AC-0013-05
+    - AC-0013-06
+    - AC-0013-07
   issue_keywords:
   - ISSUE-0013
 - capability_id: canonical_turn_pipeline_decisioning
@@ -169,6 +180,15 @@ capabilities:
   - P4
   open_issues:
   - ISSUE-0013
+  obligation_refs:
+  - issue_id: ISSUE-0013
+    criteria:
+    - AC-0013-01
+    - AC-0013-02
+    - AC-0013-04
+    - AC-0013-05
+    - AC-0013-08
+    - AC-0013-10
   issue_keywords:
   - ISSUE-0013
 - capability_id: canonical_turn_pipeline_commit_and_audit
@@ -195,6 +215,12 @@ capabilities:
   - P5
   open_issues:
   - ISSUE-0013
+  obligation_refs:
+  - issue_id: ISSUE-0013
+    criteria:
+    - AC-0013-02
+    - AC-0013-09
+    - AC-0013-11
   issue_keywords:
   - ISSUE-0013
 - capability_id: governance_readiness_gate
