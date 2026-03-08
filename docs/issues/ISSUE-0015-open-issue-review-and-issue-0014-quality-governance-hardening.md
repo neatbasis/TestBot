@@ -153,18 +153,25 @@ Review scope was limited to open issues (`open` or `in_progress`) and issue-gove
 
 ## ISSUE-0015 Acceptance Criteria Status (Explicit)
 
-### Now satisfied
+### Satisfied
 
 - **AC1:** satisfied — ISSUE-0014 now includes explicit defect taxonomy.
 - **AC2:** satisfied — ISSUE-0014 now declares the earliest invalid state.
 - **AC3:** satisfied — ISSUE-0014 now defines testable rewrite/intent/routing/commit stage contracts.
 - **AC4:** satisfied — ISSUE-0014 now includes explicit quality-system gap analysis.
 - **AC5:** satisfied — ISSUE-0014 now mandates required observability keys.
-- **AC6:** satisfied — ISSUE-0014 and ISSUE-0013 now include binding governance linkage language preventing structural-only closure claims.
-- **AC7:** satisfied — deterministic regression coverage requirements and verification commands are explicitly specified in ISSUE-0014.
 - **AC8:** satisfied — issue-link and issue-structure validators pass after updates; metadata/linkage consistency preserved.
 
-### Still open
+### Open blockers (red-tag)
 
-- **No ISSUE-0015 acceptance criteria remain open.**
-- Tracking note: ISSUE-0014 and ISSUE-0013 remain open as implementation/behavioral proof streams even though ISSUE-0015 governance-hardening acceptance criteria are now satisfied.
+- **AC6:** **in_progress** — governance linkage language exists, but closure is blocked until ISSUE-0013 and ISSUE-0014 meet dependent behavioral exit conditions and evidence is attached in both issue files.
+- **AC7:** **in_progress** — deterministic regression coverage is specified, but still requires all linked deterministic checks to pass on current code without identity-continuity regression failures.
+- **AC9 (dependency gate):** **pending** — ISSUE-0015 cannot close until the ISSUE-0013 dependency gate is satisfied using the explicit exit conditions below.
+
+### Exit conditions for ISSUE-0015 closure (dependency on ISSUE-0013 / ISSUE-0014)
+
+ISSUE-0015 remains `Status: open` and `Severity: red` until all dependency conditions are true:
+
+1. **ISSUE-0014 behavioral exit condition met:** deterministic evidence confirms identity declaration semantic preservation, retrieval activation on immediate self-reference recall, and confirmed identity fact promotion at commit.
+2. **ISSUE-0013 governance exit condition met:** AC-0013-11 is marked complete with linked evidence proving ISSUE-0014 Phase 1 behavior is passing in deterministic tests plus reproducible CLI traces.
+3. **Cross-artifact consistency exit condition met:** `docs/issues/RED_TAG.md` and both issue files (`ISSUE-0015`, `ISSUE-0013`) explicitly reflect the same lifecycle interpretation (open dependency vs resolved dependency).
