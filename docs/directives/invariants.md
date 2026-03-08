@@ -22,3 +22,11 @@ This file is a mirror view for readers in `docs/directives/`. Only the synchroni
 - `BDD-AC-04`: `features/answer_contract.feature` → `Scenario: non-memory general-knowledge fallback stays knowledge-safe`
 
 <!-- END_SYNCED_INVARIANTS_TABLE_AND_SCENARIO_MAP -->
+
+## Stage transition conformance directive
+
+Canonical stage transition conformance is enforced by `scripts/validate_pipeline_stage_conformance.py` and must preserve the exact 11-stage order:
+
+`observe.turn → encode.candidates → stabilize.pre_route → context.resolve → intent.resolve → retrieve.evidence → policy.decide → answer.assemble → answer.validate → answer.render → answer.commit`
+
+Directive guard: intent resolution must consume enriched artifacts (`turn_observation`, `encoded_candidates`, `stabilized_turn_state`) and must not collapse raw utterance directly to interpreted intent (`U → I`).

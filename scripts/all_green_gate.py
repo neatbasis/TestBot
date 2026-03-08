@@ -162,6 +162,10 @@ def build_checks(
             command=[sys.executable, "scripts/validate_log_schema.py"],
         ),
         GateCheck(
+            name="safety_validate_pipeline_stage_conformance",
+            command=[sys.executable, "scripts/validate_pipeline_stage_conformance.py"],
+        ),
+        GateCheck(
             name="qa_pytest_not_live_smoke",
             command=[sys.executable, "-m", "pytest", "-m", "not live_smoke"],
         ),
