@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 from behave import given, then, when
 from langchain_core.documents import Document
 
@@ -7,7 +9,13 @@ from testbot.answer_policy import AnswerPolicyInput, resolve_answer_routing
 from testbot.eval_fixtures import cases_by_id
 from testbot.pipeline_state import CandidateHit, PipelineState, ProvenanceType
 from testbot.policy_decision import DecisionClass, DecisionObject
-from testbot.sat_chatbot_memory_v2 import RuntimeCapabilityStatus, stage_answer, validate_answer_contract, validate_general_knowledge_contract
+from testbot.sat_chatbot_memory_v2 import (
+    NON_KNOWLEDGE_UNCERTAINTY_ANSWER,
+    RuntimeCapabilityStatus,
+    stage_answer,
+    validate_answer_contract,
+    validate_general_knowledge_contract,
+)
 from testbot.sat_chatbot_memory_v2 import _build_debug_turn_payload
 from testbot.stage_transitions import validate_answer_post, validate_answer_pre
 
@@ -421,3 +429,79 @@ def step_then_route_authority_cannot_finalize_until_stabilization_outputs_exist(
     assert context.canonical_policy_decision_before_stabilize is None
     assert context.canonical_policy_decision_after_intent == {"retrieval_branch": "direct_answer"}
     assert context.canonical_policy_decision_seen_by_retrieve == {"retrieval_branch": "direct_answer"}
+
+
+@given('a deterministic answer validation fixture with factual claim "{draft_answer}"')
+def step_given_deterministic_validation_fixture_with_factual_claim(context, draft_answer: str) -> None:
+    context.validation_fixture = {
+        "draft_answer": draft_answer,
+        "decision_object": None,
+        "force_validation_exception": False,
+    }
+
+
+@given("a deterministic answer validation fixture with a seemingly valid decision object")
+def step_given_deterministic_validation_fixture_with_seemingly_valid_decision_object(context) -> None:
+    context.validation_fixture = {
+        "draft_answer": "From memory, I found: launch is Friday. doc_id: mem-9, ts: 2026-03-08T09:00:00Z",
+        "decision_object": DecisionObject(
+            decision_class=DecisionClass.ANSWER_FROM_MEMORY,
+            retrieval_branch="memory_retrieval",
+            rationale="deterministic fixture provides apparently valid answer authority",
+            reasoning={"fixture": "seemingly_valid_decision_object"},
+        ),
+        "force_validation_exception": False,
+    }
+
+
+@given("the deterministic answer validation fixture is configured to raise a validation exception")
+def step_given_validation_fixture_raises_validation_exception(context) -> None:
+    context.validation_fixture["force_validation_exception"] = True
+
+
+@when("the deterministic answer validation fixture executes")
+def step_when_deterministic_validation_fixture_executes(context) -> None:
+    fixture = context.validation_fixture
+    draft_answer = fixture["draft_answer"]
+    failure_reason = None
+
+    try:
+        if fixture.get("force_validation_exception", False):
+            raise RuntimeError("deterministic validation failure")
+        has_doc_id_token = "doc_id" in draft_answer.lower()
+        citation_shape_valid = bool(
+            re.search(r"doc_id\s*:\s*[^,\s]+", draft_answer, flags=re.IGNORECASE)
+            and re.search(r"ts\s*:\s*\d{4}-\d{2}-\d{2}t\d{2}:\d{2}:\d{2}z", draft_answer, flags=re.IGNORECASE)
+        )
+        if has_doc_id_token and not citation_shape_valid:
+            failure_reason = "invalid_citation_shape"
+        elif not validate_answer_contract(draft_answer):
+            failure_reason = "missing_provenance"
+    except Exception:
+        failure_reason = "validation_exception"
+
+    final_answer = NON_KNOWLEDGE_UNCERTAINTY_ANSWER if failure_reason else draft_answer
+    context.validation_fixture_result = {
+        "draft_answer": draft_answer,
+        "final_answer": final_answer,
+        "failure_reason": failure_reason,
+        "decision_object_present": fixture.get("decision_object") is not None,
+    }
+
+
+@then("the deterministic fixture emits a safe fallback answer")
+def step_then_deterministic_fixture_emits_safe_fallback_answer(context) -> None:
+    assert context.validation_fixture_result["final_answer"] == NON_KNOWLEDGE_UNCERTAINTY_ANSWER
+
+
+@then("the deterministic fixture does not leak unvalidated draft content")
+def step_then_deterministic_fixture_does_not_leak_unvalidated_content(context) -> None:
+    result = context.validation_fixture_result
+    assert result["failure_reason"] is not None
+    assert result["final_answer"] != result["draft_answer"]
+    assert result["draft_answer"] not in result["final_answer"]
+
+
+@then('the deterministic fixture records validation failure reason "{failure_reason}"')
+def step_then_deterministic_fixture_records_validation_failure_reason(context, failure_reason: str) -> None:
+    assert context.validation_fixture_result["failure_reason"] == failure_reason
