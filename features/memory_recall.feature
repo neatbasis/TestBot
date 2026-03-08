@@ -38,6 +38,29 @@ Feature: Memory recall behavior
     Then the stage artifacts include a typed turn observation
     And stabilization provides same-turn exclusion doc ids before intent resolve
 
+  Scenario: observe.turn stores user claims only as observation artifacts in-turn
+    Given a canonical memory claim harness with claim "My favorite color is green"
+    When observe.turn captures the claim for turn "turn-memory-1"
+    And retrieval executes in the same turn before answer.commit
+    Then observed artifact ids should be "obs-turn-memory-1-claim-1"
+    And committed memory ids should be empty
+    And same-turn retrieval should not return committed memory id "mem-turn-memory-1-claim-1"
+
+  Scenario: committed claims become retrievable memory only in a later turn
+    Given a canonical memory claim harness with claim "My favorite color is green"
+    When observe.turn captures the claim for turn "turn-memory-1"
+    And answer.commit persists the observed claim as memory id "mem-turn-memory-1-claim-1"
+    And retrieval executes in a later turn "turn-memory-2"
+    Then observed artifact ids should be "obs-turn-memory-1-claim-1"
+    And committed memory ids should include "mem-turn-memory-1-claim-1"
+    And later-turn retrieval should return committed memory id "mem-turn-memory-1-claim-1"
+
+  Scenario: same-turn retrieval that returns a just-observed claim is rejected
+    Given a canonical memory claim harness with claim "My favorite color is green"
+    When observe.turn captures the claim for turn "turn-memory-1"
+    And retrieval incorrectly returns just-observed artifact id "obs-turn-memory-1-claim-1" in the same turn
+    Then same-turn retrieval should be rejected as invalid durable memory
+
 
   Scenario: segment-aware continuity groups multi-turn self-profile memory
     Given derived memory segments for follow-up self-profile turns

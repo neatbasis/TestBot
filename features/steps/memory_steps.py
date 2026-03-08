@@ -534,6 +534,82 @@ def step_then_retrieve_observes_post_stabilization_policy_decision(context) -> N
     ]
 
 
+
+@given('a canonical memory claim harness with claim "{claim}"')
+def step_given_canonical_memory_claim_harness(context, claim: str) -> None:
+    context.memory_claim = claim
+    context.observed_artifact_ids = []
+    context.committed_memory_ids = []
+    context.same_turn_retrieval_results = []
+    context.later_turn_retrieval_results = []
+    context.invalid_same_turn_retrieval = []
+    context.same_turn_retrieval_rejected = False
+
+
+@when('observe.turn captures the claim for turn "{turn_id}"')
+def step_when_observe_turn_captures_claim(context, turn_id: str) -> None:
+    context.memory_claim_turn_id = turn_id
+    observation_id = f"obs-{turn_id}-claim-1"
+    context.observed_artifact_ids = [observation_id]
+
+
+@when("retrieval executes in the same turn before answer.commit")
+def step_when_retrieval_executes_same_turn_before_commit(context) -> None:
+    context.same_turn_retrieval_results = [doc_id for doc_id in context.committed_memory_ids if doc_id.startswith("mem-")]
+
+
+@when('answer.commit persists the observed claim as memory id "{memory_id}"')
+def step_when_answer_commit_persists_claim(context, memory_id: str) -> None:
+    assert context.observed_artifact_ids, "observe.turn must execute before answer.commit"
+    context.committed_memory_ids.append(memory_id)
+
+
+@when('retrieval executes in a later turn "{turn_id}"')
+def step_when_retrieval_executes_later_turn(context, turn_id: str) -> None:
+    context.later_turn_id = turn_id
+    context.later_turn_retrieval_results = list(context.committed_memory_ids)
+
+
+@when('retrieval incorrectly returns just-observed artifact id "{artifact_id}" in the same turn')
+def step_when_retrieval_incorrectly_returns_observed_artifact(context, artifact_id: str) -> None:
+    assert artifact_id in context.observed_artifact_ids
+    context.invalid_same_turn_retrieval = [artifact_id]
+
+
+@then('observed artifact ids should be "{artifact_id}"')
+def step_then_observed_artifact_ids(context, artifact_id: str) -> None:
+    assert context.observed_artifact_ids == [artifact_id]
+    assert all(item.startswith("obs-") for item in context.observed_artifact_ids)
+
+
+@then("committed memory ids should be empty")
+def step_then_committed_memory_ids_empty(context) -> None:
+    assert context.committed_memory_ids == []
+
+
+@then('same-turn retrieval should not return committed memory id "{memory_id}"')
+def step_then_same_turn_retrieval_not_return_memory_id(context, memory_id: str) -> None:
+    assert memory_id not in context.same_turn_retrieval_results
+
+
+@then('committed memory ids should include "{memory_id}"')
+def step_then_committed_memory_ids_include(context, memory_id: str) -> None:
+    assert memory_id in context.committed_memory_ids
+    assert all(item.startswith("mem-") for item in context.committed_memory_ids)
+
+
+@then('later-turn retrieval should return committed memory id "{memory_id}"')
+def step_then_later_turn_retrieval_returns_memory_id(context, memory_id: str) -> None:
+    assert memory_id in context.later_turn_retrieval_results
+
+
+@then("same-turn retrieval should be rejected as invalid durable memory")
+def step_then_same_turn_retrieval_rejected(context) -> None:
+    context.same_turn_retrieval_rejected = any(
+        artifact_id in context.observed_artifact_ids for artifact_id in context.invalid_same_turn_retrieval
+    )
+    assert context.same_turn_retrieval_rejected is True
+
 @given("derived memory segments for follow-up self-profile turns")
 def step_given_derived_memory_segments(context) -> None:
     first = derive_segment_descriptor(utterance="My name is Sebastian", has_dialogue_state=True)
