@@ -26,10 +26,17 @@ Use this note under each red-tag issue entry whenever status changes or during s
 
 KPI evidence updates are mandatory for red-tag triage. If any KPI guardrail fails, include owner + due date and escalation/rollback intent in both the evidence note and decision notes.
 
+
+## Active dependency gate (consistency contract)
+
+- ISSUE-0015, ISSUE-0014, and ISSUE-0013 must report a consistent lifecycle state for the identity-continuity dependency chain.
+- Closure of ISSUE-0015 is blocked until ISSUE-0013 AC-0013-11 exit conditions and ISSUE-0014 Phase 1 behavioral exit conditions are both satisfied with deterministic evidence + reproducible CLI traces.
+- If any dependency is unresolved, keep ISSUE-0015 in the Active red-tag list and avoid resolved-language in related issue files.
+
 ## Active
 
-- ISSUE-0015 — **Open-issue review identifies ISSUE-0014 quality/governance gaps that could permit partial-fix closure**: Open red-tag governance hardening issue to formalize causal primacy, stage contracts, observability requirements, and closure discipline for identity-continuity regression work.
-- ISSUE-0014 — **CLI self-identity turns are stabilized structurally but semantically misrouted before memory retrieval and durable fact promotion**: Open red-tag regression; evidence indicates rewrite-stage semantic inversion and self-reference misrouting prevent retrieval activation and confirmed-user-fact promotion.
+- ISSUE-0015 — **Open-issue review identifies ISSUE-0014 quality/governance gaps that could permit partial-fix closure**: Open red-tag governance hardening issue. Lifecycle interpretation: remains open/red until dependency exit conditions are met in ISSUE-0013 AC-0013-11 and ISSUE-0014 Phase 1 (identity semantic preservation, retrieval activation on self-reference recall, and confirmed identity fact promotion at commit).
+- ISSUE-0014 — **CLI self-identity turns are stabilized structurally but semantically misrouted before memory retrieval and durable fact promotion**: Open red-tag regression; evidence indicates rewrite-stage semantic inversion and self-reference misrouting prevent retrieval activation and confirmed-user-fact promotion. This is a blocking dependency for ISSUE-0013 AC-0013-11 and ISSUE-0015 closure gates.
 
 ## Resolved
 

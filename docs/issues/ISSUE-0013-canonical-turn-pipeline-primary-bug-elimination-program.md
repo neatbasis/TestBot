@@ -80,6 +80,9 @@ Status legend: `[ ] pending`, `[~] partial`, `[x] complete`.
   - required dependency evidence (ISSUE-0014): identity declaration semantic preservation, retrieval activation on self-reference recall, and confirmed identity fact promotion at commit.
   - dependency cross-links: [ISSUE-0014 Defect Taxonomy](ISSUE-0014-cli-self-identity-semantic-routing-regression.md#defect-taxonomy), [ISSUE-0014 Stage Contract Clauses](ISSUE-0014-cli-self-identity-semantic-routing-regression.md#stage-contract-clauses), [ISSUE-0014 Required Observability Fields](ISSUE-0014-cli-self-identity-semantic-routing-regression.md#required-observability-fields)
   - closure rule: structural telemetry/stage instrumentation updates are insufficient for ISSUE-0013 closure unless the linked behavioral criteria are passing in deterministic tests and reproducible CLI evidence.
+  - exit condition EC-0013-11-A: ISSUE-0014 marks its Phase 1 behavioral criteria as satisfied with linked deterministic test evidence and reproducible CLI traces.
+  - exit condition EC-0013-11-B: the deterministic validation set required by ISSUE-0014 Phase 1 runs clean in the current branch (no identity-continuity regressions).
+  - exit condition EC-0013-11-C: ISSUE-0015 dependency gate is updated from open to satisfied, confirming closure-governance alignment across ISSUE-0013/0014/0015.
 - [~] [AC-0013-12] `docs/qa/feature-status.yaml` canonical pipeline capability slices are advanced from `planned` to implemented maturity states that reflect delivered behavior.
   - evidence: `docs/qa/feature-status.yaml`
   - evidence: `docs/qa/feature-status-report.md`
@@ -205,6 +208,11 @@ Status legend: `[ ] pending`, `[~] partial`, `[x] complete`.
   - AC-0013-09 proof (commit persistence contract): `src/testbot/answer_commit.py`; runtime commit audit log assertions in `tests/test_runtime_logging_events.py::test_chat_loop_logs_commit_stage_record_with_durable_commit_state`.
   - AC-0013-09 proof (next-turn continuity consumption): `src/testbot/context_resolution.py`, `src/testbot/evidence_retrieval.py`; deterministic assertion in `tests/test_runtime_logging_events.py::test_resolve_context_consumes_commit_receipt_continuity_deterministically`.
   - AC-0013-09 proof (two-turn continuity + audit payload completeness): `tests/test_runtime_logging_events.py::test_chat_loop_two_turn_commit_continuity_is_consumed_by_context_and_retrieval`, `tests/test_turn_analytics_aggregator.py::test_aggregate_turn_dataset_multi_turn_commit_continuity_fields_preserved`, and `tests/test_turn_analytics_aggregator.py::test_normalize_and_validate_rows_preserves_commit_audit_payload_completeness`.
+
+- 2026-03-08: Dependency exit-conditions language clarified for ISSUE-0015 alignment.
+  - ISSUE-0013 remains open until AC-0013-11 exit conditions EC-0013-11-A/B/C are all satisfied.
+  - ISSUE-0015 remains open/red while the AC-0013-11 dependency gate is unresolved; ISSUE-0013 closure claims must explicitly cite matching ISSUE-0014 behavioral evidence.
+
 - 2026-03-08: AC-0013-12 evidence regenerated from current gate/report inputs without over-claiming implementation closure.
   - AC-0013-12 proof (canonical gate evidence): `artifacts/all-green-gate-summary.json` regenerated via `python scripts/all_green_gate.py --json-output artifacts/all-green-gate-summary.json` and now records current failing `product_behave` checks.
   - AC-0013-12 proof (status report + JSON summary): `docs/qa/feature-status-report.md` and `artifacts/feature-status-summary.json` regenerated via `python scripts/report_feature_status.py --output docs/qa/feature-status-report.md --json-output artifacts/feature-status-summary.json` and continue to classify canonical pipeline slices as `partial`.
