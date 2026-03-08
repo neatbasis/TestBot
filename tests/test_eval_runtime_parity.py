@@ -334,7 +334,11 @@ def test_canonical_continuity_parity_consumes_prior_commit_artifacts_across_turn
     intent_resolution = resolve_intent(resolution_input=IntentResolutionInput(stabilized_turn_state=runtime_stabilized, context=context, fallback_utterance="yes"))
 
     assert context.continuity_posture is ContinuityPosture.PRESERVE_PRIOR_INTENT
-    assert context.history_anchors == ("prior_intent:memory_recall", "clarification_continuity")
+    assert context.history_anchors == (
+        "prior_intent:memory_recall",
+        "commit.confirmed_user_facts:name=Sam",
+        "clarification_continuity",
+    )
     assert intent_resolution.classified_intent is IntentType.KNOWLEDGE_QUESTION
     assert intent_resolution.resolved_intent is IntentType.MEMORY_RECALL
 
