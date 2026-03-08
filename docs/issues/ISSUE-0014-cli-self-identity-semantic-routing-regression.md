@@ -60,6 +60,57 @@ Recent production-style CLI debug logs show the canonical turn pipeline now pres
 4. **Commit promotion gap for identity facts under misroute conditions**
    - Even with stabilization artifacts present, misrouting prevents promotion of `confirmed_user_facts`, so next-turn identity recall cannot succeed deterministically.
 
+## Defect Taxonomy
+
+### Earliest primary defect stage
+
+- **Primary defect (rewrite stage):** self-identification discourse is transformed into assistant-focused Q&A intent, changing discourse object type before intent/routing evaluation.
+
+### Downstream cascade defects
+
+- **Cascade A (intent stage):** intent resolution over-weights rewritten text and under-weights stabilized identity candidates and continuity anchors.
+- **Cascade B (routing stage):** misclassified turn is routed to `direct_answer`, forcing retrieval/rerank skip path.
+- **Cascade C (commit stage):** identity candidates are not promoted to `confirmed_user_facts` because memory path prerequisites were bypassed.
+
+## Earliest Invalid State
+
+- **First forbidden transformation:** `user self-identity declaration` -> `assistant-knowledge question` at rewrite output for Turn 1 (`Hi! I'm sebastian`).
+- Any pipeline state at or after this transformation is considered invalid for identity-continuity handling unless rewrite output is corrected before intent/routing commit points.
+
+## Stage Contract Clauses
+
+1. **Rewrite contract (testable):** For self-identification utterances, rewrite must preserve discourse object type as `user_identity_declaration`; transformed text must not invert speaker/subject perspective.
+2. **Intent contract (testable):** If stabilized facts contain identity candidates and/or self-reference cues, intent must resolve to a memory/profile-aware class, never defaulting to generic `knowledge_question` without an explicit override rationale.
+3. **Routing contract (testable):** For self-reference recall turns with continuity anchors present, routing must request retrieval evaluation and must not select `direct_answer` as terminal branch prior to memory-path checks.
+4. **Commit contract (testable):** When identity candidates are stabilized and no contradiction exists, commit must either promote confirmed identity facts or emit explicit denial reason; silent non-promotion is forbidden.
+
+## Quality-System Gap Analysis
+
+- Existing BDD/pytest coverage validated structural pipeline stabilization and generic routing behavior, but did not pin semantic discourse-type invariance across rewrite -> intent -> routing transitions for identity turns.
+- Current gates emphasize aggregate green status and component-level checks; they did not include an end-to-end deterministic scenario asserting identity declaration -> immediate self-recall with behavioral outcome proof.
+- Telemetry assertions were present for branch/skip events, but lacked required fields to distinguish semantically valid skips from misroute-induced skips, allowing false confidence from structurally complete traces.
+
+## Required Observability Fields
+
+The following trace keys are mandatory for identity declaration and self-reference recall turns:
+
+1. `rewrite_discourse_type_pre`
+2. `rewrite_discourse_type_post`
+3. `self_reference_detection_result`
+4. `continuity_anchor_present`
+5. `retrieval_skip_rationale`
+6. `commit_promotion_denial_reason`
+
+Missing any mandatory field in relevant turns is a validation failure for ISSUE-0014 closure evidence.
+
+## Regression History Classification
+
+- **Newly introduced regression:** not yet proven.
+- **Pre-existing defect newly observed via improved instrumentation:** currently most plausible, pending blame/timeline confirmation.
+- **Acceptance-criteria under-specification contribution:** confirmed; prior ISSUE-0014 wording permitted structural-progress interpretation without requiring behavioral identity-continuity proof.
+
+Closure evidence must explicitly classify the defect into exactly one primary history bucket, with supporting trace/test rationale.
+
 ## Invariant Breach Language
 
 This issue represents a runtime breach (or high-risk near-breach) of canonical pipeline invariants and doctrine:
@@ -96,18 +147,22 @@ Key observed indicators in evidence include:
 - Self-identity and self-reference flows remain unreliable in production-like CLI runs.
 - Canonical pipeline foundation improvements do not convert into user-visible memory-grounded behavior.
 - ISSUE-0013 acceptance-criteria closure remains blocked for decisioning + commit semantics tied to identity continuity.
+- User trust is degraded when the assistant cannot maintain memory-backed self-identity continuity across adjacent turns.
+- Memory-backed identity continuity integrity is at risk: structural trace completeness can mask semantic corruption, creating capability-status misrepresentation risk.
 
 ## Acceptance Criteria
 
 1. Add deterministic BDD and pytest coverage for the exact reproduction pair:
    - `Hi! I'm sebastian`
    - `Who am I?`
-   asserting rewrite semantic preservation, memory-appropriate intent resolution, retrieval activation, and durable fact promotion.
+   asserting rewrite semantic preservation, memory-appropriate intent resolution, retrieval activation, durable fact promotion, and user-visible memory-grounded recall outcome.
 2. Rewrite layer must preserve discourse object type for self-identification utterances.
 3. Intent/context resolution must prefer stabilized identity facts and continuity anchors over generic knowledge fallback defaults for self-reference follow-ups.
 4. Retrieval branch must not default to `direct_answer` for self-referential identity recall turns when continuity artifacts exist.
 5. Commit receipts must include confirmed identity facts when stabilization extracted durable identity candidates and no explicit contradiction exists.
 6. Canonical gate evidence (`python scripts/all_green_gate.py`) and feature-status reporting must reflect closure progress without over-claiming implemented status.
+7. ISSUE-0014 cannot be closed on structural telemetry alone; closure requires behavioral proof (deterministic tests + reproducible CLI evidence) that identity declaration and immediate self-recall are semantically correct end-to-end.
+8. ISSUE-0013 linkage: ISSUE-0013 identity-continuity milestones remain non-closable while ISSUE-0014 behavioral proof criteria are unmet, even if structural instrumentation appears complete.
 
 ## Work Plan
 
