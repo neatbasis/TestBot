@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-03-07T22:24:33Z",
+  "generated_at_utc": "2026-03-08T11:55:00Z",
   "inputs": {
     "contract_path": "docs/qa/feature-status.yaml",
     "gate_summary_path": "artifacts/all-green-gate-summary.json",
@@ -9,56 +9,58 @@
   "source_file_metadata": {
     "contract": {
       "path": "docs/qa/feature-status.yaml",
-      "size_bytes": 6343,
-      "mtime_utc": "2026-03-07T22:23:20Z",
-      "sha256": "03b1803f081bb84872414c2b597c5506052b184f5fb5eef0c2e02f2d4b621bbd"
+      "size_bytes": 6897,
+      "mtime_utc": "2026-03-08T11:53:43Z",
+      "sha256": "199a5181fe0650fdc9ca0057d4f0f6e67d90088f563e3e3d6ca22676a3a913f2"
     },
     "gate_summary": {
       "path": "artifacts/all-green-gate-summary.json",
       "size_bytes": 3769,
-      "mtime_utc": "2026-03-07T22:24:28Z",
+      "mtime_utc": "2026-03-08T11:52:45Z",
       "sha256": "7bb02eb7193d2f047c0db08e10cb18f37fffae4003ffe9579b4cbcbfcc055ae3"
     },
     "open_issues": [
       {
         "path": "docs/issues/ISSUE-0008-intent-grounding-gate-failures-block-merge.md",
         "size_bytes": 3235,
-        "mtime_utc": "2026-03-07T20:58:24Z",
+        "mtime_utc": "2026-03-08T11:52:45Z",
         "sha256": "8b1e1371a464108442cb985281b490001bb94336de7bcbac9a3fb68abdf9fa06"
       },
       {
         "path": "docs/issues/ISSUE-0009-knowing-grounded-answers-partial-provenance-gap.md",
         "size_bytes": 4803,
-        "mtime_utc": "2026-03-07T22:22:56Z",
+        "mtime_utc": "2026-03-08T11:52:45Z",
         "sha256": "a465708daef99a0e38d79a283c6cf9483d393c30265560abfede469c2e22a1ed"
       },
       {
         "path": "docs/issues/ISSUE-0010-unknowing-safe-fallback-partial-contract-gap.md",
         "size_bytes": 4673,
-        "mtime_utc": "2026-03-07T22:22:56Z",
+        "mtime_utc": "2026-03-08T11:52:45Z",
         "sha256": "7e5017cb505bd0e384650142e0b1326946149abec8c430b1b9a0cca34eda303d"
       },
       {
         "path": "docs/issues/ISSUE-0011-turn-analytics-input-coverage-silent-drop.md",
         "size_bytes": 4287,
-        "mtime_utc": "2026-03-07T20:58:24Z",
+        "mtime_utc": "2026-03-08T11:52:45Z",
         "sha256": "86162dd0afeba256f0340815ec62d9cfcf45283360a95cbb2712ba700857d981"
       },
       {
         "path": "docs/issues/ISSUE-0012-canonical-turn-pipeline-delivery-plan.md",
         "size_bytes": 4596,
-        "mtime_utc": "2026-03-07T20:58:24Z",
+        "mtime_utc": "2026-03-08T11:52:45Z",
         "sha256": "d73f54eda8811870fd3ce738037bf78654b50eb4b60c4a5af138d1cf1804ce28"
       },
       {
         "path": "docs/issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md",
-        "size_bytes": 10793,
-        "mtime_utc": "2026-03-07T22:23:32Z",
-        "sha256": "4925221f0ec2d4b641f4fccfa870abc51aa3763e8397da59cbd68546c903b8e4"
+        "size_bytes": 12170,
+        "mtime_utc": "2026-03-08T11:54:05Z",
+        "sha256": "15810391f83d4a2375a82cc2f6e2aefca190cda8c9db20e51118cca7d922f750"
       }
     ]
   },
-  "warnings": [],
+  "warnings": [
+    "Gate summary appears older than one or more source files (contract or open issue records); regenerate gate evidence for freshest status. Hint: run `python scripts/all_green_gate.py --continue-on-failure --json-output artifacts/all-green-gate-summary.json` to refresh `artifacts/all-green-gate-summary.json`."
+  ],
   "summary": {
     "implemented": 2,
     "partial": 7,

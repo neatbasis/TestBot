@@ -1,5 +1,5 @@
 contract_version: 1
-last_updated: 2026-03-07
+last_updated: 2026-03-08
 report:
   canonical_generated_report: docs/qa/feature-status-report.md
   default_gate_summary: artifacts/all-green-gate-summary.json
@@ -115,6 +115,10 @@ capabilities:
 - capability_id: canonical_turn_pipeline_foundation
   capability_name: Canonical turn pipeline foundation (observe/encode/stabilize)
   owner_module: src/testbot/turn_observation.py|src/testbot/candidate_encoding.py|src/testbot/stabilization.py
+  progress_evidence_refs:
+  - b3d4337
+  - aeacea5
+  next_step_focus: Close deterministic self-identification and durable fact-ingestion gaps before promoting status beyond partial.
   acceptance_tests:
   - features/memory_recall.feature
   - features/answer_contract.feature
@@ -137,6 +141,10 @@ capabilities:
 - capability_id: canonical_turn_pipeline_decisioning
   capability_name: Canonical turn pipeline decisioning (context/intent/retrieve/policy)
   owner_module: src/testbot/context_resolution.py|src/testbot/intent_resolution.py|src/testbot/evidence_retrieval.py|src/testbot/policy_decision.py
+  progress_evidence_refs:
+  - f2dc7d7
+  - 4605987
+  next_step_focus: Align decision object outcomes with answer-contract gates so known user facts are answered from grounded memory paths.
   acceptance_tests:
   - features/intent_grounding.feature
   - features/answer_contract.feature
@@ -158,6 +166,10 @@ capabilities:
 - capability_id: canonical_turn_pipeline_commit_and_audit
   capability_name: Canonical turn pipeline commit and auditability (assemble/validate/render/commit)
   owner_module: src/testbot/answer_assembly.py|src/testbot/answer_validation.py|src/testbot/answer_rendering.py|src/testbot/answer_commit.py
+  progress_evidence_refs:
+  - 25cdf6b
+  - 4605987
+  next_step_focus: Add deterministic tests proving committed-turn artifacts persist and are retrievable in subsequent canonical turns.
   acceptance_tests:
   - features/answer_contract.feature
   - tests/test_runtime_logging_events.py
