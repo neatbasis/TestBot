@@ -1119,6 +1119,36 @@ def test_build_provenance_metadata_sorts_memory_and_source_references_determinis
     assert [item["doc_id"] for item in source_attr] == ["src-a", "src-b"]
 
 
+
+
+def test_stage_answer_selected_decision_for_note_taking_preserves_direct_answer_contract() -> None:
+    state = PipelineState(
+        user_input="please make a note that i prefer tea",
+        resolved_intent=IntentType.META_CONVERSATION.value,
+        confidence_decision={
+            "context_confident": False,
+            "ambiguity_detected": False,
+        },
+    )
+
+    answered = stage_answer(
+        _StaticLLM("Got it — I can keep that in mind."),
+        state,
+        chat_history=deque(),
+        hits=[],
+        capability_status="ask_unavailable",
+        selected_decision=DecisionObject(
+            decision_class=DecisionClass.ANSWER_GENERAL_KNOWLEDGE_LABELED,
+            retrieval_branch="direct_answer",
+            rationale="meta conversational memory-write requests stay in direct-answer assist path",
+            reasoning={"evidence_posture": "not_requested"},
+        ),
+        clock=_FIXED_CLOCK,
+    )
+
+    assert answered.invariant_decisions.get("fallback_action") == "ANSWER_GENERAL_KNOWLEDGE"
+    assert answered.invariant_decisions.get("answer_mode") == "assist"
+
 def test_stage_answer_uses_selected_decision_object_for_memory_action() -> None:
     state = PipelineState(
         user_input="what did i note about release prep?",

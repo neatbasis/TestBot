@@ -82,6 +82,14 @@ def test_classify_intent_social_greeting_routes_non_knowledge() -> None:
 def test_classify_intent_say_hello_routes_to_command_intent() -> None:
     assert classify_intent("say hello") is IntentType.CONTROL
 
+
+def test_classify_intent_note_taking_request_routes_non_knowledge() -> None:
+    assert classify_intent("please make a note that i prefer tea") is IntentType.META_CONVERSATION
+
+
+def test_classify_intent_memory_write_request_routes_non_knowledge() -> None:
+    assert classify_intent("remember this: i parked on level 3") is IntentType.META_CONVERSATION
+
 def test_resolve_turn_intent_affirmation_inherits_prior_clarification_intent() -> None:
     prior_state = PipelineState(
         user_input="ask something via satellite",
@@ -217,6 +225,20 @@ def test_policy_decision_object_memory_recall_scored_empty_prefers_clarification
     assert decision.decision_class is DecisionClass.ASK_FOR_CLARIFICATION
     assert decision.reasoning["scored_empty"] is True
 
+
+
+
+def test_policy_decision_object_meta_conversation_not_requested_uses_assistive_direct_answer_decision() -> None:
+    retrieval = retrieval_result(
+        evidence_bundle=EvidenceBundle(),
+        retrieval_candidates_considered=0,
+        hit_count=0,
+    )
+
+    decision = decide_from_evidence(intent=IntentType.META_CONVERSATION, retrieval=retrieval)
+
+    assert decision.decision_class is DecisionClass.ANSWER_GENERAL_KNOWLEDGE_LABELED
+    assert decision.retrieval_branch == "direct_answer"
 
 def test_policy_decision_object_memory_answer_for_scored_non_empty() -> None:
     bundle = EvidenceBundle(structured_facts=(EvidenceRecord(ref_id="fact-1", score=0.9, content="user_name=Sam"),))
