@@ -109,6 +109,21 @@ Feature: Intent-specific grounding and provenance behavior
     When intent continuity is evaluated for affirmative and non-affirmative follow-ups
     Then continuity routing should preserve prior intent only for affirmative clarification follow-ups
 
+  Scenario: encode candidates retain multiple plausible intents before routing
+    Given an intent response harness
+    When encode candidates include multiple plausible intents pre-route
+    Then encode candidates should retain multiple intents without premature collapse
+
+  Scenario: encode candidates normalize duplicate candidate ids deterministically
+    Given an intent response harness
+    When encode candidates include duplicate candidate ids
+    Then encode candidates should dedupe candidate ids deterministically
+
+  Scenario: encode candidates reject malformed provenance before downstream stages
+    Given an intent response harness
+    When encode candidates include null or malformed provenance
+    Then malformed provenance candidates should be quarantined before downstream stages
+
   Scenario: control phrasing wins over ambiguous help and memory language
     Given an intent response harness
     When the user asks an ambiguous control-help-memory phrase

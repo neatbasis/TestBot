@@ -89,6 +89,41 @@ def _run_contract_checks(context) -> None:
     assert context.answer_post_check.passed, f"answer.post failed: {context.answer_post_check.failures}"
 
 
+
+def _normalize_encoded_intent_candidates(raw_candidates: list[dict[str, object]]) -> tuple[list[dict[str, object]], list[dict[str, object]]]:
+    deduped: dict[str, dict[str, object]] = {}
+    quarantined: list[dict[str, object]] = []
+
+    for candidate in raw_candidates:
+        candidate_id = str(candidate.get("id") or "").strip().lower()
+        provenance = candidate.get("provenance")
+        if not candidate_id:
+            quarantined.append({**candidate, "quarantine_reason": "missing_candidate_id"})
+            continue
+        if not isinstance(provenance, str) or not provenance.strip():
+            quarantined.append({**candidate, "normalized_id": candidate_id, "quarantine_reason": "invalid_provenance"})
+            continue
+        normalized = {
+            "id": candidate_id,
+            "intent": str(candidate.get("intent") or "").strip(),
+            "confidence": float(candidate.get("confidence") or 0.0),
+            "provenance": provenance.strip(),
+        }
+        existing = deduped.get(candidate_id)
+        if existing is None or normalized["confidence"] > existing["confidence"]:
+            deduped[candidate_id] = normalized
+
+    normalized_candidates = sorted(
+        deduped.values(),
+        key=lambda item: (-item["confidence"], item["id"], item["intent"]),
+    )
+    quarantined_candidates = sorted(
+        quarantined,
+        key=lambda item: (str(item.get("normalized_id") or item.get("id") or ""), str(item.get("intent") or "")),
+    )
+    return normalized_candidates, quarantined_candidates
+
+
 @when("a knowledge question misses memory context")
 def step_when_knowledge_memory_miss(context) -> None:
     answer = (
@@ -478,7 +513,7 @@ def step_then_conversational_prompt_retrieval_logging(context) -> None:
     assert rewrite_payload.get("skipped") is True
     assert candidates_payload.get("skipped") is True
 
-@when('the user says "Hi! I'm sebastian" then asks "Who am I?"')
+@when('the user says "Hi! I\'m sebastian" then asks "Who am I?"')
 def step_when_identity_recall_followup_pair(context) -> None:
     context.identity_prior_state = PipelineState(
         user_input="Hi! I'm sebastian",
@@ -505,6 +540,70 @@ def step_when_identity_recall_followup_pair(context) -> None:
 def step_then_identity_recall_forces_memory_retrieval(context) -> None:
     assert context.identity_recall_force_retrieval is True
 
+
+
+
+@when("encode candidates include multiple plausible intents pre-route")
+def step_when_encode_candidates_multiple_plausible_intents_pre_route(context) -> None:
+    raw_candidates = [
+        {"id": "intent-knowledge", "intent": IntentType.KNOWLEDGE_QUESTION.value, "confidence": 0.79, "provenance": "encode.candidates"},
+        {"id": "intent-memory", "intent": IntentType.MEMORY_RECALL.value, "confidence": 0.76, "provenance": "encode.candidates"},
+        {"id": "intent-capability", "intent": IntentType.CAPABILITIES_HELP.value, "confidence": 0.72, "provenance": "encode.candidates"},
+    ]
+    normalized, quarantined = _normalize_encoded_intent_candidates(raw_candidates)
+    context.encoded_intent_candidates = normalized
+    context.quarantined_intent_candidates = quarantined
+
+
+@then("encode candidates should retain multiple intents without premature collapse")
+def step_then_encode_candidates_retain_multiple_intents_pre_route(context) -> None:
+    intents = [candidate["intent"] for candidate in context.encoded_intent_candidates]
+    assert len(context.encoded_intent_candidates) >= 2
+    assert len(set(intents)) == len(intents)
+    assert context.quarantined_intent_candidates == []
+
+
+@when("encode candidates include duplicate candidate ids")
+def step_when_encode_candidates_include_duplicate_candidate_ids(context) -> None:
+    raw_candidates = [
+        {"id": "intent-memory", "intent": IntentType.MEMORY_RECALL.value, "confidence": 0.66, "provenance": "encode.candidates"},
+        {"id": "INTENT-MEMORY", "intent": IntentType.MEMORY_RECALL.value, "confidence": 0.83, "provenance": "encode.candidates"},
+        {"id": "intent-knowledge", "intent": IntentType.KNOWLEDGE_QUESTION.value, "confidence": 0.61, "provenance": "encode.candidates"},
+        {"id": "intent-knowledge", "intent": IntentType.KNOWLEDGE_QUESTION.value, "confidence": 0.57, "provenance": "encode.candidates"},
+    ]
+    normalized, quarantined = _normalize_encoded_intent_candidates(raw_candidates)
+    context.encoded_intent_candidates = normalized
+    context.quarantined_intent_candidates = quarantined
+
+
+@then("encode candidates should dedupe candidate ids deterministically")
+def step_then_encode_candidates_dedupe_candidate_ids_deterministically(context) -> None:
+    ids = [candidate["id"] for candidate in context.encoded_intent_candidates]
+    assert ids == ["intent-memory", "intent-knowledge"]
+    assert context.encoded_intent_candidates[0]["confidence"] == 0.83
+    assert context.encoded_intent_candidates[1]["confidence"] == 0.61
+    assert context.quarantined_intent_candidates == []
+
+
+@when("encode candidates include null or malformed provenance")
+def step_when_encode_candidates_include_null_or_malformed_provenance(context) -> None:
+    raw_candidates = [
+        {"id": "intent-knowledge", "intent": IntentType.KNOWLEDGE_QUESTION.value, "confidence": 0.71, "provenance": "encode.candidates"},
+        {"id": "intent-memory", "intent": IntentType.MEMORY_RECALL.value, "confidence": 0.74, "provenance": None},
+        {"id": "intent-control", "intent": IntentType.CONTROL.value, "confidence": 0.68, "provenance": "   "},
+    ]
+    normalized, quarantined = _normalize_encoded_intent_candidates(raw_candidates)
+    context.encoded_intent_candidates = normalized
+    context.quarantined_intent_candidates = quarantined
+
+
+@then("malformed provenance candidates should be quarantined before downstream stages")
+def step_then_malformed_provenance_candidates_quarantined(context) -> None:
+    assert [candidate["id"] for candidate in context.encoded_intent_candidates] == ["intent-knowledge"]
+    quarantined_ids = [str(candidate.get("normalized_id") or candidate.get("id")) for candidate in context.quarantined_intent_candidates]
+    quarantine_reasons = [candidate["quarantine_reason"] for candidate in context.quarantined_intent_candidates]
+    assert quarantined_ids == ["intent-control", "intent-memory"]
+    assert quarantine_reasons == ["invalid_provenance", "invalid_provenance"]
 
 @when("the user asks an ambiguous control-help-memory phrase")
 def step_when_ambiguous_control_help_memory_phrase(context) -> None:
