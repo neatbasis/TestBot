@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-03-08T21:12:20Z",
+  "generated_at_utc": "2026-03-08T22:56:52Z",
   "inputs": {
     "contract_path": "docs/qa/feature-status.yaml",
     "gate_summary_path": "artifacts/all-green-gate-summary.json",
@@ -10,98 +10,96 @@
     "contract": {
       "path": "docs/qa/feature-status.yaml",
       "size_bytes": 8183,
-      "mtime_utc": "2026-03-08T20:19:07Z",
+      "mtime_utc": "2026-03-08T21:33:34Z",
       "sha256": "24b6f82c7bbe18655f32cf734239a2e9090e8c10a4d957babc7a8a44c25e7421"
     },
     "gate_summary": {
       "path": "artifacts/all-green-gate-summary.json",
-      "size_bytes": 3734,
-      "mtime_utc": "2026-03-08T20:19:07Z",
-      "sha256": "b591fc49627db733fe8a3545f3730a71acafbe1119d22be40405c789b4577281"
+      "size_bytes": 608,
+      "mtime_utc": "2026-03-08T22:56:49Z",
+      "sha256": "0c0f694179b409bd8edcaa5769a2c6d25e9a1cb65c94189eb4a794a35ea9a23e"
     },
     "open_issues": [
       {
         "path": "docs/issues/ISSUE-0008-intent-grounding-gate-failures-block-merge.md",
         "size_bytes": 3548,
-        "mtime_utc": "2026-03-08T20:19:07Z",
+        "mtime_utc": "2026-03-08T21:33:34Z",
         "sha256": "a61f4ad43d249708f003a03cf6a57e3b07650f9a280f6757e51636d1cff65145"
       },
       {
         "path": "docs/issues/ISSUE-0009-knowing-grounded-answers-partial-provenance-gap.md",
         "size_bytes": 5041,
-        "mtime_utc": "2026-03-08T20:19:07Z",
+        "mtime_utc": "2026-03-08T21:33:34Z",
         "sha256": "0da64f9ab02283394b8471104f3a5b523c282e121d50c428514be5b1d2f0cb04"
       },
       {
         "path": "docs/issues/ISSUE-0010-unknowing-safe-fallback-partial-contract-gap.md",
         "size_bytes": 4915,
-        "mtime_utc": "2026-03-08T20:19:07Z",
+        "mtime_utc": "2026-03-08T21:33:34Z",
         "sha256": "1321cdcbe0796c16fe2a3587b050db322ef11ca3b376a42e435c6f721cddc238"
       },
       {
         "path": "docs/issues/ISSUE-0011-turn-analytics-input-coverage-silent-drop.md",
         "size_bytes": 4287,
-        "mtime_utc": "2026-03-08T20:19:07Z",
+        "mtime_utc": "2026-03-08T21:33:34Z",
         "sha256": "86162dd0afeba256f0340815ec62d9cfcf45283360a95cbb2712ba700857d981"
       },
       {
         "path": "docs/issues/ISSUE-0012-canonical-turn-pipeline-delivery-plan.md",
         "size_bytes": 4596,
-        "mtime_utc": "2026-03-08T20:19:07Z",
+        "mtime_utc": "2026-03-08T21:33:34Z",
         "sha256": "d73f54eda8811870fd3ce738037bf78654b50eb4b60c4a5af138d1cf1804ce28"
       },
       {
         "path": "docs/issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md",
         "size_bytes": 25283,
-        "mtime_utc": "2026-03-08T21:12:01Z",
+        "mtime_utc": "2026-03-08T21:33:34Z",
         "sha256": "c5e0725048569d2785242d802beafd26bf6267e0323c67531e336fb747a167a4"
       },
       {
         "path": "docs/issues/ISSUE-0014-cli-self-identity-semantic-routing-regression.md",
         "size_bytes": 15472,
-        "mtime_utc": "2026-03-08T21:12:01Z",
+        "mtime_utc": "2026-03-08T21:33:34Z",
         "sha256": "964b8a99259595bb12feec5e159915ce62a87f0d64ae73d586c7e137a1e63a6b"
       },
       {
         "path": "docs/issues/ISSUE-0015-open-issue-review-and-issue-0014-quality-governance-hardening.md",
-        "size_bytes": 8777,
-        "mtime_utc": "2026-03-08T21:12:01Z",
-        "sha256": "1d6ba4e4d9b74d6ba3c8ed99d3e3f4ddefa006057be60090cdda279f2a4db516"
+        "size_bytes": 12230,
+        "mtime_utc": "2026-03-08T21:33:34Z",
+        "sha256": "f3eae2947c5c4e7c7c4b2aee9eed346301e0b7501d8223c33da5e8a0eb3d84b9"
       }
     ],
     "roadmap_files": [
       {
         "path": "docs/roadmap/alignment-drift-technical-debt-2026-03-05.md",
         "size_bytes": 5622,
-        "mtime_utc": "2026-03-08T20:19:07Z",
+        "mtime_utc": "2026-03-08T21:33:34Z",
         "sha256": "02618bdff7d1b35cdbe05736f9e42202981edf2d1204d7d7ef3232899575c530"
       },
       {
         "path": "docs/roadmap/current-status-and-next-5-priorities.md",
         "size_bytes": 8470,
-        "mtime_utc": "2026-03-08T20:19:07Z",
+        "mtime_utc": "2026-03-08T21:33:34Z",
         "sha256": "d8aa997d61c9db9c731ea7c24ceb4d41c7e8f078dd2e502c5f648b12ec645311"
       },
       {
         "path": "docs/roadmap/next-4-sprints-grounded-knowing.md",
         "size_bytes": 13756,
-        "mtime_utc": "2026-03-08T20:19:07Z",
+        "mtime_utc": "2026-03-08T21:33:34Z",
         "sha256": "a725406dcffd4aa1da3a269fe78806032b8360ae64e64c7f879eb277712d4a3c"
       },
       {
         "path": "docs/roadmap/reflective-milestone-10-sprints.md",
         "size_bytes": 9579,
-        "mtime_utc": "2026-03-08T20:19:07Z",
+        "mtime_utc": "2026-03-08T21:33:34Z",
         "sha256": "f8b41b80b9e06c2144db690373aee3bfcd1910999904b5ad086fe63576252da0"
       }
     ]
   },
-  "warnings": [
-    "Gate summary appears older than one or more source files (contract, open issue records, or roadmap files); regenerate gate evidence for freshest status. Hint: run `python scripts/all_green_gate.py --continue-on-failure --json-output artifacts/all-green-gate-summary.json` to refresh `artifacts/all-green-gate-summary.json`."
-  ],
+  "warnings": [],
   "summary": {
-    "implemented": 1,
-    "partial": 8,
+    "implemented": 2,
+    "partial": 7,
     "missing": 0
   },
   "capabilities": [
@@ -111,9 +109,7 @@
       "owner_module": "src/testbot/canonical_turn_orchestrator.py",
       "effective_status": "partial",
       "declared_status": "partial",
-      "failed_gate_checks": [
-        "product_behave"
-      ],
+      "failed_gate_checks": [],
       "relevant_open_issues": [
         {
           "id": "ISSUE-0009",
@@ -161,9 +157,7 @@
       "owner_module": "src/testbot/reflection_policy.py",
       "effective_status": "partial",
       "declared_status": "partial",
-      "failed_gate_checks": [
-        "product_behave"
-      ],
+      "failed_gate_checks": [],
       "relevant_open_issues": [
         {
           "id": "ISSUE-0010",
@@ -203,10 +197,7 @@
       "owner_module": "src/testbot/sat_chatbot_memory_v2.py::context.resolve|intent.resolve|retrieve.evidence|policy.decide",
       "effective_status": "partial",
       "declared_status": "partial",
-      "failed_gate_checks": [
-        "product_behave",
-        "qa_pytest_not_live_smoke"
-      ],
+      "failed_gate_checks": [],
       "relevant_open_issues": [
         {
           "id": "ISSUE-0008",
@@ -244,11 +235,9 @@
       "capability_id": "time_aware_memory_ranking",
       "capability_name": "Time-aware memory retrieval and reranking",
       "owner_module": "src/testbot/rerank.py",
-      "effective_status": "partial",
+      "effective_status": "implemented",
       "declared_status": "implemented",
-      "failed_gate_checks": [
-        "qa_pytest_not_live_smoke"
-      ],
+      "failed_gate_checks": [],
       "relevant_open_issues": [],
       "roadmap_priority_refs": [
         "P2",
@@ -289,9 +278,7 @@
       "owner_module": "src/testbot/source_connectors.py",
       "effective_status": "partial",
       "declared_status": "partial",
-      "failed_gate_checks": [
-        "qa_pytest_not_live_smoke"
-      ],
+      "failed_gate_checks": [],
       "relevant_open_issues": [],
       "roadmap_priority_refs": [
         "P1",
@@ -337,10 +324,7 @@
       "owner_module": "src/testbot/turn_observation.py|src/testbot/candidate_encoding.py|src/testbot/stabilization.py",
       "effective_status": "partial",
       "declared_status": "partial",
-      "failed_gate_checks": [
-        "product_behave",
-        "qa_pytest_not_live_smoke"
-      ],
+      "failed_gate_checks": [],
       "relevant_open_issues": [
         {
           "id": "ISSUE-0013",
@@ -454,10 +438,7 @@
       "owner_module": "src/testbot/context_resolution.py|src/testbot/intent_resolution.py|src/testbot/evidence_retrieval.py|src/testbot/policy_decision.py",
       "effective_status": "partial",
       "declared_status": "partial",
-      "failed_gate_checks": [
-        "product_behave",
-        "qa_pytest_not_live_smoke"
-      ],
+      "failed_gate_checks": [],
       "relevant_open_issues": [
         {
           "id": "ISSUE-0013",
@@ -570,10 +551,7 @@
       "owner_module": "src/testbot/answer_assembly.py|src/testbot/answer_validation.py|src/testbot/answer_rendering.py|src/testbot/answer_commit.py",
       "effective_status": "partial",
       "declared_status": "partial",
-      "failed_gate_checks": [
-        "product_behave",
-        "qa_pytest_not_live_smoke"
-      ],
+      "failed_gate_checks": [],
       "relevant_open_issues": [
         {
           "id": "ISSUE-0013",
@@ -683,5 +661,5 @@
     }
   ],
   "open_issue_count": 8,
-  "gate_checks_seen": 10
+  "gate_checks_seen": 1
 }
