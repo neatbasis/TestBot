@@ -329,3 +329,62 @@ def test_aggregate_turn_dataset_multi_turn_commit_continuity_fields_preserved() 
     assert [turn.intent for turn in dataset] == ["memory_recall", "memory_recall"]
     assert [turn.action for turn in dataset] == ["NONE", "NONE"]
     assert [turn.provenance_completeness for turn in dataset] == [1.0, 1.0]
+
+
+def test_normalize_and_validate_rows_preserves_commit_audit_payload_completeness() -> None:
+    rows = [
+        {"event": "user_utterance_ingest", "utterance": "continue repair"},
+        {
+            "event": "commit_stage_recorded",
+            "schema_version": 3,
+            "stage": "answer.commit",
+            "pending_repair_state": {"required": True, "reason": "decision_requires_repair"},
+            "resolved_obligations": [],
+            "remaining_obligations": ["continue_repair_reconstruction"],
+            "confirmed_user_facts": ["name=Sam"],
+            "retrieval_continuity_evidence": [
+                "commit.pending_repair_state:required",
+                "commit.remaining_obligations:continue_repair_reconstruction",
+            ],
+        },
+        {
+            "event": "intent_classified",
+            "schema_version": 3,
+            "intent": "memory_recall",
+            "ambiguity_score": 0.4,
+            "user_followup_signal_proxy": 0.4,
+        },
+        {
+            "event": "fallback_action_selected",
+            "schema_version": 3,
+            "intent": "memory_recall",
+            "ambiguity_score": 0.4,
+            "chosen_action": "CONTINUE_REPAIR_RECONSTRUCTION",
+            "user_followup_signal_proxy": 0.8,
+        },
+        {
+            "event": "provenance_summary",
+            "schema_version": 3,
+            "provenance_types": ["MEMORY"],
+            "used_memory_refs": ["repair-anchor-1"],
+            "basis_statement": "continuing committed repair from prior turn",
+        },
+    ]
+
+    normalized_rows, summary = aggregator.normalize_and_validate_rows(rows)
+    commit_row = next(row for row in normalized_rows if row.get("event") == "commit_stage_recorded")
+
+    assert summary.invalid_rows == 0
+    assert commit_row["pending_repair_state"] == {"required": True, "reason": "decision_requires_repair"}
+    assert commit_row["resolved_obligations"] == []
+    assert commit_row["remaining_obligations"] == ["continue_repair_reconstruction"]
+    assert commit_row["confirmed_user_facts"] == ["name=Sam"]
+    assert commit_row["retrieval_continuity_evidence"] == [
+        "commit.pending_repair_state:required",
+        "commit.remaining_obligations:continue_repair_reconstruction",
+    ]
+
+    dataset = aggregator.aggregate_turn_dataset(normalized_rows)
+    assert len(dataset) == 1
+    assert dataset[0].action == "CONTINUE_REPAIR_RECONSTRUCTION"
+    assert dataset[0].provenance_completeness == 1.0

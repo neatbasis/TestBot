@@ -213,7 +213,8 @@ capabilities:
   - 4605987
   - ee1727d
   - issue0013-commit-audit-continuity-tests
-  next_step_focus: Monitor regressions and preserve deterministic commit-receipt persistence plus subsequent-turn retrieval continuity coverage in runtime and analytics tests.
+  - issue0013-commit-repair-followup-continuity-audit-lock
+  next_step_focus: Resolve remaining product_behave regressions while preserving deterministic two-turn continuity, repair-followup continuity, and commit audit payload completeness coverage.
   acceptance_tests:
   - features/answer_contract.feature
   - tests/test_runtime_logging_events.py

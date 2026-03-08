@@ -1090,6 +1090,9 @@ def test_chat_loop_two_turn_commit_continuity_is_consumed_by_context_and_retriev
         assert commit_row["resolved_obligations"] == ["repair_state_not_required"]
         assert commit_row["confirmed_user_facts"] == ["name=Sam"]
 
+    assert commit_rows[0]["retrieval_continuity_evidence"] == []
+    assert commit_rows[1]["retrieval_continuity_evidence"] == ["commit.confirmed_user_facts:name=Sam"]
+
     branch_rows = [row for row in rows if row.get("event") == "retrieval_branch_selected"]
     assert branch_rows[0]["context_history_anchors"] == []
     assert branch_rows[1]["context_history_anchors"] == ["commit.confirmed_user_facts:name=Sam"]
@@ -1364,3 +1367,26 @@ def test_chat_loop_routes_issue_0013_regression_utterances_through_canonical_pip
     )
 
     assert pipeline_calls == [utterance]
+
+
+def test_resolve_context_consumes_commit_receipt_continuity_deterministically() -> None:
+    prior_state = PipelineState(
+        user_input="turn one",
+        resolved_intent=IntentType.MEMORY_RECALL.value,
+        commit_receipt={
+            "commit_stage": "answer.commit",
+            "pending_repair_state": {"required": True, "reason": "decision_requires_repair"},
+            "remaining_obligations": ["continue_repair_reconstruction"],
+            "confirmed_user_facts": ["name=Sam", "timezone=PST"],
+        },
+    )
+
+    resolved = runtime.resolve_context(utterance="continue", prior_pipeline_state=prior_state)
+
+    assert resolved.history_anchors == (
+        "prior_intent:memory_recall",
+        "commit.confirmed_user_facts:name=Sam",
+        "commit.confirmed_user_facts:timezone=PST",
+        "commit.pending_repair_state:required",
+        "commit.remaining_obligations:continue_repair_reconstruction",
+    )
