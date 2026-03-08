@@ -17,6 +17,7 @@ _eval_spec.loader.exec_module(eval_recall)
 from testbot.eval_fixtures import cases_by_id
 from testbot.context_resolution import ContinuityPosture, resolve as resolve_context
 from testbot import sat_chatbot_memory_v2 as runtime
+from testbot.candidate_encoding import FactCandidate
 from testbot.intent_resolution import IntentResolutionInput, resolve as resolve_intent
 from testbot.intent_router import IntentType
 from testbot.pipeline_state import PipelineState
@@ -325,9 +326,10 @@ def test_canonical_continuity_parity_consumes_prior_commit_artifacts_across_turn
         segment_id="seg-2",
         segment_membership_edge_refs=[],
         same_turn_exclusion_doc_ids=[],
-        candidate_facts=[{"key": "utterance_raw", "value": "yes", "confidence": 1.0}],
+        candidate_facts=[FactCandidate(key="utterance_raw", value="yes", confidence=1.0)],
         candidate_speech_acts=[],
         candidate_dialogue_state=[],
+        candidate_repairs=[],
     )
     intent_resolution = resolve_intent(resolution_input=IntentResolutionInput(stabilized_turn_state=runtime_stabilized, context=context, fallback_utterance="yes"))
 

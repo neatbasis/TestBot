@@ -2,11 +2,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from testbot.answer_assembly import AnswerAssemblyResult
+from testbot.answer_assembly import AnswerCandidate
 
 
 @dataclass(frozen=True)
-class AnswerValidationResult:
+class ValidatedAnswer:
     passed: bool
     failures: list[str]
 
@@ -22,7 +22,7 @@ REQUIRED_ASSEMBLY_KEYS = (
 )
 
 
-def validate_answer_assembly_boundary(assembly: AnswerAssemblyResult) -> AnswerValidationResult:
+def validate_answer_assembly_boundary(assembly: AnswerCandidate) -> ValidatedAnswer:
     failures: list[str] = []
     as_mapping = assembly.__dict__
     for key in REQUIRED_ASSEMBLY_KEYS:
@@ -43,4 +43,8 @@ def validate_answer_assembly_boundary(assembly: AnswerAssemblyResult) -> AnswerV
     if not isinstance(as_mapping.get("confirmed_user_facts"), list):
         failures.append("confirmed_user_facts_not_list")
 
-    return AnswerValidationResult(passed=not failures, failures=failures)
+    return ValidatedAnswer(passed=not failures, failures=failures)
+
+
+# Backward-compatible aliases while canonical naming converges.
+AnswerValidationResult = ValidatedAnswer

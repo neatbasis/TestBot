@@ -1,6 +1,7 @@
 from testbot.context_resolution import ContinuityPosture, resolve as resolve_context
 from testbot.intent_resolution import IntentResolutionInput, resolve as resolve_intent
 from testbot.intent_router import IntentType
+from testbot.candidate_encoding import FactCandidate
 from testbot.pipeline_state import PipelineState
 from testbot.policy_decision import EvidencePosture, decide
 from testbot.sat_chatbot_memory_v2 import ROUTE_TO_ASK_ANSWER
@@ -18,9 +19,10 @@ def _stabilized(utterance: str) -> StabilizedTurnState:
         segment_id="seg-1",
         segment_membership_edge_refs=[],
         same_turn_exclusion_doc_ids=[],
-        candidate_facts=[{"key": "utterance_raw", "value": utterance, "confidence": 1.0}],
+        candidate_facts=[FactCandidate(key="utterance_raw", value=utterance, confidence=1.0)],
         candidate_speech_acts=[],
         candidate_dialogue_state=[],
+        candidate_repairs=[],
     )
 
 

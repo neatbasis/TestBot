@@ -13,6 +13,7 @@ from testbot.intent_resolution import IntentResolutionInput, resolve as resolve_
 from testbot.intent_router import IntentType, classify_intent, extract_intent_facets
 from testbot.policy_decision import EvidencePosture, decide, decide_from_evidence
 from testbot.pipeline_state import CandidateHit, PipelineState, ProvenanceType
+from testbot.candidate_encoding import FactCandidate
 from testbot.stabilization import StabilizedTurnState
 from testbot.sat_chatbot_memory_v2 import (
     ROUTE_TO_ASK_ANSWER,
@@ -37,7 +38,7 @@ def _stabilized_turn_state_for_bdd(utterance: str) -> StabilizedTurnState:
         segment_id="bdd-seg",
         segment_membership_edge_refs=[],
         same_turn_exclusion_doc_ids=[],
-        candidate_facts=[{"key": "utterance_raw", "value": utterance, "confidence": 1.0}],
+        candidate_facts=[FactCandidate(key="utterance_raw", value=utterance, confidence=1.0)],
         candidate_speech_acts=[],
         candidate_dialogue_state=[],
     )

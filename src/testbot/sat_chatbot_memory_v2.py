@@ -912,27 +912,19 @@ def resolve_turn_intent(*, utterance: str, prior_pipeline_state: PipelineState |
         channel="offline",
     )
     encoded = encode_turn_candidates(seed_state, observation=observation, rewritten_query=utterance)
-    stabilized_turn_state = StabilizedTurnState(
-        turn_id=observation.turn_id,
-        utterance_card=make_utterance_card(ts_iso=observation.observed_at, speaker=observation.speaker, text=observation.utterance, doc_id=observation.turn_id, channel=observation.channel),
-        utterance_doc_id=observation.turn_id,
-        reflection_doc_id="offline-reflection-placeholder",
-        dialogue_state_doc_id="offline-dialogue-state-placeholder",
-        segment_type="offline",
-        segment_id="offline",
-        segment_membership_edge_refs=[],
-        same_turn_exclusion_doc_ids=[observation.turn_id],
-        candidate_facts=[
-            {
-                "key": "utterance_raw",
-                "value": observation.utterance,
-                "confidence": 1.0,
-                "provenance": "observe.turn",
-            },
-            *[asdict(candidate) for candidate in encoded.facts],
-        ],
-        candidate_speech_acts=[asdict(candidate) for candidate in encoded.speech_acts],
-        candidate_dialogue_state=[asdict(candidate) for candidate in encoded.dialogue_state],
+    segment = derive_segment_descriptor(
+        utterance=observation.utterance,
+        has_dialogue_state=bool(encoded.dialogue_state),
+    )
+    _, stabilized_turn_state = stabilize_pre_route(
+        store=None,  # type: ignore[arg-type]
+        state=seed_state,
+        observation=observation,
+        encoded=encoded,
+        response_plan={"pathway": "offline_intent_resolution"},
+        reflection_yaml="offline: true",
+        segment=segment,
+        store_doc_fn=lambda *args, **kwargs: None,
     )
     context_resolution = resolve_context(
         utterance=observation.utterance,
@@ -2737,14 +2729,7 @@ def _run_canonical_turn_pipeline(
 
     def _context_resolve(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
         stabilized: StabilizedTurnState = ctx.artifacts["stabilized_turn_state"]
-        stabilized_utterance = next(
-            (
-                str(fact.get("value") or "")
-                for fact in stabilized.candidate_facts
-                if str(fact.get("key") or "") == "utterance_raw"
-            ),
-            "",
-        )
+        stabilized_utterance = next((fact.value for fact in stabilized.candidate_facts if fact.key == "utterance_raw"), "")
         context_resolution = resolve_context(
             utterance=stabilized_utterance or utterance,
             prior_pipeline_state=prior_pipeline_state,
@@ -2755,14 +2740,7 @@ def _run_canonical_turn_pipeline(
 
     def _intent_resolve(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
         stabilized: StabilizedTurnState = ctx.artifacts["stabilized_turn_state"]
-        stabilized_utterance = next(
-            (
-                str(fact.get("value") or "")
-                for fact in stabilized.candidate_facts
-                if str(fact.get("key") or "") == "utterance_raw"
-            ),
-            "",
-        )
+        stabilized_utterance = next((fact.value for fact in stabilized.candidate_facts if fact.key == "utterance_raw"), "")
         context_resolution = ctx.artifacts["resolved_context"]
         intent_resolution = resolve_intent(
             resolution_input=IntentResolutionInput(
@@ -2976,7 +2954,7 @@ def _run_canonical_turn_pipeline(
         return ctx
 
     def _answer_commit(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
-        ctx.state = commit_answer_stage(
+        ctx.state, ctx.artifacts["committed_turn_state"] = commit_answer_stage(
             ctx.state,
             assembly=ctx.artifacts["answer_assembly_contract"],
             validation=ctx.artifacts["answer_validation_contract"],

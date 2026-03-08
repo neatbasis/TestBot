@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from testbot.answer_assembly import AnswerAssemblyResult
-from testbot.answer_validation import AnswerValidationResult
+from testbot.answer_assembly import AnswerCandidate
+from testbot.answer_validation import ValidatedAnswer
 
 
 @dataclass(frozen=True)
@@ -11,7 +11,7 @@ class RenderedAnswer:
     rendered_text: str
 
 
-def render_answer(*, assembly: AnswerAssemblyResult, validation: AnswerValidationResult, preferred_text: str = "") -> RenderedAnswer:
+def render_answer(*, assembly: AnswerCandidate, validation: ValidatedAnswer, preferred_text: str = "") -> RenderedAnswer:
     if not validation.passed:
         raise ValueError("cannot render answer before assembly validation passes")
 
