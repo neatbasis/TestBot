@@ -27,6 +27,7 @@ KPI evidence updates are mandatory for red-tag triage. If any KPI guardrail fail
 
 ## Active
 
+- ISSUE-0015 — **Open-issue review identifies ISSUE-0014 quality/governance gaps that could permit partial-fix closure**: Open red-tag governance hardening issue to formalize causal primacy, stage contracts, observability requirements, and closure discipline for identity-continuity regression work.
 - ISSUE-0014 — **CLI self-identity turns are stabilized structurally but semantically misrouted before memory retrieval and durable fact promotion**: Open red-tag regression; evidence indicates rewrite-stage semantic inversion and self-reference misrouting prevent retrieval activation and confirmed-user-fact promotion.
 
 ## Resolved
