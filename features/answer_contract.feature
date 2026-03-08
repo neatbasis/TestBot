@@ -82,3 +82,25 @@ Feature: Answer citation contract enforcement
     When canonical stages execute stabilize then intent resolve then retrieve
     Then stabilization artifacts are persisted before route authority assignment
     And route authority cannot be finalized until stabilization outputs exist
+
+  Scenario: missing provenance on factual claim triggers safe fallback
+    Given a deterministic answer validation fixture with factual claim "The launch date is Friday at 09:00."
+    When the deterministic answer validation fixture executes
+    Then the deterministic fixture emits a safe fallback answer
+    And the deterministic fixture does not leak unvalidated draft content
+    And the deterministic fixture records validation failure reason "missing_provenance"
+
+  Scenario: invalid citation shape triggers safe fallback
+    Given a deterministic answer validation fixture with factual claim "From memory: the launch date is Friday. doc_id=mem-9 ts=2026/03/08"
+    When the deterministic answer validation fixture executes
+    Then the deterministic fixture emits a safe fallback answer
+    And the deterministic fixture does not leak unvalidated draft content
+    And the deterministic fixture records validation failure reason "invalid_citation_shape"
+
+  Scenario: validation exception after seemingly valid decision object triggers safe fallback
+    Given a deterministic answer validation fixture with a seemingly valid decision object
+    And the deterministic answer validation fixture is configured to raise a validation exception
+    When the deterministic answer validation fixture executes
+    Then the deterministic fixture emits a safe fallback answer
+    And the deterministic fixture does not leak unvalidated draft content
+    And the deterministic fixture records validation failure reason "validation_exception"
