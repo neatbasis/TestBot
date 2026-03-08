@@ -27,7 +27,7 @@ The repository documents a canonical 11-stage turn pipeline and the doctrine "wr
 - Recurring bugs persist from early intent routing on raw utterances and flattened evidence mixing.
 - Same-turn memory self-contamination can produce false confidence and echo retrieval.
 - Repair continuity, user-fact recall, and temporal consistency remain fragile due to missing typed boundaries and weak commit semantics.
-- Feature readiness cannot move canonical capability slices out of planned/partial states with confidence.
+- Feature readiness cannot move canonical capability slices out of partial states with confidence until deterministic runtime evidence closes the remaining behavioral gaps.
 
 ## Acceptance Criteria
 
@@ -123,3 +123,14 @@ The repository documents a canonical 11-stage turn pipeline and the doctrine "wr
 - 2026-03-07: Dependent issue deltas linked for merge-readiness traceability (governance/reporting recalibration) — ISSUE-0008 (intent grounding), ISSUE-0009 (knowing-mode provenance), ISSUE-0010 (unknowing fallback), and ISSUE-0011 (turn analytics input coverage) remain explicitly linked as downstream defect tracks under this primary program while ISSUE-0012 remains the delivery-plan governance counterpart.
 
 - 2026-03-07: Governance evidence distinction recorded — merge-readiness evidence should use blocking gate semantics (`python scripts/all_green_gate.py --json-output ...`), while `--continue-on-failure` outputs are advisory and must be labeled as such in reporting.
+
+- 2026-03-08: Progress audit of the latest 10 commits recorded staged delivery evidence and governance recalibration markers:
+  - foundation module split landed (`b3d4337`, merged via `aeacea5`)
+  - decisioning module contracts landed (`f2dc7d7`, behavior alignment follow-up `4605987`)
+  - commit/audit module contracts landed (`25cdf6b`)
+  - reporting/governance recalibration landed (`605fad9`, merged via `9820354`)
+- 2026-03-08: Next-step execution plan refreshed from commit audit evidence:
+  1. Close deterministic self-identification and durable fact-ingestion gaps in canonical examples (`features/memory_recall.feature`, `tests/test_eval_runtime_parity.py`, canonical orchestrator flow).
+  2. Tighten decision-object routing so known facts avoid `ANSWER_GENERAL_KNOWLEDGE` fallback when grounded evidence exists (`src/testbot/policy_decision.py`, `src/testbot/answer_policy.py`, `src/testbot/reflection_policy.py`).
+  3. Add commit/audit proof tests that committed-turn artifacts are persisted and re-used on subsequent turns (`tests/test_runtime_logging_events.py`, `tests/test_turn_analytics_aggregator.py`, canonical pipeline integration tests).
+  4. Keep governance evidence explicit: blocking gate artifact for merge-readiness and separate advisory artifact labeling for KPI guardrail warnings.
