@@ -583,6 +583,7 @@ def step_when_canonical_stages_execute_stabilize_intent_retrieve(context) -> Non
         return ctx
 
     def _context_resolve(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        ctx.artifacts["resolved_context"] = {"continuity_posture": "reevaluate"}
         return ctx
 
     def _intent_resolve(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
@@ -599,6 +600,14 @@ def step_when_canonical_stages_execute_stabilize_intent_retrieve(context) -> Non
     def _noop(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
         return ctx
 
+    def _answer_assemble(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        ctx.artifacts["answer_assembly_contract"] = {"decision_class": "answer_from_memory"}
+        return ctx
+
+    def _answer_validate(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        ctx.artifacts["answer_validation_contract"] = type("Validation", (), {"passed": True})()
+        return ctx
+
     orchestrator = CanonicalTurnOrchestrator(
         stages=[
             CanonicalStage("observe.turn", _observe),
@@ -608,8 +617,8 @@ def step_when_canonical_stages_execute_stabilize_intent_retrieve(context) -> Non
             CanonicalStage("intent.resolve", _intent_resolve),
             CanonicalStage("retrieve.evidence", _retrieve),
             CanonicalStage("policy.decide", _noop),
-            CanonicalStage("answer.assemble", _noop),
-            CanonicalStage("answer.validate", _noop),
+            CanonicalStage("answer.assemble", _answer_assemble),
+            CanonicalStage("answer.validate", _answer_validate),
             CanonicalStage("answer.render", _noop),
             CanonicalStage("answer.commit", _noop),
         ]
