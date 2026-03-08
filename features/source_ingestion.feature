@@ -1,4 +1,4 @@
-@Rule:SourceBackedKnowing @Role:Resident @Priority:High @fast
+@Rule:SourceBackedKnowing @Rule:SourceBackedAnswer @Role:Resident @Priority:High @fast
 Feature: Source-backed ingestion behavior
   In order to trust answers grounded in synced sources
   As a resident

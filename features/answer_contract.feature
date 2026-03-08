@@ -1,4 +1,4 @@
-@Rule:AnswerContract @Role:Resident @Priority:High @fast
+@Rule:AnswerContract @Rule:FallbackSemantics @Role:Resident @Priority:High @fast
 Feature: Answer citation contract enforcement
   In order to prevent unsupported factual claims
   As a resident
@@ -33,6 +33,7 @@ Feature: Answer citation contract enforcement
     And the rendered answer should not include normative phrase "Which person, event, or time window should I focus on?"
     And the response records knowledge-safe fallback provenance transparency
 
+  @Rule:AmbiguityHandling
   Scenario: ambiguous memory recall uses ask route when ask capability is available
     Given an answer policy input with intent "memory_recall", context confidence true, ambiguity true, and memory hit count 2
     And ask capability status is "ask_available"
@@ -85,6 +86,7 @@ Feature: Answer citation contract enforcement
     Then stabilization artifacts are persisted before route authority assignment
     And route authority cannot be finalized until stabilization outputs exist
 
+  @Rule:SourceBackedAnswer
   Scenario: missing provenance on factual claim triggers safe fallback
     Given a deterministic answer validation fixture with factual claim "The launch date is Friday at 09:00."
     When the deterministic answer validation fixture executes
@@ -92,6 +94,7 @@ Feature: Answer citation contract enforcement
     And the deterministic fixture does not leak unvalidated draft content
     And the deterministic fixture records validation failure reason "missing_provenance"
 
+  @Rule:SourceBackedAnswer
   Scenario: invalid citation shape triggers safe fallback
     Given a deterministic answer validation fixture with factual claim "From memory: the launch date is Friday. doc_id=mem-9 ts=2026/03/08"
     When the deterministic answer validation fixture executes

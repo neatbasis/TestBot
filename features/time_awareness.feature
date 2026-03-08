@@ -1,4 +1,4 @@
-@Rule:TimeAwareness @Role:Resident @Priority:High @fast
+@Rule:TimeAwareness @Rule:TemporalRouting @Role:Resident @Priority:High @fast
 Feature: Time-aware routing and deterministic responses
   In order to answer simple temporal questions deterministically
   As a resident
