@@ -406,3 +406,30 @@ def test_structured_debug_payload_temporal_query_is_emitted_in_verbose_trace() -
     assert trace.startswith("[debug] {")
     for key in REQUIRED_DEBUG_KEYS:
         assert key in trace
+
+
+def test_structured_debug_payload_policy_chosen_action_matches_fallback_action_authority() -> None:
+    state = PipelineState(
+        user_input="what did I say about release prep",
+        rewritten_query="release prep",
+        classified_intent="memory_recall",
+        resolved_intent="memory_recall",
+        confidence_decision={
+            "context_confident": True,
+            "ambiguity_detected": False,
+            "retrieval_branch": "memory_retrieval",
+            "top_final_score_min": 0.8,
+            "min_margin_to_second": 0.05,
+            "scored_candidates": [{"final_score": 0.92}, {"final_score": 0.74}],
+        },
+        invariant_decisions={
+            "answer_mode": "memory-grounded",
+            "fallback_action": "ANSWER_GENERAL_KNOWLEDGE",
+            "answer_policy_rationale": {"authority": "decision_object", "decision_class": "answer_from_memory"},
+        },
+    )
+
+    payload = _build_debug_turn_payload(state=state, intent_label="memory_recall", hits=[])
+
+    assert payload["debug.policy"]["fallback_action"] == "ANSWER_GENERAL_KNOWLEDGE"
+    assert payload["debug.policy"]["chosen_action"] == payload["debug.policy"]["fallback_action"]

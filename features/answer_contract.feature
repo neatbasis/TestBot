@@ -68,3 +68,10 @@ Feature: Answer citation contract enforcement
     When canonical observe encode and stabilize execute
     Then stabilization candidate facts include "user_name" as "Sebastian"
 
+
+  Scenario: canonical decision object keeps memory retrieval on memory-grounded path
+    Given a memory recall question with retrieval evidence available
+    And a canonical decision object class "answer_from_memory"
+    When stage answer runs with canonical decision authority
+    Then the final answer remains memory-grounded
+    And the fallback action reflects the canonical decision mapping

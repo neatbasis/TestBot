@@ -6,6 +6,7 @@ from langchain_core.documents import Document
 from testbot.answer_policy import AnswerPolicyInput, resolve_answer_routing
 from testbot.eval_fixtures import cases_by_id
 from testbot.pipeline_state import CandidateHit, PipelineState, ProvenanceType
+from testbot.policy_decision import DecisionClass, DecisionObject
 from testbot.sat_chatbot_memory_v2 import RuntimeCapabilityStatus, stage_answer, validate_answer_contract, validate_general_knowledge_contract
 from testbot.sat_chatbot_memory_v2 import _build_debug_turn_payload
 from testbot.stage_transitions import validate_answer_post, validate_answer_pre
@@ -347,3 +348,60 @@ def step_then_debug_counterfactuals_include_threshold_and_routing_checks(context
 @then('the policy rationale fallback reason should be "{fallback_reason}"')
 def step_then_policy_rationale_fallback_reason(context, fallback_reason: str) -> None:
     assert context.answer_policy_decision.rationale.get("fallback_reason") == fallback_reason
+
+
+class _BDDMemoryGroundedLLM:
+    class _Response:
+        content = "From memory, I found: release prep checklist is in project notes. doc_id: mem-1, ts: 2026-03-01T08:00:00Z"
+
+    def invoke(self, _msgs):
+        return self._Response()
+
+
+@given("a memory recall question with retrieval evidence available")
+def step_given_memory_recall_with_evidence(context) -> None:
+    context.memory_answer_state_input = PipelineState(
+        user_input="what did i note for release prep",
+        confidence_decision={"context_confident": False, "ambiguity_detected": True},
+        resolved_intent="memory_recall",
+    )
+    context.memory_answer_hits = [
+        Document(
+            page_content="release prep checklist is in project notes",
+            metadata={"doc_id": "mem-1", "ts": "2026-03-01T08:00:00Z"},
+        )
+    ]
+
+
+@given('a canonical decision object class "{decision_class}"')
+def step_given_canonical_decision_object(context, decision_class: str) -> None:
+    context.selected_decision = DecisionObject(
+        decision_class=DecisionClass(decision_class),
+        retrieval_branch="memory_retrieval",
+        rationale="confident evidence bundle supports memory-grounded answer",
+        reasoning={"evidence_posture": "scored_non_empty"},
+    )
+
+
+@when("stage answer runs with canonical decision authority")
+def step_when_stage_answer_runs_with_canonical_decision(context) -> None:
+    context.stage_answer_state = stage_answer(
+        _BDDMemoryGroundedLLM(),
+        context.memory_answer_state_input,
+        chat_history=[],
+        hits=context.memory_answer_hits,
+        capability_status="ask_unavailable",
+        selected_decision=context.selected_decision,
+    )
+
+
+@then("the final answer remains memory-grounded")
+def step_then_final_answer_remains_memory_grounded(context) -> None:
+    assert context.stage_answer_state.final_answer.startswith("From memory, I found:")
+    assert context.stage_answer_state.invariant_decisions.get("answer_mode") == "memory-grounded"
+
+
+@then("the fallback action reflects the canonical decision mapping")
+def step_then_fallback_action_reflects_canonical_mapping(context) -> None:
+    assert context.stage_answer_state.invariant_decisions.get("fallback_action") == "ANSWER_GENERAL_KNOWLEDGE"
+    assert context.stage_answer_state.invariant_decisions.get("answer_policy_rationale", {}).get("authority") == "decision_object"
