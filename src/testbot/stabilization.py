@@ -16,6 +16,7 @@ from testbot.vector_store import MemoryStore
 @dataclass(frozen=True)
 class StabilizedTurnState:
     turn_id: str
+    utterance_card: str
     utterance_doc_id: str
     reflection_doc_id: str
     dialogue_state_doc_id: str
@@ -133,6 +134,7 @@ def stabilize_pre_route(
 
     stabilized = StabilizedTurnState(
         turn_id=observation.turn_id,
+        utterance_card=utterance_card,
         utterance_doc_id=utterance_doc_id,
         reflection_doc_id=reflection_doc_id,
         dialogue_state_doc_id=dialogue_state_doc_id,
@@ -155,6 +157,7 @@ def stabilize_pre_route(
                 "speech_acts": stabilized.candidate_speech_acts,
                 "dialogue_state": stabilized.candidate_dialogue_state,
                 "turn_id": observation.turn_id,
+                "utterance_card": utterance_card,
                 "utterance_doc_id": utterance_doc_id,
                 "reflection_doc_id": reflection_doc_id,
                 "dialogue_state_doc_id": dialogue_state_doc_id,

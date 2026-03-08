@@ -52,6 +52,13 @@ class CanonicalTurnOrchestrator:
 
     def run(self, context: CanonicalTurnContext) -> CanonicalTurnContext:
         for expected_stage, stage in zip(self.STAGE_ORDER, self._stages):
+            if expected_stage == "intent.resolve":
+                if "turn_observation" not in context.artifacts:
+                    raise RuntimeError("intent.resolve requires turn_observation artifact")
+                if "encoded_candidates" not in context.artifacts:
+                    raise RuntimeError("intent.resolve requires encoded_candidates artifact")
+                if "stabilized_turn_state" not in context.artifacts:
+                    raise RuntimeError("intent.resolve requires stabilized_turn_state artifact")
             if expected_stage == "policy.decide":
                 if "stabilized_turn_state" not in context.artifacts:
                     raise RuntimeError("policy.decide requires stabilized_turn_state artifact")

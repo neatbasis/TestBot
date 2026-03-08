@@ -10,6 +10,7 @@ from testbot.stabilization import StabilizedTurnState
 def _stabilized(utterance: str) -> StabilizedTurnState:
     return StabilizedTurnState(
         turn_id="turn-1",
+        utterance_card="UTTERANCE CARD",
         utterance_doc_id="u1",
         reflection_doc_id="r1",
         dialogue_state_doc_id="d1",

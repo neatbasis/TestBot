@@ -100,6 +100,10 @@ def test_orchestrator_stabilizes_before_route_authority_assignment() -> None:
     for stage_name in CanonicalTurnOrchestrator.STAGE_ORDER:
 
         def _handler(ctx: CanonicalTurnContext, name: str = stage_name) -> CanonicalTurnContext:
+            if name == "observe.turn":
+                ctx.artifacts["turn_observation"] = {"turn_id": "turn-1", "utterance": "hello"}
+            if name == "encode.candidates":
+                ctx.artifacts["encoded_candidates"] = {"facts": []}
             if name == "stabilize.pre_route":
                 assert ctx.artifacts.get("policy_decision") is None
                 ctx.artifacts["stabilized_turn_state"] = {"turn_id": "turn-1"}
@@ -158,6 +162,10 @@ def test_intent_stage_consumes_stabilized_and_context_artifacts_not_raw_input() 
     for stage_name in CanonicalTurnOrchestrator.STAGE_ORDER:
 
         def _handler(ctx: CanonicalTurnContext, name: str = stage_name) -> CanonicalTurnContext:
+            if name == "observe.turn":
+                ctx.artifacts["turn_observation"] = {"turn_id": "turn-1", "utterance": "what is ontology?"}
+            if name == "encode.candidates":
+                ctx.artifacts["encoded_candidates"] = {"facts": [{"key": "utterance_raw", "value": "what is ontology?"}]}
             if name == "stabilize.pre_route":
                 ctx.artifacts["stabilized_turn_state"] = {"candidate_facts": [{"key": "utterance_raw", "value": "what is ontology?"}]}
             if name == "context.resolve":
@@ -176,3 +184,14 @@ def test_intent_stage_consumes_stabilized_and_context_artifacts_not_raw_input() 
     final_context = CanonicalTurnOrchestrator(stages=stages).run(context)
 
     assert final_context.state.resolved_intent == "knowledge_question"
+
+
+def test_orchestrator_rejects_intent_resolution_without_stabilization_artifacts() -> None:
+    state = PipelineState(user_input="Hi! I'm Sebastian")
+    context = CanonicalTurnContext(state=state)
+
+    stages = [_make_stage(name) for name in CanonicalTurnOrchestrator.STAGE_ORDER]
+    orchestrator = CanonicalTurnOrchestrator(stages=stages)
+
+    with pytest.raises(RuntimeError, match="intent.resolve requires turn_observation artifact"):
+        orchestrator.run(context)

@@ -48,3 +48,17 @@ Feature: Memory recall behavior
     When evidence is bundled for policy consumption
     Then semantic memory is retained as canonical evidence for that segment
     And raw episodic utterance evidence for that segment is de-prioritized
+
+
+  @ISSUE-0013 @AC-0013-01 @AC-0013-03 @AC-0013-05 @AC-0013-10
+  Scenario Outline: canonical pre-route artifacts are established for ISSUE-0013 regression utterances
+    Given a canonical stage harness with a raw utterance "<utterance>"
+    When canonical observe encode and stabilize execute
+    Then the stage artifacts include a typed turn observation
+    And stabilization provides same-turn exclusion doc ids before intent resolve
+
+    Examples:
+      | utterance                               |
+      | Hi! I'm Sebastian                       |
+      | The memory today                        |
+      | How log ago did I ask you something?   |

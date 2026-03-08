@@ -903,25 +903,46 @@ def _is_clarification_or_capability_confirmation_answer(text: str) -> bool:
 
 
 def resolve_turn_intent(*, utterance: str, prior_pipeline_state: PipelineState | None) -> tuple[IntentType, IntentType]:
-    context_resolution = resolve_context(utterance=utterance, prior_pipeline_state=prior_pipeline_state)
-    stabilized_turn_state = StabilizedTurnState(
+    seed_state = PipelineState(user_input=utterance)
+    observation = observe_turn(
+        seed_state,
         turn_id="offline-resolve-turn-intent",
-        utterance_doc_id="",
-        reflection_doc_id="",
-        dialogue_state_doc_id="",
-        segment_type="",
-        segment_id="",
+        observed_at=utc_now_iso(),
+        speaker="user",
+        channel="offline",
+    )
+    encoded = encode_turn_candidates(seed_state, observation=observation, rewritten_query=utterance)
+    stabilized_turn_state = StabilizedTurnState(
+        turn_id=observation.turn_id,
+        utterance_card=make_utterance_card(ts_iso=observation.observed_at, speaker=observation.speaker, text=observation.utterance, doc_id=observation.turn_id, channel=observation.channel),
+        utterance_doc_id=observation.turn_id,
+        reflection_doc_id="offline-reflection-placeholder",
+        dialogue_state_doc_id="offline-dialogue-state-placeholder",
+        segment_type="offline",
+        segment_id="offline",
         segment_membership_edge_refs=[],
-        same_turn_exclusion_doc_ids=[],
-        candidate_facts=[{"key": "utterance_raw", "value": utterance}],
-        candidate_speech_acts=[],
-        candidate_dialogue_state=[],
+        same_turn_exclusion_doc_ids=[observation.turn_id],
+        candidate_facts=[
+            {
+                "key": "utterance_raw",
+                "value": observation.utterance,
+                "confidence": 1.0,
+                "provenance": "observe.turn",
+            },
+            *[asdict(candidate) for candidate in encoded.facts],
+        ],
+        candidate_speech_acts=[asdict(candidate) for candidate in encoded.speech_acts],
+        candidate_dialogue_state=[asdict(candidate) for candidate in encoded.dialogue_state],
+    )
+    context_resolution = resolve_context(
+        utterance=observation.utterance,
+        prior_pipeline_state=prior_pipeline_state,
     )
     intent_resolution = resolve_intent(
         resolution_input=IntentResolutionInput(
             stabilized_turn_state=stabilized_turn_state,
             context=context_resolution,
-            fallback_utterance=utterance,
+            fallback_utterance=observation.utterance,
         )
     )
     return intent_resolution.classified_intent, intent_resolution.resolved_intent
@@ -1714,7 +1735,7 @@ def answer_assemble(
 
     fallback_action = answer_routing.fallback_action
     clarification_allowed = answer_routing.clarification_allowed
-    resolved_intent = IntentType(state.resolved_intent or classify_intent(state.user_input).value)
+    resolved_intent = IntentType(state.resolved_intent or IntentType.KNOWLEDGE_QUESTION.value)
     intent_class = _intent_class_for_policy(resolved_intent)
     social_or_non_knowledge_intent = _is_social_or_non_knowledge_intent(resolved_intent)
     satellite_action_request = is_satellite_action_request(state.user_input)
@@ -2063,7 +2084,7 @@ def stage_answer(
             capability_status=capability_status,
         )
     else:
-        resolved_intent = IntentType(state.resolved_intent or classify_intent(state.user_input).value)
+        resolved_intent = IntentType(state.resolved_intent or IntentType.KNOWLEDGE_QUESTION.value)
         answer_routing = resolve_answer_routing(
             AnswerPolicyInput(
                 intent=_intent_class_for_policy(resolved_intent),
