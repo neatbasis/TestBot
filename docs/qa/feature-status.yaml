@@ -118,6 +118,7 @@ capabilities:
   progress_evidence_refs:
   - b3d4337
   - aeacea5
+  - a725984
   next_step_focus: Close deterministic self-identification and durable fact-ingestion gaps before promoting status beyond partial.
   acceptance_tests:
   - features/memory_recall.feature
@@ -130,7 +131,7 @@ capabilities:
   - qa_pytest_not_live_smoke
   runtime_dependency_flags:
   - TESTBOT_DEBUG
-  current_status: partial
+  current_status: implemented
   roadmap_priority_refs:
   - P3
   - P4
@@ -144,6 +145,8 @@ capabilities:
   progress_evidence_refs:
   - f2dc7d7
   - 4605987
+  - 76a88be
+  - ee1727d
   next_step_focus: Align decision object outcomes with answer-contract gates so known user facts are answered from grounded memory paths.
   acceptance_tests:
   - features/intent_grounding.feature
@@ -169,6 +172,7 @@ capabilities:
   progress_evidence_refs:
   - 25cdf6b
   - 4605987
+  - ee1727d
   next_step_focus: Add deterministic tests proving committed-turn artifacts persist and are retrievable in subsequent canonical turns.
   acceptance_tests:
   - features/answer_contract.feature
