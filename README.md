@@ -111,6 +111,7 @@ python scripts/all_green_gate.py
 
 ## Validate
 - **Only authoritative merge/readiness sequence**: `python scripts/all_green_gate.py`
+- BDD execution inside the canonical gate is a hard prerequisite for interpreting feature-status evidence as behavior confidence. If preflight reports missing `behave`, remediate with `python -m pip install -e .[dev]` before trusting capability status.
 - Optional run-all mode (same sequence, continues after failures): `python scripts/all_green_gate.py --continue-on-failure`
 - Machine-readable summary artifact for the same sequence: `python scripts/all_green_gate.py --json-output artifacts/all-green-gate-summary.json`
 - Optional post-merge live smoke profile: `pytest -m live_smoke`

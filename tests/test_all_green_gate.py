@@ -65,7 +65,37 @@ def test_main_fails_fast_when_behave_dependency_missing(monkeypatch: pytest.Monk
     summary = json.loads(output.split("\n\n", maxsplit=1)[0])
     assert summary["status"] == "failed"
     assert summary["checks"][0]["name"] == all_green_gate.BEHAVE_PREFLIGHT_CHECK_NAME
+    assert summary["remediation"] == [all_green_gate.BEHAVE_REMEDIATION_MESSAGE]
 
+
+
+
+
+def test_main_writes_behave_remediation_to_json_summary(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    summary_path = tmp_path / "all-green-summary.json"
+    monkeypatch.setattr(
+        all_green_gate,
+        "parse_args",
+        lambda: all_green_gate.argparse.Namespace(
+            continue_on_failure=False,
+            base_ref="origin/main",
+            json_output=summary_path,
+            check_profile="fast",
+            kpi_guardrail_mode="optional",
+        ),
+    )
+    monkeypatch.setattr(all_green_gate.importlib.util, "find_spec", lambda _name: None)
+
+    exit_code = all_green_gate.main()
+
+    assert exit_code == 1
+    payload = json.loads(summary_path.read_text(encoding="utf-8"))
+    assert payload["status"] == "failed"
+    assert payload["checks"][0]["name"] == all_green_gate.BEHAVE_PREFLIGHT_CHECK_NAME
+    assert payload["remediation"] == [all_green_gate.BEHAVE_REMEDIATION_MESSAGE]
 
 
 def test_resolve_base_ref_falls_back_when_origin_main_missing(monkeypatch: pytest.MonkeyPatch) -> None:

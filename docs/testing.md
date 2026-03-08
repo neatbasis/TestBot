@@ -95,6 +95,7 @@ For non-live changes, this is the expected offline/deterministic contributor gat
 `pip install -e .[dev]` is the canonical contributor install command and includes runtime dependencies plus development/validation tooling.
 
 `scripts/all_green_gate.py` is the only authoritative command sequence for merge readiness. By default it runs a **fast** profile that preserves category coverage while avoiding redundant targeted checks already covered by broader suites (for example, `pytest -m "not live_smoke"` and full `behave`).
+BDD execution is a hard prerequisite for interpreting feature-status evidence as behavior confidence; if BDD cannot run, treat capability status as not confidence-ready until `behave` is restored via `pip install -e .[dev]`.
 
 Use `--check-profile exhaustive` to include overlapping targeted checks (for example, focused parity and subset-behave invocations) when you need deeper diagnostics.
 
@@ -106,7 +107,7 @@ The canonical gate (`scripts/all_green_gate.py`) supports KPI rollout controls v
 
 | Test layer | Canonical command | Runtime dependency | CI gate level | Expected runtime | Pass criteria |
 | --- | --- | --- | --- | --- | --- |
-| Single merge/readiness gate (fast profile) | `python scripts/all_green_gate.py` | Python dev extras (`behave`, `pytest`) plus local docs/issues/fixtures and git metadata | **Required (canonical gate)** | ~30-150s depending on test volume | Exit code `0`; category-level blocking checks pass (BDD, deterministic pytest, recall eval, governance + invariant mirror/path/schema validators) without redundant targeted overlap commands. |
+| Single merge/readiness gate (fast profile) | `python scripts/all_green_gate.py` | Python dev extras (`behave`, `pytest`) plus local docs/issues/fixtures and git metadata | **Required (canonical gate)** | ~30-150s depending on test volume | Exit code `0`; category-level blocking checks pass (BDD, deterministic pytest, recall eval, governance + invariant mirror/path/schema validators) without redundant targeted overlap commands. **Interpret feature-status evidence as behavior confidence only when this gate includes a successful BDD run.** |
 | BDD acceptance (`behave`) | `python -m behave` _(requires `pip install -e .[dev]` first)_ | Python dev extras (`behave`) and local deterministic fixtures | **Executed by canonical gate (component check)** | ~10-60s for current feature set | Exit code `0`; no failed/undefined steps; acceptance scenarios for changed behavior pass. |
 | Deterministic unit/component (`pytest`) | `python -m pytest -m "not live_smoke"` | Python dev extras (`pytest`); no network or external services | **Executed by canonical gate (component check)** | ~5-30s for fast deterministic scope | Exit code `0`; no flaky network-bound failures; logic and wiring tests for changed code pass. |
 | Eval/runtime parity check (`pytest`) | `python -m pytest tests/test_eval_runtime_parity.py` | Python dev extras (`pytest`) and fixed fixtures (`eval/cases.jsonl`, `tests/fixtures/candidate_sets.jsonl`) | **Executed by canonical gate in `--check-profile exhaustive`** | ~1-5s | Exit code `0`; runtime path scoring and eval adapter path stay aligned for ordering, top-1, and fallback intent decisions. |
