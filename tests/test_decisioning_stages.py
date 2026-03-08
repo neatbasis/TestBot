@@ -87,3 +87,48 @@ def test_policy_decision_derives_empty_vs_scored_empty_posture() -> None:
     assert empty.retrieval_branch == "memory_retrieval"
     assert empty.evidence_posture is EvidencePosture.EMPTY_EVIDENCE
     assert scored_empty.evidence_posture is EvidencePosture.SCORED_EMPTY
+
+
+def test_turn_one_identity_declaration_not_routed_as_generic_knowledge_question() -> None:
+    context = resolve_context(utterance="My name is Sam", prior_pipeline_state=None)
+    turn_one = resolve_intent(
+        resolution_input=IntentResolutionInput(
+            stabilized_turn_state=_stabilized("My name is Sam"),
+            context=context,
+            fallback_utterance="My name is Sam",
+        )
+    )
+
+    assert turn_one.classified_intent is IntentType.META_CONVERSATION
+    assert turn_one.resolved_intent is IntentType.META_CONVERSATION
+
+
+def test_turn_two_who_am_i_with_continuity_prefers_memory_aware_intent() -> None:
+    prior_state = PipelineState(
+        user_input="My name is Sam",
+        final_answer="Thanks Sam — I will remember that.",
+        resolved_intent=IntentType.META_CONVERSATION.value,
+        prior_unresolved_intent=IntentType.META_CONVERSATION.value,
+        commit_receipt={
+            "committed": True,
+            "commit_id": "commit-1",
+            "confirmed_user_facts": ["name=Sam"],
+        },
+    )
+
+    context = resolve_context(utterance="Who am I?", prior_pipeline_state=prior_state)
+    turn_two = resolve_intent(
+        resolution_input=IntentResolutionInput(
+            stabilized_turn_state=_stabilized("Who am I?"),
+            context=context,
+            fallback_utterance="Who am I?",
+        )
+    )
+    decision = decide(
+        utterance="Who am I?",
+        intent=turn_two.resolved_intent,
+    )
+
+    assert turn_two.classified_intent is IntentType.MEMORY_RECALL
+    assert turn_two.resolved_intent is IntentType.MEMORY_RECALL
+    assert decision.retrieval_branch == "memory_retrieval"
