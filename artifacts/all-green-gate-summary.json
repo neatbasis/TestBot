@@ -2,119 +2,24 @@
   "status": "failed",
   "exit_code": 1,
   "continue_on_failure": true,
-  "warning_count": 1,
+  "warning_count": 0,
   "stages": [
     {
-      "stage": "product",
-      "duration_s": 2.457,
+      "stage": "preflight",
+      "duration_s": 0.0,
       "exit_code": 1,
-      "first_failing_command": "/root/.pyenv/versions/3.11.14/bin/python -m behave",
+      "first_failing_command": "/root/.pyenv/versions/3.11.14/bin/python -c 'import behave'",
       "artifact_path": null
-    },
-    {
-      "stage": "safety",
-      "duration_s": 0.053,
-      "exit_code": 0,
-      "first_failing_command": null,
-      "artifact_path": null
-    },
-    {
-      "stage": "qa",
-      "duration_s": 6.599,
-      "exit_code": 1,
-      "first_failing_command": "/root/.pyenv/versions/3.11.14/bin/python -m pytest -m 'not live_smoke'",
-      "artifact_path": "logs/turn_analytics.jsonl"
     }
   ],
   "checks": [
     {
-      "name": "product_behave",
-      "stage": "product",
-      "command": "/root/.pyenv/versions/3.11.14/bin/python -m behave",
+      "name": "preflight_bdd_dependencies",
+      "stage": "preflight",
+      "command": "/root/.pyenv/versions/3.11.14/bin/python -c 'import behave'",
       "status": "failed",
       "exit_code": 1,
-      "duration_s": 1.58,
-      "artifact_path": null
-    },
-    {
-      "name": "product_eval_recall_topk4",
-      "stage": "product",
-      "command": "/root/.pyenv/versions/3.11.14/bin/python scripts/eval_recall.py --top-k 4",
-      "status": "passed",
-      "exit_code": 0,
-      "duration_s": 0.877,
-      "artifact_path": null
-    },
-    {
-      "name": "safety_validate_log_schema",
-      "stage": "safety",
-      "command": "/root/.pyenv/versions/3.11.14/bin/python scripts/validate_log_schema.py",
-      "status": "passed",
-      "exit_code": 0,
-      "duration_s": 0.053,
-      "artifact_path": null
-    },
-    {
-      "name": "qa_pytest_not_live_smoke",
-      "stage": "qa",
-      "command": "/root/.pyenv/versions/3.11.14/bin/python -m pytest -m 'not live_smoke'",
-      "status": "failed",
-      "exit_code": 1,
-      "duration_s": 6.122,
-      "artifact_path": null
-    },
-    {
-      "name": "qa_validate_issue_links",
-      "stage": "qa",
-      "command": "/root/.pyenv/versions/3.11.14/bin/python scripts/validate_issue_links.py --all-issue-files --base-ref 'HEAD~1'",
-      "status": "passed",
-      "exit_code": 0,
-      "duration_s": 0.115,
-      "artifact_path": null
-    },
-    {
-      "name": "qa_validate_issues",
-      "stage": "qa",
-      "command": "/root/.pyenv/versions/3.11.14/bin/python scripts/validate_issues.py --all-issue-files --base-ref 'HEAD~1'",
-      "status": "passed",
-      "exit_code": 0,
-      "duration_s": 0.077,
-      "artifact_path": null
-    },
-    {
-      "name": "qa_validate_invariant_sync",
-      "stage": "qa",
-      "command": "/root/.pyenv/versions/3.11.14/bin/python scripts/sync_invariants_mirror.py --check",
-      "status": "passed",
-      "exit_code": 0,
-      "duration_s": 0.057,
-      "artifact_path": null
-    },
-    {
-      "name": "qa_validate_markdown_paths",
-      "stage": "qa",
-      "command": "/root/.pyenv/versions/3.11.14/bin/python scripts/validate_markdown_paths.py",
-      "status": "passed",
-      "exit_code": 0,
-      "duration_s": 0.051,
-      "artifact_path": null
-    },
-    {
-      "name": "qa_aggregate_turn_analytics",
-      "stage": "qa",
-      "command": "/root/.pyenv/versions/3.11.14/bin/python scripts/aggregate_turn_analytics.py --input logs/session.jsonl --output logs/turn_analytics.jsonl --summary-output logs/turn_analytics_summary.json",
-      "status": "passed",
-      "exit_code": 0,
-      "duration_s": 0.108,
-      "artifact_path": "logs/turn_analytics.jsonl"
-    },
-    {
-      "name": "qa_validate_kpi_guardrails",
-      "stage": "qa",
-      "command": "/root/.pyenv/versions/3.11.14/bin/python scripts/validate_kpi_guardrails.py --summary logs/turn_analytics_summary.json --config config/kpi_guardrails.json",
-      "status": "warning",
-      "exit_code": 1,
-      "duration_s": 0.069,
+      "duration_s": 0.0,
       "artifact_path": null
     }
   ]
