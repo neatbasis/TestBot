@@ -222,6 +222,16 @@ Feature: Intent-specific grounding and provenance behavior
     Then the decision outcomes should include "answer_from_memory" and "answer_general_knowledge_labeled"
     And the decision outcomes should include "ask_for_clarification" and "continue_repair_reconstruction"
 
+  Scenario: typed empty and scored-empty evidence states map to distinct fallback behaviors
+    Given an intent response harness
+    When typed fallback contracts are resolved for empty and scored-empty evidence
+    Then typed evidence states should remain distinct for empty and scored-empty
+    And the typed evidence-state mapping should include decision class "ask_for_clarification" and provenance label "UNKNOWN" for "E.empty"
+    And the typed evidence-state mapping should include decision class "ask_for_clarification" and provenance label "UNKNOWN" for "E.scored_empty"
+    And the typed evidence-state mapping should include fallback strategy "ASK_CLARIFIER" for "E.empty"
+    And the typed evidence-state mapping should include fallback strategy "ANSWER_UNKNOWN" for "E.scored_empty"
+    And the typed evidence-state mapping should include fallback strategy "OFFER_ASSIST_ALTERNATIVES" for "E.scored_empty_non_memory"
+
 
   Scenario: note-taking utterance preserves direct-answer assist contract
     Given an intent response harness
