@@ -151,6 +151,13 @@ capabilities:
     - AC-0013-05
     - AC-0013-06
     - AC-0013-07
+  criterion_refs:
+  - AC-0013-01
+  - AC-0013-02
+  - AC-0013-03
+  - AC-0013-05
+  - AC-0013-06
+  - AC-0013-07
   issue_keywords:
   - ISSUE-0013
 - capability_id: canonical_turn_pipeline_decisioning
@@ -189,6 +196,13 @@ capabilities:
     - AC-0013-05
     - AC-0013-08
     - AC-0013-10
+  criterion_refs:
+  - AC-0013-01
+  - AC-0013-02
+  - AC-0013-04
+  - AC-0013-05
+  - AC-0013-08
+  - AC-0013-10
   issue_keywords:
   - ISSUE-0013
 - capability_id: canonical_turn_pipeline_commit_and_audit
@@ -221,6 +235,10 @@ capabilities:
     - AC-0013-02
     - AC-0013-09
     - AC-0013-11
+  criterion_refs:
+  - AC-0013-02
+  - AC-0013-09
+  - AC-0013-11
   issue_keywords:
   - ISSUE-0013
 - capability_id: governance_readiness_gate

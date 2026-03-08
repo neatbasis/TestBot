@@ -251,7 +251,21 @@ A pipeline adoption change is complete when all are true:
 
 ## Example traces
 
-### A) Self-identification
+The following trace classes are intended to be **mutually exclusive and commonly exhaustive** for canonical turn handling at `intent.resolve` time.
+
+Classification precedence (top to bottom) defines exclusivity:
+
+1. `control`
+2. `repair_offer_followup`
+3. `clarification_response`
+4. `memory_recall`
+5. `user_fact_declaration`
+6. `general_knowledge_question`
+7. `meta_conversation`
+
+If multiple candidate labels are present, choose the highest-precedence class and carry lower-precedence alternatives as non-authoritative candidates in stabilized state.
+
+### A) `user_fact_declaration` (self-identification)
 
 User: `Hi! My name is Sebastian.`
 
@@ -262,7 +276,7 @@ User: `Hi! My name is Sebastian.`
 - `answer.render`: "Nice to meet you, Sebastian."
 - `answer.commit`: user-name fact survives for later recall
 
-### B) Memory recall
+### B) `memory_recall`
 
 User: `What's my name?`
 
@@ -271,13 +285,53 @@ User: `What's my name?`
 - `policy.decide`: `answer_from_memory`
 - `answer.render`: "Your name is Sebastian."
 
-### C) Repair continuation
+### C) `repair_offer_followup`
 
 Prior assistant offer: "I can help reconstruct the timeline or suggest where to check next."
 
 User: `What do you need?`
 
 - `context.resolve`: materialize pending repair mode from prior offer
-- `intent.resolve`: `repair_continuation(memory_reconstruction_offer)`
+- `intent.resolve`: `repair_offer_followup(memory_reconstruction_offer)`
 - `policy.decide`: request missing reconstruction slots
 - `answer.commit`: keep repair mode active for next turn
+
+### D) `clarification_response`
+
+Prior assistant clarification: "Did you mean your legal name or display name?"
+
+User: `Display name.`
+
+- `context.resolve`: detect unresolved clarification obligation
+- `intent.resolve`: `clarification_response(display_name)`
+- `retrieve.evidence`: gather only clarification-relevant candidates/anchors
+- `policy.decide`: continue suspended parent task with resolved slot
+
+### E) `general_knowledge_question`
+
+User: `What is the capital of France?`
+
+- `intent.resolve`: `general_knowledge_question`
+- `retrieve.evidence`: source connector or curated knowledge evidence
+- `policy.decide`: answer when evidence sufficiency passes, otherwise safe fallback
+- `answer.validate`: ensure provenance/citation contract for knowing mode
+
+### F) `control`
+
+User: `/reset session`
+
+- `encode.candidates`: detect command/control candidate
+- `intent.resolve`: `control(reset_session)`
+- `policy.decide`: perform control action; suppress unrelated retrieval
+- `answer.commit`: persist updated session/control state
+
+### G) `meta_conversation`
+
+User: `How do you decide whether you're sure about an answer?`
+
+- `intent.resolve`: `meta_conversation`
+- `retrieve.evidence`: pull policy/provenance explanation anchors (not user-memory recall)
+- `policy.decide`: explain contract-level behavior without fabricating unseen state
+- `answer.render`: concise explanation plus uncertainty boundary when needed
+
+Together, traces A-G partition the canonical intent/state ontology and provide a baseline exhaustive test surface for AC-0013-10 deterministic behavior validation.
