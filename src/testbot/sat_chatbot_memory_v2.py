@@ -74,7 +74,12 @@ from testbot.candidate_encoding import encode_turn_candidates
 from testbot.stabilization import StabilizedTurnState, stabilize_pre_route
 from testbot.context_resolution import resolve as resolve_context
 from testbot.intent_resolution import resolve as resolve_intent
-from testbot.evidence_retrieval import EvidenceBundle, retrieval_result
+from testbot.evidence_retrieval import (
+    EvidenceBundle,
+    build_evidence_bundle_from_docs_and_scores,
+    build_evidence_bundle_from_hits,
+    retrieval_result,
+)
 from testbot.policy_decision import DecisionClass, DecisionObject, decide as decide_policy, decide_from_evidence
 from testbot.answer_assembly import assemble_answer_contract
 from testbot.answer_validation import validate_answer_assembly_boundary
@@ -2695,8 +2700,10 @@ def _run_canonical_turn_pipeline(
                 retrieval_candidates_considered=considered,
                 hit_count=0,
             )
+            prerank_bundle = build_evidence_bundle_from_docs_and_scores(docs_and_scores)
+            ctx.artifacts["pre_rerank_evidence_bundle"] = prerank_bundle
             ctx.artifacts["retrieval_result"] = retrieval_result(
-                evidence_bundle=EvidenceBundle(),
+                evidence_bundle=prerank_bundle,
                 retrieval_candidates_considered=considered,
                 hit_count=0,
             )
@@ -2719,6 +2726,7 @@ def _run_canonical_turn_pipeline(
                 },
             )
         else:
+            ctx.artifacts["pre_rerank_evidence_bundle"] = EvidenceBundle()
             ctx.artifacts["retrieval_result"] = retrieval_result(
                 evidence_bundle=EvidenceBundle(),
                 retrieval_candidates_considered=0,
@@ -2753,8 +2761,9 @@ def _run_canonical_turn_pipeline(
                 retrieval_candidates_considered=considered,
                 hit_count=len(hits),
             )
+            finalized_bundle = build_evidence_bundle_from_hits(hits)
             ctx.artifacts["retrieval_result"] = retrieval_result(
-                evidence_bundle=EvidenceBundle(),
+                evidence_bundle=finalized_bundle,
                 retrieval_candidates_considered=considered,
                 hit_count=len(hits),
             )
