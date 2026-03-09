@@ -29,9 +29,10 @@ KPI evidence updates are mandatory for red-tag triage. If any KPI guardrail fail
 
 ## Active dependency gate (consistency contract)
 
-- ISSUE-0015, ISSUE-0014, and ISSUE-0013 must report a consistent lifecycle state for the identity-continuity dependency chain.
-- Closure of ISSUE-0015 is blocked until ISSUE-0013 AC-0013-11 exit conditions and ISSUE-0014 Phase 1 behavioral exit conditions are both satisfied with deterministic evidence + reproducible CLI traces.
-- If any dependency is unresolved, keep ISSUE-0015 in the Active red-tag list and avoid resolved-language in related issue files.
+- Dependency order/state terminology must match ISSUE-0013 current execution order: ISSUE-0008 (**blocker**) -> ISSUE-0011 (**blocker**) -> ISSUE-0012 (**parallel stream**) -> ISSUE-0014 (**blocker**) -> ISSUE-0015 (**dependent**).
+- ISSUE-0013 is the routing anchor for this chain; all linked issue files and RED_TAG entries must use the same blocker/dependent/parallel-stream labels.
+- Closure of ISSUE-0015 remains blocked until blocker conditions are evidence-satisfied (including ISSUE-0013 AC-0013-11 and ISSUE-0014 Phase 1 behavioral criteria with deterministic evidence + reproducible CLI traces).
+- If any blocker is unresolved, keep ISSUE-0015 in the Active red-tag list and avoid resolved-language in related issue files.
 - 2026-03-09 lifecycle sync note: latest ISSUE-0014/0013 deterministic evidence bundle plus reproducible CLI identity-continuity closure-proof traces are attached for identity semantic preservation, retrieval activation on self-reference recall, and confirmed identity fact promotion at commit; dependency evidence is satisfied and lifecycle language is synchronized across ISSUE-0013/0014/0015/RED_TAG as "evidence satisfied, closure decision pending", so ISSUE-0015/0014 remain active red-tag until close-order governance action.
 
 ## Active
