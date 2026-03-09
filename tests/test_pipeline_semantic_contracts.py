@@ -438,3 +438,66 @@ def test_answer_assemble_cannot_mutate_commit_validation_render_state_fields() -
 
     with pytest.raises(RuntimeError, match="answer.assemble must not mutate commit/validation/render state"):
         CanonicalTurnOrchestrator(stages=stages).run(context)
+
+
+def test_resolve_turn_intent_matches_canonical_intent_resolution_for_identity_followup() -> None:
+    from testbot.memory_cards import utc_now_iso
+    from testbot.turn_observation import observe_turn
+    from testbot.candidate_encoding import encode_turn_candidates
+    from testbot.memory_strata import derive_segment_descriptor
+    from testbot.stabilization import stabilize_pre_route
+    from testbot.context_resolution import resolve as resolve_context
+    from testbot.intent_resolution import IntentResolutionInput, resolve as resolve_intent
+    from testbot.intent_router import IntentType
+    from testbot.sat_chatbot_memory_v2 import resolve_turn_intent
+
+    utterance = "Who am I?"
+    prior_state = PipelineState(
+        user_input="Hi! I'm sebastian",
+        final_answer="I will remember that.",
+        resolved_intent=IntentType.META_CONVERSATION.value,
+        prior_unresolved_intent=IntentType.META_CONVERSATION.value,
+    )
+
+    state = PipelineState(user_input=utterance)
+    observation = observe_turn(
+        state,
+        turn_id="canonical-intent-parity-check",
+        observed_at=utc_now_iso(),
+        speaker="user",
+        channel="test",
+    )
+    encoded = encode_turn_candidates(state, observation=observation, rewritten_query=utterance)
+    segment = derive_segment_descriptor(
+        utterance=observation.utterance,
+        has_dialogue_state=bool(encoded.dialogue_state),
+    )
+    _, stabilized = stabilize_pre_route(
+        store=None,  # type: ignore[arg-type]
+        state=state,
+        observation=observation,
+        encoded=encoded,
+        response_plan={"pathway": "canonical_intent_parity_test"},
+        reflection_yaml="test: true",
+        segment=segment,
+        store_doc_fn=lambda *args, **kwargs: None,
+    )
+    canonical_context = resolve_context(
+        utterance=observation.utterance,
+        prior_pipeline_state=prior_state,
+    )
+    canonical_resolution = resolve_intent(
+        resolution_input=IntentResolutionInput(
+            stabilized_turn_state=stabilized,
+            context=canonical_context,
+            fallback_utterance=observation.utterance,
+        )
+    )
+
+    helper_classified, helper_resolved = resolve_turn_intent(
+        utterance=utterance,
+        prior_pipeline_state=prior_state,
+    )
+
+    assert helper_classified is canonical_resolution.classified_intent
+    assert helper_resolved is canonical_resolution.resolved_intent
