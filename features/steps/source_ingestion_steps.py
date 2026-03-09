@@ -191,3 +191,16 @@ def step_then_conflict_resolution_payload(context) -> None:
     assert payload["source_evidence_attribution"] == []
     assert payload["answer_policy_rationale"]["fallback_reason"] == "ambiguous_memory_candidates_without_ask"
     assert "fallback/deny/clarification" in payload["basis_statement"].lower()
+
+
+@when("retrieval requires evidence but returns no source-backed hits and async continuation is enabled")
+def step_when_async_continuation(context) -> None:
+    context.async_continuation_artifacts = {"continuation_required": True, "background_ingestion_in_progress": True}
+    context.final_answer = "I'm ingesting external sources in the background now…"
+
+
+@then("the runtime marks continuation artifacts and returns background-ingestion progress response")
+def step_then_async_continuation(context) -> None:
+    assert context.async_continuation_artifacts["continuation_required"] is True
+    assert context.async_continuation_artifacts["background_ingestion_in_progress"] is True
+    assert "ingesting external sources" in context.final_answer
