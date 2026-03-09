@@ -115,6 +115,15 @@ Review scope was limited to open issues (`open` or `in_progress`) and issue-gove
 
 ## Closure Notes
 
+- 2026-03-09: Closure posture remains open by dependency gate; see synchronized red-tag triage note below for current blocker state.
+
+## Red-tag triage note (dependency gate)
+
+- Last reviewed: 2026-03-09
+- Next review due: 2026-03-16
+- KPI evidence: docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md
+- Decision notes: AC6/AC7 governance and deterministic evidence are present with canonical gate pass under warning-mode KPI policy; ISSUE-0015 remains open/red until reproducible CLI identity-continuity closure-proof traces are attached and dependency language is synchronized across ISSUE-0013/0014/0015 and RED_TAG.
+
 - 2026-03-08: Opened from open-issue review focused on canonical pipeline streams, with ISSUE-0014 assessed as strong runtime narrative but incomplete quality/governance control artifact.
 
 
@@ -174,7 +183,7 @@ ISSUE-0015 remains `Status: open` and `Severity: red` until all dependency condi
 
 1. **ISSUE-0014 behavioral exit condition met:** deterministic evidence confirms identity declaration semantic preservation, retrieval activation on immediate self-reference recall, and confirmed identity fact promotion at commit.
 2. **ISSUE-0013 governance exit condition met:** AC-0013-11 is marked complete with linked evidence proving ISSUE-0014 Phase 1 behavior is passing in deterministic tests plus reproducible CLI traces.
-3. **Cross-artifact consistency exit condition met:** `docs/issues/RED_TAG.md` and both issue files (`ISSUE-0015`, `ISSUE-0013`) explicitly reflect the same lifecycle interpretation (open dependency vs resolved dependency).
+3. **Cross-artifact consistency exit condition met:** `docs/issues/RED_TAG.md` plus issue files (`ISSUE-0013`, `ISSUE-0014`, `ISSUE-0015`) explicitly reflect the same lifecycle interpretation (open dependency vs resolved dependency).
 
 ## 2026-03-09 Dependency Evaluation Update (AC6/AC7/AC9)
 
@@ -187,5 +196,5 @@ ISSUE-0015 remains `Status: open` and `Severity: red` until all dependency condi
 - Closure interpretation:
   - AC6: governance linkage hardening is present and evidenced, but not closable until dependency lifecycle text is synchronized.
   - AC7: deterministic coverage and gate posture are green under current warning policy; criterion remains open for dependency-governed closure semantics.
-  - AC9: dependency gate remains open because ISSUE-0013 AC-0013-11 EC-B/C are not yet satisfied.
+  - AC9: dependency gate remains open because reproducible CLI identity-continuity closure-proof traces are not yet attached and cross-artifact lifecycle wording is not yet synchronized across ISSUE-0013/0014/0015 and RED_TAG.
 - Result: ISSUE-0015 stays `Status: open`, `Severity: red`.
