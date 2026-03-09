@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Sync the directive invariants mirror from canonical invariants documentation."""
+"""Sync the directive invariants mirror from canonical answer-policy invariants."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import difflib
 import sys
 from pathlib import Path
 
-CANONICAL_PATH = Path("docs/invariants.md")
+CANONICAL_PATH = Path("docs/invariants/answer-policy.md")
 MIRROR_PATH = Path("docs/directives/invariants.md")
 SYNC_BEGIN = "<!-- BEGIN_SYNCED_INVARIANTS_TABLE_AND_SCENARIO_MAP -->"
 SYNC_END = "<!-- END_SYNCED_INVARIANTS_TABLE_AND_SCENARIO_MAP -->"
@@ -79,7 +79,7 @@ def main() -> int:
         return 1
 
     MIRROR_PATH.write_text(expected_mirror, encoding="utf-8")
-    print(f"Updated {MIRROR_PATH} from {CANONICAL_PATH}.")
+    print(f"Updated {MIRROR_PATH} from canonical answer-policy source {CANONICAL_PATH}.")
     return 0
 
 
