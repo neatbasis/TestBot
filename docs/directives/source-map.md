@@ -4,6 +4,8 @@ This document maps the major behavior and process directives in TestBot to their
 
 Program linkage: [`ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md`](../issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md) is the project's **primary bug-elimination program** in the current state; contributors should triage canonical pipeline defects and follow-on work against ISSUE-0013 first, with ISSUE-0012 treated as linked delivery planning context in [`ISSUE-0012-canonical-turn-pipeline-delivery-plan.md`](../issues/ISSUE-0012-canonical-turn-pipeline-delivery-plan.md).
 
+Documentation naming note: when updating directive or architecture docs, follow the terminology policy in [docs/terminology.md](../terminology.md), including the rule to preserve real system identifiers verbatim.
+
 ## 1) Runtime-enforced directives (`src/testbot/sat_chatbot_memory_v2.py` guardrails, logging, fallback)
 
 | Directive | Source location | Enforcement mechanism | Confidence level |
