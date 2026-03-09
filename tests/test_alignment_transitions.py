@@ -59,6 +59,65 @@ def test_validate_answer_commit_post_rejects_missing_alignment_dimension() -> No
     assert "alignment_dimensions_present" in result.failures
 
 
+def test_validate_answer_commit_post_response_policy_contract_group_reports_contract_failure() -> None:
+    state = replace(
+        _base_state(),
+        invariant_decisions={
+            **_base_state().invariant_decisions,
+            "answer_contract_valid": False,
+            "answer_mode": "memory-grounded",
+        },
+    )
+
+    result = validate_answer_commit_post(state)
+
+    assert not result.passed
+    assert "inv_001_contract_enforced" in result.failures
+
+
+def test_validate_answer_commit_post_alignment_shape_group_reports_missing_alignment_record() -> None:
+    state = replace(
+        _base_state(),
+        alignment_decision={},
+    )
+
+    result = validate_answer_commit_post(state)
+
+    assert not result.passed
+    assert "alignment_decision_recorded" in result.failures
+
+
+def test_validate_answer_commit_post_provenance_group_reports_missing_non_trivial_provenance() -> None:
+    state = replace(
+        _base_state(),
+        claims=[],
+        provenance_types=[],
+        basis_statement="",
+    )
+
+    result = validate_answer_commit_post(state)
+
+    assert not result.passed
+    assert "provenance_present_for_non_trivial_answers" in result.failures
+
+
+def test_validate_answer_commit_post_stage_semantics_group_reports_intent_mismatch() -> None:
+    state = replace(
+        _base_state(),
+        invariant_decisions={
+            **_base_state().invariant_decisions,
+            "answer_mode": "clarify",
+        },
+        resolved_intent="knowledge_question",
+        confidence_decision={"context_confident": True, "allow_non_memory_clarify": False},
+    )
+
+    result = validate_answer_commit_post(state)
+
+    assert not result.passed
+    assert "answer_mode_intent_consistent" in result.failures
+
+
 def test_validate_answer_commit_post_allows_progressive_clarifier_when_factual_grounding_fails() -> None:
     invariant_decisions = {**_base_state().invariant_decisions, "answer_contract_valid": True, "answer_mode": "clarify"}
     alignment_decision = {
@@ -272,6 +331,46 @@ def test_validate_answer_commit_post_rejects_unknowing_mode_without_explicit_unc
         confidence_decision={"context_confident": False},
         invariant_decisions={**_base_state().invariant_decisions, "answer_mode": "dont-know", "answer_contract_valid": False},
         final_answer="Need more details.",
+        alignment_decision={**_base_state().alignment_decision, "final_alignment_decision": "allow"},
+    )
+
+    result = validate_answer_commit_post(state)
+
+    assert not result.passed
+    assert "unknowing_mode_requires_explicit_uncertainty_fallback" in result.failures
+
+
+def test_validate_answer_commit_post_rejects_disallowed_assist_fallback_under_low_confidence() -> None:
+    state = replace(
+        _base_state(),
+        confidence_decision={"context_confident": False},
+        draft_answer="",
+        invariant_decisions={
+            **_base_state().invariant_decisions,
+            "answer_contract_valid": False,
+            "answer_mode": "assist",
+        },
+        final_answer=FALLBACK_ANSWER,
+        alignment_decision={**_base_state().alignment_decision, "final_alignment_decision": "allow"},
+    )
+
+    result = validate_answer_commit_post(state)
+
+    assert not result.passed
+    assert "inv_002_progressive_fallback_enforced" in result.failures
+
+
+def test_validate_answer_commit_post_rejects_dont_know_with_assist_alternative_under_low_confidence() -> None:
+    state = replace(
+        _base_state(),
+        confidence_decision={"context_confident": False},
+        draft_answer="",
+        invariant_decisions={
+            **_base_state().invariant_decisions,
+            "answer_contract_valid": False,
+            "answer_mode": "dont-know",
+        },
+        final_answer=ASSIST_ALTERNATIVES_ANSWER,
         alignment_decision={**_base_state().alignment_decision, "final_alignment_decision": "allow"},
     )
 
