@@ -15,6 +15,16 @@
 
 The repository documents a canonical 11-stage turn pipeline and the doctrine "write before infer; infer from enriched state, not raw text," but major runtime paths still rely on legacy monolithic surfaces and raw-utterance-first routing. This architecture/implementation gap is now the highest-leverage defect source. The system must make typed stabilized turn state the primary routing and retrieval authority and remove early lossy `U -> I` behavior from the main loop.
 
+## Current execution order
+
+Dependent open-issue routing is sequenced through ISSUE-0013 using the following order/state terminology:
+
+1. **ISSUE-0008 — blocker (upstream quality gate):** intent-grounding confidence must remain deterministic to prevent early-route drift from re-entering the canonical turn path.
+2. **ISSUE-0011 — blocker (observability gate):** analytics input-coverage diagnostics must remain trustworthy so canonical-pipeline behavior changes are auditable.
+3. **ISSUE-0012 — parallel stream (delivery-plan governance):** staged implementation and checkpoint governance run in parallel while execution remains routed through ISSUE-0013.
+4. **ISSUE-0014 — blocker (identity-continuity behavioral gate):** AC-0013-11 cannot close until Phase 1 behavioral criteria and reproducible CLI traces are satisfied.
+5. **ISSUE-0015 — dependent (governance close-order gate):** ISSUE-0015 remains open/red until blockers above are evidence-satisfied and lifecycle closure sequencing is completed.
+
 ## Evidence
 
 - `docs/architecture/canonical-turn-pipeline.md` defines the canonical sequence: `observe.turn -> encode.candidates -> stabilize.pre_route -> context.resolve -> intent.resolve -> retrieve.evidence -> policy.decide -> answer.assemble -> answer.validate -> answer.render -> answer.commit` and forbids early lossy `U -> I` projection.
@@ -154,6 +164,11 @@ Status legend: `[ ] pending`, `[~] partial`, `[x] complete`.
 ## Closure Notes
 
 - 2026-03-09: Closure posture remains open by dependency gate; see synchronized red-tag triage note below for current blocker state.
+
+- 2026-03-09: Governance-linked status artifacts regenerated after dependency-order synchronization.
+  - `artifacts/all-green-gate-summary.json` regenerated via `python scripts/all_green_gate.py --json-output artifacts/all-green-gate-summary.json` (pass with warning-mode KPI guardrail policy).
+  - `docs/qa/feature-status-report.md` and `artifacts/feature-status-summary.json` regenerated at `2026-03-09T04:33:08Z` via `python scripts/report_feature_status.py --output docs/qa/feature-status-report.md --json-output artifacts/feature-status-summary.json`.
+  - Verification note: regenerated report no longer shows gate-summary staleness warning and remains aligned to partial canonical pipeline slice states.
 
 ## Red-tag triage note (dependency gate)
 

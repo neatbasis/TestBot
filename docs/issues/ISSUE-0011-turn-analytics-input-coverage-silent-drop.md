@@ -11,7 +11,8 @@
 
 ## Cross-Reference
 
-- Primary implementation/bug-elimination program: ISSUE-0013
+- Routing anchor: ISSUE-0013 (**blocker** in current execution order; observability/coverage diagnostics gate).
+- Execution-order linkage: ISSUE-0008 -> ISSUE-0011 -> ISSUE-0012 (parallel stream) -> ISSUE-0014 -> ISSUE-0015.
 - This issue remains planning/history/context unless otherwise specified.
 
 ## Problem Statement

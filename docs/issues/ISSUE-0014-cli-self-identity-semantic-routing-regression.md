@@ -12,9 +12,9 @@
 
 ## Cross-Reference
 
-- Primary implementation/bug-elimination program: ISSUE-0013
-- Delivery-plan governance context: ISSUE-0012
-- Quality/governance hardening review stream: ISSUE-0015
+- Routing anchor: ISSUE-0013 (**blocker** in current execution order; identity-continuity behavioral gate for AC-0013-11).
+- Execution-order linkage: ISSUE-0008 -> ISSUE-0011 -> ISSUE-0012 (parallel stream) -> ISSUE-0014 -> ISSUE-0015.
+- Delivery/governance companion references: ISSUE-0012 (delivery-plan governance), ISSUE-0015 (quality/governance hardening review).
 
 ## Problem Statement
 

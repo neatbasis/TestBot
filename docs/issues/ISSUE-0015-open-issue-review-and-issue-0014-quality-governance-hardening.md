@@ -12,9 +12,9 @@
 
 ## Canonical Cross-Reference
 
-- Primary implementation/bug-elimination program: ISSUE-0013
-- Delivery-plan governance context: ISSUE-0012
-- Defect narrative under review: ISSUE-0014
+- Routing anchor: ISSUE-0013 (**dependent** in current execution order; governance close-order stream).
+- Execution-order linkage: ISSUE-0008 -> ISSUE-0011 -> ISSUE-0012 (parallel stream) -> ISSUE-0014 -> ISSUE-0015.
+- Companion issue references: ISSUE-0014 (defect narrative under review), ISSUE-0012 (delivery-plan governance).
 
 ## Problem Statement
 
