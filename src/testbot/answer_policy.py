@@ -179,6 +179,7 @@ def resolve_answer_mode(
     is_assist_alternatives_answer: bool,
     is_fallback_answer: bool,
     is_non_knowledge_uncertainty_answer: bool,
+    pending_lookup: bool = False,
 ) -> AnswerModeDecision:
     """Derive answer mode and rationale metadata from final outputs."""
 
@@ -192,6 +193,12 @@ def resolve_answer_mode(
         return AnswerModeDecision(
             answer_mode="clarify",
             rationale={"reason": "clarification_answer", "fallback_action": fallback_action},
+        )
+
+    if pending_lookup:
+        return AnswerModeDecision(
+            answer_mode="assist",
+            rationale={"reason": "pending_lookup", "fallback_action": fallback_action},
         )
 
     if fallback_action == "ANSWER_UNKNOWN" or is_fallback_answer or is_non_knowledge_uncertainty_answer:

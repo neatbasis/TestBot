@@ -512,3 +512,27 @@ def step_then_deterministic_fixture_does_not_leak_unvalidated_content(context) -
 @then('the deterministic fixture records validation failure reason "{failure_reason}"')
 def step_then_deterministic_fixture_records_validation_failure_reason(context, failure_reason: str) -> None:
     assert context.validation_fixture_result["failure_reason"] == failure_reason
+
+
+@given("a memory recall question awaiting background ingestion")
+def step_given_memory_recall_pending_background_ingestion(context) -> None:
+    context.memory_answer_state_input = PipelineState(
+        user_input="who am i?",
+        confidence_decision={
+            "context_confident": False,
+            "ambiguity_detected": False,
+            "background_ingestion_in_progress": True,
+        },
+        resolved_intent="memory_recall",
+    )
+    context.memory_answer_hits = []
+
+
+@then("the fallback action should remain pending lookup")
+def step_then_fallback_action_pending_lookup(context) -> None:
+    assert context.stage_answer_state.invariant_decisions.get("fallback_action") == "ANSWER_UNKNOWN"
+
+
+@then("the answer mode should remain non-clarify while lookup is pending")
+def step_then_answer_mode_non_clarify_for_pending_lookup(context) -> None:
+    assert context.stage_answer_state.invariant_decisions.get("answer_mode") == "assist"

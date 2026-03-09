@@ -4,7 +4,7 @@ from collections import deque
 
 from langchain_core.documents import Document
 
-from testbot.answer_policy import AnswerPolicyInput, resolve_answer_routing
+from testbot.answer_policy import AnswerPolicyInput, resolve_answer_mode, resolve_answer_routing
 from testbot.pipeline_state import PipelineState, ProvenanceType
 from testbot.history_packer import pack_chat_history
 from testbot.stage_transitions import validate_answer_commit_post
@@ -381,3 +381,20 @@ def test_knowing_mode_rejects_heuristic_only_inference_provenance() -> None:
 
     assert result.passed is False
     assert "knowing_mode_disallows_heuristic_only_inference_provenance" in result.failures
+
+
+def test_pending_lookup_is_valid_non_memory_answer_mode() -> None:
+    decision = resolve_answer_mode(
+        final_answer="I'm ingesting external sources in the background now…",
+        fallback_action="ANSWER_UNKNOWN",
+        social_or_non_knowledge_intent=False,
+        is_clarification_answer=False,
+        is_deny_answer=False,
+        is_assist_alternatives_answer=False,
+        is_fallback_answer=False,
+        is_non_knowledge_uncertainty_answer=False,
+        pending_lookup=True,
+    )
+
+    assert decision.answer_mode in {"assist", "dont-know"}
+    assert decision.answer_mode != "clarify"

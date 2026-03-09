@@ -34,13 +34,19 @@ def assemble_answer_contract(*, decision: DecisionObject, evidence_bundle: Evide
         "source_evidence": len(evidence_bundle.source_evidence),
     }
 
-    pending_repair_required = decision.decision_class is DecisionClass.CONTINUE_REPAIR_RECONSTRUCTION
+    pending_repair_required = decision.decision_class in {
+        DecisionClass.CONTINUE_REPAIR_RECONSTRUCTION,
+        DecisionClass.PENDING_LOOKUP_BACKGROUND_INGESTION,
+    }
     confirmed_user_facts = [record.content for record in evidence_bundle.structured_facts if record.content]
 
     resolved_obligations: list[str] = []
     remaining_obligations: list[str] = []
     if pending_repair_required:
-        remaining_obligations.append("continue_repair_reconstruction")
+        if decision.decision_class is DecisionClass.PENDING_LOOKUP_BACKGROUND_INGESTION:
+            remaining_obligations.append("pending_lookup_background_ingestion")
+        else:
+            remaining_obligations.append("continue_repair_reconstruction")
     else:
         resolved_obligations.append("repair_state_not_required")
 

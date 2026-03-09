@@ -1036,7 +1036,7 @@ def test_chat_loop_logs_commit_stage_record_with_durable_commit_state(tmp_path, 
         ),
     )
 
-    prompts = iter(["who am i?", "stop"])
+    prompts = iter(["what did i say?", "stop"])
     replies: list[str] = []
     _run_chat_loop(
         llm=_StaticLLM("From memory, your name is Sam."),
@@ -1422,6 +1422,113 @@ def test_stage_answer_selected_decision_clarify_keeps_policy_and_answer_aligned(
 
     assert answered.invariant_decisions.get("fallback_action") == "ASK_CLARIFYING_QUESTION"
     assert answered.invariant_decisions.get("answer_mode") == "clarify"
+
+
+
+
+def test_stage_answer_selected_decision_pending_lookup_uses_non_clarify_mode() -> None:
+    state = PipelineState(
+        user_input="what did i say?",
+        resolved_intent=IntentType.MEMORY_RECALL.value,
+        confidence_decision={
+            "context_confident": False,
+            "ambiguity_detected": False,
+            "background_ingestion_in_progress": True,
+        },
+    )
+
+    answered = stage_answer(
+        _StaticLLM("ignored"),
+        state,
+        chat_history=deque(),
+        hits=[],
+        capability_status="ask_unavailable",
+        selected_decision=DecisionObject(
+            decision_class=DecisionClass.PENDING_LOOKUP_BACKGROUND_INGESTION,
+            retrieval_branch="memory_retrieval",
+            rationale="retrieval required but empty evidence while background ingestion is in progress",
+            reasoning={"evidence_posture": "empty_evidence", "background_ingestion_in_progress": True},
+        ),
+        clock=_FIXED_CLOCK,
+    )
+
+    assert answered.invariant_decisions.get("fallback_action") == "ANSWER_UNKNOWN"
+    assert answered.invariant_decisions.get("answer_mode") == "assist"
+
+
+def test_chat_loop_async_pending_lookup_commits_pending_answer_and_logs_semantics(tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(runtime, "_validate_and_log_transition", lambda _result: None)
+    monkeypatch.setattr(runtime, "store_doc", lambda *args, **kwargs: None)
+    monkeypatch.setattr(runtime, "generate_reflection_yaml", lambda *args, **kwargs: "claims: []")
+    monkeypatch.setattr(runtime, "persist_promoted_context", lambda *args, **kwargs: [])
+
+    def _start_background_ingest(*, runtime: dict[str, object], store: object) -> dict[str, object]:
+        del store
+        runtime["source_ingest_background_in_progress"] = True
+        runtime["source_ingest_background_future"] = None
+        runtime["source_ingest_background_stub"] = True
+        from testbot import sat_chatbot_memory_v2 as runtime_module
+        runtime_module.append_session_log("source_ingest_background_started", {"background": True})
+        return {"started": True, "already_running": False}
+
+    monkeypatch.setattr(runtime, "_start_background_source_ingestion", _start_background_ingest)
+
+    class _EmptyStore:
+        def similarity_search_with_score(self, query: str, k: int = 4, **kwargs):
+            del query, k, kwargs
+            return []
+
+    prompts = iter(["what did i say?", "stop"])
+    replies: list[str] = []
+    _run_chat_loop(
+        runtime={"source_ingest_async_continuation": True},
+        llm=_StaticLLM("ignored"),
+        store=_EmptyStore(),
+        chat_history=deque(),
+        near_tie_delta=0.05,
+        io_channel="cli",
+        capability_status="ask_unavailable",
+        capability_snapshot=CapabilitySnapshot(
+            runtime={"source_ingest_async_continuation": True},
+            requested_mode="cli",
+            daemon_mode=False,
+            effective_mode="cli",
+            fallback_reason=None,
+            exit_reason=None,
+            ha_error=None,
+            ollama_error=None,
+            runtime_capability_status=RuntimeCapabilityStatus(
+                ollama_available=True,
+                ha_available=False,
+                effective_mode="cli",
+                requested_mode="cli",
+                daemon_mode=False,
+                fallback_reason=None,
+                memory_backend="inmemory",
+                debug_enabled=False,
+                debug_verbose=False,
+                text_clarification_available=True,
+                satellite_ask_available=False,
+            ),
+        ),
+        read_user_utterance=lambda: next(prompts, None),
+        send_assistant_text=lambda text: replies.append(text),
+        clock=_FIXED_CLOCK,
+    )
+
+    assert replies[0] == "I'm ingesting external sources in the background now…"
+
+    rows = [json.loads(line) for line in (tmp_path / "logs" / "session.jsonl").read_text(encoding="utf-8").splitlines() if line.strip()]
+    events = [row.get("event") for row in rows]
+    assert "source_ingest_background_started" in events
+
+    commit_row = next(row for row in rows if row.get("event") == "commit_stage_recorded")
+    assert commit_row["pending_repair_state"]["required"] is True
+
+    mode_row = next(row for row in rows if row.get("event") == "final_answer_mode")
+    assert mode_row["mode"] == "assist"
+    assert mode_row["query"] == "ignored"
 
 
 def test_chat_loop_does_not_use_pre_pipeline_intent_classifier_route_authority(monkeypatch) -> None:
