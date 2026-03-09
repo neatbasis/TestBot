@@ -12,6 +12,7 @@
 ## Cross-Reference
 
 - Primary implementation/bug-elimination program: ISSUE-0013
+- Normalized pending-lookup fallback semantics authority: ISSUE-0017 (`pending_lookup_background_ingestion` keeps non-clarify handling by mapping to answer mode `assist` with pending-lookup-safe final answers).
 - This issue remains planning/history/context unless otherwise specified.
 
 ## Problem Statement
@@ -48,7 +49,7 @@ The `unknowing_safe_fallback` capability is still marked `partial`. ISSUE-0010 i
 | Acceptance criterion | Runtime/Policy enforcement points |
 | --- | --- |
 | AC #1 (`behave` answer+intent features) | `src/testbot/reflection_policy.py::decide_fallback_action` and `fallback_reason` enforce deterministic unknowing route selection and reason codes; `src/testbot/answer_render.py` and `src/testbot/answer_validate.py` keep render/validation boundaries explicit. |
-| AC #2 (`pytest` reflection policy + runtime logging) | `src/testbot/reflection_policy.py` fallback matrix + reason strings plus `src/testbot/policy_decision.py` clarify-vs-labeled-general-knowledge decisioning for low-confidence and scored-empty paths. |
+| AC #2 (`pytest` reflection policy + runtime logging) | `src/testbot/reflection_policy.py` fallback matrix + reason strings plus `src/testbot/policy_decision.py` clarify-vs-labeled-general-knowledge decisioning for low-confidence and scored-empty paths, with normalized pending-lookup fallback semantics from ISSUE-0017 (`pending_lookup_background_ingestion` remains non-clarify and policy-safe). |
 | AC #3 (all-green gate check IDs passed) | Canonical gate evidence from `scripts/all_green_gate.py`; policy/validation execution points remain `reflection_policy`, `policy_decision`, and answer validate/render boundaries. |
 | AC #4 (status move to implemented) | `docs/qa/feature-status.yaml` capability status lifecycle, regenerated into markdown/JSON status artifacts. |
 

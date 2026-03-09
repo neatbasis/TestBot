@@ -8,7 +8,7 @@
 - **Created:** 2026-03-07
 - **Target Sprint:** Sprint 3-5
 - **Canonical Cross-Reference:** `ISSUE-0012-canonical-turn-pipeline-delivery-plan.md`
-- **Cross-Reference Pointers:** ISSUE-0014 (active red identity-continuity regression), ISSUE-0015 (active red quality/governance hardening review)
+- **Cross-Reference Pointers:** ISSUE-0014 (active red identity-continuity regression), ISSUE-0015 (active red quality/governance hardening review), ISSUE-0017 (pending-lookup fallback invariant-boundary normalization for answer.commit.post)
 - **Principle Alignment:** contract-first, invariant-driven, traceable, deterministic, ci-enforced, ontology-aware
 
 ## Problem Statement
@@ -181,6 +181,7 @@ Dependency labels (machine-auditable ordered chain):
     - EC-0013-11-B: **unsatisfied (deterministic gate incomplete)** (evidence bundle records canonical all-green gate failure on `product_behave`; refreshed passing gate artifact is required).
     - EC-0013-11-C: **in_progress (governance synchronization)** (ISSUE-0015 dependency gate tracks missing evidence actions and cross-artifact lifecycle language is synchronized to blocked/open dependency posture).
     - linked evidence: `docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md`, `docs/issues/evidence/2026-03-09-issue-0014-0013-behave.log`, `docs/issues/evidence/2026-03-09-issue-0014-0013-focused-pytests.log`, `docs/issues/evidence/2026-03-09-issue-0014-0013-all-green-gate.log`, `artifacts/all-green-gate-summary.json`.
+    - dependency-note (ISSUE-0017 impact pointer): pending-lookup fallback semantics consumed by `answer.commit.post` are normalized under ISSUE-0017; AC-0013-11 closure evidence should include the policy-contract sync pointer in `docs/invariants/answer-policy.md` once ISSUE-0017 closure evidence is attached.
     - missing-evidence checklist:
       - [ ] **Owner: runtime-pipeline** — resolve `product_behave` failures in canonical gate evidence. **Due: 2026-03-16**.
       - [ ] **Owner: platform-qa** — rerun canonical all-green gate and attach passing artifacts. **Due: 2026-03-16**.
