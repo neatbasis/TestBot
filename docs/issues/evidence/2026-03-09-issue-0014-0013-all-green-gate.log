@@ -54,7 +54,7 @@ Feature: Answer citation contract enforcement # features/answer_contract.feature
     Then the fallback action should be "ANSWER_UNKNOWN"                                                                      # features/steps/answer_contract_steps.py:234
     And the canonical response token should be "NON_KNOWLEDGE_UNCERTAINTY_ANSWER"                                            # features/steps/answer_contract_steps.py:239
     And the policy rationale includes considered alternatives with rejection reasons                                         # features/steps/answer_contract_steps.py:244
-    And the policy rationale fallback reason should be "non_memory_low_source_confidence"                                    # features/steps/answer_contract_steps.py:356
+    And the policy rationale fallback reason should be "non_memory_low_source_confidence"                                    # features/steps/answer_contract_steps.py:363
 
   @ISSUE-0009 @AC-0009-07
   Scenario: memory recall without confident hit offers assist alternatives                                                      # features/answer_contract.feature:61
@@ -65,59 +65,81 @@ Feature: Answer citation contract enforcement # features/answer_contract.feature
     And the canonical response token should be "ASSIST_ALTERNATIVES_ANSWER"                                                     # features/steps/answer_contract_steps.py:239
 
   @ISSUE-0009 @AC-0009-08
-  Scenario: low-confidence recall debug emits transparent observation and policy layers  # features/answer_contract.feature:69
-    Given a low-confidence recall pipeline state with ambiguous references               # features/steps/answer_contract_steps.py:254
-    When the structured debug payload is built for memory recall                         # features/steps/answer_contract_steps.py:303
-    Then the debug payload includes explicit observation and policy layers               # features/steps/answer_contract_steps.py:312
-    And the fallback decision includes considered alternatives and rejection reasons     # features/steps/answer_contract_steps.py:321
-    And rejected-turn diagnostics include nearest failure gate details                   # features/steps/answer_contract_steps.py:330
-    And debug counterfactuals include threshold and alternate-routing checks             # features/steps/answer_contract_steps.py:342
+  Scenario: low-confidence recall debug emits transparent observation and policy layers              # features/answer_contract.feature:69
+    Given a low-confidence recall pipeline state with ambiguous references                           # features/steps/answer_contract_steps.py:254
+    When the structured debug payload is built for memory recall                                     # features/steps/answer_contract_steps.py:303
+    Then the debug payload includes explicit observation and policy layers                           # features/steps/answer_contract_steps.py:312
+    And the debug payload policy fallback reason should be "ambiguous_memory_candidates_without_ask" # features/steps/answer_contract_steps.py:321
+    And the fallback decision includes considered alternatives and rejection reasons                 # features/steps/answer_contract_steps.py:328
+    And rejected-turn diagnostics include nearest failure gate details                               # features/steps/answer_contract_steps.py:337
+    And debug counterfactuals include threshold and alternate-routing checks                         # features/steps/answer_contract_steps.py:349
 
   @ISSUE-0009 @AC-0009-09
-  Scenario: stabilization persists candidate facts before route authority       # features/answer_contract.feature:78
+  Scenario: stabilization persists candidate facts before route authority       # features/answer_contract.feature:79
     Given a canonical stage harness with a raw utterance "My name is Sebastian" # features/steps/memory_steps.py:519
     When canonical observe encode and stabilize execute                         # features/steps/memory_steps.py:524
     Then stabilization candidate facts include "user_name" as "Sebastian"       # features/steps/memory_steps.py:551
 
   @ISSUE-0009 @AC-0009-10
-  Scenario: known fact must not degrade to general-knowledge fallback     # features/answer_contract.feature:85
-    Given a memory recall question with retrieval evidence available      # features/steps/answer_contract_steps.py:369
-    And a canonical decision object class "answer_from_memory"            # features/steps/answer_contract_steps.py:384
-    When stage answer runs with canonical decision authority              # features/steps/answer_contract_steps.py:394
-    Then the final answer remains memory-grounded                         # features/steps/answer_contract_steps.py:406
-    And the fallback action remains memory-grounded for canonical routing # features/steps/answer_contract_steps.py:412
+  Scenario: known fact must not degrade to general-knowledge fallback     # features/answer_contract.feature:86
+    Given a memory recall question with retrieval evidence available      # features/steps/answer_contract_steps.py:376
+    And a canonical decision object class "answer_from_memory"            # features/steps/answer_contract_steps.py:391
+    When stage answer runs with canonical decision authority              # features/steps/answer_contract_steps.py:401
+    Then the final answer remains memory-grounded                         # features/steps/answer_contract_steps.py:413
+    And the fallback action remains memory-grounded for canonical routing # features/steps/answer_contract_steps.py:419
 
   @ISSUE-0009 @AC-0009-11
-  Scenario: canonical routing authority is assigned only after stabilization     # features/answer_contract.feature:94
+  Scenario: canonical routing authority is assigned only after stabilization     # features/answer_contract.feature:95
     Given a canonical stage harness with a raw utterance "hello there"           # features/steps/memory_steps.py:519
     When canonical stages execute stabilize then intent resolve then retrieve    # features/steps/memory_steps.py:564
-    Then stabilization artifacts are persisted before route authority assignment # features/steps/answer_contract_steps.py:418
-    And route authority cannot be finalized until stabilization outputs exist    # features/steps/answer_contract_steps.py:427
+    Then stabilization artifacts are persisted before route authority assignment # features/steps/answer_contract_steps.py:425
+    And route authority cannot be finalized until stabilization outputs exist    # features/steps/answer_contract_steps.py:434
 
   @Rule:SourceBackedAnswer @ISSUE-0009 @AC-0009-12
-  Scenario: missing provenance on factual claim triggers safe fallback                                       # features/answer_contract.feature:102
-    Given a deterministic answer validation fixture with factual claim "The launch date is Friday at 09:00." # features/steps/answer_contract_steps.py:434
-    When the deterministic answer validation fixture executes                                                # features/steps/answer_contract_steps.py:462
-    Then the deterministic fixture emits a safe fallback answer                                              # features/steps/answer_contract_steps.py:492
-    And the deterministic fixture does not leak unvalidated draft content                                    # features/steps/answer_contract_steps.py:497
-    And the deterministic fixture records validation failure reason "missing_provenance"                     # features/steps/answer_contract_steps.py:505
+  Scenario: missing provenance on factual claim triggers safe fallback                                       # features/answer_contract.feature:103
+    Given a deterministic answer validation fixture with factual claim "The launch date is Friday at 09:00." # features/steps/answer_contract_steps.py:441
+    When the deterministic answer validation fixture executes                                                # features/steps/answer_contract_steps.py:469
+    Then the deterministic fixture emits a safe fallback answer                                              # features/steps/answer_contract_steps.py:499
+    And the deterministic fixture does not leak unvalidated draft content                                    # features/steps/answer_contract_steps.py:504
+    And the deterministic fixture records validation failure reason "missing_provenance"                     # features/steps/answer_contract_steps.py:512
+
+  @ISSUE-0009 @ISSUE-0010 @AC-0009-13 @AC-0010-05
+  Scenario: knowing and unknowing failure modes remain deterministic and distinct                                            # features/answer_contract.feature:111
+    Given a deterministic answer validation fixture with factual claim "The launch date is Friday at 09:00."                 # features/steps/answer_contract_steps.py:441
+    When the deterministic answer validation fixture executes                                                                # features/steps/answer_contract_steps.py:469
+    Then the deterministic fixture emits a safe fallback answer                                                              # features/steps/answer_contract_steps.py:499
+    And the deterministic fixture records validation failure reason "missing_provenance"                                     # features/steps/answer_contract_steps.py:512
+    Given an answer policy input with intent "non_memory", context confidence false, ambiguity false, and memory hit count 0 # features/steps/answer_contract_steps.py:197
+    And ask capability status is "ask_unavailable"                                                                           # features/steps/answer_contract_steps.py:211
+    And source confidence is 0.2                                                                                             # features/steps/answer_contract_steps.py:216
+    When the answer routing policy resolves the request                                                                      # features/steps/answer_contract_steps.py:221
+    Then the fallback action should be "ANSWER_UNKNOWN"                                                                      # features/steps/answer_contract_steps.py:234
+    And the canonical response token should be "NON_KNOWLEDGE_UNCERTAINTY_ANSWER"                                            # features/steps/answer_contract_steps.py:239
 
   @Rule:SourceBackedAnswer @ISSUE-0009 @AC-0009-13
-  Scenario: invalid citation shape triggers safe fallback                                                                                   # features/answer_contract.feature:111
-    Given a deterministic answer validation fixture with factual claim "From memory: the launch date is Friday. doc_id=mem-9 ts=2026/03/08" # features/steps/answer_contract_steps.py:434
-    When the deterministic answer validation fixture executes                                                                               # features/steps/answer_contract_steps.py:462
-    Then the deterministic fixture emits a safe fallback answer                                                                             # features/steps/answer_contract_steps.py:492
-    And the deterministic fixture does not leak unvalidated draft content                                                                   # features/steps/answer_contract_steps.py:497
-    And the deterministic fixture records validation failure reason "invalid_citation_shape"                                                # features/steps/answer_contract_steps.py:505
+  Scenario: invalid citation shape triggers safe fallback                                                                                   # features/answer_contract.feature:125
+    Given a deterministic answer validation fixture with factual claim "From memory: the launch date is Friday. doc_id=mem-9 ts=2026/03/08" # features/steps/answer_contract_steps.py:441
+    When the deterministic answer validation fixture executes                                                                               # features/steps/answer_contract_steps.py:469
+    Then the deterministic fixture emits a safe fallback answer                                                                             # features/steps/answer_contract_steps.py:499
+    And the deterministic fixture does not leak unvalidated draft content                                                                   # features/steps/answer_contract_steps.py:504
+    And the deterministic fixture records validation failure reason "invalid_citation_shape"                                                # features/steps/answer_contract_steps.py:512
 
   @ISSUE-0009 @AC-0009-14
-  Scenario: validation exception after seemingly valid decision object triggers safe fallback     # features/answer_contract.feature:119
-    Given a deterministic answer validation fixture with a seemingly valid decision object        # features/steps/answer_contract_steps.py:443
-    And the deterministic answer validation fixture is configured to raise a validation exception # features/steps/answer_contract_steps.py:457
-    When the deterministic answer validation fixture executes                                     # features/steps/answer_contract_steps.py:462
-    Then the deterministic fixture emits a safe fallback answer                                   # features/steps/answer_contract_steps.py:492
-    And the deterministic fixture does not leak unvalidated draft content                         # features/steps/answer_contract_steps.py:497
-    And the deterministic fixture records validation failure reason "validation_exception"        # features/steps/answer_contract_steps.py:505
+  Scenario: validation exception after seemingly valid decision object triggers safe fallback     # features/answer_contract.feature:133
+    Given a deterministic answer validation fixture with a seemingly valid decision object        # features/steps/answer_contract_steps.py:450
+    And the deterministic answer validation fixture is configured to raise a validation exception # features/steps/answer_contract_steps.py:464
+    When the deterministic answer validation fixture executes                                     # features/steps/answer_contract_steps.py:469
+    Then the deterministic fixture emits a safe fallback answer                                   # features/steps/answer_contract_steps.py:499
+    And the deterministic fixture does not leak unvalidated draft content                         # features/steps/answer_contract_steps.py:504
+    And the deterministic fixture records validation failure reason "validation_exception"        # features/steps/answer_contract_steps.py:512
+
+  @ISSUE-0009 @AC-0009-15
+  Scenario: async background ingestion uses pending non-clarify fallback        # features/answer_contract.feature:143
+    Given a memory recall question awaiting background ingestion                # features/steps/answer_contract_steps.py:517
+    And a canonical decision object class "pending_lookup_background_ingestion" # features/steps/answer_contract_steps.py:391
+    When stage answer runs with canonical decision authority                    # features/steps/answer_contract_steps.py:401
+    Then the fallback action should remain pending lookup                       # features/steps/answer_contract_steps.py:531
+    And the answer mode should remain non-clarify while lookup is pending       # features/steps/answer_contract_steps.py:536
 
 @Rule:CapabilitiesHelp @Role:Resident @Priority:High @fast
 Feature: Capabilities help responses # features/capabilities.feature:2
@@ -329,74 +351,81 @@ Feature: Intent-specific grounding and provenance behavior # features/intent_gro
     When the user asks a definitional knowledge prompt in runtime loop                   # features/steps/intent_grounding_steps.py:518
     Then retrieval branch logging should show memory retrieval with unskipped candidates # features/steps/intent_grounding_steps.py:527
 
+  @ISSUE-0008 @AC-0008-30
+  Scenario: definitional prompt with initial empty retrieval performs bounded sync retry once      # features/intent_grounding.feature:149
+    Given an intent response harness                                                               # features/steps/intent_grounding_steps.py:75
+    When a definitional knowledge prompt has initial empty retrieval and async continuation is off # features/steps/intent_grounding_steps.py:1219
+    Then retrieval retry logging should show one bounded sync retry                                # features/steps/intent_grounding_steps.py:1249
+    And fallback outcome should remain deterministic when evidence stays empty                     # features/steps/intent_grounding_steps.py:1258
+
   @ISSUE-0008 @AC-0008-16
-  Scenario: conversational prompt avoids knowledge retrieval branch logging         # features/intent_grounding.feature:149
+  Scenario: conversational prompt avoids knowledge retrieval branch logging         # features/intent_grounding.feature:156
     Given an intent response harness                                                # features/steps/intent_grounding_steps.py:75
     When the user asks a conversational prompt in runtime loop                      # features/steps/intent_grounding_steps.py:539
     Then retrieval branch logging should show direct answer with skipped candidates # features/steps/intent_grounding_steps.py:548
 
   @ISSUE-0008 @AC-0008-17
-  Scenario: self-identity recall follow-up forces retrieval before direct-answer shortcut  # features/intent_grounding.feature:156
+  Scenario: self-identity recall follow-up forces retrieval before direct-answer shortcut  # features/intent_grounding.feature:163
     Given an intent response harness                                                       # features/steps/intent_grounding_steps.py:75
     When the user says "Hi! I'm sebastian" then asks "Who am I?"                           # features/steps/intent_grounding_steps.py:558
     Then identity recall guard should force memory retrieval branch evaluation             # features/steps/intent_grounding_steps.py:581
 
   @ISSUE-0008 @AC-0008-18
-  Scenario: retrieval policy distinguishes empty evidence from scored-empty candidates      # features/intent_grounding.feature:163
+  Scenario: retrieval policy distinguishes empty evidence from scored-empty candidates      # features/intent_grounding.feature:170
     Given an intent response harness                                                        # features/steps/intent_grounding_steps.py:75
     When retrieval policy evaluates empty and scored-empty evidence states                  # features/steps/intent_grounding_steps.py:873
     Then retrieval policy should record empty-evidence and scored-empty postures distinctly # features/steps/intent_grounding_steps.py:889
 
   @ISSUE-0008 @AC-0008-19
-  Scenario: memory-recall follow-up scored-empty keeps clarification class and memory branch                 # features/intent_grounding.feature:169
+  Scenario: memory-recall follow-up scored-empty keeps clarification class and memory branch                 # features/intent_grounding.feature:176
     Given an intent response harness                                                                         # features/steps/intent_grounding_steps.py:75
     When memory-recall follow-up is evaluated under scored-empty evidence                                    # features/steps/intent_grounding_steps.py:897
     Then memory-recall follow-up policy should keep clarification decision class and memory retrieval branch # features/steps/intent_grounding_steps.py:907
 
   @ISSUE-0008 @AC-0008-20
-  Scenario: continuity-sensitive routing preserves prior intent only for affirmative clarifier follow-ups  # features/intent_grounding.feature:176
+  Scenario: continuity-sensitive routing preserves prior intent only for affirmative clarifier follow-ups  # features/intent_grounding.feature:183
     Given an intent response harness                                                                       # features/steps/intent_grounding_steps.py:75
     When intent continuity is evaluated for affirmative and non-affirmative follow-ups                     # features/steps/intent_grounding_steps.py:913
     Then continuity routing should preserve prior intent only for affirmative clarification follow-ups     # features/steps/intent_grounding_steps.py:933
 
   @ISSUE-0008 @AC-0008-21
-  Scenario: encode candidates retain multiple plausible intents before routing       # features/intent_grounding.feature:182
+  Scenario: encode candidates retain multiple plausible intents before routing       # features/intent_grounding.feature:189
     Given an intent response harness                                                 # features/steps/intent_grounding_steps.py:75
     When encode candidates include multiple plausible intents pre-route              # features/steps/intent_grounding_steps.py:588
     Then encode candidates should retain multiple intents without premature collapse # features/steps/intent_grounding_steps.py:600
 
   @ISSUE-0008 @AC-0008-22
-  Scenario: encode candidates normalize duplicate candidate ids deterministically  # features/intent_grounding.feature:188
+  Scenario: encode candidates normalize duplicate candidate ids deterministically  # features/intent_grounding.feature:195
     Given an intent response harness                                               # features/steps/intent_grounding_steps.py:75
     When encode candidates include duplicate candidate ids                         # features/steps/intent_grounding_steps.py:608
     Then encode candidates should dedupe candidate ids deterministically           # features/steps/intent_grounding_steps.py:621
 
   @ISSUE-0008 @AC-0008-23
-  Scenario: encode candidates reject malformed provenance before downstream stages      # features/intent_grounding.feature:194
+  Scenario: encode candidates reject malformed provenance before downstream stages      # features/intent_grounding.feature:201
     Given an intent response harness                                                    # features/steps/intent_grounding_steps.py:75
     When encode candidates include null or malformed provenance                         # features/steps/intent_grounding_steps.py:630
     Then malformed provenance candidates should be quarantined before downstream stages # features/steps/intent_grounding_steps.py:642
 
   @ISSUE-0008 @AC-0008-24
-  Scenario: control phrasing wins over ambiguous help and memory language  # features/intent_grounding.feature:200
+  Scenario: control phrasing wins over ambiguous help and memory language  # features/intent_grounding.feature:207
     Given an intent response harness                                       # features/steps/intent_grounding_steps.py:75
     When the user asks an ambiguous control-help-memory phrase             # features/steps/intent_grounding_steps.py:650
     Then the utterance should route to control intent deterministically    # features/steps/intent_grounding_steps.py:655
 
   @ISSUE-0008 @AC-0008-25
-  Scenario: capabilities satellite phrasing wins over meta-conversation cue       # features/intent_grounding.feature:206
+  Scenario: capabilities satellite phrasing wins over meta-conversation cue       # features/intent_grounding.feature:213
     Given an intent response harness                                              # features/steps/intent_grounding_steps.py:75
     When the user asks an ambiguous satellite-versus-meta phrase                  # features/steps/intent_grounding_steps.py:660
     Then the utterance should route to capabilities help intent deterministically # features/steps/intent_grounding_steps.py:665
 
   @Rule:AmbiguityHandling @ISSUE-0008 @AC-0008-26
-  Scenario: unmatched ambiguous phrasing falls back to knowledge question            # features/intent_grounding.feature:213
+  Scenario: unmatched ambiguous phrasing falls back to knowledge question            # features/intent_grounding.feature:220
     Given an intent response harness                                                 # features/steps/intent_grounding_steps.py:75
     When the user asks an unmatched ambiguous phrase                                 # features/steps/intent_grounding_steps.py:670
     Then the utterance should route to knowledge-question fallback deterministically # features/steps/intent_grounding_steps.py:675
 
   @ISSUE-0008 @AC-0008-27
-  Scenario Outline: taxonomy contract maps ambiguous prompts to deterministic typed intents -- @1.1   # features/intent_grounding.feature:228
+  Scenario Outline: taxonomy contract maps ambiguous prompts to deterministic typed intents -- @1.1   # features/intent_grounding.feature:235
     Given an intent response harness                                                                  # features/steps/intent_grounding_steps.py:75
     When intent taxonomy mapping is evaluated for ambiguous prompts                                   # features/steps/intent_grounding_steps.py:680
       | prompt                                         | expected_intent | expected_pathway | temporal | memory | capability | control |
@@ -404,7 +433,7 @@ Feature: Intent-specific grounding and provenance behavior # features/intent_gro
     Then typed intent object fields should match the taxonomy mapping table                           # features/steps/intent_grounding_steps.py:702
 
   @ISSUE-0008 @AC-0008-27
-  Scenario Outline: taxonomy contract maps ambiguous prompts to deterministic typed intents -- @1.2   # features/intent_grounding.feature:229
+  Scenario Outline: taxonomy contract maps ambiguous prompts to deterministic typed intents -- @1.2   # features/intent_grounding.feature:236
     Given an intent response harness                                                                  # features/steps/intent_grounding_steps.py:75
     When intent taxonomy mapping is evaluated for ambiguous prompts                                   # features/steps/intent_grounding_steps.py:680
       | prompt                        | expected_intent   | expected_pathway | temporal | memory | capability | control |
@@ -412,7 +441,7 @@ Feature: Intent-specific grounding and provenance behavior # features/intent_gro
     Then typed intent object fields should match the taxonomy mapping table                           # features/steps/intent_grounding_steps.py:702
 
   @ISSUE-0008 @AC-0008-27
-  Scenario Outline: taxonomy contract maps ambiguous prompts to deterministic typed intents -- @1.3   # features/intent_grounding.feature:230
+  Scenario Outline: taxonomy contract maps ambiguous prompts to deterministic typed intents -- @1.3   # features/intent_grounding.feature:237
     Given an intent response harness                                                                  # features/steps/intent_grounding_steps.py:75
     When intent taxonomy mapping is evaluated for ambiguous prompts                                   # features/steps/intent_grounding_steps.py:680
       | prompt                                 | expected_intent | expected_pathway | temporal | memory | capability | control |
@@ -420,7 +449,7 @@ Feature: Intent-specific grounding and provenance behavior # features/intent_gro
     Then typed intent object fields should match the taxonomy mapping table                           # features/steps/intent_grounding_steps.py:702
 
   @ISSUE-0008 @AC-0008-27
-  Scenario Outline: taxonomy contract maps ambiguous prompts to deterministic typed intents -- @1.4   # features/intent_grounding.feature:231
+  Scenario Outline: taxonomy contract maps ambiguous prompts to deterministic typed intents -- @1.4   # features/intent_grounding.feature:238
     Given an intent response harness                                                                  # features/steps/intent_grounding_steps.py:75
     When intent taxonomy mapping is evaluated for ambiguous prompts                                   # features/steps/intent_grounding_steps.py:680
       | prompt                                   | expected_intent | expected_pathway | temporal | memory | capability | control |
@@ -428,7 +457,7 @@ Feature: Intent-specific grounding and provenance behavior # features/intent_gro
     Then typed intent object fields should match the taxonomy mapping table                           # features/steps/intent_grounding_steps.py:702
 
   @ISSUE-0008 @AC-0008-27
-  Scenario Outline: taxonomy contract maps ambiguous prompts to deterministic typed intents -- @1.5   # features/intent_grounding.feature:232
+  Scenario Outline: taxonomy contract maps ambiguous prompts to deterministic typed intents -- @1.5   # features/intent_grounding.feature:239
     Given an intent response harness                                                                  # features/steps/intent_grounding_steps.py:75
     When intent taxonomy mapping is evaluated for ambiguous prompts                                   # features/steps/intent_grounding_steps.py:680
       | prompt                              | expected_intent    | expected_pathway | temporal | memory | capability | control |
@@ -436,7 +465,7 @@ Feature: Intent-specific grounding and provenance behavior # features/intent_gro
     Then typed intent object fields should match the taxonomy mapping table                           # features/steps/intent_grounding_steps.py:702
 
   @ISSUE-0008 @AC-0008-28
-  Scenario Outline: taxonomy contract rejects invalid class and facet combinations -- @1.1   # features/intent_grounding.feature:244
+  Scenario Outline: taxonomy contract rejects invalid class and facet combinations -- @1.1   # features/intent_grounding.feature:251
     Given an intent response harness                                                         # features/steps/intent_grounding_steps.py:75
     When typed intent objects are validated for class and facet compatibility                # features/steps/intent_grounding_steps.py:715
       | intent_class | temporal | memory | capability | control | expected_reason                     |
@@ -444,7 +473,7 @@ Feature: Intent-specific grounding and provenance behavior # features/intent_gro
     Then invalid typed intent objects should be rejected with deterministic reasons          # features/steps/intent_grounding_steps.py:737
 
   @ISSUE-0008 @AC-0008-28
-  Scenario Outline: taxonomy contract rejects invalid class and facet combinations -- @1.2   # features/intent_grounding.feature:245
+  Scenario Outline: taxonomy contract rejects invalid class and facet combinations -- @1.2   # features/intent_grounding.feature:252
     Given an intent response harness                                                         # features/steps/intent_grounding_steps.py:75
     When typed intent objects are validated for class and facet compatibility                # features/steps/intent_grounding_steps.py:715
       | intent_class      | temporal | memory | capability | control | expected_reason                       |
@@ -452,7 +481,7 @@ Feature: Intent-specific grounding and provenance behavior # features/intent_gro
     Then invalid typed intent objects should be rejected with deterministic reasons          # features/steps/intent_grounding_steps.py:737
 
   @ISSUE-0008 @AC-0008-28
-  Scenario Outline: taxonomy contract rejects invalid class and facet combinations -- @1.3   # features/intent_grounding.feature:246
+  Scenario Outline: taxonomy contract rejects invalid class and facet combinations -- @1.3   # features/intent_grounding.feature:253
     Given an intent response harness                                                         # features/steps/intent_grounding_steps.py:75
     When typed intent objects are validated for class and facet compatibility                # features/steps/intent_grounding_steps.py:715
       | intent_class      | temporal | memory | capability | control | expected_reason                     |
@@ -460,7 +489,7 @@ Feature: Intent-specific grounding and provenance behavior # features/intent_gro
     Then invalid typed intent objects should be rejected with deterministic reasons          # features/steps/intent_grounding_steps.py:737
 
   @ISSUE-0008 @AC-0008-28
-  Scenario Outline: taxonomy contract rejects invalid class and facet combinations -- @1.4   # features/intent_grounding.feature:247
+  Scenario Outline: taxonomy contract rejects invalid class and facet combinations -- @1.4   # features/intent_grounding.feature:254
     Given an intent response harness                                                         # features/steps/intent_grounding_steps.py:75
     When typed intent objects are validated for class and facet compatibility                # features/steps/intent_grounding_steps.py:715
       | intent_class | temporal | memory | capability | control | expected_reason              |
@@ -468,7 +497,7 @@ Feature: Intent-specific grounding and provenance behavior # features/intent_gro
     Then invalid typed intent objects should be rejected with deterministic reasons          # features/steps/intent_grounding_steps.py:737
 
   @ISSUE-0008 @AC-0008-28
-  Scenario Outline: taxonomy contract rejects invalid class and facet combinations -- @1.5   # features/intent_grounding.feature:248
+  Scenario Outline: taxonomy contract rejects invalid class and facet combinations -- @1.5   # features/intent_grounding.feature:255
     Given an intent response harness                                                         # features/steps/intent_grounding_steps.py:75
     When typed intent objects are validated for class and facet compatibility                # features/steps/intent_grounding_steps.py:715
       | intent_class       | temporal | memory | capability | control | expected_reason                       |
@@ -476,7 +505,7 @@ Feature: Intent-specific grounding and provenance behavior # features/intent_gro
     Then invalid typed intent objects should be rejected with deterministic reasons          # features/steps/intent_grounding_steps.py:737
 
   @Rule:AmbiguityHandling @ISSUE-0008 @AC-0008-29
-  Scenario: ambiguous prompt enumerates explanation space before convergence     # features/intent_grounding.feature:252
+  Scenario: ambiguous prompt enumerates explanation space before convergence     # features/intent_grounding.feature:259
     Given an intent response harness                                             # features/steps/intent_grounding_steps.py:75
     When the user asks an ambiguous prompt requiring divergent analysis          # features/steps/intent_grounding_steps.py:744
     Then the assistant enumerates plausible explanation spaces before converging # features/steps/intent_grounding_steps.py:759
@@ -486,7 +515,7 @@ Feature: Intent-specific grounding and provenance behavior # features/intent_gro
       | converged_recommendation  |
 
   @ISSUE-0008 @AC-0008-30
-  Scenario: multi-framework prompt switches perspectives before final synthesis  # features/intent_grounding.feature:262
+  Scenario: multi-framework prompt switches perspectives before final synthesis  # features/intent_grounding.feature:269
     Given an intent response harness                                             # features/steps/intent_grounding_steps.py:75
     When the user asks for a multi-framework perspective switch                  # features/steps/intent_grounding_steps.py:768
     Then the assistant presents multiple frameworks and a synthesized conclusion # features/steps/intent_grounding_steps.py:783
@@ -497,51 +526,51 @@ Feature: Intent-specific grounding and provenance behavior # features/intent_gro
       | synthesis_label      |
 
   @ISSUE-0008 @AC-0008-31
-  Scenario: self-identification utterance routes to non-knowledge intent             # features/intent_grounding.feature:274
+  Scenario: self-identification utterance routes to non-knowledge intent             # features/intent_grounding.feature:281
     Given an intent response harness                                                 # features/steps/intent_grounding_steps.py:75
     When the user provides a self-identification utterance                           # features/steps/intent_grounding_steps.py:792
     Then the utterance should route to non-knowledge social intent deterministically # features/steps/intent_grounding_steps.py:836
 
   @ISSUE-0008 @AC-0008-32
-  Scenario: self-identification rewrite preserves user discourse object              # features/intent_grounding.feature:280
+  Scenario: self-identification rewrite preserves user discourse object              # features/intent_grounding.feature:287
     Given an intent response harness                                                 # features/steps/intent_grounding_steps.py:75
     When the user provides a self-identification utterance for rewrite               # features/steps/intent_grounding_steps.py:807
     Then rewrite output should preserve identity declaration wording                 # features/steps/intent_grounding_steps.py:815
     And rewrite output should not be assistant-focused for self-identification input # features/steps/intent_grounding_steps.py:820
 
   @ISSUE-0008 @AC-0008-33
-  Scenario: greeting utterance routes to non-knowledge intent                        # features/intent_grounding.feature:287
+  Scenario: greeting utterance routes to non-knowledge intent                        # features/intent_grounding.feature:294
     Given an intent response harness                                                 # features/steps/intent_grounding_steps.py:75
     When the user provides a greeting utterance                                      # features/steps/intent_grounding_steps.py:826
     Then the utterance should route to non-knowledge social intent deterministically # features/steps/intent_grounding_steps.py:836
 
   @ISSUE-0008 @AC-0008-34
-  Scenario: say-hello command routes to command intent                  # features/intent_grounding.feature:293
+  Scenario: say-hello command routes to command intent                  # features/intent_grounding.feature:300
     Given an intent response harness                                    # features/steps/intent_grounding_steps.py:75
     When the user provides a say-hello command                          # features/steps/intent_grounding_steps.py:831
     Then the utterance should route to control intent deterministically # features/steps/intent_grounding_steps.py:655
 
   @Rule:TemporalRouting @ISSUE-0008 @AC-0008-35
-  Scenario: mixed temporal and memory phrasing preserves time intent with memory facet visibility  # features/intent_grounding.feature:300
+  Scenario: mixed temporal and memory phrasing preserves time intent with memory facet visibility  # features/intent_grounding.feature:307
     Given an intent response harness                                                               # features/steps/intent_grounding_steps.py:75
     When the user asks a mixed temporal-memory phrase                                              # features/steps/intent_grounding_steps.py:845
     Then the utterance should route to time-query intent with temporal and memory facets           # features/steps/intent_grounding_steps.py:852
 
   @ISSUE-0008 @AC-0008-36
-  Scenario: capabilities in context preserves knowledge routing with capability facet  # features/intent_grounding.feature:306
+  Scenario: capabilities in context preserves knowledge routing with capability facet  # features/intent_grounding.feature:313
     Given an intent response harness                                                   # features/steps/intent_grounding_steps.py:75
     When the user asks a capabilities-in-context phrase                                # features/steps/intent_grounding_steps.py:859
     Then the utterance should route to knowledge intent with capability facet          # features/steps/intent_grounding_steps.py:866
 
   @ISSUE-0008 @AC-0008-37
-  Scenario: typed decision outcomes are selected deterministically                                        # features/intent_grounding.feature:312
+  Scenario: typed decision outcomes are selected deterministically                                        # features/intent_grounding.feature:319
     Given an intent response harness                                                                      # features/steps/intent_grounding_steps.py:75
     When policy decision objects are resolved from typed evidence states                                  # features/steps/intent_grounding_steps.py:1030
     Then the decision outcomes should include "answer_from_memory" and "answer_general_knowledge_labeled" # features/steps/intent_grounding_steps.py:1059
     And the decision outcomes should include "ask_for_clarification" and "continue_repair_reconstruction" # features/steps/intent_grounding_steps.py:1066
 
   @ISSUE-0008 @AC-0008-38
-  Scenario: typed empty and scored-empty evidence states map to distinct fallback behaviors                                                        # features/intent_grounding.feature:319
+  Scenario: typed empty and scored-empty evidence states map to distinct fallback behaviors                                                        # features/intent_grounding.feature:326
     Given an intent response harness                                                                                                               # features/steps/intent_grounding_steps.py:75
     When typed fallback contracts are resolved for empty and scored-empty evidence                                                                 # features/steps/intent_grounding_steps.py:1073
     Then typed evidence states should remain distinct for empty and scored-empty                                                                   # features/steps/intent_grounding_steps.py:1114
@@ -552,23 +581,23 @@ Feature: Intent-specific grounding and provenance behavior # features/intent_gro
     And the typed evidence-state mapping should include fallback strategy "OFFER_ASSIST_ALTERNATIVES" for "E.scored_empty_non_memory"              # features/steps/intent_grounding_steps.py:1136
 
   @ISSUE-0008 @AC-0008-39
-  Scenario: note-taking utterance preserves direct-answer assist contract                                                                                                                                                        # features/intent_grounding.feature:331
+  Scenario: note-taking utterance preserves direct-answer assist contract                                                                                                                                                        # features/intent_grounding.feature:338
     Given an intent response harness                                                                                                                                                                                             # features/steps/intent_grounding_steps.py:75
     When note-taking utterance contract probe is resolved through canonical decisioning                                                                                                                                          # features/steps/intent_grounding_steps.py:1199
     Then the canonical contract should resolve intent "meta_conversation" retrieval branch "direct_answer" decision class "answer_general_knowledge_labeled" fallback action "ANSWER_GENERAL_KNOWLEDGE" and answer mode "assist" # features/steps/intent_grounding_steps.py:1209
 
   @ISSUE-0008 @AC-0008-40
-  Scenario: memory-write utterance preserves direct-answer assist contract                                                                                                                                                       # features/intent_grounding.feature:337
+  Scenario: memory-write utterance preserves direct-answer assist contract                                                                                                                                                       # features/intent_grounding.feature:344
     Given an intent response harness                                                                                                                                                                                             # features/steps/intent_grounding_steps.py:75
     When memory-write utterance contract probe is resolved through canonical decisioning                                                                                                                                         # features/steps/intent_grounding_steps.py:1204
     Then the canonical contract should resolve intent "meta_conversation" retrieval branch "direct_answer" decision class "answer_general_knowledge_labeled" fallback action "ANSWER_GENERAL_KNOWLEDGE" and answer mode "assist" # features/steps/intent_grounding_steps.py:1209
 
   @ISSUE-0008 @AC-0008-41
-  Scenario: intent-heavy routing waits for stabilization outputs before authority finalization          # features/intent_grounding.feature:343
+  Scenario: intent-heavy routing waits for stabilization outputs before authority finalization          # features/intent_grounding.feature:350
     Given a canonical stage harness with a raw utterance "could you ask satellite to message sebastian" # features/steps/memory_steps.py:519
     When canonical stages execute stabilize then intent resolve then retrieve                           # features/steps/memory_steps.py:564
-    Then stabilization artifacts are persisted before route authority assignment                        # features/steps/answer_contract_steps.py:418
-    And route authority cannot be finalized until stabilization outputs exist                           # features/steps/answer_contract_steps.py:427
+    Then stabilization artifacts are persisted before route authority assignment                        # features/steps/answer_contract_steps.py:425
+    And route authority cannot be finalized until stabilization outputs exist                           # features/steps/answer_contract_steps.py:434
 
 @Rule:CitationContract @Role:Resident @Priority:High @fast
 Feature: Memory recall behavior # features/memory_recall.feature:2
@@ -619,8 +648,8 @@ Feature: Memory recall behavior # features/memory_recall.feature:2
   Scenario: observe and stabilize happen before route authority                  # features/memory_recall.feature:49
     Given a canonical stage harness with a raw utterance "My name is Sebastian"  # features/steps/memory_steps.py:519
     When canonical stages execute stabilize then intent resolve then retrieve    # features/steps/memory_steps.py:564
-    Then stabilization artifacts are persisted before route authority assignment # features/steps/answer_contract_steps.py:418
-    And route authority cannot be finalized until stabilization outputs exist    # features/steps/answer_contract_steps.py:427
+    Then stabilization artifacts are persisted before route authority assignment # features/steps/answer_contract_steps.py:425
+    And route authority cannot be finalized until stabilization outputs exist    # features/steps/answer_contract_steps.py:434
 
   Scenario: observe.turn stores user claims only as observation artifacts in-turn             # features/memory_recall.feature:55
     Given a canonical memory claim harness with claim "My favorite color is green"            # features/steps/memory_steps.py:648
@@ -718,6 +747,39 @@ Feature: Source-backed ingestion behavior # features/source_ingestion.feature:2
     When memory and source evidence disagree for the same question                          # features/steps/source_ingestion_steps.py:155
     Then the assembled payload resolves the conflict with clarification metadata            # features/steps/source_ingestion_steps.py:184
 
+  @ISSUE-0013 @AC-0013-06
+  Scenario: retrieval miss starts async source ingestion continuation                                    # features/source_ingestion.feature:38
+    Given a deterministic source-ingestion harness                                                       # features/steps/source_ingestion_steps.py:43
+    When retrieval requires evidence but returns no source-backed hits and async continuation is enabled # features/steps/source_ingestion_steps.py:196
+    Then the runtime marks continuation artifacts and returns background-ingestion progress response     # features/steps/source_ingestion_steps.py:202
+
+  @ISSUE-0013 @AC-0013-07
+  Scenario: completion proactively informs user with linked answer                                 # features/source_ingestion.feature:44
+    Given a deterministic source-ingestion harness                                                 # features/steps/source_ingestion_steps.py:43
+    When background ingestion completes for a pending request correlation key                      # features/steps/source_ingestion_steps.py:209
+    Then the runtime emits completion event and proactive user message with linked grounded answer # features/steps/source_ingestion_steps.py:226
+
+  @ISSUE-0013 @AC-0013-08
+  Scenario: pending ingestion lifecycle emits ordered continuation events                                      # features/source_ingestion.feature:50
+    Given a deterministic source-ingestion harness                                                             # features/steps/source_ingestion_steps.py:43
+    When async source ingestion runs the pending request lifecycle in order                                    # features/steps/source_ingestion_steps.py:234
+    Then ingestion start, pending persistence, completion linkage, and proactive response are emitted in order # features/steps/source_ingestion_steps.py:301
+
+@Rule:StartupStatus @Role:Ops @Priority:High @fast
+Feature: Startup degraded-mode messaging # features/startup_status.feature:2
+  In order to trust degraded startup behavior
+  As an operations stakeholder
+  I want startup status output to explicitly document CLI fallback and continuity messaging
+  @ISSUE-0016 @AC-0016-01
+  Scenario: HA unavailable startup in auto mode reports explicit CLI fallback and continuity messaging                                          # features/startup_status.feature:8
+    Given startup mode "auto" with daemon set to "false"                                                                                        # features/steps/startup_status_steps.py:49
+    And Home Assistant connection is unavailable during startup checks                                                                          # features/steps/startup_status_steps.py:55
+    And Ollama connection is available during startup checks                                                                                    # features/steps/startup_status_steps.py:60
+    When startup status is rendered                                                                                                             # features/steps/startup_status_steps.py:65
+    Then startup output should include "Selected mode: cli (requested=auto, fallback reason=satellite connection is unavailable, daemon=False)" # features/steps/startup_status_steps.py:79
+    And startup output should include "Developer note: satellite interface disabled; CLI fallback will be used unless --daemon is set."         # features/steps/startup_status_steps.py:79
+    And startup output should include "Continuity: memory cards are shared across interfaces in-process via one vector store."                  # features/steps/startup_status_steps.py:79
+
 @Rule:TimeAwareness @Rule:TemporalRouting @Role:Resident @Priority:High @fast
 Feature: Time-aware routing and deterministic responses # features/time_awareness.feature:2
   In order to answer simple temporal questions deterministically
@@ -735,10 +797,10 @@ Feature: Time-aware routing and deterministic responses # features/time_awarenes
     When the user asks what is tomorrow                         # features/steps/time_awareness_steps.py:52
     Then the response should contain the Helsinki tomorrow date # features/steps/time_awareness_steps.py:74
 
-6 features passed, 0 failed, 0 skipped
-91 scenarios passed, 0 failed, 0 skipped
-369 steps passed, 0 failed, 0 skipped
-Took 0min 0.051s
+7 features passed, 0 failed, 0 skipped
+98 scenarios passed, 0 failed, 0 skipped
+405 steps passed, 0 failed, 0 skipped
+Took 0min 0.083s
 {
   "cases_total": 8,
   "memory_lookup_cases": 7,
@@ -1022,66 +1084,69 @@ Took 0min 0.051s
   },
   "objective_version_comparison": []
 }
-Validated 3 artifact(s) against v1/v3 schemas.
+Validated 4 artifact(s) against v1/v4 schemas.
 Pipeline stage conformance validation passed.
 ============================= test session starts ==============================
 platform linux -- Python 3.11.14, pytest-9.0.2, pluggy-1.6.0
 rootdir: /workspace/TestBot
 configfile: pyproject.toml
-plugins: langsmith-0.7.14, anyio-4.12.1
-collected 448 items / 4 skipped
+plugins: langsmith-0.7.16, anyio-4.12.1
+collected 499 items / 4 skipped
 
-tests/test_alignment_transitions.py ..........................           [  5%]
-tests/test_all_green_gate.py ..............                              [  8%]
-tests/test_answer_commit_identity_promotion.py ...                       [  9%]
-tests/test_answer_contract.py ..............                             [ 12%]
+tests/test_alignment_transitions.py .................................    [  6%]
+tests/test_all_green_gate.py ..............                              [  9%]
+tests/test_answer_commit_identity_promotion.py ...                       [ 10%]
+tests/test_answer_contract.py ...............                            [ 13%]
+tests/test_answer_module_shims.py ..                                     [ 13%]
 tests/test_canonical_turn_orchestrator.py .......                        [ 14%]
-tests/test_canonical_turn_pipeline_contract_ac_0013_02.py ..             [ 14%]
+tests/test_canonical_turn_pipeline_contract_ac_0013_02.py ..             [ 15%]
 tests/test_capabilities_help.py .......                                  [ 16%]
-tests/test_capabilities_runtime_status.py ..                             [ 16%]
-tests/test_config.py .                                                   [ 16%]
+tests/test_capabilities_runtime_status.py ..                             [ 17%]
+tests/test_config.py .                                                   [ 17%]
 tests/test_debug_turn_trace.py ........                                  [ 18%]
 tests/test_decisioning_stages.py .....                                   [ 19%]
 tests/test_eval_fixtures.py ...                                          [ 20%]
 tests/test_eval_recall.py .....                                          [ 21%]
-tests/test_eval_runtime_parity.py .......                                [ 23%]
-tests/test_evidence_retrieval_mapping.py ...                             [ 23%]
+tests/test_eval_runtime_parity.py ........                               [ 23%]
+tests/test_evidence_retrieval_mapping.py ....                            [ 23%]
 tests/test_history_packer.py ......                                      [ 25%]
-tests/test_intent_router.py ........................................     [ 34%]
-tests/test_log_schema_validation.py .....                                [ 35%]
-tests/test_memory_segments_and_strata.py ...                             [ 35%]
-tests/test_pipeline_semantic_contracts.py ........                       [ 37%]
-tests/test_pipeline_state_artifacts.py ...                               [ 38%]
-tests/test_promotion_policy.py ............                              [ 41%]
-tests/test_reflection_policy.py .........................                [ 46%]
-tests/test_reject_taxonomy.py ...                                        [ 47%]
-tests/test_release_gate.py ...........                                   [ 49%]
-tests/test_report_feature_status.py ............                         [ 52%]
-tests/test_rerank.py ....................                                [ 56%]
-tests/test_response_planner.py ....                                      [ 57%]
-tests/test_runtime_logging_events.py ................................... [ 65%]
-....                                                                     [ 66%]
-tests/test_runtime_modes.py ............................                 [ 72%]
+tests/test_intent_router.py ........................................     [ 33%]
+tests/test_log_schema_validation.py .....                                [ 34%]
+tests/test_memory_segments_and_strata.py ...                             [ 34%]
+tests/test_pipeline_semantic_contracts.py ........                       [ 36%]
+tests/test_pipeline_state_artifacts.py ...                               [ 36%]
+tests/test_promotion_policy.py ............                              [ 39%]
+tests/test_reflection_policy.py ...........................              [ 44%]
+tests/test_reject_taxonomy.py ...                                        [ 45%]
+tests/test_release_gate.py ...........                                   [ 47%]
+tests/test_report_feature_status.py ............                         [ 49%]
+tests/test_rerank.py ....................                                [ 53%]
+tests/test_response_planner.py ....                                      [ 54%]
+tests/test_retrieval_routing.py .....                                    [ 55%]
+tests/test_runtime_logging_events.py ................................... [ 62%]
+.............                                                            [ 65%]
+tests/test_runtime_modes.py ....................................         [ 72%]
 tests/test_smoke_contract.py ...                                         [ 73%]
 tests/test_source_connectors.py ...........                              [ 75%]
-tests/test_source_fusion.py .....                                        [ 77%]
-tests/test_source_ingest.py ............                                 [ 79%]
-tests/test_stage_transition_invariant_refs.py ...                        [ 80%]
-tests/test_startup_status.py .......                                     [ 81%]
-tests/test_structured_debug_payload.py ............                      [ 84%]
-tests/test_sync_invariants_mirror.py .....                               [ 85%]
-tests/test_time_parse.py ....                                            [ 86%]
-tests/test_time_parse_directional.py .............                       [ 89%]
+tests/test_source_fusion.py .....                                        [ 76%]
+tests/test_source_ingest.py ............                                 [ 78%]
+tests/test_stage_transition_invariant_refs.py .............              [ 81%]
+tests/test_stage_transitions_legacy_bridge.py ...                        [ 81%]
+tests/test_startup_status.py .......                                     [ 83%]
+tests/test_structured_debug_payload.py ............                      [ 85%]
+tests/test_sync_invariants_mirror.py .....                               [ 86%]
+tests/test_time_parse.py ....                                            [ 87%]
+tests/test_time_parse_directional.py .............                       [ 90%]
 tests/test_time_reasoning.py .......                                     [ 91%]
-tests/test_turn_analytics_aggregator.py .........                        [ 93%]
+tests/test_turn_analytics_aggregator.py ...........                      [ 93%]
 tests/test_validate_issue_links.py ......                                [ 94%]
-tests/test_validate_issues.py ..                                         [ 94%]
+tests/test_validate_issues.py ..                                         [ 95%]
 tests/test_validate_kpi_guardrails.py ...                                [ 95%]
-tests/test_validate_markdown_paths.py ..                                 [ 95%]
+tests/test_validate_markdown_paths.py ..                                 [ 96%]
 tests/test_validate_pipeline_stage_conformance.py .......                [ 97%]
 tests/test_vector_store.py ...........                                   [100%]
 
-======================== 448 passed, 4 skipped in 4.23s ========================
+======================== 499 passed, 4 skipped in 7.04s ========================
 Governance validation passed.
 [INFO] No --pr-body-file provided; skipping PR description validation.
 Issue validation passed.
@@ -1092,13 +1157,26 @@ All markdown local file/path references look valid.
   "summary_path": "/workspace/TestBot/logs/turn_analytics_summary.json",
   "kpis": {
     "grounded_answer_precision": 0.0,
-    "false_knowing_rate": 0.0,
+    "false_knowing_rate": 1.0,
     "fallback_appropriateness": 0.0,
     "citation_completeness": 0.0,
-    "turn_count": 0,
+    "turn_count": 2,
     "invalid_rows": 0,
     "skipped_rows": 0,
-    "per_event_validation_failures": {}
+    "per_event_validation_failures": {},
+    "input_rows_total": 120,
+    "recognized_analytics_rows": 2,
+    "ignored_non_analytics_rows": 118,
+    "turn_start_events": 2,
+    "ignored_event_counts": {
+      "pipeline_state_snapshot": 112,
+      "source_ingest_completion_event_emitted": 2,
+      "source_ingest_completion_user_message_emitted": 2,
+      "source_ingest_completion_answer_emitted": 2
+    },
+    "warnings": [
+      "ignored_non_analytics_rows exceeds 50% threshold (118/120)."
+    ]
   }
 }
 {
@@ -1108,15 +1186,16 @@ All markdown local file/path references look valid.
   "violations": [
     "citation_completeness=0.0000 below minimum 0.7000",
     "fallback_appropriateness=0.0000 below minimum 0.7000",
+    "false_knowing_rate=1.0000 above maximum 0.0500",
     "grounded_answer_precision=0.0000 below minimum 0.7500"
   ]
 }
 [WARN] Base ref 'origin/main' is unavailable; using fallback 'HEAD~1' for governance validators.
 [INFO] Base-ref fallback is active by canonical policy: origin/main -> HEAD~1 -> HEAD (using 'HEAD~1').
 Stage summary:
-- product: duration_s=2.446, exit_code=0, first_failing_command=-, artifact_path=-
-- safety: duration_s=0.137, exit_code=0, first_failing_command=-, artifact_path=-
-- qa: duration_s=5.807, exit_code=1, first_failing_command=/root/.pyenv/versions/3.11.14/bin/python scripts/validate_kpi_guardrails.py --summary logs/turn_analytics_summary.json --config config/kpi_guardrails.json, artifact_path=logs/turn_analytics.jsonl
+- product: duration_s=3.574, exit_code=0, first_failing_command=-, artifact_path=-
+- safety: duration_s=0.205, exit_code=0, first_failing_command=-, artifact_path=-
+- qa: duration_s=9.360, exit_code=1, first_failing_command=/root/.pyenv/versions/3.11.14/bin/python scripts/validate_kpi_guardrails.py --summary logs/turn_analytics_summary.json --config config/kpi_guardrails.json, artifact_path=logs/turn_analytics.jsonl
 
 {
   "status": "passed",
@@ -1126,21 +1205,21 @@ Stage summary:
   "stages": [
     {
       "stage": "product",
-      "duration_s": 2.446,
+      "duration_s": 3.574,
       "exit_code": 0,
       "first_failing_command": null,
       "artifact_path": null
     },
     {
       "stage": "safety",
-      "duration_s": 0.137,
+      "duration_s": 0.205,
       "exit_code": 0,
       "first_failing_command": null,
       "artifact_path": null
     },
     {
       "stage": "qa",
-      "duration_s": 5.807,
+      "duration_s": 9.36,
       "exit_code": 1,
       "first_failing_command": "/root/.pyenv/versions/3.11.14/bin/python scripts/validate_kpi_guardrails.py --summary logs/turn_analytics_summary.json --config config/kpi_guardrails.json",
       "artifact_path": "logs/turn_analytics.jsonl"
@@ -1153,7 +1232,7 @@ Stage summary:
       "command": "/root/.pyenv/versions/3.11.14/bin/python -m behave",
       "status": "passed",
       "exit_code": 0,
-      "duration_s": 1.582,
+      "duration_s": 2.322,
       "artifact_path": null
     },
     {
@@ -1162,7 +1241,7 @@ Stage summary:
       "command": "/root/.pyenv/versions/3.11.14/bin/python scripts/eval_recall.py --top-k 4",
       "status": "passed",
       "exit_code": 0,
-      "duration_s": 0.864,
+      "duration_s": 1.252,
       "artifact_path": null
     },
     {
@@ -1171,7 +1250,7 @@ Stage summary:
       "command": "/root/.pyenv/versions/3.11.14/bin/python scripts/validate_log_schema.py",
       "status": "passed",
       "exit_code": 0,
-      "duration_s": 0.057,
+      "duration_s": 0.094,
       "artifact_path": null
     },
     {
@@ -1180,7 +1259,7 @@ Stage summary:
       "command": "/root/.pyenv/versions/3.11.14/bin/python scripts/validate_pipeline_stage_conformance.py",
       "status": "passed",
       "exit_code": 0,
-      "duration_s": 0.08,
+      "duration_s": 0.111,
       "artifact_path": null
     },
     {
@@ -1189,7 +1268,7 @@ Stage summary:
       "command": "/root/.pyenv/versions/3.11.14/bin/python -m pytest -m 'not live_smoke'",
       "status": "passed",
       "exit_code": 0,
-      "duration_s": 5.294,
+      "duration_s": 8.659,
       "artifact_path": null
     },
     {
@@ -1198,7 +1277,7 @@ Stage summary:
       "command": "/root/.pyenv/versions/3.11.14/bin/python scripts/validate_issue_links.py --all-issue-files --base-ref 'HEAD~1'",
       "status": "passed",
       "exit_code": 0,
-      "duration_s": 0.116,
+      "duration_s": 0.176,
       "artifact_path": null
     },
     {
@@ -1207,7 +1286,7 @@ Stage summary:
       "command": "/root/.pyenv/versions/3.11.14/bin/python scripts/validate_issues.py --all-issue-files --base-ref 'HEAD~1'",
       "status": "passed",
       "exit_code": 0,
-      "duration_s": 0.08,
+      "duration_s": 0.127,
       "artifact_path": null
     },
     {
@@ -1216,7 +1295,7 @@ Stage summary:
       "command": "/root/.pyenv/versions/3.11.14/bin/python scripts/sync_invariants_mirror.py --check",
       "status": "passed",
       "exit_code": 0,
-      "duration_s": 0.061,
+      "duration_s": 0.083,
       "artifact_path": null
     },
     {
@@ -1225,7 +1304,7 @@ Stage summary:
       "command": "/root/.pyenv/versions/3.11.14/bin/python scripts/validate_markdown_paths.py",
       "status": "passed",
       "exit_code": 0,
-      "duration_s": 0.054,
+      "duration_s": 0.08,
       "artifact_path": null
     },
     {
@@ -1234,7 +1313,7 @@ Stage summary:
       "command": "/root/.pyenv/versions/3.11.14/bin/python scripts/aggregate_turn_analytics.py --input logs/session.jsonl --output logs/turn_analytics.jsonl --summary-output logs/turn_analytics_summary.json",
       "status": "passed",
       "exit_code": 0,
-      "duration_s": 0.137,
+      "duration_s": 0.142,
       "artifact_path": "logs/turn_analytics.jsonl"
     },
     {
@@ -1243,7 +1322,7 @@ Stage summary:
       "command": "/root/.pyenv/versions/3.11.14/bin/python scripts/validate_kpi_guardrails.py --summary logs/turn_analytics_summary.json --config config/kpi_guardrails.json",
       "status": "warning",
       "exit_code": 1,
-      "duration_s": 0.065,
+      "duration_s": 0.093,
       "artifact_path": null
     }
   ]
