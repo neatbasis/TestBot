@@ -119,20 +119,6 @@ def _has_allowed_provenance_types(state: PipelineState) -> bool:
     return all(isinstance(p, ProvenanceType) and p.value in allowed for p in state.provenance_types)
 
 
-def _follows_approved_fallback_path(state: PipelineState) -> bool:
-    answer_mode = state.invariant_decisions.get("answer_mode")
-    final_answer = (state.final_answer or "").strip()
-    pending_lookup = bool(state.confidence_decision.get("background_ingestion_in_progress", False))
-
-    if answer_mode == "dont-know":
-        if pending_lookup:
-            return final_answer == BACKGROUND_INGESTION_PROGRESS_ANSWER
-        return final_answer == NON_KNOWLEDGE_UNCERTAINTY_ANSWER
-    if answer_mode in {"clarify", "assist"}:
-        return final_answer not in {"", FALLBACK_ANSWER, DENY_ANSWER}
-    return False
-
-
 def _has_knowing_mode_provenance_metadata(state: PipelineState) -> bool:
     answer_mode = str(state.invariant_decisions.get("answer_mode", ""))
     if answer_mode in {"deny", "clarify", "dont-know", "assist"}:
@@ -189,20 +175,71 @@ def _has_explicit_unknowing_uncertainty_fallback(state: PipelineState) -> bool:
     return final_answer in {FALLBACK_ANSWER, NON_KNOWLEDGE_UNCERTAINTY_ANSWER}
 
 
-def _is_gk_contract_safe_fallback(state: PipelineState) -> bool:
-    answer_mode = str(state.invariant_decisions.get("answer_mode", ""))
-    final_answer = (state.final_answer or "").strip()
-    pending_lookup = bool(state.confidence_decision.get("background_ingestion_in_progress", False))
+def _classify_canonical_fallback_path(
+    *,
+    answer_mode: object,
+    background_ingestion_in_progress: bool,
+    final_answer: str,
+) -> str:
+    normalized_answer_mode = str(answer_mode or "")
+    normalized_final_answer = (final_answer or "").strip()
 
-    if answer_mode == "dont-know":
-        if pending_lookup:
-            return final_answer == BACKGROUND_INGESTION_PROGRESS_ANSWER
-        return final_answer in {FALLBACK_ANSWER, NON_KNOWLEDGE_UNCERTAINTY_ANSWER}
-    if answer_mode == "assist":
-        if pending_lookup:
-            return final_answer == BACKGROUND_INGESTION_PROGRESS_ANSWER
-        return final_answer == ASSIST_ALTERNATIVES_ANSWER
-    return False
+    if background_ingestion_in_progress and normalized_answer_mode in {"dont-know", "assist"}:
+        if normalized_final_answer == BACKGROUND_INGESTION_PROGRESS_ANSWER:
+            return "pending_lookup_fallback"
+
+    if normalized_answer_mode == "dont-know":
+        if normalized_final_answer in {FALLBACK_ANSWER, NON_KNOWLEDGE_UNCERTAINTY_ANSWER}:
+            return "dont_know_non_pending_fallback"
+
+    if normalized_answer_mode in {"clarify", "assist"}:
+        if normalized_final_answer not in {"", FALLBACK_ANSWER, DENY_ANSWER}:
+            return "assist_or_clarify_non_pending_fallback"
+
+    return "not_fallback"
+
+def _fallback_invariant_outcomes(state: PipelineState) -> dict[str, bool]:
+    answer_mode = str(state.invariant_decisions.get("answer_mode", ""))
+    fallback_classification = _classify_canonical_fallback_path(
+        answer_mode=answer_mode,
+        background_ingestion_in_progress=bool(
+            state.confidence_decision.get("background_ingestion_in_progress", False)
+        ),
+        final_answer=(state.final_answer or "").strip(),
+    )
+
+    gk_safe_fallback = False
+    if fallback_classification == "pending_lookup_fallback":
+        gk_safe_fallback = answer_mode in {"dont-know", "assist"}
+    elif fallback_classification == "dont_know_non_pending_fallback":
+        gk_safe_fallback = answer_mode == "dont-know"
+    elif fallback_classification == "assist_or_clarify_non_pending_fallback":
+        gk_safe_fallback = answer_mode == "assist" and (state.final_answer or "").strip() == ASSIST_ALTERNATIVES_ANSWER
+
+    if answer_mode == "deny":
+        progressive_fallback_ok = state.final_answer == DENY_ANSWER
+    else:
+        should_apply_progressive_fallback = (
+            not state.confidence_decision.get("context_confident", False)
+            or not (state.draft_answer or "").strip()
+            or not state.invariant_decisions.get("answer_contract_valid", False)
+        )
+        progressive_fallback_ok = (
+            fallback_classification
+            in {
+                "pending_lookup_fallback",
+                "dont_know_non_pending_fallback",
+                "assist_or_clarify_non_pending_fallback",
+            }
+            if should_apply_progressive_fallback
+            else True
+        )
+
+    return {
+        "inv_003_general_knowledge_contract_safe_fallback": gk_safe_fallback,
+        "inv_002_progressive_fallback": progressive_fallback_ok,
+    }
+
 
 def _answer_mode_respects_intent(state: PipelineState) -> bool:
     answer_mode = str(state.invariant_decisions.get("answer_mode", ""))
@@ -461,23 +498,11 @@ def validate_answer_commit_post(state: PipelineState) -> TransitionCheckResult:
             (
                 "inv_003_general_knowledge_contract_enforced",
                 lambda s: bool(s.invariant_decisions.get("general_knowledge_contract_valid", True))
-                or _is_gk_contract_safe_fallback(s),
+                or _fallback_invariant_outcomes(s)["inv_003_general_knowledge_contract_safe_fallback"],
             ),
             (
                 "inv_002_progressive_fallback_enforced",
-                lambda s: (
-                    s.final_answer == DENY_ANSWER
-                    if s.invariant_decisions.get("answer_mode") == "deny"
-                    else (
-                        _follows_approved_fallback_path(s)
-                        if (
-                            not s.confidence_decision.get("context_confident", False)
-                            or not (s.draft_answer or "").strip()
-                            or not s.invariant_decisions.get("answer_contract_valid", False)
-                        )
-                        else True
-                    )
-                ),
+                lambda s: _fallback_invariant_outcomes(s)["inv_002_progressive_fallback"],
             ),
             (
                 "answer_mode_intent_consistent",
