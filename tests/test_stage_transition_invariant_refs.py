@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 
 from testbot.canonical_turn_orchestrator import CanonicalTurnOrchestrator
-from testbot.pipeline_state import PipelineState
+from testbot.pipeline_state import CandidateFactsArtifact, PipelineState, ResolvedContextArtifact
 from testbot.stage_transitions import (
     LEGACY_STAGE_ALIAS_MAP,
     LEGACY_TO_PIPELINE_INVARIANT_REF_MAP,
@@ -129,3 +129,32 @@ def test_every_canonical_stage_has_transition_validation_boundary_check() -> Non
     stages_with_checks = {result.stage for result in results}
 
     assert stages_with_checks == set(CanonicalTurnOrchestrator.STAGE_ORDER)
+
+
+def test_typed_artifact_wrappers_pass_stabilize_and_context_transition_checks() -> None:
+    state = PipelineState(
+        user_input="What did I say yesterday?",
+        rewritten_query="yesterday user utterance",
+        candidate_facts=CandidateFactsArtifact(facts=[{"key": "utterance_raw", "value": "What did I say yesterday?"}]),
+        resolved_context=ResolvedContextArtifact(entities=[{"kind": "user", "value": "me"}]),
+    )
+
+    assert validate_stabilize_pre_route_post(state).passed
+    assert validate_context_resolve_pre(state).passed
+    assert validate_context_resolve_post(state).passed
+    assert validate_intent_resolve_pre(state).passed
+
+
+def test_stabilize_pre_route_post_accepts_populated_candidate_facts_artifact() -> None:
+    state = PipelineState(
+        user_input="What did I say yesterday?",
+        rewritten_query="yesterday user utterance",
+        candidate_facts=CandidateFactsArtifact(
+            facts=[{"key": "utterance_raw", "value": "What did I say yesterday?", "confidence": 1.0}]
+        ),
+    )
+
+    result = validate_stabilize_pre_route_post(state)
+
+    assert result.passed
+    assert result.failures == ()
