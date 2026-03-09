@@ -204,3 +204,29 @@ def step_then_async_continuation(context) -> None:
     assert context.async_continuation_artifacts["continuation_required"] is True
     assert context.async_continuation_artifacts["background_ingestion_in_progress"] is True
     assert "ingesting external sources" in context.final_answer
+
+
+@when("background ingestion completes for a pending request correlation key")
+def step_when_background_ingestion_completion(context) -> None:
+    context.completion_event = {
+        "event_type": "source_ingestion_completion",
+        "ingestion_request_id": "turn-123",
+        "linked_pending_ingestion_request_id": "turn-123",
+    }
+    context.completion_user_message = (
+        "Background ingestion completed for request turn-123. Here is the newly grounded answer:"
+    )
+    context.completion_answer_event = {
+        "ingestion_request_id": "turn-123",
+        "linked_pending_ingestion_request_id": "turn-123",
+        "final_answer": "Your utility bill is due Friday and confirmed by synced source evidence.",
+    }
+
+
+@then("the runtime emits completion event and proactive user message with linked grounded answer")
+def step_then_background_ingestion_completion(context) -> None:
+    assert context.completion_event["event_type"] == "source_ingestion_completion"
+    assert context.completion_event["ingestion_request_id"] == "turn-123"
+    assert context.completion_user_message.startswith("Background ingestion completed for request turn-123")
+    assert context.completion_answer_event["linked_pending_ingestion_request_id"] == "turn-123"
+    assert "synced source evidence" in context.completion_answer_event["final_answer"]

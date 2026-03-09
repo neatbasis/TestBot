@@ -152,6 +152,10 @@ NON_KNOWLEDGE_UNCERTAINTY_ANSWER = (
     "I can offer a best-effort response and suggest a quick way to verify it."
 )
 BACKGROUND_INGESTION_PROGRESS_ANSWER = "I'm ingesting external sources in the background now…"
+BACKGROUND_INGESTION_COMPLETION_MESSAGE_TEMPLATE = (
+    "Background ingestion completed for request {correlation_id}. "
+    "Here is the newly grounded answer:"
+)
 GENERAL_KNOWLEDGE_MARKER_PREFIX = "General definition (not from your memory):"
 GENERAL_KNOWLEDGE_CONFIDENCE_MIN = 0.85
 GENERAL_KNOWLEDGE_SUPPORT_MIN = 2
@@ -270,6 +274,116 @@ def _poll_background_source_ingestion(*, runtime: dict[str, object]) -> dict[str
     elif result.get("status") == "failed":
         append_session_log("source_ingest_failed", dict(result["payload"]))
     return result
+
+
+def _format_background_ingestion_completion_message(*, correlation_id: str) -> str:
+    return BACKGROUND_INGESTION_COMPLETION_MESSAGE_TEMPLATE.format(correlation_id=correlation_id or "unknown")
+
+
+def _process_background_ingestion_completion(
+    *,
+    runtime: dict[str, object],
+    llm: ChatOllama,
+    store: MemoryStore,
+    chat_history: deque[ChatMsg],
+    near_tie_delta: float,
+    capability_status: CapabilityStatus,
+    capability_snapshot: CapabilitySnapshot,
+    clock: Clock,
+    io_channel: str,
+    send_assistant_text,
+    last_user_message_ts: str,
+    prior_pipeline_state: PipelineState | None,
+) -> tuple[str, PipelineState | None, bool]:
+    poll_result = _poll_background_source_ingestion(runtime=runtime)
+    if not isinstance(poll_result, dict) or poll_result.get("status") != "completed":
+        return last_user_message_ts, prior_pipeline_state, False
+
+    payload = poll_result.get("payload") if isinstance(poll_result.get("payload"), dict) else {}
+    correlation_id = str(payload.get("ingestion_request_id") or "")
+    pending_registry = runtime.get("pending_ingestion_registry")
+    if not isinstance(pending_registry, dict) or not correlation_id:
+        return last_user_message_ts, prior_pipeline_state, False
+
+    pending_context = pending_registry.pop(correlation_id, None)
+    if not isinstance(pending_context, dict):
+        return last_user_message_ts, prior_pipeline_state, False
+
+    original_utterance = str(pending_context.get("utterance") or "")
+    original_prior_state = pending_context.get("prior_pipeline_state")
+    if original_prior_state is not None and not isinstance(original_prior_state, PipelineState):
+        original_prior_state = prior_pipeline_state
+
+    append_session_log(
+        "source_ingest_completion_event_emitted",
+        {
+            "event_type": "source_ingestion_completion",
+            "ingestion_request_id": correlation_id,
+            "linked_pending_ingestion_request_id": correlation_id,
+            "original_utterance": original_utterance,
+            "io_channel": io_channel,
+        },
+    )
+    completion_message = _format_background_ingestion_completion_message(correlation_id=correlation_id)
+    send_assistant_text(completion_message)
+    append_session_log(
+        "source_ingest_completion_user_message_emitted",
+        {
+            "event_type": "assistant_text",
+            "ingestion_request_id": correlation_id,
+            "linked_pending_ingestion_request_id": correlation_id,
+            "message_text": completion_message,
+        },
+    )
+
+    continuation_turn_id = str(uuid.uuid4())
+    regenerated_state, _hits = _run_canonical_turn_pipeline(
+        runtime=runtime,
+        llm=llm,
+        store=store,
+        state=PipelineState(
+            user_input=original_utterance,
+            last_user_message_ts=last_user_message_ts,
+            classified_intent=IntentType.KNOWLEDGE_QUESTION.value,
+            resolved_intent="",
+            prior_unresolved_intent=(
+                original_prior_state.prior_unresolved_intent
+                if isinstance(original_prior_state, PipelineState)
+                else ""
+            ),
+            confidence_decision={},
+        ),
+        utterance=original_utterance,
+        prior_pipeline_state=original_prior_state,
+        turn_id=continuation_turn_id,
+        near_tie_delta=near_tie_delta,
+        chat_history=chat_history,
+        capability_status=capability_status,
+        capability_snapshot=capability_snapshot,
+        clock=clock,
+        io_channel=io_channel,
+    )
+    send_assistant_text(regenerated_state.final_answer)
+    append_session_log(
+        "source_ingest_completion_answer_emitted",
+        {
+            "ingestion_request_id": correlation_id,
+            "linked_pending_ingestion_request_id": correlation_id,
+            "continuation_turn_id": continuation_turn_id,
+            "final_answer": regenerated_state.final_answer,
+            "used_source_evidence_refs": regenerated_state.used_source_evidence_refs,
+        },
+    )
+    chat_history.append({"role": "assistant", "content": completion_message})
+    chat_history.append({"role": "assistant", "content": regenerated_state.final_answer})
+    answer_commit_persistence(
+        llm=llm,
+        store=store,
+        state=regenerated_state,
+        io_channel=io_channel,
+        clock=clock,
+    )
+    return last_user_message_ts, regenerated_state, True
 INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD = 0.75
 RETRIEVAL_SCORE_THRESHOLD = 0.0
 
@@ -3572,9 +3686,24 @@ def _run_chat_loop(
     runtime.setdefault("source_ingest_background_future", None)
     runtime.setdefault("source_ingest_background_in_progress", False)
     runtime.setdefault("source_ingest_background_request_id", "")
+    runtime.setdefault("pending_ingestion_registry", {})
     last_user_message_ts = ""
     prior_pipeline_state: PipelineState | None = None
     while True:
+        last_user_message_ts, prior_pipeline_state, _ = _process_background_ingestion_completion(
+            runtime=runtime,
+            llm=llm,
+            store=store,
+            chat_history=chat_history,
+            near_tie_delta=near_tie_delta,
+            capability_status=capability_status,
+            capability_snapshot=capability_snapshot,
+            clock=clock,
+            io_channel=io_channel,
+            send_assistant_text=send_assistant_text,
+            last_user_message_ts=last_user_message_ts,
+            prior_pipeline_state=prior_pipeline_state,
+        )
         utterance = read_user_utterance()
         if utterance is None:
             return
@@ -3701,6 +3830,15 @@ def _run_chat_loop(
         )
         state = replace(state, prior_unresolved_intent=unresolved_intent)
         send_assistant_text(state.final_answer)
+
+        pending_request_id = str(state.commit_receipt.get("pending_ingestion_request_id") or "")
+        if pending_request_id:
+            pending_registry = runtime.setdefault("pending_ingestion_registry", {})
+            if isinstance(pending_registry, dict):
+                pending_registry[pending_request_id] = {
+                    "utterance": utterance,
+                    "prior_pipeline_state": prior_pipeline_state,
+                }
 
             # -----------------------
             # 4) Store assistant utterance card + reflection card

@@ -721,3 +721,99 @@ def test_run_retrieval_with_optional_sync_retry_uses_second_pass_results_determi
     assert len(docs) == 1
     assert retry["attempted"] is True
     assert retry["reason"] == "sync_retry_completed"
+
+
+def test_cli_mode_proactively_emits_completion_without_extra_prompt(monkeypatch) -> None:
+    monkeypatch.setattr(runtime, "store_doc", lambda *args, **kwargs: None)
+    monkeypatch.setattr(runtime, "generate_reflection_yaml", lambda *args, **kwargs: "claims: []")
+    monkeypatch.setattr(runtime, "persist_promoted_context", lambda *args, **kwargs: [])
+    monkeypatch.setattr(runtime, "answer_commit_persistence", lambda **kwargs: None)
+
+    class _Clock:
+        def now(self):
+            import arrow
+
+            return arrow.get("2026-03-10T11:00:00+00:00")
+
+    poll_calls = {"count": 0}
+
+    def _poll(*, runtime: dict[str, object]):
+        poll_calls["count"] += 1
+        if poll_calls["count"] == 1:
+            return {
+                "ok": True,
+                "status": "completed",
+                "payload": {"ingestion_request_id": "turn-123", "background": True, "stored_count": 2},
+            }
+        return None
+
+    monkeypatch.setattr(runtime, "_poll_background_source_ingestion", _poll)
+
+    def _pipeline(**kwargs):
+        state = kwargs["state"]
+        from dataclasses import replace
+
+        return (
+            replace(
+                state,
+                final_answer="Grounded answer after ingestion.",
+                commit_receipt={"pending_ingestion_request_id": ""},
+                invariant_decisions={"fallback_action": "NONE", "answer_mode": "knowing"},
+                confidence_decision={"stage_audit_trail": []},
+                provenance_types=[],
+                claims=[],
+                used_memory_refs=[],
+                used_source_evidence_refs=["src-900"],
+                source_evidence_attribution=[],
+                basis_statement="source evidence",
+            ),
+            [],
+        )
+
+    monkeypatch.setattr(runtime, "_run_canonical_turn_pipeline", _pipeline)
+
+    replies: list[str] = []
+    prompts = iter(["stop"])
+    runtime._run_chat_loop(
+        runtime={
+            "pending_ingestion_registry": {
+                "turn-123": {"utterance": "What is due Friday?", "prior_pipeline_state": None}
+            }
+        },
+        llm=object(),
+        store=object(),
+        chat_history=runtime.deque(),
+        near_tie_delta=0.05,
+        io_channel="cli",
+        capability_status="ask_unavailable",
+        capability_snapshot=runtime.CapabilitySnapshot(
+            runtime={},
+            requested_mode="cli",
+            daemon_mode=False,
+            effective_mode="cli",
+            fallback_reason=None,
+            exit_reason=None,
+            ha_error=None,
+            ollama_error=None,
+            runtime_capability_status=runtime.RuntimeCapabilityStatus(
+                ollama_available=True,
+                ha_available=False,
+                effective_mode="cli",
+                requested_mode="cli",
+                daemon_mode=False,
+                fallback_reason=None,
+                memory_backend="inmemory",
+                debug_enabled=False,
+                debug_verbose=False,
+                text_clarification_available=True,
+                satellite_ask_available=False,
+            ),
+        ),
+        read_user_utterance=lambda: next(prompts, None),
+        send_assistant_text=lambda text: replies.append(text),
+        clock=_Clock(),
+    )
+
+    assert replies[0].startswith("Background ingestion completed for request turn-123")
+    assert replies[1] == "Grounded answer after ingestion."
+    assert replies[-1] == "Stopping. Bye."

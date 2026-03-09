@@ -1908,3 +1908,101 @@ def test_stage_answer_distinguishes_knowing_success_and_unknowing_rejection_path
     assert knowing.invariant_decisions.get("fallback_action") == "ANSWER_FROM_MEMORY"
     assert rejecting.invariant_decisions.get("fallback_action") in {"ANSWER_UNKNOWN", "ANSWER_GENERAL_KNOWLEDGE"}
     assert "reliable memory" in rejecting.final_answer.lower()
+
+
+def test_chat_loop_emits_completion_event_user_message_and_linked_answer(tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(runtime, "store_doc", lambda *args, **kwargs: None)
+    monkeypatch.setattr(runtime, "generate_reflection_yaml", lambda *args, **kwargs: "claims: []")
+    monkeypatch.setattr(runtime, "persist_promoted_context", lambda *args, **kwargs: [])
+    monkeypatch.setattr(runtime, "answer_commit_persistence", lambda **kwargs: None)
+
+    poll_calls = {"count": 0}
+
+    def _poll(*, runtime: dict[str, object]):
+        poll_calls["count"] += 1
+        if poll_calls["count"] == 1:
+            return {
+                "ok": True,
+                "status": "completed",
+                "payload": {"ingestion_request_id": "turn-123", "background": True, "stored_count": 2},
+            }
+        return None
+
+    monkeypatch.setattr(runtime, "_poll_background_source_ingestion", _poll)
+
+    def _pipeline(**kwargs):
+        state = kwargs["state"]
+        return (
+            replace(
+                state,
+                final_answer="Grounded answer after ingestion.",
+                commit_receipt={"pending_ingestion_request_id": ""},
+                invariant_decisions={"fallback_action": "NONE", "answer_mode": "knowing"},
+                confidence_decision={"stage_audit_trail": []},
+                provenance_types=[],
+                claims=[],
+                used_memory_refs=[],
+                used_source_evidence_refs=["src-900"],
+                source_evidence_attribution=[],
+                basis_statement="source evidence",
+                alignment_decision=AlignmentDecision(),
+            ),
+            [],
+        )
+
+    monkeypatch.setattr(runtime, "_run_canonical_turn_pipeline", _pipeline)
+
+    prompts = iter(["stop"])
+    runtime._run_chat_loop(
+        runtime={
+            "pending_ingestion_registry": {
+                "turn-123": {"utterance": "What is due Friday?", "prior_pipeline_state": None}
+            }
+        },
+        llm=_StaticLLM("ignored"),
+        store=object(),
+        chat_history=deque(),
+        near_tie_delta=0.05,
+        io_channel="cli",
+        capability_status="ask_unavailable",
+        capability_snapshot=CapabilitySnapshot(
+            runtime={},
+            requested_mode="cli",
+            daemon_mode=False,
+            effective_mode="cli",
+            fallback_reason=None,
+            exit_reason=None,
+            ha_error=None,
+            ollama_error=None,
+            runtime_capability_status=RuntimeCapabilityStatus(
+                ollama_available=True,
+                ha_available=False,
+                effective_mode="cli",
+                requested_mode="cli",
+                daemon_mode=False,
+                fallback_reason=None,
+                memory_backend="inmemory",
+                debug_enabled=False,
+                debug_verbose=False,
+                text_clarification_available=True,
+                satellite_ask_available=False,
+            ),
+        ),
+        read_user_utterance=lambda: next(prompts, None),
+        send_assistant_text=lambda _text: None,
+        clock=_FIXED_CLOCK,
+    )
+
+    rows = [json.loads(line) for line in (tmp_path / "logs" / "session.jsonl").read_text(encoding="utf-8").splitlines() if line.strip()]
+    completion_event = next(row for row in rows if row.get("event") == "source_ingest_completion_event_emitted")
+    assert completion_event["ingestion_request_id"] == "turn-123"
+    assert completion_event["linked_pending_ingestion_request_id"] == "turn-123"
+
+    completion_message = next(row for row in rows if row.get("event") == "source_ingest_completion_user_message_emitted")
+    assert completion_message["linked_pending_ingestion_request_id"] == "turn-123"
+    assert completion_message["message_text"].startswith("Background ingestion completed for request turn-123")
+
+    completion_answer = next(row for row in rows if row.get("event") == "source_ingest_completion_answer_emitted")
+    assert completion_answer["linked_pending_ingestion_request_id"] == "turn-123"
+    assert completion_answer["final_answer"] == "Grounded answer after ingestion."
