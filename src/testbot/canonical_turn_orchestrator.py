@@ -54,7 +54,21 @@ class CanonicalTurnOrchestrator:
         semantic_contracts: dict[str, Any] = {}
 
         for expected_stage, stage in zip(self.STAGE_ORDER, self._stages):
+            if expected_stage == "answer.assemble":
+                semantic_contracts["pre_answer_assemble_state_fingerprint"] = self._answer_assemble_state_fingerprint(
+                    context.state
+                )
             if expected_stage == "answer.validate":
+                if "answer_validation_contract" in context.artifacts:
+                    raise RuntimeError("answer.assemble must not produce answer_validation_contract artifact")
+                if "answer_render_contract" in context.artifacts:
+                    raise RuntimeError("answer.assemble must not produce answer_render_contract artifact")
+                if "committed_turn_state" in context.artifacts:
+                    raise RuntimeError("answer.assemble must not produce committed_turn_state artifact")
+                if self._answer_assemble_state_fingerprint(context.state) != semantic_contracts.get(
+                    "pre_answer_assemble_state_fingerprint"
+                ):
+                    raise RuntimeError("answer.assemble must not mutate commit/validation/render state")
                 semantic_contracts["pre_validation_answer_assembly_fingerprint"] = self._artifact_fingerprint(
                     context.artifacts.get("answer_assembly_contract")
                 )
@@ -150,3 +164,20 @@ class CanonicalTurnOrchestrator:
             return str(retrieval_result.get("posture") or retrieval_result.get("evidence_posture") or "")
         posture = getattr(retrieval_result, "evidence_posture", "")
         return str(getattr(posture, "value", posture) or "")
+
+    @staticmethod
+    def _answer_assemble_state_fingerprint(state: PipelineState) -> tuple[Any, ...]:
+        return (
+            state.draft_answer,
+            state.final_answer,
+            tuple(state.claims),
+            tuple(state.provenance_types),
+            tuple(state.used_memory_refs),
+            tuple(state.used_source_evidence_refs),
+            tuple(tuple(sorted(item.items())) for item in state.source_evidence_attribution),
+            state.basis_statement,
+            tuple(sorted(state.invariant_decisions.items())),
+            tuple(sorted(state.alignment_decision.items())),
+            tuple(sorted(state.commit_receipt.items())),
+            tuple(sorted(state.pending_repair.items())),
+        )

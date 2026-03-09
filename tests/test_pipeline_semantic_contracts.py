@@ -329,3 +329,112 @@ def test_policy_authority_is_not_written_before_policy_decide_stage() -> None:
     final_context = CanonicalTurnOrchestrator(stages=stages).run(context)
     assert final_context.artifacts["policy_decision"] == {"retrieval_branch": "memory_retrieval"}
     assert final_context.artifacts["decision_object"] == {"decision_class": "answer_from_memory"}
+
+
+def test_answer_assemble_cannot_write_validate_render_commit_artifacts_or_state() -> None:
+    state = PipelineState(user_input="hello")
+    context = CanonicalTurnContext(state=state)
+
+    def _noop(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        return ctx
+
+    def _observe(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        ctx.artifacts["turn_observation"] = {"turn_id": "turn-1", "utterance": "hello"}
+        return ctx
+
+    def _encode(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        ctx.artifacts["encoded_candidates"] = {"facts": [{"key": "utterance_raw", "value": "hello"}]}
+        return ctx
+
+    def _stabilize(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        ctx.artifacts["stabilized_turn_state"] = {"candidate_facts": [{"key": "utterance_raw", "value": "hello"}]}
+        return ctx
+
+    def _context(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        ctx.artifacts["resolved_context"] = ResolvedContext(
+            history_anchors=(),
+            ambiguity_flags=(),
+            continuity_posture=ContinuityPosture.REEVALUATE,
+            prior_intent=None,
+        )
+        return ctx
+
+    def _retrieve(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        ctx.artifacts["retrieval_result"] = {"posture": "empty_evidence"}
+        return ctx
+
+    def _assemble_with_illegal_side_effect(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        ctx.state = replace(ctx.state, final_answer="illegal mutation")
+        ctx.artifacts["answer_validation_contract"] = type("Validation", (), {"passed": True})()
+        return ctx
+
+    stages = [
+        CanonicalStage("observe.turn", _observe),
+        CanonicalStage("encode.candidates", _encode),
+        CanonicalStage("stabilize.pre_route", _stabilize),
+        CanonicalStage("context.resolve", _context),
+        CanonicalStage("intent.resolve", _noop),
+        CanonicalStage("retrieve.evidence", _retrieve),
+        CanonicalStage("policy.decide", _noop),
+        CanonicalStage("answer.assemble", _assemble_with_illegal_side_effect),
+        CanonicalStage("answer.validate", _noop),
+        CanonicalStage("answer.render", _noop),
+        CanonicalStage("answer.commit", _noop),
+    ]
+
+    with pytest.raises(RuntimeError, match="answer.assemble must not produce answer_validation_contract artifact"):
+        CanonicalTurnOrchestrator(stages=stages).run(context)
+
+
+def test_answer_assemble_cannot_mutate_commit_validation_render_state_fields() -> None:
+    state = PipelineState(user_input="hello")
+    context = CanonicalTurnContext(state=state)
+
+    def _noop(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        return ctx
+
+    def _observe(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        ctx.artifacts["turn_observation"] = {"turn_id": "turn-1", "utterance": "hello"}
+        return ctx
+
+    def _encode(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        ctx.artifacts["encoded_candidates"] = {"facts": [{"key": "utterance_raw", "value": "hello"}]}
+        return ctx
+
+    def _stabilize(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        ctx.artifacts["stabilized_turn_state"] = {"candidate_facts": [{"key": "utterance_raw", "value": "hello"}]}
+        return ctx
+
+    def _context(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        ctx.artifacts["resolved_context"] = ResolvedContext(
+            history_anchors=(),
+            ambiguity_flags=(),
+            continuity_posture=ContinuityPosture.REEVALUATE,
+            prior_intent=None,
+        )
+        return ctx
+
+    def _retrieve(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        ctx.artifacts["retrieval_result"] = {"posture": "empty_evidence"}
+        return ctx
+
+    def _assemble_with_illegal_state_mutation(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        ctx.state = replace(ctx.state, final_answer="illegal mutation")
+        return ctx
+
+    stages = [
+        CanonicalStage("observe.turn", _observe),
+        CanonicalStage("encode.candidates", _encode),
+        CanonicalStage("stabilize.pre_route", _stabilize),
+        CanonicalStage("context.resolve", _context),
+        CanonicalStage("intent.resolve", _noop),
+        CanonicalStage("retrieve.evidence", _retrieve),
+        CanonicalStage("policy.decide", _noop),
+        CanonicalStage("answer.assemble", _assemble_with_illegal_state_mutation),
+        CanonicalStage("answer.validate", _noop),
+        CanonicalStage("answer.render", _noop),
+        CanonicalStage("answer.commit", _noop),
+    ]
+
+    with pytest.raises(RuntimeError, match="answer.assemble must not mutate commit/validation/render state"):
+        CanonicalTurnOrchestrator(stages=stages).run(context)

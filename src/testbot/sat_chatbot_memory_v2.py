@@ -2132,7 +2132,7 @@ def _answer_routing_from_decision_object(
     )
 
 
-def stage_answer(
+def _answer_assemble_stage(
     llm: ChatOllama,
     state: PipelineState,
     *,
@@ -2143,7 +2143,7 @@ def stage_answer(
     runtime_capability_status: RuntimeCapabilityStatus | None = None,
     clock: Clock | None = None,
     timezone: str = "Europe/Helsinki",
-) -> PipelineState:
+) -> AnswerAssembleResult:
     if selected_decision is not None:
         answer_routing = _answer_routing_from_decision_object(
             selected_decision,
@@ -2164,7 +2164,7 @@ def stage_answer(
             ),
             fallback_decider=decide_fallback_action,
         )
-    assembled = answer_assemble(
+    return answer_assemble(
         llm,
         state,
         chat_history=chat_history,
@@ -2175,14 +2175,72 @@ def stage_answer(
         clock=clock,
         timezone=timezone,
     )
-    validated = answer_validate(
+
+
+def _answer_validate_stage(
+    state: PipelineState,
+    *,
+    assembled: AnswerAssembleResult,
+    hits: list[Document],
+    chat_history: deque[ChatMsg],
+) -> AnswerValidateResult:
+    return answer_validate(
         state,
         assembled=assembled,
         hits=hits,
         chat_history=chat_history,
     )
-    rendered = answer_render(validated)
+
+
+def _answer_render_stage(validated: AnswerValidateResult) -> AnswerRenderResult:
+    return answer_render(validated)
+
+
+def _answer_commit_stage(
+    state: PipelineState,
+    *,
+    assembled: AnswerAssembleResult,
+    validated: AnswerValidateResult,
+    rendered: AnswerRenderResult,
+) -> PipelineState:
     return answer_commit(
+        state,
+        assembled=assembled,
+        validated=validated,
+        rendered=rendered,
+    )
+
+
+def stage_answer(
+    llm: ChatOllama,
+    state: PipelineState,
+    *,
+    chat_history: deque[ChatMsg],
+    hits: list[Document],
+    capability_status: CapabilityStatus,
+    selected_decision: DecisionObject | None = None,
+    runtime_capability_status: RuntimeCapabilityStatus | None = None,
+    clock: Clock | None = None,
+    timezone: str = "Europe/Helsinki",
+) -> PipelineState:
+    assembled = _answer_assemble_stage(
+        llm,
+        state,
+        chat_history=chat_history,
+        hits=hits,
+        capability_status=capability_status,
+        runtime_capability_status=runtime_capability_status,
+        clock=clock,
+        timezone=timezone,
+    )
+    validated = _answer_validate_stage(
+        state,
+        assembled=assembled,
+        hits=hits,
+        chat_history=chat_history,
+    )
+    rendered = _answer_render_stage(validated)
+    return _answer_commit_stage(
         state,
         assembled=assembled,
         validated=validated,
@@ -3052,7 +3110,7 @@ def _run_canonical_turn_pipeline(
 
     def _answer_assemble(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
         _validate_and_log_transition(validate_answer_pre(ctx.state))
-        ctx.state = stage_answer(
+        ctx.artifacts["assembled_answer"] = _answer_assemble_stage(
             llm,
             ctx.state,
             chat_history=chat_history,
@@ -3072,6 +3130,12 @@ def _run_canonical_turn_pipeline(
         return ctx
 
     def _answer_validate(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        ctx.artifacts["validated_answer"] = _answer_validate_stage(
+            ctx.state,
+            assembled=ctx.artifacts["assembled_answer"],
+            hits=ctx.artifacts["hits"],
+            chat_history=chat_history,
+        )
         ctx.artifacts["answer_validation_contract"] = validate_answer_assembly_boundary(
             ctx.artifacts["answer_assembly_contract"]
         )
@@ -3082,15 +3146,22 @@ def _run_canonical_turn_pipeline(
         return ctx
 
     def _answer_render(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        ctx.artifacts["rendered_answer"] = _answer_render_stage(ctx.artifacts["validated_answer"])
         ctx.artifacts["answer_render_contract"] = render_answer(
             assembly=ctx.artifacts["answer_assembly_contract"],
             validation=ctx.artifacts["answer_validation_contract"],
-            preferred_text=ctx.state.final_answer,
+            preferred_text=ctx.artifacts["rendered_answer"].final_answer,
         )
         append_pipeline_snapshot("answer.render", ctx.state)
         return ctx
 
     def _answer_commit(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        ctx.state = _answer_commit_stage(
+            ctx.state,
+            assembled=ctx.artifacts["assembled_answer"],
+            validated=ctx.artifacts["validated_answer"],
+            rendered=ctx.artifacts["rendered_answer"],
+        )
         ctx.state, ctx.artifacts["committed_turn_state"] = commit_answer_stage(
             ctx.state,
             assembly=ctx.artifacts["answer_assembly_contract"],
