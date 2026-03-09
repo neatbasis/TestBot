@@ -1456,6 +1456,70 @@ def test_stage_answer_selected_decision_pending_lookup_uses_non_clarify_mode() -
     assert answered.invariant_decisions.get("answer_mode") == "assist"
 
 
+
+
+def test_stage_answer_selected_decision_non_memory_clarify_pending_lookup_degrades_to_safe_uncertainty() -> None:
+    state = PipelineState(
+        user_input="what is dark matter?",
+        resolved_intent=IntentType.KNOWLEDGE_QUESTION.value,
+        confidence_decision={
+            "context_confident": False,
+            "ambiguity_detected": True,
+            "background_ingestion_in_progress": True,
+            "allow_non_memory_clarify": False,
+        },
+    )
+
+    answered = stage_answer(
+        _StaticLLM("ignored"),
+        state,
+        chat_history=deque(),
+        hits=[],
+        capability_status="ask_unavailable",
+        selected_decision=DecisionObject(
+            decision_class=DecisionClass.ASK_FOR_CLARIFICATION,
+            retrieval_branch="direct_answer",
+            rationale="clarify candidate selected despite non-memory intent",
+            reasoning={"evidence_posture": "empty_evidence"},
+        ),
+        clock=_FIXED_CLOCK,
+    )
+
+    assert answered.final_answer == NON_KNOWLEDGE_UNCERTAINTY_ANSWER
+    assert answered.invariant_decisions.get("answer_mode") == "assist"
+    assert answered.invariant_decisions.get("invariant_degrade_reason") == "non_memory_clarify_pending_lookup_degraded"
+
+
+def test_stage_answer_selected_decision_non_memory_clarify_no_clarify_mode_degrades_to_assist() -> None:
+    state = PipelineState(
+        user_input="tell me a joke",
+        resolved_intent=IntentType.KNOWLEDGE_QUESTION.value,
+        confidence_decision={
+            "context_confident": False,
+            "ambiguity_detected": True,
+            "allow_non_memory_clarify": False,
+        },
+    )
+
+    answered = stage_answer(
+        _StaticLLM("ignored"),
+        state,
+        chat_history=deque(),
+        hits=[],
+        capability_status="ask_unavailable",
+        selected_decision=DecisionObject(
+            decision_class=DecisionClass.ASK_FOR_CLARIFICATION,
+            retrieval_branch="direct_answer",
+            rationale="clarify candidate selected despite explicit no-clarify mode",
+            reasoning={"evidence_posture": "empty_evidence"},
+        ),
+        clock=_FIXED_CLOCK,
+    )
+
+    assert answered.final_answer == ASSIST_ALTERNATIVES_ANSWER
+    assert answered.invariant_decisions.get("answer_mode") == "assist"
+    assert answered.invariant_decisions.get("invariant_degrade_reason") == "non_memory_clarify_no_clarify_mode_degraded"
+
 def test_chat_loop_async_pending_lookup_commits_pending_answer_and_logs_semantics(tmp_path, monkeypatch) -> None:
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(runtime, "_validate_and_log_transition", lambda _result: None)
