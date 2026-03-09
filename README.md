@@ -11,6 +11,11 @@ TestBot is a user-steered assistant that combines conversational memory with ing
 - **Explicit uncertainty when evidence is weak or conflicting**: trust-tier metadata is preserved for ingested sources, and disagreement between memory and source evidence resolves to visible uncertainty/clarification behavior rather than unsupported claims.
 - **Safe fallback and clarifier behavior**: deterministic fallback policy routes low-trust, unavailable, or conflicting evidence to safe fallback paths, including user-facing clarification prompts.
 
+### Continuity commitments
+- **`answer.commit` is mandatory continuity write-through**: each turn must persist confirmed user facts, obligations, repair state, and assistant-turn provenance so follow-up turns inherit durable state instead of re-deriving it.
+- **Continuity evidence must stay traceable**: retrieval/context layers must treat `commit_receipt` artifacts as first-class continuity evidence so downstream behavior can point to committed anchors, not implicit guesswork.
+- **Persistence must preserve user agency over time**: carrying forward explicit commitments lets users correct facts, close obligations, and steer repairs across turns with auditable state transitions.
+
 TestBot operates in two explicit response intents:
 
 - **Knowing mode**: provide an evidence-backed grounded answer with provenance for where the answer came from.
