@@ -42,16 +42,27 @@ from testbot.rerank import (
 )
 from testbot.stage_transitions import (
     append_transition_validation_log,
-    validate_answer_post,
-    validate_answer_pre,
-    validate_encode_post,
-    validate_encode_pre,
-    validate_observe_post,
-    validate_observe_pre,
-    validate_rerank_post,
-    validate_rerank_pre,
-    validate_retrieve_post,
-    validate_retrieve_pre,
+    validate_answer_assemble_pre,
+    validate_answer_commit_post,
+    validate_answer_commit_pre,
+    validate_answer_render_post,
+    validate_answer_render_pre,
+    validate_answer_validate_post,
+    validate_answer_validate_pre,
+    validate_context_resolve_post,
+    validate_context_resolve_pre,
+    validate_encode_candidates_post,
+    validate_encode_candidates_pre,
+    validate_intent_resolve_post,
+    validate_intent_resolve_pre,
+    validate_observe_turn_post,
+    validate_observe_turn_pre,
+    validate_policy_decide_post,
+    validate_policy_decide_pre,
+    validate_retrieve_evidence_post,
+    validate_retrieve_evidence_pre,
+    validate_stabilize_pre_route_post,
+    validate_stabilize_pre_route_pre,
 )
 from testbot.time_parse import parse_target_time
 from testbot.intent_router import (
@@ -2841,7 +2852,7 @@ def _run_canonical_turn_pipeline(
     )
 
     def _observe_turn(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
-        _validate_and_log_transition(validate_observe_pre(ctx.state))
+        _validate_and_log_transition(validate_observe_turn_pre(ctx.state))
         observation = observe_turn(
             ctx.state,
             turn_id=ctx.artifacts["turn_id"],
@@ -2851,14 +2862,14 @@ def _run_canonical_turn_pipeline(
         )
         ctx.artifacts["turn_observation"] = observation
         ctx.state = observe_stage(ctx.state)
-        _validate_and_log_transition(validate_observe_post(ctx.state))
+        _validate_and_log_transition(validate_observe_turn_post(ctx.state))
         append_pipeline_snapshot("observe", ctx.state)
         return ctx
 
     def _encode_candidates(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
-        _validate_and_log_transition(validate_encode_pre(ctx.state))
+        _validate_and_log_transition(validate_encode_candidates_pre(ctx.state))
         rewritten_state = encode_stage(llm, ctx.state)
-        _validate_and_log_transition(validate_encode_post(rewritten_state))
+        _validate_and_log_transition(validate_encode_candidates_post(rewritten_state))
         rewritten_query = rewritten_state.rewritten_query
         append_session_log("query_rewrite_output", {"utterance": utterance, "query": rewritten_query})
 
@@ -2877,6 +2888,7 @@ def _run_canonical_turn_pipeline(
         return ctx
 
     def _stabilize_pre_route(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        _validate_and_log_transition(validate_stabilize_pre_route_pre(ctx.state))
         planning_descriptor = planning_pathway_for_intent(IntentType(state.classified_intent), extract_intent_facets(utterance))
         response_plan = build_response_plan(descriptor=planning_descriptor, user_input=utterance)
         reflection_yaml = generate_reflection_yaml(llm, speaker="user", text=utterance)
@@ -2913,10 +2925,12 @@ def _run_canonical_turn_pipeline(
             store_doc_fn=store_doc,
         )
         ctx.artifacts["stabilized_turn_state"] = stabilized
+        _validate_and_log_transition(validate_stabilize_pre_route_post(ctx.state))
         append_pipeline_snapshot("stabilize", ctx.state)
         return ctx
 
     def _context_resolve(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        _validate_and_log_transition(validate_context_resolve_pre(ctx.state))
         stabilized: StabilizedTurnState = ctx.artifacts["stabilized_turn_state"]
         stabilized_utterance = next((fact.value for fact in stabilized.candidate_facts if fact.key == "utterance_raw"), "")
         context_resolution = resolve_context(
@@ -2939,10 +2953,12 @@ def _run_canonical_turn_pipeline(
                 "retrieval_continuity_evidence": list(continuity_evidence),
             },
         )
+        _validate_and_log_transition(validate_context_resolve_post(ctx.state))
         append_pipeline_snapshot("context", ctx.state)
         return ctx
 
     def _intent_resolve(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        _validate_and_log_transition(validate_intent_resolve_pre(ctx.state))
         stabilized: StabilizedTurnState = ctx.artifacts["stabilized_turn_state"]
         stabilized_utterance = next((fact.value for fact in stabilized.candidate_facts if fact.key == "utterance_raw"), "")
         context_resolution = ctx.artifacts["resolved_context"]
@@ -3004,13 +3020,14 @@ def _run_canonical_turn_pipeline(
                 },
             ),
         )
+        _validate_and_log_transition(validate_intent_resolve_post(ctx.state))
         append_pipeline_snapshot("intent", ctx.state)
         return ctx
 
     def _retrieve_evidence(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
         retrieval_requirement = ctx.artifacts.get("retrieval_requirement") or {}
         if bool(retrieval_requirement.get("requires_retrieval", False)):
-            _validate_and_log_transition(validate_retrieve_pre(ctx.state))
+            _validate_and_log_transition(validate_retrieve_evidence_pre(ctx.state))
             same_turn_exclusion_doc_ids = set(ctx.state.same_turn_exclusion.get("excluded_doc_ids", []))
             retrieval_exclude_doc_ids = same_turn_exclusion_doc_ids
             retrieval_exclude_source_ids = {
@@ -3029,7 +3046,7 @@ def _run_canonical_turn_pipeline(
                 segment_ids=retrieval_segment_ids,
                 segment_types=retrieval_segment_types,
             )
-            _validate_and_log_transition(validate_retrieve_post(ctx.state))
+            _validate_and_log_transition(validate_retrieve_evidence_post(ctx.state))
             ctx.artifacts["docs_and_scores"] = docs_and_scores
             considered = int(ctx.state.confidence_decision.get("retrieval_candidates_considered", len(docs_and_scores)) or 0)
             prerank_bundle = build_evidence_bundle_from_docs_and_scores(docs_and_scores)
@@ -3078,7 +3095,7 @@ def _run_canonical_turn_pipeline(
         retrieval_requirement = ctx.artifacts.get("retrieval_requirement") or {}
         requires_retrieval = bool(retrieval_requirement.get("requires_retrieval", False))
         if requires_retrieval:
-            _validate_and_log_transition(validate_rerank_pre(ctx.state))
+            _validate_and_log_transition(validate_policy_decide_pre(ctx.state))
             stabilized: StabilizedTurnState = ctx.artifacts["stabilized_turn_state"]
             ctx.state, hits = stage_rerank(
                 ctx.state,
@@ -3089,7 +3106,7 @@ def _run_canonical_turn_pipeline(
                 near_tie_delta=near_tie_delta,
                 clock=clock,
             )
-            _validate_and_log_transition(validate_rerank_post(ctx.state))
+            _validate_and_log_transition(validate_policy_decide_post(ctx.state))
             ctx.artifacts["hits"] = hits
             considered = int(ctx.state.confidence_decision.get("retrieval_candidates_considered", len(ctx.artifacts["docs_and_scores"])) or 0)
             policy_decision = decide_policy(
@@ -3146,7 +3163,7 @@ def _run_canonical_turn_pipeline(
         return ctx
 
     def _answer_assemble(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
-        _validate_and_log_transition(validate_answer_pre(ctx.state))
+        _validate_and_log_transition(validate_answer_assemble_pre(ctx.state))
         ctx.artifacts["assembled_answer"] = _answer_assemble_stage(
             llm,
             ctx.state,
@@ -3167,6 +3184,7 @@ def _run_canonical_turn_pipeline(
         return ctx
 
     def _answer_validate(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        _validate_and_log_transition(validate_answer_validate_pre(ctx.state))
         ctx.artifacts["validated_answer"] = _answer_validate_stage(
             ctx.state,
             assembled=ctx.artifacts["assembled_answer"],
@@ -3178,27 +3196,31 @@ def _run_canonical_turn_pipeline(
         )
         if not ctx.artifacts["answer_validation_contract"].passed:
             raise RuntimeError("answer assembly contract validation failed before render/commit")
+        _validate_and_log_transition(validate_answer_validate_post(ctx.state))
         append_pipeline_snapshot("answer.validate", ctx.state)
         return ctx
 
     def _answer_render(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        _validate_and_log_transition(validate_answer_render_pre(ctx.state))
         ctx.artifacts["rendered_answer"] = _answer_render_stage(ctx.artifacts["validated_answer"])
         ctx.artifacts["answer_render_contract"] = render_answer(
             assembly=ctx.artifacts["answer_assembly_contract"],
             validation=ctx.artifacts["answer_validation_contract"],
             preferred_text=ctx.artifacts["rendered_answer"].final_answer,
         )
+        _validate_and_log_transition(validate_answer_render_post(ctx.state))
         append_pipeline_snapshot("answer.render", ctx.state)
         return ctx
 
     def _answer_commit(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        _validate_and_log_transition(validate_answer_commit_pre(ctx.state))
         ctx.state = _answer_commit_stage(
             ctx.state,
             assembled=ctx.artifacts["assembled_answer"],
             validated=ctx.artifacts["validated_answer"],
             rendered=ctx.artifacts["rendered_answer"],
         )
-        _validate_and_log_transition(validate_answer_post(ctx.state))
+        _validate_and_log_transition(validate_answer_commit_post(ctx.state))
         ctx.state, ctx.artifacts["committed_turn_state"] = commit_answer_stage(
             ctx.state,
             assembly=ctx.artifacts["answer_assembly_contract"],
