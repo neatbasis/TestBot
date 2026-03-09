@@ -50,10 +50,27 @@ Current event contracts are validated by `scripts/validate_log_schema.py`, with 
 - Common required keys: `ts` (`str`), `event` (`str`)
 - `pipeline_state_snapshot`: `stage` (`str`), `state` (`dict`)
 - `stage_transition_validation`: `stage` (`str`), `boundary` (`str`),
-  `invariant_refs` (`list`), `passed` (`bool`), `failures` (`list`)
+  `invariant_refs` (`list`, `PINV-*` IDs for pipeline-stage checks), `passed` (`bool`), `failures` (`list`)
 
 Use fixture artifacts in `tests/fixtures/log_schema/` to keep both current and previous schema
 versions valid over time.
+
+
+### Stage-transition invariant namespace migration (v3)
+
+`stage_transition_validation.invariant_refs` moved to the canonical pipeline namespace in `schema_version: 3` payloads. Runtime now emits `PINV-*` identifiers for stage pre/post validators, replacing prior mixed `INV-*` references.
+
+Canonical migration map (defined in `src/testbot/stage_transitions.py` as `LEGACY_TO_PIPELINE_INVARIANT_REF_MAP`):
+
+- `INV-001` → `PINV-001`
+- `INV-002` → `PINV-002`
+- `INV-003` → `PINV-003`
+
+Migration decision: **clean schema/version bump** for `stage_transition_validation` payloads.
+
+- `v1`/`v2` logs remain readable historical artifacts and may contain legacy `INV-*` stage-transition references.
+- `v3` is authoritative for current telemetry and emits only pipeline-semantics IDs for stage-transition validation events.
+- Evidence/log consumers should branch by `schema_version` when interpreting `invariant_refs` and should not treat response-policy `INV-*` IDs as current pipeline-stage identifiers.
 
 
 ## Turn analytics + KPI loop

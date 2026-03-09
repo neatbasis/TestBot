@@ -20,7 +20,15 @@ ASSIST_ALTERNATIVES_ANSWER = (
     "I can either help you reconstruct the timeline from what you remember, "
     "or suggest where to check next for the missing detail."
 )
-TRANSITION_VALIDATION_SCHEMA_VERSION = 2
+TRANSITION_VALIDATION_SCHEMA_VERSION = 3
+
+# One-release migration bridge for downstream telemetry consumers that still
+# normalize historical stage transition events keyed by legacy INV-* IDs.
+LEGACY_TO_PIPELINE_INVARIANT_REF_MAP: dict[str, str] = {
+    "INV-001": "PINV-001",
+    "INV-002": "PINV-002",
+    "INV-003": "PINV-003",
+}
 
 REQUIRED_ALIGNMENT_DIMENSIONS = (
     "factual_grounding_reliability",
@@ -29,6 +37,15 @@ REQUIRED_ALIGNMENT_DIMENSIONS = (
     "cost_latency_budget",
     "provenance_transparency",
 )
+
+
+def migrate_invariant_refs_to_pipeline_namespace(invariant_refs: tuple[str, ...]) -> tuple[str, ...]:
+    migrated: list[str] = []
+    for invariant_ref in invariant_refs:
+        pipeline_ref = LEGACY_TO_PIPELINE_INVARIANT_REF_MAP.get(invariant_ref, invariant_ref)
+        if pipeline_ref not in migrated:
+            migrated.append(pipeline_ref)
+    return tuple(migrated)
 
 
 @dataclass(frozen=True)
@@ -187,7 +204,7 @@ def validate_observe_pre(state: PipelineState) -> TransitionCheckResult:
     return _run_checks(
         stage="observe",
         boundary="pre",
-        invariant_refs=("INV-002",),
+        invariant_refs=("PINV-002",),
         checks=[("user_input_required", lambda s: bool((s.user_input or "").strip()))],
         state=state,
     )
@@ -197,7 +214,7 @@ def validate_observe_post(state: PipelineState) -> TransitionCheckResult:
     return _run_checks(
         stage="observe",
         boundary="post",
-        invariant_refs=("INV-002",),
+        invariant_refs=("PINV-002",),
         checks=[("user_input_preserved", lambda s: bool((s.user_input or "").strip()))],
         state=state,
     )
@@ -207,7 +224,7 @@ def validate_encode_pre(state: PipelineState) -> TransitionCheckResult:
     return _run_checks(
         stage="encode",
         boundary="pre",
-        invariant_refs=("INV-002",),
+        invariant_refs=("PINV-002",),
         checks=[("user_input_available", lambda s: bool((s.user_input or "").strip()))],
         state=state,
     )
@@ -217,7 +234,7 @@ def validate_encode_post(state: PipelineState) -> TransitionCheckResult:
     return _run_checks(
         stage="encode",
         boundary="post",
-        invariant_refs=("INV-002",),
+        invariant_refs=("PINV-002",),
         checks=[("rewritten_query_available", lambda s: bool((s.rewritten_query or "").strip()))],
         state=state,
     )
@@ -227,7 +244,7 @@ def validate_retrieve_pre(state: PipelineState) -> TransitionCheckResult:
     return _run_checks(
         stage="retrieve",
         boundary="pre",
-        invariant_refs=("INV-002",),
+        invariant_refs=("PINV-002",),
         checks=[("rewritten_query_available", lambda s: bool((s.rewritten_query or "").strip()))],
         state=state,
     )
@@ -237,7 +254,7 @@ def validate_retrieve_post(state: PipelineState) -> TransitionCheckResult:
     return _run_checks(
         stage="retrieve",
         boundary="post",
-        invariant_refs=("INV-002",),
+        invariant_refs=("PINV-002",),
         checks=[("retrieval_candidates_shape", lambda s: _is_scored_candidate_list(s.retrieval_candidates))],
         state=state,
     )
@@ -247,7 +264,7 @@ def validate_rerank_pre(state: PipelineState) -> TransitionCheckResult:
     return _run_checks(
         stage="rerank",
         boundary="pre",
-        invariant_refs=("INV-002",),
+        invariant_refs=("PINV-002",),
         checks=[("retrieval_candidates_shape", lambda s: _is_scored_candidate_list(s.retrieval_candidates))],
         state=state,
     )
@@ -257,7 +274,7 @@ def validate_rerank_post(state: PipelineState) -> TransitionCheckResult:
     return _run_checks(
         stage="rerank",
         boundary="post",
-        invariant_refs=("INV-002",),
+        invariant_refs=("PINV-002",),
         checks=[
             ("reranked_hits_shape", lambda s: _is_scored_candidate_list(s.reranked_hits)),
             ("confidence_decision_has_flag", lambda s: isinstance(s.confidence_decision.get("context_confident"), bool)),
@@ -270,7 +287,7 @@ def validate_answer_pre(state: PipelineState) -> TransitionCheckResult:
     return _run_checks(
         stage="answer",
         boundary="pre",
-        invariant_refs=("INV-001", "INV-002", "INV-003"),
+        invariant_refs=("PINV-001", "PINV-002", "PINV-003"),
         checks=[
             ("confidence_decision_has_flag", lambda s: isinstance(s.confidence_decision.get("context_confident"), bool)),
         ],
@@ -282,7 +299,7 @@ def validate_answer_post(state: PipelineState) -> TransitionCheckResult:
     return _run_checks(
         stage="answer",
         boundary="post",
-        invariant_refs=("INV-001", "INV-002", "INV-003"),
+        invariant_refs=("PINV-001", "PINV-002", "PINV-003"),
         checks=[
             (
                 "invariant_decisions_recorded",
