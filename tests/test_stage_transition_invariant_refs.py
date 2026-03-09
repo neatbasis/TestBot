@@ -6,7 +6,6 @@ from testbot.answer_assembly import AnswerCandidate
 from testbot.canonical_turn_orchestrator import CanonicalTurnOrchestrator
 from testbot.pipeline_state import CandidateFactsArtifact, PipelineState, ResolvedContextArtifact
 from testbot.stage_transitions import (
-    LEGACY_STAGE_ALIAS_MAP,
     LEGACY_TO_PIPELINE_INVARIANT_REF_MAP,
     TRANSITION_VALIDATION_SCHEMA_VERSION,
     append_transition_validation_log,
@@ -88,7 +87,7 @@ def test_migration_map_normalizes_legacy_transition_invariant_refs() -> None:
     )
 
 
-def test_transition_validation_log_rows_use_schema_version_3_and_canonical_stage_names(tmp_path) -> None:
+def test_transition_validation_log_rows_use_schema_version_4_and_canonical_stage_names(tmp_path) -> None:
     result = validate_observe_turn_pre(_base_state())
     log_path = tmp_path / "session.jsonl"
 
@@ -96,9 +95,9 @@ def test_transition_validation_log_rows_use_schema_version_3_and_canonical_stage
 
     row = json.loads(log_path.read_text(encoding="utf-8").strip())
     assert row["event"] == "stage_transition_validation"
-    assert row["schema_version"] == TRANSITION_VALIDATION_SCHEMA_VERSION == 3
+    assert row["schema_version"] == TRANSITION_VALIDATION_SCHEMA_VERSION == 4
     assert row["stage"] == "observe.turn"
-    assert row["legacy_stage"] == LEGACY_STAGE_ALIAS_MAP["observe.turn"] == "observe"
+    assert "legacy_stage" not in row
     assert row["invariant_refs"] == ["PINV-002"]
 
 
