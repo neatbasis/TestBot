@@ -185,7 +185,7 @@ def _classify_canonical_fallback_path(
     normalized_final_answer = (final_answer or "").strip()
 
     if background_ingestion_in_progress and normalized_answer_mode in {"dont-know", "assist"}:
-        if normalized_final_answer == BACKGROUND_INGESTION_PROGRESS_ANSWER:
+        if normalized_final_answer in {BACKGROUND_INGESTION_PROGRESS_ANSWER, NON_KNOWLEDGE_UNCERTAINTY_ANSWER}:
             return "pending_lookup_fallback"
 
     if normalized_answer_mode == "dont-know":

@@ -1520,7 +1520,9 @@ def test_stage_answer_selected_decision_non_memory_clarify_no_clarify_mode_degra
     assert answered.invariant_decisions.get("answer_mode") == "assist"
     assert answered.invariant_decisions.get("invariant_degrade_reason") == "non_memory_clarify_no_clarify_mode_degraded"
 
+@pytest.mark.non_contract
 def test_chat_loop_async_pending_lookup_commits_pending_answer_and_logs_semantics(tmp_path, monkeypatch) -> None:
+    """Non-contract fast path: heavily mocked to keep chat-loop regression checks cheap."""
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(runtime, "_validate_and_log_transition", lambda _result: None)
     monkeypatch.setattr(runtime, "store_doc", lambda *args, **kwargs: None)
@@ -1586,6 +1588,91 @@ def test_chat_loop_async_pending_lookup_commits_pending_answer_and_logs_semantic
     rows = [json.loads(line) for line in (tmp_path / "logs" / "session.jsonl").read_text(encoding="utf-8").splitlines() if line.strip()]
     events = [row.get("event") for row in rows]
     assert "source_ingest_background_started" in events
+
+    commit_row = next(row for row in rows if row.get("event") == "commit_stage_recorded")
+    assert commit_row["pending_repair_state"]["required"] is True
+
+    mode_row = next(row for row in rows if row.get("event") == "final_answer_mode")
+    assert mode_row["mode"] == "assist"
+    assert mode_row["query"] == "ignored"
+
+
+def test_chat_loop_async_pending_lookup_contract_path_reaches_answer_commit_post(tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(runtime, "store_doc", lambda *args, **kwargs: None)
+    monkeypatch.setattr(runtime, "generate_reflection_yaml", lambda *args, **kwargs: "claims: []")
+    monkeypatch.setattr(runtime, "persist_promoted_context", lambda *args, **kwargs: [])
+
+    def _start_background_ingest(*, runtime: dict[str, object], store: object) -> dict[str, object]:
+        del store
+        runtime["source_ingest_background_in_progress"] = True
+        runtime["source_ingest_background_future"] = None
+        runtime["source_ingest_background_stub"] = True
+        from testbot import sat_chatbot_memory_v2 as runtime_module
+
+        runtime_module.append_session_log("source_ingest_background_started", {"background": True})
+        return {"started": True, "already_running": False}
+
+    monkeypatch.setattr(runtime, "_start_background_source_ingestion", _start_background_ingest)
+
+    class _EmptyStore:
+        def similarity_search_with_score(self, query: str, k: int = 4, **kwargs):
+            del query, k, kwargs
+            return []
+
+    prompts = iter(["what did i say?", "stop"])
+    replies: list[str] = []
+    _run_chat_loop(
+        runtime={"source_ingest_async_continuation": True},
+        llm=_StaticLLM("ignored"),
+        store=_EmptyStore(),
+        chat_history=deque(),
+        near_tie_delta=0.05,
+        io_channel="cli",
+        capability_status="ask_unavailable",
+        capability_snapshot=CapabilitySnapshot(
+            runtime={"source_ingest_async_continuation": True},
+            requested_mode="cli",
+            daemon_mode=False,
+            effective_mode="cli",
+            fallback_reason=None,
+            exit_reason=None,
+            ha_error=None,
+            ollama_error=None,
+            runtime_capability_status=RuntimeCapabilityStatus(
+                ollama_available=True,
+                ha_available=False,
+                effective_mode="cli",
+                requested_mode="cli",
+                daemon_mode=False,
+                fallback_reason=None,
+                memory_backend="inmemory",
+                debug_enabled=False,
+                debug_verbose=False,
+                text_clarification_available=True,
+                satellite_ask_available=False,
+            ),
+        ),
+        read_user_utterance=lambda: next(prompts, None),
+        send_assistant_text=lambda text: replies.append(text),
+        clock=_FIXED_CLOCK,
+    )
+
+    assert replies[0] == NON_KNOWLEDGE_UNCERTAINTY_ANSWER
+
+    rows = [json.loads(line) for line in (tmp_path / "logs" / "session.jsonl").read_text(encoding="utf-8").splitlines() if line.strip()]
+    transition_rows = [row for row in rows if row.get("event") == "stage_transition_validation"]
+    commit_post_row = next(
+        row for row in transition_rows if row.get("stage") == "answer.commit" and row.get("boundary") == "post"
+    )
+    assert commit_post_row["passed"] is True
+
+    symptom_hits = [
+        row
+        for row in transition_rows
+        if "inv_003_general_knowledge_contract_enforced" in (row.get("failures") or [])
+    ]
+    assert symptom_hits == []
 
     commit_row = next(row for row in rows if row.get("event") == "commit_stage_recorded")
     assert commit_row["pending_repair_state"]["required"] is True
