@@ -3,6 +3,15 @@
 ## What
 TestBot is a memory-grounded chatbot loop for Home Assistant Assist Satellite.
 
+## Mission
+TestBot awareness is produced from both conversational memory and source ingestion from external systems.
+
+### How Mission is operationalized
+- **Source ingestion** continuously normalizes external evidence into retrievable records alongside conversation memory.
+- **Provenance** is required on knowing-mode answers so users can see what memory and source evidence informed the response.
+- **Trust tier** metadata is preserved for ingested sources so policy and retrieval can apply explicit trust boundaries.
+- **Deterministic fallback** ensures the assistant degrades safely (including uncertainty responses) when evidence is weak or unavailable.
+
 TestBot operates in two explicit response intents:
 
 - **Knowing mode**: provide a grounded answer based on available evidence and include provenance for where the answer came from.

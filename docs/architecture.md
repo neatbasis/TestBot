@@ -16,6 +16,15 @@ Applies to the runtime flow implemented in `src/testbot/` and the behavior contr
 ## Why
 These design decisions prioritize deterministic memory-grounded answers with explicit citation/fallback guardrails over broader but less reliable conversational behavior.
 
+## Mission
+TestBot awareness is produced from both conversational memory and source ingestion from external systems.
+
+### How Mission is operationalized
+- **Source ingestion** continuously normalizes external evidence into retrievable records alongside conversation memory.
+- **Provenance** is required on knowing-mode answers so users can see what memory and source evidence informed the response.
+- **Trust tier** metadata is preserved for ingested sources so policy and retrieval can apply explicit trust boundaries.
+- **Deterministic fallback** ensures the assistant degrades safely (including uncertainty responses) when evidence is weak or unavailable.
+
 For deterministic reject diagnostics and machine-readable fallback reasons, see [docs/reject-taxonomy.md](reject-taxonomy.md).
 
 Program linkage: [`ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md`](issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md) is the project's **primary bug-elimination program** in the current state; contributors should triage canonical pipeline defects and follow-on work against ISSUE-0013 first, with ISSUE-0012 treated as linked delivery planning context in [`ISSUE-0012-canonical-turn-pipeline-delivery-plan.md`](issues/ISSUE-0012-canonical-turn-pipeline-delivery-plan.md).
