@@ -5,6 +5,7 @@ from enum import StrEnum
 
 from testbot.evidence_retrieval import EvidenceBundle, EvidencePosture, RetrievalResult
 from testbot.intent_router import IntentType
+from testbot.retrieval_routing import decide_retrieval_routing
 
 
 class DecisionClass(StrEnum):
@@ -34,27 +35,20 @@ class RetrievalPolicyDecision:
         return self.retrieval_branch == "memory_retrieval"
 
 
-def _is_definitional_query_form(utterance: str) -> bool:
-    normalized = (utterance or "").strip().lower()
-    return normalized.startswith(("what is", "what are", "what's", "who is", "who are", "who's", "define", "definition of"))
-
-
-def _select_branch(*, utterance: str, intent: IntentType) -> str:
-    if intent == IntentType.MEMORY_RECALL:
-        return "memory_retrieval"
-    if intent == IntentType.KNOWLEDGE_QUESTION and _is_definitional_query_form(utterance):
-        return "memory_retrieval"
-    return "direct_answer"
-
-
 def decide(
     *,
     utterance: str,
     intent: IntentType,
     retrieval_candidates_considered: int | None = None,
     hit_count: int | None = None,
+    guard_forced_memory_retrieval: bool = False,
 ) -> RetrievalPolicyDecision:
-    branch = _select_branch(utterance=utterance, intent=intent)
+    routing = decide_retrieval_routing(
+        utterance=utterance,
+        intent=intent,
+        guard_forced_memory_retrieval=guard_forced_memory_retrieval,
+    )
+    branch = routing.retrieval_branch
     if branch != "memory_retrieval":
         return RetrievalPolicyDecision(
             retrieval_branch=branch,
@@ -62,6 +56,10 @@ def decide(
             rationale="non-memory or social intent routed to direct answer policy",
             reasoning={"empty_evidence": False, "scored_empty": False},
         )
+
+    forced_reasoning: dict[str, object] = {}
+    if guard_forced_memory_retrieval:
+        forced_reasoning["guard_forced_memory_retrieval"] = True
 
     considered = retrieval_candidates_considered
     if considered is None or considered <= 0:
@@ -74,6 +72,12 @@ def decide(
         posture = EvidencePosture.SCORED_NON_EMPTY
         rationale = "retrieval produced scored candidates with confident evidence"
 
+    if guard_forced_memory_retrieval:
+        rationale = (
+            "self-referential identity recall with prior identity continuity artifacts "
+            "forces memory retrieval evaluation"
+        )
+
     return RetrievalPolicyDecision(
         retrieval_branch=branch,
         evidence_posture=posture,
@@ -83,6 +87,7 @@ def decide(
             "scored_empty": posture is EvidencePosture.SCORED_EMPTY,
             "retrieval_candidates_considered": considered if considered is not None else 0,
             "hit_count": hit_count if hit_count is not None else 0,
+            **forced_reasoning,
         },
     )
 

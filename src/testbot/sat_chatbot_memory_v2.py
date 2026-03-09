@@ -83,7 +83,6 @@ from testbot.context_resolution import resolve as resolve_context
 from testbot.intent_resolution import IntentResolutionInput, resolve as resolve_intent
 from testbot.evidence_retrieval import (
     EvidenceBundle,
-    EvidencePosture,
     build_evidence_bundle_from_docs_and_scores,
     build_evidence_bundle_from_hits,
     continuity_evidence_from_prior_state,
@@ -92,7 +91,6 @@ from testbot.evidence_retrieval import (
 from testbot.policy_decision import (
     DecisionClass,
     DecisionObject,
-    RetrievalPolicyDecision,
     decide as decide_policy,
     decide_from_evidence,
 )
@@ -100,6 +98,7 @@ from testbot.answer_assembly import assemble_answer_contract
 from testbot.answer_validation import validate_answer_assembly_boundary
 from testbot.answer_rendering import render_answer
 from testbot.answer_commit import commit_answer_stage
+from testbot.retrieval_routing import decide_retrieval_routing, is_definitional_query_form
 
 from langchain_core.documents import Document
 from langchain_core.prompts import ChatPromptTemplate
@@ -1061,11 +1060,6 @@ def _intent_label(intent: IntentType) -> str:
     return intent.value
 
 
-
-
-def _is_definitional_query_form(utterance: str) -> bool:
-    normalized = (utterance or "").strip().lower()
-    return normalized.startswith(("what is", "what are", "what's", "who is", "who are", "who's", "define", "definition of"))
 
 
 def _intent_classifier_confidence(*, utterance: str, predicted_intent: IntentType) -> float:
@@ -2950,14 +2944,15 @@ def _run_canonical_turn_pipeline(
             continuity_evidence=continuity_evidence,
             context_history_anchors=context_history_anchors,
         )
-        requires_retrieval = intent_resolution.resolved_intent == IntentType.MEMORY_RECALL
-        retrieval_requirement_reason = "resolved_memory_recall_intent"
-        if guard_forced_memory_retrieval:
-            requires_retrieval = True
-            retrieval_requirement_reason = "identity_continuity_guard_requires_memory_retrieval"
+        retrieval_routing = decide_retrieval_routing(
+            utterance=recall_query,
+            intent=intent_resolution.resolved_intent,
+            guard_forced_memory_retrieval=guard_forced_memory_retrieval,
+        )
         ctx.artifacts["retrieval_requirement"] = {
-            "requires_retrieval": requires_retrieval,
-            "reason": retrieval_requirement_reason,
+            "requires_retrieval": retrieval_routing.requires_retrieval,
+            "reason": retrieval_routing.reason,
+            "retrieval_branch": retrieval_routing.retrieval_branch,
         }
         ctx.artifacts["guard_forced_memory_retrieval"] = guard_forced_memory_retrieval
         ctx.state = replace(
@@ -2969,8 +2964,9 @@ def _run_canonical_turn_pipeline(
                 "decision": "retrieval_requirement_only",
                 "intent_classified": intent_resolution.classified_intent.value,
                 "intent_resolved": intent_resolution.resolved_intent.value,
-                "requires_retrieval": requires_retrieval,
-                "reason": retrieval_requirement_reason,
+                "requires_retrieval": retrieval_routing.requires_retrieval,
+                "reason": retrieval_routing.reason,
+                "retrieval_branch": retrieval_routing.retrieval_branch,
             },
         )
         intent_label = _intent_label(intent_resolution.resolved_intent)
@@ -2979,7 +2975,7 @@ def _run_canonical_turn_pipeline(
             {
                 "utterance": utterance,
                 "intent": intent_label,
-                "retrieval_branch": "memory_retrieval" if requires_retrieval else "direct_answer",
+                "retrieval_branch": retrieval_routing.retrieval_branch,
                 "intent_classified": intent_resolution.classified_intent.value,
                 "intent_resolved": intent_resolution.resolved_intent.value,
                 "retrieval_requirement": dict(ctx.artifacts["retrieval_requirement"]),
@@ -3084,20 +3080,8 @@ def _run_canonical_turn_pipeline(
                 intent=resolved_intent,
                 retrieval_candidates_considered=considered,
                 hit_count=len(hits),
+                guard_forced_memory_retrieval=bool(ctx.artifacts.get("guard_forced_memory_retrieval", False)),
             )
-            if bool(ctx.artifacts.get("guard_forced_memory_retrieval", False)):
-                policy_decision = RetrievalPolicyDecision(
-                    retrieval_branch="memory_retrieval",
-                    evidence_posture=policy_decision.evidence_posture,
-                    rationale=(
-                        "self-referential identity recall with prior identity continuity artifacts "
-                        "forces memory retrieval evaluation"
-                    ),
-                    reasoning={
-                        **policy_decision.reasoning,
-                        "guard_forced_memory_retrieval": True,
-                    },
-                )
             ctx.artifacts["policy_decision"] = policy_decision
             finalized_bundle = build_evidence_bundle_from_hits(hits)
             ctx.artifacts["retrieval_result"] = retrieval_result(
@@ -3113,20 +3097,8 @@ def _run_canonical_turn_pipeline(
             policy_decision = decide_policy(
                 utterance=utterance,
                 intent=resolved_intent,
+                guard_forced_memory_retrieval=bool(ctx.artifacts.get("guard_forced_memory_retrieval", False)),
             )
-            if bool(ctx.artifacts.get("guard_forced_memory_retrieval", False)):
-                policy_decision = RetrievalPolicyDecision(
-                    retrieval_branch="memory_retrieval",
-                    evidence_posture=EvidencePosture.EMPTY_EVIDENCE,
-                    rationale=(
-                        "self-referential identity recall with prior identity continuity artifacts "
-                        "forces memory retrieval evaluation"
-                    ),
-                    reasoning={
-                        **policy_decision.reasoning,
-                        "guard_forced_memory_retrieval": True,
-                    },
-                )
             ctx.artifacts["policy_decision"] = policy_decision
             ctx.artifacts["decision_object"] = decide_from_evidence(
                 intent=resolved_intent,
