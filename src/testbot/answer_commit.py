@@ -14,6 +14,7 @@ class CommittedTurnState:
     commit_stage: str
     rendered_text: str
     pending_repair_state: dict[str, object]
+    pending_ingestion_request_id: str
     resolved_obligations: list[str]
     remaining_obligations: list[str]
     confirmed_user_facts: list[str]
@@ -92,6 +93,7 @@ def commit_answer_stage(
             "commit_stage": commit_stage_id,
             "pipeline_state_snapshot": "recorded",
             "pending_repair_state": assembly.pending_repair_state,
+            "pending_ingestion_request_id": assembly.pending_ingestion_request_id,
             "resolved_obligations": list(assembly.resolved_obligations),
             "remaining_obligations": list(assembly.remaining_obligations),
             "confirmed_user_facts": committed_facts,
@@ -103,6 +105,7 @@ def commit_answer_stage(
         commit_stage=commit_stage_id,
         rendered_text=rendered.rendered_text,
         pending_repair_state=dict(assembly.pending_repair_state),
+        pending_ingestion_request_id=assembly.pending_ingestion_request_id,
         resolved_obligations=list(assembly.resolved_obligations),
         remaining_obligations=list(assembly.remaining_obligations),
         confirmed_user_facts=committed_facts,

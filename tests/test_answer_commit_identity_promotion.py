@@ -20,6 +20,7 @@ def _base_assembly(*, confirmed_user_facts: list[str]) -> AnswerCandidate:
             "source_evidence": 0,
         },
         pending_repair_state={"required": False, "reason": "none"},
+        pending_ingestion_request_id="",
         resolved_obligations=["repair_state_not_required"],
         remaining_obligations=[],
         confirmed_user_facts=confirmed_user_facts,

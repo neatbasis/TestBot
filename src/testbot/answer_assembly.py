@@ -20,12 +20,18 @@ class AnswerCandidate:
     rationale: str
     evidence_counts: dict[str, int]
     pending_repair_state: dict[str, object]
+    pending_ingestion_request_id: str
     resolved_obligations: list[str]
     remaining_obligations: list[str]
     confirmed_user_facts: list[str]
 
 
-def assemble_answer_contract(*, decision: DecisionObject, evidence_bundle: EvidenceBundle) -> AnswerCandidate:
+def assemble_answer_contract(
+    *,
+    decision: DecisionObject,
+    evidence_bundle: EvidenceBundle,
+    pending_ingestion_request_id: str = "",
+) -> AnswerCandidate:
     evidence_counts = {
         "structured_facts": len(evidence_bundle.structured_facts),
         "episodic_utterances": len(evidence_bundle.episodic_utterances),
@@ -61,6 +67,7 @@ def assemble_answer_contract(*, decision: DecisionObject, evidence_bundle: Evide
             "required": pending_repair_required,
             "reason": "decision_requires_repair" if pending_repair_required else "none",
         },
+        pending_ingestion_request_id=(pending_ingestion_request_id if pending_repair_required else ""),
         resolved_obligations=resolved_obligations,
         remaining_obligations=remaining_obligations,
         confirmed_user_facts=confirmed_user_facts,

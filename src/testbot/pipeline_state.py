@@ -282,6 +282,20 @@ class RenderOutputArtifact(StageArtifact):
 class CommitReceiptArtifact(StageArtifact):
     committed: bool = False
     commit_id: str = ""
+    pending_ingestion_request_id: str = ""
+
+    @classmethod
+    def from_mapping(cls, payload: Mapping[str, Any] | None) -> CommitReceiptArtifact:
+        payload = payload or {}
+        if isinstance(payload, cls):
+            return payload
+        known = {
+            "committed": bool(payload.get("committed", False)),
+            "commit_id": str(payload.get("commit_id", "") or ""),
+            "pending_ingestion_request_id": str(payload.get("pending_ingestion_request_id", "") or ""),
+        }
+        extra = {k: v for k, v in payload.items() if k not in known}
+        return cls(extra=extra, **known)
 
     def _raw_dict(self) -> dict[str, Any]:
         data = dict(self.extra)
@@ -289,6 +303,8 @@ class CommitReceiptArtifact(StageArtifact):
             data["committed"] = self.committed
         if self.commit_id:
             data["commit_id"] = self.commit_id
+        if self.pending_ingestion_request_id:
+            data["pending_ingestion_request_id"] = self.pending_ingestion_request_id
         return data
 
 

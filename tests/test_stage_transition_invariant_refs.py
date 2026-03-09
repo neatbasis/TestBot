@@ -214,6 +214,7 @@ def test_answer_validate_pre_accepts_typed_answer_assembly_contract_without_stat
         rationale="has evidence",
         evidence_counts={"structured_facts": 1},
         pending_repair_state={"required": False, "reason": "none"},
+        pending_ingestion_request_id="",
         resolved_obligations=["repair_state_not_required"],
         remaining_obligations=[],
         confirmed_user_facts=["You said hi yesterday."],
