@@ -31,6 +31,16 @@ def _extract_synced_block(text: str, *, path: Path) -> str:
     if not block:
         raise SyncError(f"Synced block is empty in {path}")
 
+    if "## Response-policy invariants" not in block:
+        raise SyncError(
+            f"Synced block in {path} must contain the '## Response-policy invariants' section heading"
+        )
+
+    if "## Stage transition contracts" in block:
+        raise SyncError(
+            f"Synced block in {path} must be scoped to response-policy invariants only"
+        )
+
     return block
 
 

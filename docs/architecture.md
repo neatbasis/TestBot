@@ -195,7 +195,7 @@ Confidence policy thresholds (`top_final_score_min`, margin, ambiguity override)
 | Citation contract is enforced before final output is returned. | pass | 2026-03-06 | `python -m behave` | `docs/qa/feature-status-report.md` |
 | Non-trivial answers always include provenance metadata with allowed enum values. | pending | 2026-03-06 | `python -m pytest -m "not live_smoke"` | `artifacts/feature-status-summary.json` |
 
-Maintenance note: Refresh `Current status`, `Last verified`, and evidence links whenever runtime behavior (`src/testbot/`) or directive/invariant policy files (`docs/directives/`, `docs/invariants.md`) change.
+Maintenance note: Refresh `Current status`, `Last verified`, and evidence links whenever runtime behavior (`src/testbot/`) or directive/invariant policy files (`docs/directives/`, `docs/invariants.md`, `docs/invariants/`) change.
 
 
 ## Source acquisition lifecycle and trust boundaries

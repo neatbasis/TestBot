@@ -48,3 +48,9 @@ This matrix is a synchronized governance artifact. Any stage boundary, rollout c
 2. `docs/qa/feature-status.yaml`
 
 Do not merge canonical pipeline changes when these three artifacts disagree.
+
+## Invariant ontology migration status
+
+- **Current state (phase 1):** this matrix retains existing `INV-*` linkage language for continuity with runtime logs and historical governance artifacts.
+- **Canonical ontology split:** response-policy invariants are canonical in `docs/invariants/answer-policy.md`; pipeline semantics are canonical in `docs/invariants/pipeline.md`.
+- **Deferred follow-up:** migrating matrix linkage language from mixed `INV-*` semantics to ontology-specific pipeline linkage is tracked as follow-on ISSUE-0013 work and is intentionally not completed in this change set.

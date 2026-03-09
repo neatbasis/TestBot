@@ -31,3 +31,47 @@ def test_render_mirror_replaces_only_synced_region() -> None:
     rendered = sync_mod._render_mirror(mirror_text, "new block", path=Path("mirror.md"))
 
     assert rendered == """intro\n<!-- BEGIN_SYNCED_INVARIANTS_TABLE_AND_SCENARIO_MAP -->\n\nnew block\n\n<!-- END_SYNCED_INVARIANTS_TABLE_AND_SCENARIO_MAP -->\noutro\n"""
+
+
+def test_extract_synced_block_rejects_mixed_stage_semantics_block() -> None:
+    mixed = """header
+<!-- BEGIN_SYNCED_INVARIANTS_TABLE_AND_SCENARIO_MAP -->
+
+## Response-policy invariants
+
+| h |
+
+## Stage transition contracts
+
+| Stage |
+
+<!-- END_SYNCED_INVARIANTS_TABLE_AND_SCENARIO_MAP -->
+footer
+"""
+
+    try:
+        sync_mod._extract_synced_block(mixed, path=Path("dummy.md"))
+    except sync_mod.SyncError as exc:
+        assert "response-policy invariants only" in str(exc)
+    else:
+        raise AssertionError("Expected SyncError for mixed ontology sync block")
+
+
+def test_extract_synced_block_requires_response_policy_heading() -> None:
+    missing_heading = """header
+<!-- BEGIN_SYNCED_INVARIANTS_TABLE_AND_SCENARIO_MAP -->
+
+## Invariants
+
+| h |
+
+<!-- END_SYNCED_INVARIANTS_TABLE_AND_SCENARIO_MAP -->
+footer
+"""
+
+    try:
+        sync_mod._extract_synced_block(missing_heading, path=Path("dummy.md"))
+    except sync_mod.SyncError as exc:
+        assert "Response-policy invariants" in str(exc)
+    else:
+        raise AssertionError("Expected SyncError when response-policy heading is missing")
