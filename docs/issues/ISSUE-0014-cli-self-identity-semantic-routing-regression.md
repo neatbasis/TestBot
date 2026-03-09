@@ -218,3 +218,13 @@ Key observed indicators in evidence include:
 7. D6 Implement & Validate: execute required validation gates and produce AC traceability evidence.
 8. D7 Prevent Recurrence: add regression/invariant coverage and governance updates if impacted.
 9. D8 Closure & Recognition: close only after ISSUE-0014 AC completion + gate evidence; publish lessons learned and Sprint 6 postmortem summary.
+
+- 2026-03-09: Added stage-authority regression evidence to prevent premature policy mutation before `policy.decide` in canonical flow, reducing identity-routing starvation risk caused by early direct-answer authority.
+  - Runtime authority update: `intent.resolve` emits retrieval requirement + context rationale only; authoritative `policy_decision`/`decision_object` are written in `policy.decide`.
+  - Deterministic regression assertions:
+    - `tests/test_pipeline_semantic_contracts.py::test_policy_authority_is_not_written_before_policy_decide_stage`
+    - `tests/test_canonical_turn_orchestrator.py::test_orchestrator_stabilizes_before_route_authority_assignment`
+  - Deterministic proof commands:
+    - `python -m pytest tests/test_pipeline_semantic_contracts.py::test_policy_authority_is_not_written_before_policy_decide_stage`
+    - `python -m pytest tests/test_canonical_turn_orchestrator.py::test_orchestrator_stabilizes_before_route_authority_assignment`
+    - `python -m pytest tests/test_pipeline_semantic_contracts.py tests/test_canonical_turn_orchestrator.py`
