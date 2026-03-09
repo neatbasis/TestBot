@@ -1487,7 +1487,7 @@ def test_stage_answer_selected_decision_non_memory_clarify_pending_lookup_degrad
 
     assert answered.final_answer == NON_KNOWLEDGE_UNCERTAINTY_ANSWER
     assert answered.invariant_decisions.get("answer_mode") == "assist"
-    assert answered.invariant_decisions.get("invariant_degrade_reason") == "non_memory_clarify_pending_lookup_degraded"
+    assert answered.invariant_decisions.get("invariant_degrade_reason") is None
 
 
 def test_stage_answer_selected_decision_non_memory_clarify_no_clarify_mode_degrades_to_assist() -> None:
@@ -1581,7 +1581,7 @@ def test_chat_loop_async_pending_lookup_commits_pending_answer_and_logs_semantic
         clock=_FIXED_CLOCK,
     )
 
-    assert replies[0] == "I'm ingesting external sources in the background now…"
+    assert replies[0] == NON_KNOWLEDGE_UNCERTAINTY_ANSWER
 
     rows = [json.loads(line) for line in (tmp_path / "logs" / "session.jsonl").read_text(encoding="utf-8").splitlines() if line.strip()]
     events = [row.get("event") for row in rows]

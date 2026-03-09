@@ -16,6 +16,7 @@ NON_KNOWLEDGE_UNCERTAINTY_ANSWER = (
     "I'm not fully confident in a reliable answer right now. "
     "I can offer a best-effort response and suggest a quick way to verify it."
 )
+BACKGROUND_INGESTION_PROGRESS_ANSWER = "I'm ingesting external sources in the background now…"
 ASSIST_ALTERNATIVES_ANSWER = (
     "I don't have enough reliable memory to answer directly. "
     "I can either help you reconstruct the timeline from what you remember, "
@@ -121,8 +122,11 @@ def _has_allowed_provenance_types(state: PipelineState) -> bool:
 def _follows_approved_fallback_path(state: PipelineState) -> bool:
     answer_mode = state.invariant_decisions.get("answer_mode")
     final_answer = (state.final_answer or "").strip()
+    pending_lookup = bool(state.confidence_decision.get("background_ingestion_in_progress", False))
 
     if answer_mode == "dont-know":
+        if pending_lookup:
+            return final_answer == BACKGROUND_INGESTION_PROGRESS_ANSWER
         return final_answer == NON_KNOWLEDGE_UNCERTAINTY_ANSWER
     if answer_mode in {"clarify", "assist"}:
         return final_answer not in {"", FALLBACK_ANSWER, DENY_ANSWER}
@@ -180,16 +184,23 @@ def _has_explicit_unknowing_uncertainty_fallback(state: PipelineState) -> bool:
         return True
 
     final_answer = (state.final_answer or "").strip()
+    if bool(state.confidence_decision.get("background_ingestion_in_progress", False)):
+        return final_answer in {FALLBACK_ANSWER, NON_KNOWLEDGE_UNCERTAINTY_ANSWER, BACKGROUND_INGESTION_PROGRESS_ANSWER}
     return final_answer in {FALLBACK_ANSWER, NON_KNOWLEDGE_UNCERTAINTY_ANSWER}
 
 
 def _is_gk_contract_safe_fallback(state: PipelineState) -> bool:
     answer_mode = str(state.invariant_decisions.get("answer_mode", ""))
     final_answer = (state.final_answer or "").strip()
+    pending_lookup = bool(state.confidence_decision.get("background_ingestion_in_progress", False))
 
     if answer_mode == "dont-know":
+        if pending_lookup:
+            return final_answer == BACKGROUND_INGESTION_PROGRESS_ANSWER
         return final_answer in {FALLBACK_ANSWER, NON_KNOWLEDGE_UNCERTAINTY_ANSWER}
     if answer_mode == "assist":
+        if pending_lookup:
+            return final_answer == BACKGROUND_INGESTION_PROGRESS_ANSWER
         return final_answer == ASSIST_ALTERNATIVES_ANSWER
     return False
 
