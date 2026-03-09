@@ -122,7 +122,7 @@ Review scope was limited to open issues (`open` or `in_progress`) and issue-gove
 - Last reviewed: 2026-03-09
 - Next review due: 2026-03-16
 - KPI evidence: docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md
-- Decision notes: AC6/AC7 governance and deterministic evidence are present with canonical gate pass under warning-mode KPI policy; ISSUE-0015 remains open/red until reproducible CLI identity-continuity closure-proof traces are attached and dependency language is synchronized across ISSUE-0013/0014/0015 and RED_TAG.
+- Decision notes: AC6/AC7 evidence obligations are satisfied (including required CLI identity-continuity traces), and dependency language is synchronized across ISSUE-0013/0014/0015/RED_TAG; ISSUE-0015 remains open/red only for governance close-order sequencing.
 
 - 2026-03-08: Opened from open-issue review focused on canonical pipeline streams, with ISSUE-0014 assessed as strong runtime narrative but incomplete quality/governance control artifact.
 
@@ -173,9 +173,9 @@ Review scope was limited to open issues (`open` or `in_progress`) and issue-gove
 
 ### Open blockers (red-tag)
 
-- **AC6:** **in_progress (evidence-linked, unresolved)** — governance linkage evidence is attached in ISSUE-0014/ISSUE-0013 using the 2026-03-09 deterministic bundle; dependency remains open pending synchronized lifecycle language across ISSUE-0013/0014/0015/RED_TAG and attachment of the three closure-proof CLI trace artifacts.
-- **AC7:** **in_progress (partial pass)** — targeted deterministic regression coverage passes and canonical all-green now reports pass under warning-mode KPI policy; dependency remains open pending closure-proof CLI traces for identity semantic preservation, retrieval activation on self-reference recall, and confirmed identity fact promotion at commit, plus cross-artifact lifecycle alignment.
-- **AC9 (dependency gate):** **in_progress (unsatisfied)** — dependency evaluation was executed and documented, but remains unsatisfied until AC-0013-11 exit conditions fully pass and no linked artifact uses resolved-language prematurely.
+- **AC6:** **satisfied** — governance linkage evidence is attached in ISSUE-0014/ISSUE-0013 and lifecycle dependency language is synchronized across ISSUE-0013/0014/0015/RED_TAG using a consistent "evidence satisfied, closure decision pending" posture.
+- **AC7:** **satisfied** — targeted deterministic regression coverage passes, canonical all-green reports pass under warning-mode KPI policy, and closure-proof CLI traces are attached for identity semantic preservation, retrieval activation on self-reference recall, and confirmed identity fact promotion at commit.
+- **AC9 (dependency gate):** **in_progress (evidence satisfied; closure sequencing pending)** — dependency evaluation is executed with AC-0013-11 behavioral evidence satisfied; gate remains in progress only to preserve coordinated close-order governance across linked issues.
 
 ### Exit conditions for ISSUE-0015 closure (dependency on ISSUE-0013 / ISSUE-0014)
 
@@ -183,7 +183,7 @@ ISSUE-0015 remains `Status: open` and `Severity: red` until all dependency condi
 
 1. **ISSUE-0014 behavioral exit condition met:** deterministic evidence confirms identity declaration semantic preservation, retrieval activation on immediate self-reference recall, and confirmed identity fact promotion at commit.
 2. **ISSUE-0013 governance exit condition met:** AC-0013-11 is marked complete with linked evidence proving ISSUE-0014 Phase 1 behavior is passing in deterministic tests plus reproducible CLI traces.
-3. **Cross-artifact consistency exit condition met:** `docs/issues/RED_TAG.md` plus issue files (`ISSUE-0013`, `ISSUE-0014`, `ISSUE-0015`) explicitly reflect the same lifecycle interpretation (open dependency vs resolved dependency).
+3. **Cross-artifact consistency exit condition met:** `docs/issues/RED_TAG.md` plus issue files (`ISSUE-0013`, `ISSUE-0014`, `ISSUE-0015`) explicitly reflect the same lifecycle interpretation ("evidence satisfied, closure decision pending" vs fully closed).
 
 ## 2026-03-09 Dependency Evaluation Update (AC6/AC7/AC9)
 
@@ -193,11 +193,14 @@ ISSUE-0015 remains `Status: open` and `Severity: red` until all dependency condi
   - `docs/issues/evidence/2026-03-09-issue-0014-0013-focused-pytests.log` (**pass**)
   - `docs/issues/evidence/2026-03-09-issue-0014-0013-all-green-gate.log` (**pass with warning mode**)
   - `artifacts/all-green-gate-summary.json` (**passed** summary; warning on optional `qa_validate_kpi_guardrails`)
+  - `docs/issues/evidence/2026-03-09-issue-0014-cli-identity-semantic-preservation-trace.md` (**pass**)
+  - `docs/issues/evidence/2026-03-09-issue-0014-cli-self-reference-retrieval-activation-trace.md` (**pass**)
+  - `docs/issues/evidence/2026-03-09-issue-0014-cli-confirmed-fact-promotion-trace.md` (**pass**)
 - Closure interpretation:
-  - AC6: governance linkage hardening is present and evidenced, but not closable until dependency lifecycle text is synchronized.
-  - AC7: deterministic coverage and gate posture are green under current warning policy; criterion remains open for dependency-governed closure semantics.
-  - AC9: dependency gate remains open because reproducible CLI identity-continuity closure-proof traces are not yet attached for the three required proof points (identity semantic preservation, retrieval activation on self-reference recall, confirmed identity fact promotion at commit), and cross-artifact lifecycle wording must remain synchronized across ISSUE-0013/0014/0015 and RED_TAG.
-- Result: ISSUE-0015 stays `Status: open`, `Severity: red`.
+  - AC6: satisfied with synchronized dependency-language governance references across ISSUE-0013/0014/0015/RED_TAG.
+  - AC7: satisfied with deterministic coverage and all three required reproducible CLI identity-continuity traces attached.
+  - AC9: evidence-satisfied and retained in-progress only for close-order governance sequencing across linked issues.
+- Result: ISSUE-0015 stays `Status: open`, `Severity: red` until explicit close-order governance action is taken.
 
 
 ## 2026-03-09 Governance validator rerun

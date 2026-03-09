@@ -182,6 +182,12 @@ Key observed indicators in evidence include:
   - Expected: regression tests for rewrite/intent/retrieval/commit continuity pass.
 - Command: `python scripts/all_green_gate.py --json-output artifacts/all-green-gate-summary.json`
   - Expected: gate reflects resolved regression without masking unrelated failures.
+- Command: `python -m pytest -vv tests/test_pipeline_semantic_contracts.py::test_resolve_turn_intent_matches_canonical_intent_resolution_for_identity_followup`
+  - Expected: reproducible CLI trace artifact for semantic-preservation criterion is generated.
+- Command: `python -m pytest -vv tests/test_pipeline_semantic_contracts.py::test_policy_authority_is_not_written_before_policy_decide_stage`
+  - Expected: reproducible CLI trace artifact for retrieval-activation criterion is generated.
+- Command: `python -m pytest -vv tests/test_answer_commit_identity_promotion.py::test_promoted_identity_fact_is_available_as_next_turn_continuity_anchor`
+  - Expected: reproducible CLI trace artifact for commit-promotion criterion is generated.
 - Command: `python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main`
   - Expected: governance cross-links validate for ISSUE-0013/0014/0015 dependency chain.
 - Command: `python scripts/validate_issues.py --all-issue-files --base-ref origin/main`
@@ -189,7 +195,7 @@ Key observed indicators in evidence include:
 
 ### Closure-proof evidence references (identity continuity dependency)
 
-Deterministic suite evidence is already attached, but closure remains dependency-gated until reproducible CLI identity-continuity traces are attached for each required proof point:
+Deterministic suite evidence is attached and reproducible CLI identity-continuity traces are now attached for each required proof point:
 
 1. **Identity semantic preservation (rewrite/intent contract).**
    - Required trace artifact path: `docs/issues/evidence/2026-03-09-issue-0014-cli-identity-semantic-preservation-trace.md`.
@@ -208,7 +214,14 @@ Deterministic suite evidence is already attached, but closure remains dependency
      1. Repeat the same deterministic command set above.
      2. Capture commit-stage receipt trace for the repro session proving confirmed identity fact promotion (`confirmed_user_facts` contains normalized user identity fact) and next-turn recall consumption.
 
-Status: **open dependency blocker** — trace artifact files above are not yet attached; until attached and validated, ISSUE-0014 remains open/red and ISSUE-0013 AC-0013-11 remains partial.
+### Evidence-to-acceptance mapping (ISSUE-0014 checklist)
+
+- `docs/issues/evidence/2026-03-09-issue-0014-cli-identity-semantic-preservation-trace.md` -> **AC2, AC3, AC7** (rewrite/intent semantic preservation proof for identity follow-up parity).
+- `docs/issues/evidence/2026-03-09-issue-0014-cli-self-reference-retrieval-activation-trace.md` -> **AC3, AC4, AC7** (self-reference turns remain in retrieval-enabled memory branch, not direct-answer bypass).
+- `docs/issues/evidence/2026-03-09-issue-0014-cli-confirmed-fact-promotion-trace.md` -> **AC5, AC7** (commit receipt confirmed identity fact promotion and next-turn continuity-anchor consumption).
+- `docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md` (+ linked logs) -> **AC1, AC6, AC8** (deterministic BDD/pytest/gate evidence and ISSUE-0013 dependency linkage).
+
+Status: **dependency evidence attached; lifecycle still open/red pending governance closure decision** — required CLI trace artifact files are attached and map directly to acceptance criteria, so ISSUE-0013 AC-0013-11 dependency evidence is now satisfiable subject to synchronized governance state updates across ISSUE-0013/0014/0015/RED_TAG.
 
 ## Phase 1 Behavioral Exit Evidence (2026-03-09)
 
@@ -217,7 +230,7 @@ Status: **open dependency blocker** — trace artifact files above are not yet a
 - Focused pytest result (**pass**): [`2026-03-09-issue-0014-0013-focused-pytests.log`](evidence/2026-03-09-issue-0014-0013-focused-pytests.log)
 - Canonical all-green gate result (**pass with warning mode**): [`2026-03-09-issue-0014-0013-all-green-gate.log`](evidence/2026-03-09-issue-0014-0013-all-green-gate.log), [`artifacts/all-green-gate-summary.json`](../../artifacts/all-green-gate-summary.json)
 
-Phase 1 status: **partially satisfied**. Targeted deterministic checks pass and the canonical gate now reports `status=passed` with warning-mode KPI guardrail violations (non-blocking by current gate policy). Dependency state remains **open** until reproducible CLI identity-continuity closure-proof traces are attached for identity semantic preservation, retrieval activation on self-reference recall, and confirmed identity fact promotion at commit.
+Phase 1 status: **behavioral evidence satisfied; governance closure pending**. Targeted deterministic checks pass, canonical gate reports `status=passed` with warning-mode KPI guardrail handling (non-blocking by current gate policy), and all three reproducible CLI identity-continuity closure-proof traces are now attached for identity semantic preservation, retrieval activation on self-reference recall, and confirmed identity fact promotion at commit.
 
 Governance validator rerun (2026-03-09):
 - `python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main` -> **pass** (base-ref fallback `origin/main` -> `HEAD~1`).
@@ -232,7 +245,7 @@ Governance validator rerun (2026-03-09):
 - Last reviewed: 2026-03-09
 - Next review due: 2026-03-16
 - KPI evidence: docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md
-- Decision notes: Phase 1 deterministic suites are passing and canonical gate is passing under warning-mode KPI policy; issue remains open/red until closure-proof CLI identity-continuity traces are attached for identity semantic preservation, retrieval activation on self-reference recall, and confirmed identity fact promotion at commit.
+- Decision notes: Phase 1 deterministic suites and required CLI closure-proof traces are attached with AC mapping complete; issue remains open/red only for synchronized dependency-gate governance closure interpretation across ISSUE-0013/0014/0015/RED_TAG.
 
 - 2026-03-08: Opened from production-style CLI session evidence showing stabilization progress with persistent semantic routing and fact-promotion defects in identity continuity turns.
 
@@ -291,5 +304,5 @@ Governance validator rerun (2026-03-09):
 - 2026-03-09: Phase 1 deterministic verification set for ISSUE-0014/0013 re-executed and evidence-linked with refreshed outcomes.
   - Pass evidence: `python -m behave features/memory_recall.feature features/intent_grounding.feature` and focused regression suites (`tests/test_pipeline_semantic_contracts.py`, `tests/test_canonical_turn_orchestrator.py`, `tests/test_intent_router.py`).
   - Gate evidence: canonical gate now reports overall `passed` with a KPI guardrail warning (`qa_validate_kpi_guardrails` in optional warning mode), so blocking product/safety/qa checks are green under current policy.
-  - Dependency-state language: ISSUE-0014 remains open as a governed dependency until ISSUE-0013 AC-0013-11 and ISSUE-0015 AC6/AC7/AC9 lifecycle text is synchronized to closure criteria.
+  - Dependency-state language: ISSUE-0014 dependency evidence is satisfied and lifecycle language is synchronized to "evidence satisfied, closure decision pending" across ISSUE-0013/0014/0015/RED_TAG.
   - Evidence artifacts: `docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md`, `docs/issues/evidence/2026-03-09-issue-0014-0013-behave.log`, `docs/issues/evidence/2026-03-09-issue-0014-0013-focused-pytests.log`, `docs/issues/evidence/2026-03-09-issue-0014-0013-all-green-gate.log`, `artifacts/all-green-gate-summary.json`.
