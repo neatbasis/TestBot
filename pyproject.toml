@@ -46,4 +46,5 @@ mypy_path = "src"
 [tool.pytest.ini_options]
 markers = [
   "live_smoke: optional end-to-end smoke tests that require reachable live services",
+  "non_contract: fast, heavily mocked regression checks that are not authoritative behavior contracts",
 ]
