@@ -258,3 +258,12 @@ Trust boundaries:
 - **Tiered trust is explicit metadata**, not an implicit score; downstream stages can reason about `trust_tier` directly.
 - **Source evidence is attributable** through `used_source_evidence_refs` and `source_evidence_attribution`, separate from chat-memory refs.
 - **Deterministic fallback remains preserved**: if source evidence is unavailable, retrieval behavior degrades to memory-card-only ranking without non-deterministic branching.
+
+### Async source-ingestion continuation (opt-in)
+
+Set `SOURCE_INGEST_ASYNC_CONTINUATION=1` to enable background source ingestion when retrieval is required but returns no candidates.
+
+- Runtime uses a single-worker background executor plus a lock to prevent duplicate concurrent ingestion jobs.
+- Each turn polls background ingestion status and records continuation artifacts while work is in progress.
+- `policy.decide` sets `repair_required=True` during background ingestion, preserving continuation-class decision behavior under existing invariants.
+- `answer.render` returns an explicit progress response while ingestion is active: “I’m ingesting external sources in the background now…”.

@@ -96,6 +96,8 @@ def _patch_main_dependencies(
         "memory_store_mode": "inmemory",
         "elasticsearch_url": "http://localhost:9200",
         "elasticsearch_index": "testbot_memory_cards",
+        "source_ingest_background_future": None,
+        "source_ingest_background_in_progress": False,
     }
 
     if runtime_overrides:
@@ -593,3 +595,58 @@ def test_resolve_turn_intent_non_affirmation_does_not_preserve_prior_intent() ->
 
     assert classified.value == "control"
     assert resolved.value == "control"
+
+
+def test_execute_source_ingestion_returns_failed_payload(monkeypatch) -> None:
+    class _FailingIngestor:
+        def __init__(self, *args, **kwargs):
+            del args, kwargs
+
+        def ingest_once(self, *, cursor, limit):
+            del cursor, limit
+            raise RuntimeError("boom")
+
+    monkeypatch.setattr(runtime, "SourceIngestor", _FailingIngestor)
+    monkeypatch.setattr(runtime, "_build_source_connector", lambda _runtime: SimpleNamespace(source_type="fixture"))
+
+    result = runtime._execute_source_ingestion(
+        runtime={
+            "source_ingest_enabled": True,
+            "source_connector_type": "fixture",
+            "source_ingest_limit": 5,
+            "source_ingest_cursor": "12",
+        },
+        store=object(),
+    )
+
+    assert result["ok"] is False
+    assert result["status"] == "failed"
+    assert result["payload"]["exception_class"] == "RuntimeError"
+
+
+def test_background_source_ingestion_start_and_poll_completion(monkeypatch) -> None:
+    logs: list[tuple[str, dict[str, object]]] = []
+
+    def _fake_execute(*, runtime: dict[str, object], store, background: bool = False):
+        del runtime, store
+        return {"ok": True, "status": "completed", "payload": {"background": background, "stored_count": 2}}
+
+    monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: logs.append((event, payload)))
+    monkeypatch.setattr(runtime, "_execute_source_ingestion", _fake_execute)
+
+    rt = {"source_ingest_background_future": None, "source_ingest_background_in_progress": False}
+    started = runtime._start_background_source_ingestion(runtime=rt, store=object())
+
+    assert started["started"] is True
+    assert logs[0][0] == "source_ingest_background_started"
+
+    while True:
+        polled = runtime._poll_background_source_ingestion(runtime=rt)
+        if polled and polled.get("status") != "running":
+            break
+
+    assert polled is not None
+    assert polled["ok"] is True
+    assert rt["source_ingest_background_in_progress"] is False
+    assert logs[-1][0] == "source_ingest_completed"
+    assert logs[-1][1]["background"] is True

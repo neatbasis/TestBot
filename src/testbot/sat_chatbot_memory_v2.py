@@ -7,6 +7,8 @@ import os
 import re
 import sys
 import uuid
+from concurrent.futures import Future, ThreadPoolExecutor
+from threading import Lock
 from urllib.error import URLError
 from urllib.parse import urljoin
 from urllib.request import urlopen
@@ -154,6 +156,96 @@ GENERAL_KNOWLEDGE_SUPPORT_MIN = 2
 ALIGNMENT_OBJECTIVE_VERSION = "2026-03-05.v3"
 SESSION_LOG_SCHEMA_VERSION = 2
 _LOGGER = logging.getLogger(__name__)
+
+_BACKGROUND_SOURCE_INGEST_EXECUTOR = ThreadPoolExecutor(max_workers=1, thread_name_prefix="source-ingest")
+_BACKGROUND_SOURCE_INGEST_LOCK = Lock()
+
+
+def _execute_source_ingestion(*, runtime: dict[str, object], store: MemoryStore, background: bool = False) -> dict[str, object]:
+    connector = _build_source_connector(runtime)
+    if connector is None:
+        return {"ok": False, "status": "skipped", "background": background}
+
+    ingestor = SourceIngestor(connector=connector, memory_store=store)
+    cursor = str(runtime.get("source_ingest_cursor")) if runtime.get("source_ingest_cursor") is not None else None
+    limit = int(runtime.get("source_ingest_limit", 50))
+    if cursor is not None and not cursor.isdigit():
+        append_session_log(
+            "source_ingest_cursor_invalid",
+            {
+                "cursor": cursor,
+                "fallback_cursor": None,
+                "background": background,
+            },
+        )
+        cursor = None
+
+    try:
+        result = ingestor.ingest_once(
+            cursor=cursor,
+            limit=limit,
+        )
+    except Exception as exc:
+        payload = {
+            "connector_type": str(runtime.get("source_connector_type", "")).strip().lower(),
+            "source_type": connector.source_type,
+            "cursor": cursor,
+            "limit": limit,
+            "exception_class": exc.__class__.__name__,
+            "exception_message": str(exc),
+            "background": background,
+        }
+        return {"ok": False, "status": "failed", "payload": payload}
+
+    payload = {
+        "source_type": connector.source_type,
+        "fetched_count": result.fetched_count,
+        "stored_count": result.stored_count,
+        "next_cursor": result.next_cursor,
+        "memory_doc_ids": [str(doc.id or "") for doc in result.memory_documents],
+        "evidence_doc_ids": [str(doc.id or "") for doc in result.evidence_documents],
+        "background": background,
+    }
+    return {"ok": True, "status": "completed", "payload": payload}
+
+
+def _start_background_source_ingestion(*, runtime: dict[str, object], store: MemoryStore) -> dict[str, object]:
+    with _BACKGROUND_SOURCE_INGEST_LOCK:
+        existing_future = runtime.get("source_ingest_background_future")
+        if isinstance(existing_future, Future) and not existing_future.done():
+            return {"started": False, "already_running": True}
+
+        future = _BACKGROUND_SOURCE_INGEST_EXECUTOR.submit(
+            _execute_source_ingestion,
+            runtime=runtime,
+            store=store,
+            background=True,
+        )
+        runtime["source_ingest_background_future"] = future
+        runtime["source_ingest_background_in_progress"] = True
+        append_session_log("source_ingest_background_started", {"background": True})
+        return {"started": True, "already_running": False}
+
+
+def _poll_background_source_ingestion(*, runtime: dict[str, object]) -> dict[str, object] | None:
+    with _BACKGROUND_SOURCE_INGEST_LOCK:
+        future = runtime.get("source_ingest_background_future")
+        if not isinstance(future, Future):
+            runtime["source_ingest_background_in_progress"] = False
+            return None
+        if not future.done():
+            runtime["source_ingest_background_in_progress"] = True
+            return {"status": "running"}
+
+        runtime["source_ingest_background_in_progress"] = False
+        runtime["source_ingest_background_future"] = None
+
+    result = future.result()
+    if result.get("ok"):
+        append_session_log("source_ingest_completed", dict(result["payload"]))
+    elif result.get("status") == "failed":
+        append_session_log("source_ingest_failed", dict(result["payload"]))
+    return result
 INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD = 0.75
 RETRIEVAL_SCORE_THRESHOLD = 0.0
 
@@ -386,6 +478,9 @@ def _read_runtime_env() -> dict[str, object]:
         "source_wikipedia_topic": os.getenv("SOURCE_WIKIPEDIA_TOPIC", ""),
         "source_wikipedia_language": os.getenv("SOURCE_WIKIPEDIA_LANGUAGE", "en"),
         "source_arxiv_query": os.getenv("SOURCE_ARXIV_QUERY", ""),
+        "source_ingest_async_continuation": os.getenv("SOURCE_INGEST_ASYNC_CONTINUATION", "0") == "1",
+        "source_ingest_background_future": None,
+        "source_ingest_background_in_progress": False,
         "debug_verbose": debug_verbose,
     }
 
@@ -498,54 +593,16 @@ def _build_source_connector(runtime: dict[str, object]) -> SourceConnector | Non
 
 
 def _run_source_ingestion(*, runtime: dict[str, object], store: MemoryStore) -> None:
-    connector = _build_source_connector(runtime)
-    if connector is None:
+    result = _execute_source_ingestion(runtime=runtime, store=store, background=False)
+    if result.get("ok"):
+        append_session_log("source_ingest_completed", dict(result["payload"]))
         return
-    ingestor = SourceIngestor(connector=connector, memory_store=store)
-    cursor = str(runtime.get("source_ingest_cursor")) if runtime.get("source_ingest_cursor") is not None else None
-    limit = int(runtime.get("source_ingest_limit", 50))
-    if cursor is not None and not cursor.isdigit():
-        append_session_log(
-            "source_ingest_cursor_invalid",
-            {
-                "cursor": cursor,
-                "fallback_cursor": None,
-            },
-        )
-        cursor = None
-    try:
-        result = ingestor.ingest_once(
-            cursor=cursor,
-            limit=limit,
-        )
-    except Exception as exc:
-        append_session_log(
-            "source_ingest_failed",
-            {
-                "connector_type": str(runtime.get("source_connector_type", "")).strip().lower(),
-                "source_type": connector.source_type,
-                "cursor": cursor,
-                "limit": limit,
-                "exception_class": exc.__class__.__name__,
-                "exception_message": str(exc),
-            },
-        )
+    if result.get("status") == "failed":
+        append_session_log("source_ingest_failed", dict(result["payload"]))
         print(
             "Warning: source ingestion failed at startup; continuing without ingested source documents.",
             file=sys.stderr,
         )
-        return
-    append_session_log(
-        "source_ingest_completed",
-        {
-            "source_type": connector.source_type,
-            "fetched_count": result.fetched_count,
-            "stored_count": result.stored_count,
-            "next_cursor": result.next_cursor,
-            "memory_doc_ids": [str(doc.id or "") for doc in result.memory_documents],
-            "evidence_doc_ids": [str(doc.id or "") for doc in result.evidence_documents],
-        },
-    )
 
 def _print_startup_status(*, snapshot: CapabilitySnapshot) -> None:
     runtime = snapshot.runtime
@@ -2826,6 +2883,7 @@ def evaluate_alignment_decision(
 
 def _run_canonical_turn_pipeline(
     *,
+    runtime: dict[str, object] | None = None,
     llm: ChatOllama,
     store: MemoryStore,
     state: PipelineState,
@@ -2839,6 +2897,7 @@ def _run_canonical_turn_pipeline(
     clock: Clock,
     io_channel: str = "cli",
 ) -> tuple[PipelineState, list[Document]]:
+    runtime = runtime or {}
     context = CanonicalTurnContext(
         state=state,
         artifacts={
@@ -3025,6 +3084,12 @@ def _run_canonical_turn_pipeline(
         return ctx
 
     def _retrieve_evidence(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        background_poll = _poll_background_source_ingestion(runtime=runtime)
+        background_in_progress = bool(runtime.get("source_ingest_background_in_progress", False))
+        ctx.artifacts["background_ingestion_in_progress"] = background_in_progress
+        if background_poll is not None:
+            ctx.artifacts["background_ingestion_poll"] = background_poll
+
         retrieval_requirement = ctx.artifacts.get("retrieval_requirement") or {}
         if bool(retrieval_requirement.get("requires_retrieval", False)):
             _validate_and_log_transition(validate_retrieve_evidence_pre(ctx.state))
@@ -3047,6 +3112,13 @@ def _run_canonical_turn_pipeline(
                 segment_types=retrieval_segment_types,
             )
             _validate_and_log_transition(validate_retrieve_evidence_post(ctx.state))
+            if not docs_and_scores and bool(runtime.get("source_ingest_async_continuation", False)):
+                _start_background_source_ingestion(runtime=runtime, store=store)
+                background_in_progress = bool(runtime.get("source_ingest_background_in_progress", False))
+            ctx.artifacts["background_ingestion_in_progress"] = background_in_progress
+            if background_in_progress:
+                ctx.artifacts["continuation_required"] = True
+
             ctx.artifacts["docs_and_scores"] = docs_and_scores
             considered = int(ctx.state.confidence_decision.get("retrieval_candidates_considered", len(docs_and_scores)) or 0)
             prerank_bundle = build_evidence_bundle_from_docs_and_scores(docs_and_scores)
@@ -3094,6 +3166,7 @@ def _run_canonical_turn_pipeline(
         resolved_intent = IntentType(ctx.state.resolved_intent)
         retrieval_requirement = ctx.artifacts.get("retrieval_requirement") or {}
         requires_retrieval = bool(retrieval_requirement.get("requires_retrieval", False))
+        repair_required = bool(ctx.artifacts.get("background_ingestion_in_progress", False))
         if requires_retrieval:
             _validate_and_log_transition(validate_policy_decide_pre(ctx.state))
             stabilized: StabilizedTurnState = ctx.artifacts["stabilized_turn_state"]
@@ -3126,6 +3199,7 @@ def _run_canonical_turn_pipeline(
             ctx.artifacts["decision_object"] = decide_from_evidence(
                 intent=resolved_intent,
                 retrieval=ctx.artifacts["retrieval_result"],
+                repair_required=repair_required,
             )
         else:
             policy_decision = decide_policy(
@@ -3137,6 +3211,7 @@ def _run_canonical_turn_pipeline(
             ctx.artifacts["decision_object"] = decide_from_evidence(
                 intent=resolved_intent,
                 retrieval=ctx.artifacts["retrieval_result"],
+                repair_required=repair_required,
             )
             minimal_confidence = _minimal_confidence_decision_for_direct_answer(
                 branch=ctx.artifacts["policy_decision"].retrieval_branch,
@@ -3202,7 +3277,13 @@ def _run_canonical_turn_pipeline(
 
     def _answer_render(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
         _validate_and_log_transition(validate_answer_render_pre(ctx.state, ctx.artifacts))
-        ctx.artifacts["rendered_answer"] = _answer_render_stage(ctx.artifacts["validated_answer"])
+        if bool(ctx.artifacts.get("background_ingestion_in_progress", False)):
+            ctx.artifacts["rendered_answer"] = AnswerRenderResult(
+                final_answer="I'm ingesting external sources in the background now…",
+                rendered_format="plain_text",
+            )
+        else:
+            ctx.artifacts["rendered_answer"] = _answer_render_stage(ctx.artifacts["validated_answer"])
         ctx.artifacts["answer_render_contract"] = render_answer(
             assembly=ctx.artifacts["answer_assembly_contract"],
             validation=ctx.artifacts["answer_validation_contract"],
@@ -3302,6 +3383,7 @@ def _run_canonical_turn_pipeline(
 
 def _run_chat_loop(
     *,
+    runtime: dict[str, object] | None = None,
     llm: ChatOllama,
     store: MemoryStore,
     chat_history: deque[ChatMsg],
@@ -3313,6 +3395,9 @@ def _run_chat_loop(
     send_assistant_text,
     clock: Clock,
 ) -> None:
+    runtime = runtime or {}
+    runtime.setdefault("source_ingest_background_future", None)
+    runtime.setdefault("source_ingest_background_in_progress", False)
     last_user_message_ts = ""
     prior_pipeline_state: PipelineState | None = None
     while True:
@@ -3353,6 +3438,7 @@ def _run_chat_loop(
         turn_id = str(uuid.uuid4())
 
         state, hits = _run_canonical_turn_pipeline(
+            runtime=runtime,
             llm=llm,
             store=store,
             state=state,
@@ -3460,7 +3546,7 @@ def _run_chat_loop(
 
 
 
-def _run_cli_mode(*, llm: ChatOllama, store: MemoryStore, chat_history: deque[ChatMsg], near_tie_delta: float, capability_snapshot: CapabilitySnapshot, clock: Clock) -> None:
+def _run_cli_mode(*, runtime: dict[str, object], llm: ChatOllama, store: MemoryStore, chat_history: deque[ChatMsg], near_tie_delta: float, capability_snapshot: CapabilitySnapshot, clock: Clock) -> None:
     print("CLI chat ready. Ask memory-grounded questions; type 'stop' to exit.")
 
     def _read() -> str | None:
@@ -3473,6 +3559,7 @@ def _run_cli_mode(*, llm: ChatOllama, store: MemoryStore, chat_history: deque[Ch
         print(f"bot> {text}")
 
     _run_chat_loop(
+        runtime=runtime,
         llm=llm,
         store=store,
         chat_history=chat_history,
@@ -3488,6 +3575,7 @@ def _run_cli_mode(*, llm: ChatOllama, store: MemoryStore, chat_history: deque[Ch
 
 def _run_satellite_mode(
     *,
+    runtime: dict[str, object],
     llm: ChatOllama,
     store: MemoryStore,
     chat_history: deque[ChatMsg],
@@ -3504,7 +3592,7 @@ def _run_satellite_mode(
 
         def _read() -> str | None:
             res = ask_question(
-                channel=io_channel,
+                channel="satellite",
                 spec=AskSpec(
                     question="Ask one memory-grounded question.",
                     answers=None,
@@ -3523,6 +3611,7 @@ def _run_satellite_mode(
             sat_say(client, entity_id, text)
 
         _run_chat_loop(
+            runtime=runtime,
             llm=llm,
             store=store,
             chat_history=chat_history,
@@ -3658,6 +3747,7 @@ def main(argv: list[str] | None = None) -> None:
 
     if capability_snapshot.effective_mode == "satellite":
         _run_satellite_mode(
+            runtime=runtime,
             llm=llm,
             store=store,
             chat_history=chat_history,
@@ -3671,6 +3761,7 @@ def main(argv: list[str] | None = None) -> None:
         return
 
     _run_cli_mode(
+        runtime=runtime,
         llm=llm,
         store=store,
         chat_history=chat_history,

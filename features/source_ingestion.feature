@@ -33,3 +33,9 @@ Feature: Source-backed ingestion behavior
     Given a deterministic source-ingestion harness
     When memory and source evidence disagree for the same question
     Then the assembled payload resolves the conflict with clarification metadata
+
+  @ISSUE-0013 @AC-0013-06
+  Scenario: retrieval miss starts async source ingestion continuation
+    Given a deterministic source-ingestion harness
+    When retrieval requires evidence but returns no source-backed hits and async continuation is enabled
+    Then the runtime marks continuation artifacts and returns background-ingestion progress response
