@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
@@ -225,6 +226,11 @@ def _run_checks(
 
 def validate_observe_pre(state: PipelineState) -> TransitionCheckResult:
     """Deprecated coarse-stage alias; use validate_observe_turn_pre."""
+    warnings.warn(
+        "validate_observe_pre() is deprecated; use validate_observe_turn_pre().",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     return validate_observe_turn_pre(state)
 
 
@@ -240,6 +246,11 @@ def validate_observe_turn_pre(state: PipelineState) -> TransitionCheckResult:
 
 def validate_observe_post(state: PipelineState) -> TransitionCheckResult:
     """Deprecated coarse-stage alias; use validate_observe_turn_post."""
+    warnings.warn(
+        "validate_observe_post() is deprecated; use validate_observe_turn_post().",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     return validate_observe_turn_post(state)
 
 
@@ -255,6 +266,11 @@ def validate_observe_turn_post(state: PipelineState) -> TransitionCheckResult:
 
 def validate_encode_pre(state: PipelineState) -> TransitionCheckResult:
     """Deprecated coarse-stage alias; use validate_encode_candidates_pre."""
+    warnings.warn(
+        "validate_encode_pre() is deprecated; use validate_encode_candidates_pre().",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     return validate_encode_candidates_pre(state)
 
 
@@ -270,6 +286,11 @@ def validate_encode_candidates_pre(state: PipelineState) -> TransitionCheckResul
 
 def validate_encode_post(state: PipelineState) -> TransitionCheckResult:
     """Deprecated coarse-stage alias; use validate_encode_candidates_post."""
+    warnings.warn(
+        "validate_encode_post() is deprecated; use validate_encode_candidates_post().",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     return validate_encode_candidates_post(state)
 
 
@@ -285,6 +306,11 @@ def validate_encode_candidates_post(state: PipelineState) -> TransitionCheckResu
 
 def validate_retrieve_pre(state: PipelineState) -> TransitionCheckResult:
     """Deprecated coarse-stage alias; use validate_retrieve_evidence_pre."""
+    warnings.warn(
+        "validate_retrieve_pre() is deprecated; use validate_retrieve_evidence_pre().",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     return validate_retrieve_evidence_pre(state)
 
 
@@ -300,6 +326,11 @@ def validate_retrieve_evidence_pre(state: PipelineState) -> TransitionCheckResul
 
 def validate_retrieve_post(state: PipelineState) -> TransitionCheckResult:
     """Deprecated coarse-stage alias; use validate_retrieve_evidence_post."""
+    warnings.warn(
+        "validate_retrieve_post() is deprecated; use validate_retrieve_evidence_post().",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     return validate_retrieve_evidence_post(state)
 
 
@@ -315,6 +346,11 @@ def validate_retrieve_evidence_post(state: PipelineState) -> TransitionCheckResu
 
 def validate_rerank_pre(state: PipelineState) -> TransitionCheckResult:
     """Deprecated coarse-stage alias; use validate_policy_decide_pre."""
+    warnings.warn(
+        "validate_rerank_pre() is deprecated; use validate_policy_decide_pre().",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     return validate_policy_decide_pre(state)
 
 
@@ -330,6 +366,11 @@ def validate_policy_decide_pre(state: PipelineState) -> TransitionCheckResult:
 
 def validate_rerank_post(state: PipelineState) -> TransitionCheckResult:
     """Deprecated coarse-stage alias; use validate_policy_decide_post."""
+    warnings.warn(
+        "validate_rerank_post() is deprecated; use validate_policy_decide_post().",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     return validate_policy_decide_post(state)
 
 
@@ -348,6 +389,11 @@ def validate_policy_decide_post(state: PipelineState) -> TransitionCheckResult:
 
 def validate_answer_pre(state: PipelineState) -> TransitionCheckResult:
     """Deprecated coarse-stage alias; use validate_answer_assemble_pre."""
+    warnings.warn(
+        "validate_answer_pre() is deprecated; use validate_answer_assemble_pre().",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     return validate_answer_assemble_pre(state)
 
 
@@ -365,6 +411,11 @@ def validate_answer_assemble_pre(state: PipelineState) -> TransitionCheckResult:
 
 def validate_answer_post(state: PipelineState) -> TransitionCheckResult:
     """Deprecated coarse-stage alias; use validate_answer_commit_post."""
+    warnings.warn(
+        "validate_answer_post() is deprecated; use validate_answer_commit_post().",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     return validate_answer_commit_post(state)
 
 

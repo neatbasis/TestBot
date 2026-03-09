@@ -7,7 +7,7 @@ from langchain_core.documents import Document
 from testbot.answer_policy import AnswerPolicyInput, resolve_answer_routing
 from testbot.pipeline_state import PipelineState, ProvenanceType
 from testbot.history_packer import pack_chat_history
-from testbot.stage_transitions import validate_answer_post
+from testbot.stage_transitions import validate_answer_commit_post
 from testbot.sat_chatbot_memory_v2 import (
     ASSIST_ALTERNATIVES_ANSWER,
     FALLBACK_ANSWER,
@@ -377,7 +377,7 @@ def test_knowing_mode_rejects_heuristic_only_inference_provenance() -> None:
         confidence_decision={"context_confident": True},
     )
 
-    result = validate_answer_post(state)
+    result = validate_answer_commit_post(state)
 
     assert result.passed is False
     assert "knowing_mode_disallows_heuristic_only_inference_provenance" in result.failures
