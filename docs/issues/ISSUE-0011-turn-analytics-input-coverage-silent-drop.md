@@ -42,6 +42,21 @@
 4. `docs/testing.md` (or a more specific analytics contract doc) documents expected input semantics for `aggregate_turn_analytics.py`, including what events are required to form turns.
 5. Deterministic tests are added/updated under `tests/` to assert coverage diagnostics and warning behavior for mixed-event session logs.
 
+## Implementation Task Breakdown (from Acceptance Criteria)
+
+- **AC1 summary fields**
+  - Extend `scripts/aggregate_turn_analytics.py` summary schema with deterministic counters: `input_rows_total`, `recognized_analytics_rows`, `ignored_non_analytics_rows`, and `turn_start_events`.
+  - Compute counters from normalized rows so malformed analytics rows remain accounted for through existing validation counters.
+- **AC2 ignored event observability**
+  - Add `ignored_event_counts` keyed by event name for all non-analytics classes encountered during ingestion.
+- **AC3 warning policy**
+  - Add deterministic warning generation when ignored-row ratio exceeds 50% and when non-empty input has zero turn starters.
+  - Emit warnings both to CLI (`WARNING: ...` on stderr) and serialized summary metadata (`warnings`).
+- **AC4 operator contract docs**
+  - Update `docs/testing.md` with analytics input semantics, required turn-starter events, coverage diagnostics fields, and warning policy.
+- **AC5 focused deterministic tests**
+  - Add coverage tests in `tests/test_turn_analytics_aggregator.py` to assert retained turn behavior for mixed logs and explicit diagnostics/warnings for dropped non-analytics rows.
+
 ## Work Plan
 
 - Update aggregation pipeline bookkeeping to track total rows, recognized analytics rows, ignored rows, and turn starters.
@@ -54,12 +69,53 @@
 
 ## Verification
 
-- Command: `python scripts/aggregate_turn_analytics.py --input logs/session.jsonl`
-  - Expected: summary includes coverage diagnostics and ignored-event visibility.
-- Command: `python -m pytest tests/test_aggregate_turn_analytics.py`
-  - Expected: exits `0` with assertions covering diagnostics and warning cases.
+- Command: `python scripts/aggregate_turn_analytics.py --input artifacts/issue-0011-mixed-session.jsonl --output artifacts/issue-0011-turn-analytics.jsonl --summary-output artifacts/issue-0011-turn-analytics-summary.json`
+  - Exit code: `0`
+  - Exact CLI output:
+
+    ```text
+    WARNING: ignored_non_analytics_rows exceeds 50% threshold (3/5).
+    {
+      "dataset_path": "/workspace/TestBot/artifacts/issue-0011-turn-analytics.jsonl",
+      "summary_path": "/workspace/TestBot/artifacts/issue-0011-turn-analytics-summary.json",
+      "kpis": {
+        "grounded_answer_precision": 0.0,
+        "false_knowing_rate": 1.0,
+        "fallback_appropriateness": 0.0,
+        "citation_completeness": 0.0,
+        "turn_count": 1,
+        "invalid_rows": 0,
+        "skipped_rows": 0,
+        "per_event_validation_failures": {},
+        "input_rows_total": 5,
+        "recognized_analytics_rows": 2,
+        "ignored_non_analytics_rows": 3,
+        "turn_start_events": 1,
+        "ignored_event_counts": {
+          "pipeline_state_snapshot": 2,
+          "stage_transition_validation": 1
+        },
+        "warnings": [
+          "ignored_non_analytics_rows exceeds 50% threshold (3/5)."
+        ]
+      }
+    }
+    ```
+
+  - Artifacts:
+    - Input fixture: `artifacts/issue-0011-mixed-session.jsonl`
+    - Dataset output: `artifacts/issue-0011-turn-analytics.jsonl`
+    - Summary output: `artifacts/issue-0011-turn-analytics-summary.json`
+
+- Command: `python -m pytest tests/test_turn_analytics_aggregator.py`
+  - Exit code: `0`
+  - Exact terminal summary: `11 passed in 0.05s`
+
 - Command: `python scripts/all_green_gate.py --continue-on-failure --json-output artifacts/all-green-gate-summary.json`
-  - Expected: relevant analytics tests pass and no regressions are introduced in the canonical gate.
+  - Exit code: `0`
+  - Exact gate status: `"status": "passed"`
+  - Notable optional warning: `qa_validate_kpi_guardrails` reported warning-level failures under optional rollout mode (`--kpi-guardrail-mode optional` default).
+  - Artifact: `artifacts/all-green-gate-summary.json`
 
 ## Closure Notes
 

@@ -5,9 +5,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable
+
+from testbot.turn_analytics_diagnostics import build_coverage_diagnostics as _build_coverage_diagnostics
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 
@@ -45,6 +48,7 @@ class ValidationSummary:
         self.invalid_rows += 1
         self.skipped_rows += 1
         self.per_event_validation_failures[event] = self.per_event_validation_failures.get(event, 0) + 1
+
 
 
 def parse_args() -> argparse.Namespace:
@@ -228,6 +232,11 @@ def aggregate_turn_dataset(rows: Iterable[dict[str, Any]]) -> list[TurnAnalytics
     return turns
 
 
+
+
+def build_coverage_diagnostics(rows: Iterable[dict[str, Any]]):
+    return _build_coverage_diagnostics(rows, ANALYTICS_EVENTS)
+
 def compute_kpis(dataset: list[TurnAnalytics]) -> dict[str, float]:
     if not dataset:
         return {
@@ -273,6 +282,7 @@ def main() -> int:
 
     rows = _read_jsonl(input_path)
     normalized_rows, validation_summary = normalize_and_validate_rows(rows)
+    coverage = build_coverage_diagnostics(normalized_rows)
     dataset = aggregate_turn_dataset(normalized_rows)
     kpis = compute_kpis(dataset)
     summary_payload = {
@@ -280,10 +290,19 @@ def main() -> int:
         "invalid_rows": validation_summary.invalid_rows,
         "skipped_rows": validation_summary.skipped_rows,
         "per_event_validation_failures": validation_summary.per_event_validation_failures,
+        "input_rows_total": coverage.input_rows_total,
+        "recognized_analytics_rows": coverage.recognized_analytics_rows,
+        "ignored_non_analytics_rows": coverage.ignored_non_analytics_rows,
+        "turn_start_events": coverage.turn_start_events,
+        "ignored_event_counts": coverage.ignored_event_counts,
+        "warnings": coverage.warnings,
     }
 
     _write_jsonl(output_path, [turn.__dict__ for turn in dataset])
     _write_json(summary_path, summary_payload)
+
+    for warning in coverage.warnings:
+        print(f"WARNING: {warning}", file=sys.stderr)
 
     print(json.dumps({"dataset_path": str(output_path), "summary_path": str(summary_path), "kpis": summary_payload}, indent=2))
     return 0

@@ -1,0 +1,5 @@
+{"event":"user_utterance_ingest","utterance":"hello"}
+{"event":"intent_classified","schema_version":3,"intent":"memory_recall","ambiguity_score":0.1,"user_followup_signal_proxy":0.1}
+{"event":"pipeline_state_snapshot","schema_version":3,"stage":"answer.commit"}
+{"event":"stage_transition_validation","schema_version":3,"from":"intent","to":"answer"}
+{"event":"pipeline_state_snapshot","schema_version":3,"stage":"answer.finalize"}

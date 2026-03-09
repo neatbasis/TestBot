@@ -101,6 +101,31 @@ Use `--check-profile exhaustive` to include overlapping targeted checks (for exa
 
 Default behavior is fail-closed (stop on first failure). Use `--continue-on-failure` to run every check and still exit non-zero if any check fails.
 
+### Turn analytics input semantics and coverage diagnostics
+
+`python scripts/aggregate_turn_analytics.py` consumes session JSONL rows with mixed runtime events, but only the analytics event vocabulary participates in turn construction:
+
+- `user_utterance_ingest` (required turn starter)
+- `intent_classified`
+- `fallback_action_selected`
+- `provenance_summary`
+
+All other event classes are retained as input but treated as non-analytics rows for turn aggregation. The generated summary (`logs/turn_analytics_summary.json` by default) includes deterministic coverage diagnostics so operators can interpret utilization explicitly:
+
+- `input_rows_total`
+- `recognized_analytics_rows`
+- `ignored_non_analytics_rows`
+- `turn_start_events`
+- `ignored_event_counts`
+- `warnings`
+
+Warning policy is deterministic and emitted in both CLI output (`WARNING: ...` on stderr) and serialized summary metadata:
+
+- Warn when `ignored_non_analytics_rows / input_rows_total > 0.5`
+- Warn when `input_rows_total > 0` and `turn_start_events == 0`
+
+These diagnostics are intended to make semantic coverage explicit, especially for high-volume runtime/process events (for example `pipeline_state_snapshot`, `stage_transition_validation`) that do not start or enrich turns.
+
 ### Turn analytics in canonical gate
 
 The canonical gate (`scripts/all_green_gate.py`) supports KPI rollout controls via `--kpi-guardrail-mode {off,optional,blocking}` (default: `optional`). In `optional`, `scripts/aggregate_turn_analytics.py` and `scripts/validate_kpi_guardrails.py` run as non-blocking warnings; in `blocking`, the same failures block gate success; in `off`, both checks are skipped.

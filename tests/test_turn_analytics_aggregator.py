@@ -388,3 +388,76 @@ def test_normalize_and_validate_rows_preserves_commit_audit_payload_completeness
     assert len(dataset) == 1
     assert dataset[0].action == "CONTINUE_REPAIR_RECONSTRUCTION"
     assert dataset[0].provenance_completeness == 1.0
+
+
+def test_build_coverage_diagnostics_reports_ignored_event_breakdown_and_warning() -> None:
+    rows = [
+        {"event": "user_utterance_ingest", "utterance": "hello"},
+        {
+            "event": "intent_classified",
+            "schema_version": 3,
+            "intent": "memory_recall",
+            "ambiguity_score": 0.1,
+            "user_followup_signal_proxy": 0.1,
+        },
+        {
+            "event": "pipeline_state_snapshot",
+            "schema_version": 3,
+            "stage": "answer.commit",
+        },
+        {
+            "event": "stage_transition_validation",
+            "schema_version": 3,
+            "from": "intent",
+            "to": "answer",
+        },
+        {
+            "event": "pipeline_state_snapshot",
+            "schema_version": 3,
+            "stage": "answer.finalize",
+        },
+    ]
+
+    normalized_rows, summary = aggregator.normalize_and_validate_rows(rows)
+    diagnostics = aggregator.build_coverage_diagnostics(normalized_rows)
+    dataset = aggregator.aggregate_turn_dataset(normalized_rows)
+
+    assert summary.invalid_rows == 0
+    assert len(dataset) == 1
+    assert diagnostics.input_rows_total == 5
+    assert diagnostics.recognized_analytics_rows == 2
+    assert diagnostics.ignored_non_analytics_rows == 3
+    assert diagnostics.turn_start_events == 1
+    assert diagnostics.ignored_event_counts == {
+        "pipeline_state_snapshot": 2,
+        "stage_transition_validation": 1,
+    }
+    assert diagnostics.warnings == [
+        "ignored_non_analytics_rows exceeds 50% threshold (3/5).",
+    ]
+
+
+def test_build_coverage_diagnostics_warns_when_no_turn_start_events_in_non_empty_input() -> None:
+    rows = [
+        {"event": "pipeline_state_snapshot", "schema_version": 3, "stage": "intent.classify"},
+        {"event": "stage_transition_validation", "schema_version": 3, "from": "a", "to": "b"},
+    ]
+
+    normalized_rows, summary = aggregator.normalize_and_validate_rows(rows)
+    diagnostics = aggregator.build_coverage_diagnostics(normalized_rows)
+    dataset = aggregator.aggregate_turn_dataset(normalized_rows)
+
+    assert summary.invalid_rows == 0
+    assert dataset == []
+    assert diagnostics.input_rows_total == 2
+    assert diagnostics.recognized_analytics_rows == 0
+    assert diagnostics.ignored_non_analytics_rows == 2
+    assert diagnostics.turn_start_events == 0
+    assert diagnostics.ignored_event_counts == {
+        "pipeline_state_snapshot": 1,
+        "stage_transition_validation": 1,
+    }
+    assert diagnostics.warnings == [
+        "ignored_non_analytics_rows exceeds 50% threshold (2/2).",
+        "No turn_start_events detected in non-empty input; no turns can be aggregated.",
+    ]
