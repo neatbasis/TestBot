@@ -25,6 +25,11 @@ TestBot awareness is produced from both conversational memory and source ingesti
 - **Trust tier** metadata is preserved for ingested sources so policy and retrieval can apply explicit trust boundaries.
 - **Deterministic fallback** ensures the assistant degrades safely (including uncertainty responses) when evidence is weak or unavailable.
 
+### Continuity commitments
+- **`answer.commit` must persist cross-turn control state**: each completed turn writes confirmed user facts, remaining obligations, pending repair state, and answer provenance into committed next-turn state.
+- **`commit_receipt` continuity evidence is normative for context/retrieval**: continuity anchors consumed by context resolution and evidence retrieval must come from committed receipts so behavior is reproducible and inspectable.
+- **Persistence exists to preserve user agency across turns**: explicit continuity state lets users amend facts, satisfy obligations, and complete repair flows without losing conversational control.
+
 For deterministic reject diagnostics and machine-readable fallback reasons, see [docs/reject-taxonomy.md](reject-taxonomy.md).
 
 Program linkage: [`ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md`](issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md) is the project's **primary bug-elimination program** in the current state; contributors should triage canonical pipeline defects and follow-on work against ISSUE-0013 first, with ISSUE-0012 treated as linked delivery planning context in [`ISSUE-0012-canonical-turn-pipeline-delivery-plan.md`](issues/ISSUE-0012-canonical-turn-pipeline-delivery-plan.md).
