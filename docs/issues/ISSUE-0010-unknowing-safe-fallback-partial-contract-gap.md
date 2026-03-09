@@ -40,10 +40,10 @@ The `unknowing_safe_fallback` capability is still marked `partial`. ISSUE-0010 i
 ## Work Plan
 
 - [x] Capture production-debug evidence trace and map symptoms to ISSUE-0009/ISSUE-0010 acceptance criteria (`docs/issues/evidence/production-debug-cli-trace-2026-03-07.md`).
-- [ ] **Remaining delta: confident memory-recall recovery** — complete memory confidence recovery updates so upstream product behave no longer fails from memory ambiguity edge cases that cascade into fallback posture.
-- [ ] **Remaining delta: citation-context format** — ensure uncertainty/fallback outputs keep explicit provenance and basis formatting aligned with contract text across intent-grounding and runtime logging checks.
-- [ ] **Remaining delta: debug reason accuracy** — reconcile debug/trace reason strings so low-confidence and unknown branches report accurate reasons for fallback decisions.
-- [ ] Regenerate report/status artifacts with existing scripts only after acceptance criteria 1-3 are fully implemented and validated as passing.
+- [x] **Remaining delta: confident memory-recall recovery** — complete memory confidence recovery updates so upstream product behave no longer fails from memory ambiguity edge cases that cascade into fallback posture.
+- [x] **Remaining delta: citation-context format** — ensure uncertainty/fallback outputs keep explicit provenance and basis formatting aligned with contract text across intent-grounding and runtime logging checks.
+- [x] **Remaining delta: debug reason accuracy** — reconcile debug/trace reason strings so low-confidence and unknown branches report accurate reasons for fallback decisions.
+- [x] Regenerate report/status artifacts with existing scripts only after acceptance criteria 1-3 are fully implemented and validated as passing (`artifacts/all-green-gate-summary.json`, `logs/turn_analytics_summary.json`).
 
 ### Remaining delta stage map
 
@@ -69,3 +69,5 @@ The `unknowing_safe_fallback` capability is still marked `partial`. ISSUE-0010 i
 ## Closure Notes
 
 - 2026-03-06: Opened to establish explicit, measurable governance linkage for partial unknowing safe fallback capability.
+
+- 2026-03-09: Completed remaining deltas for memory-recall recovery, citation-context formatting, and debug fallback reason accuracy; reran deterministic verification and refreshed readiness artifacts.

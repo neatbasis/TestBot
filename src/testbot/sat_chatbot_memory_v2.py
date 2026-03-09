@@ -30,7 +30,7 @@ from testbot.memory_strata import (
 )
 from testbot.pipeline_state import CandidateHit, PipelineState, ProvenanceType, append_pipeline_snapshot
 from testbot.promotion_policy import persist_promoted_context
-from testbot.reflection_policy import CapabilityStatus, decide_fallback_action
+from testbot.reflection_policy import CapabilityStatus, decide_fallback_action, fallback_reason as derive_fallback_reason
 from testbot.answer_policy import AnswerPolicyInput, AnswerRoutingDecision, resolve_answer_mode, resolve_answer_routing
 from testbot.rerank import (
     rerank_confidence_thresholds,
@@ -1461,6 +1461,26 @@ def _build_debug_turn_payload(*, state: PipelineState, intent_label: str, hits: 
         "context_score_target": 1.0,
     }
     policy_rationale = state.invariant_decisions.get("answer_policy_rationale", {})
+    policy_fallback_reason = ""
+    if isinstance(policy_rationale, dict):
+        policy_fallback_reason = str(policy_rationale.get("fallback_reason") or "")
+    if not policy_fallback_reason or policy_fallback_reason == "decision_object_mapping":
+        source_confidence = state.confidence_decision.get("source_confidence")
+        policy_fallback_reason = derive_fallback_reason(
+            intent=intent_label if intent_label in {"memory_recall", "time_query", "non_memory"} else "non_memory",
+            fallback_action=fallback_action if fallback_action in {
+                "ANSWER_FROM_MEMORY",
+                "ANSWER_TIME",
+                "ANSWER_GENERAL_KNOWLEDGE",
+                "ANSWER_UNKNOWN",
+                "ASK_CLARIFYING_QUESTION",
+                "ROUTE_TO_ASK",
+                "OFFER_CAPABILITY_ALTERNATIVES",
+            } else "ANSWER_UNKNOWN",
+            memory_hit=context_confident,
+            ambiguity=ambiguity_detected,
+            source_confidence=float(source_confidence) if source_confidence is not None else None,
+        )
 
     top_final_score_gate = _gate_metrics(
         passed=top_score >= top_threshold,
@@ -1676,6 +1696,7 @@ def _build_debug_turn_payload(*, state: PipelineState, intent_label: str, hits: 
             "margin": reject_signal.margin,
             "reason": reject_signal.reason,
             "blocker_reason": reject_signal.reason,
+            "fallback_reason": policy_fallback_reason,
         },
     }
 
