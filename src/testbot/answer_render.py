@@ -1,7 +1,8 @@
-"""Compatibility shim for answer rendering boundaries.
+"""Deprecated compatibility shim for answer rendering boundaries.
 
-This module exists to provide stable enforcement-point naming for governance
-artifacts that reference ``src/testbot/answer_render.py``.
+Canonical runtime imports must use :mod:`testbot.answer_rendering`.
+This shim remains only for external compatibility with legacy references to
+``src/testbot/answer_render.py`` and should not receive new logic.
 """
 
 from __future__ import annotations

@@ -83,6 +83,19 @@ flowchart LR
 11. **`answer.commit`**
     - Commit assistant memory/provenance plus updated repair and obligation state for the next turn.
 
+
+## Canonical answer module imports
+
+Runtime code and tests must import answer-stage boundaries from:
+
+- `testbot.answer_validation` (`src/testbot/answer_validation.py`)
+- `testbot.answer_rendering` (`src/testbot/answer_rendering.py`)
+
+Deprecated shim modules remain only for external compatibility and should not be used for new internal imports:
+
+- `testbot.answer_validate` (`src/testbot/answer_validate.py`)
+- `testbot.answer_render` (`src/testbot/answer_render.py`)
+
 ## Canonical per-turn state
 
 The canonical unit of reasoning/review is a typed `PipelineState` object (`src/testbot/pipeline_state.py`).

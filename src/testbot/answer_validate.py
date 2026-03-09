@@ -1,7 +1,8 @@
-"""Compatibility shim for answer assembly validation boundaries.
+"""Deprecated compatibility shim for answer assembly validation boundaries.
 
-This module exists to provide stable enforcement-point naming for governance
-artifacts that reference ``src/testbot/answer_validate.py``.
+Canonical runtime imports must use :mod:`testbot.answer_validation`.
+This shim remains only for external compatibility with legacy references to
+``src/testbot/answer_validate.py`` and should not receive new logic.
 """
 
 from __future__ import annotations
