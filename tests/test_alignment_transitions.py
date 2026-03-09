@@ -10,6 +10,7 @@ from testbot.sat_chatbot_memory_v2 import (
     stage_answer,
 )
 from testbot.stage_transitions import (
+    BACKGROUND_INGESTION_PROGRESS_ANSWER,
     DENY_ANSWER,
     FALLBACK_ANSWER,
     NON_KNOWLEDGE_UNCERTAINTY_ANSWER,
@@ -179,6 +180,25 @@ def test_validate_answer_commit_post_allows_dont_know_fallback_when_general_know
         },
         confidence_decision={"context_confident": False},
         draft_answer="",
+        alignment_decision={**_base_state().alignment_decision, "final_alignment_decision": "allow"},
+    )
+
+    result = validate_answer_commit_post(state)
+
+    assert result.passed
+
+
+def test_validate_answer_commit_post_allows_pending_lookup_progress_response_when_general_knowledge_contract_fails() -> None:
+    state = replace(
+        _base_state(),
+        final_answer=BACKGROUND_INGESTION_PROGRESS_ANSWER,
+        confidence_decision={"context_confident": False, "background_ingestion_in_progress": True},
+        invariant_decisions={
+            **_base_state().invariant_decisions,
+            "answer_contract_valid": False,
+            "general_knowledge_contract_valid": False,
+            "answer_mode": "assist",
+        },
         alignment_decision={**_base_state().alignment_decision, "final_alignment_decision": "allow"},
     )
 

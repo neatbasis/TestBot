@@ -151,6 +151,7 @@ NON_KNOWLEDGE_UNCERTAINTY_ANSWER = (
     "I'm not fully confident in a reliable answer right now. "
     "I can offer a best-effort response and suggest a quick way to verify it."
 )
+BACKGROUND_INGESTION_PROGRESS_ANSWER = "I'm ingesting external sources in the background now…"
 GENERAL_KNOWLEDGE_MARKER_PREFIX = "General definition (not from your memory):"
 GENERAL_KNOWLEDGE_CONFIDENCE_MIN = 0.85
 GENERAL_KNOWLEDGE_SUPPORT_MIN = 2
@@ -2107,7 +2108,18 @@ def answer_validate(
     assembled: AnswerAssembleResult,
     hits: list[Document],
     chat_history: deque[ChatMsg],
+    pending_lookup_override: bool | None = None,
 ) -> AnswerValidateResult:
+    decision_class = str((assembled.answer_policy_rationale or {}).get("decision_class") or "").strip().lower()
+    pending_lookup = (
+        bool(pending_lookup_override)
+        if pending_lookup_override is not None
+        else bool(state.confidence_decision.get("background_ingestion_in_progress", False))
+    )
+    pending_lookup = pending_lookup or decision_class == DecisionClass.PENDING_LOOKUP_BACKGROUND_INGESTION.value
+    if pending_lookup and assembled.final_answer != BACKGROUND_INGESTION_PROGRESS_ANSWER:
+        assembled = replace(assembled, final_answer=BACKGROUND_INGESTION_PROGRESS_ANSWER)
+
     packed_history = pack_chat_history(list(chat_history))
     provenance_types, claims, basis_statement, used_memory_refs, used_source_evidence_refs, source_evidence_attribution = build_provenance_metadata(
         final_answer=assembled.final_answer,
@@ -2180,8 +2192,6 @@ def answer_validate(
         provenance_types=provenance_types,
         basis_statement=basis_statement,
     )
-
-    pending_lookup = bool(state.confidence_decision.get("background_ingestion_in_progress", False))
 
     answer_mode_decision = resolve_answer_mode(
         final_answer=assembled.final_answer,
@@ -2391,12 +2401,14 @@ def _answer_validate_stage(
     assembled: AnswerAssembleResult,
     hits: list[Document],
     chat_history: deque[ChatMsg],
+    pending_lookup_override: bool | None = None,
 ) -> AnswerValidateResult:
     return answer_validate(
         state,
         assembled=assembled,
         hits=hits,
         chat_history=chat_history,
+        pending_lookup_override=pending_lookup_override,
     )
 
 
@@ -3280,6 +3292,14 @@ def _run_canonical_turn_pipeline(
                 near_tie_delta=near_tie_delta,
                 clock=clock,
             )
+            if repair_required:
+                ctx.state = replace(
+                    ctx.state,
+                    confidence_decision={
+                        **ctx.state.confidence_decision,
+                        "background_ingestion_in_progress": True,
+                    },
+                )
             _validate_and_log_transition(validate_policy_decide_post(ctx.state))
             ctx.artifacts["hits"] = hits
             considered = int(ctx.state.confidence_decision.get("retrieval_candidates_considered", len(ctx.artifacts["docs_and_scores"])) or 0)
@@ -3361,11 +3381,21 @@ def _run_canonical_turn_pipeline(
 
     def _answer_validate(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
         _validate_and_log_transition(validate_answer_validate_pre(ctx.state, ctx.artifacts))
+        background_ingestion_in_progress = bool(ctx.artifacts.get("background_ingestion_in_progress", False))
+        if background_ingestion_in_progress:
+            ctx.state = replace(
+                ctx.state,
+                confidence_decision={
+                    **ctx.state.confidence_decision,
+                    "background_ingestion_in_progress": True,
+                },
+            )
         ctx.artifacts["validated_answer"] = _answer_validate_stage(
             ctx.state,
             assembled=ctx.artifacts["assembled_answer"],
             hits=ctx.artifacts["hits"],
             chat_history=chat_history,
+            pending_lookup_override=background_ingestion_in_progress,
         )
         ctx.artifacts["answer_validation_contract"] = validate_answer_assembly_boundary(
             ctx.artifacts["answer_assembly_contract"]
@@ -3378,12 +3408,7 @@ def _run_canonical_turn_pipeline(
 
     def _answer_render(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
         _validate_and_log_transition(validate_answer_render_pre(ctx.state, ctx.artifacts))
-        if bool(ctx.artifacts.get("background_ingestion_in_progress", False)):
-            ctx.artifacts["rendered_answer"] = AnswerRenderResult(
-                final_answer="I'm ingesting external sources in the background now…",
-            )
-        else:
-            ctx.artifacts["rendered_answer"] = _answer_render_stage(ctx.artifacts["validated_answer"])
+        ctx.artifacts["rendered_answer"] = _answer_render_stage(ctx.artifacts["validated_answer"])
         ctx.artifacts["answer_render_contract"] = render_answer(
             assembly=ctx.artifacts["answer_assembly_contract"],
             validation=ctx.artifacts["answer_validation_contract"],
