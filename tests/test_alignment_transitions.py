@@ -13,7 +13,7 @@ from testbot.stage_transitions import (
     DENY_ANSWER,
     FALLBACK_ANSWER,
     NON_KNOWLEDGE_UNCERTAINTY_ANSWER,
-    validate_answer_post,
+    validate_answer_commit_post,
 )
 
 
@@ -48,17 +48,17 @@ def _base_state() -> PipelineState:
     )
 
 
-def test_validate_answer_post_rejects_missing_alignment_dimension() -> None:
+def test_validate_answer_commit_post_rejects_missing_alignment_dimension() -> None:
     state = _base_state()
     state.alignment_decision["dimensions"].pop("cost_latency_budget")
 
-    result = validate_answer_post(state)
+    result = validate_answer_commit_post(state)
 
     assert not result.passed
     assert "alignment_dimensions_present" in result.failures
 
 
-def test_validate_answer_post_allows_progressive_clarifier_when_factual_grounding_fails() -> None:
+def test_validate_answer_commit_post_allows_progressive_clarifier_when_factual_grounding_fails() -> None:
     invariant_decisions = {**_base_state().invariant_decisions, "answer_contract_valid": True, "answer_mode": "clarify"}
     alignment_decision = {
         "objective_version": "2026-03-05.v3",
@@ -81,12 +81,12 @@ def test_validate_answer_post_allows_progressive_clarifier_when_factual_groundin
         resolved_intent="memory_recall",
     )
 
-    result = validate_answer_post(state)
+    result = validate_answer_commit_post(state)
 
     assert result.passed
 
 
-def test_validate_answer_post_progressive_fallback_enforced_allows_explicit_uncertainty_when_low_confidence() -> None:
+def test_validate_answer_commit_post_progressive_fallback_enforced_allows_explicit_uncertainty_when_low_confidence() -> None:
     invariant_decisions = {
         **_base_state().invariant_decisions,
         "answer_contract_valid": False,
@@ -105,12 +105,12 @@ def test_validate_answer_post_progressive_fallback_enforced_allows_explicit_unce
         alignment_decision=alignment_decision,
     )
 
-    result = validate_answer_post(state)
+    result = validate_answer_commit_post(state)
 
     assert result.passed, "progressive fallback should allow approved fallback path when confidence is low"
 
 
-def test_validate_answer_post_progressive_fallback_enforced_rejects_direct_answer_when_low_confidence() -> None:
+def test_validate_answer_commit_post_progressive_fallback_enforced_rejects_direct_answer_when_low_confidence() -> None:
     state = replace(
         _base_state(),
         confidence_decision={"context_confident": False},
@@ -119,20 +119,20 @@ def test_validate_answer_post_progressive_fallback_enforced_rejects_direct_answe
         alignment_decision={**_base_state().alignment_decision, "final_alignment_decision": "allow"},
     )
 
-    result = validate_answer_post(state)
+    result = validate_answer_commit_post(state)
 
     assert not result.passed
     assert "inv_002_progressive_fallback_enforced" in result.failures
 
 
-def test_validate_answer_post_progressive_fallback_enforced_allows_confident_valid_contract_path() -> None:
+def test_validate_answer_commit_post_progressive_fallback_enforced_allows_confident_valid_contract_path() -> None:
     state = _base_state()
 
-    result = validate_answer_post(state)
+    result = validate_answer_commit_post(state)
 
     assert result.passed, "progressive fallback should permit confident answers with a valid contract"
 
-def test_validate_answer_post_allows_assist_fallback_when_general_knowledge_contract_fails() -> None:
+def test_validate_answer_commit_post_allows_assist_fallback_when_general_knowledge_contract_fails() -> None:
     state = replace(
         _base_state(),
         final_answer=ASSIST_ALTERNATIVES_ANSWER,
@@ -144,12 +144,12 @@ def test_validate_answer_post_allows_assist_fallback_when_general_knowledge_cont
         alignment_decision={**_base_state().alignment_decision, "final_alignment_decision": "allow"},
     )
 
-    result = validate_answer_post(state)
+    result = validate_answer_commit_post(state)
 
     assert result.passed
 
 
-def test_validate_answer_post_rejects_memory_grounded_fallback_when_general_knowledge_contract_fails() -> None:
+def test_validate_answer_commit_post_rejects_memory_grounded_fallback_when_general_knowledge_contract_fails() -> None:
     state = replace(
         _base_state(),
         final_answer=FALLBACK_ANSWER,
@@ -161,13 +161,13 @@ def test_validate_answer_post_rejects_memory_grounded_fallback_when_general_know
         alignment_decision={**_base_state().alignment_decision, "final_alignment_decision": "fallback"},
     )
 
-    result = validate_answer_post(state)
+    result = validate_answer_commit_post(state)
 
     assert not result.passed
     assert "inv_003_general_knowledge_contract_enforced" in result.failures
 
 
-def test_validate_answer_post_allows_dont_know_fallback_when_general_knowledge_contract_fails() -> None:
+def test_validate_answer_commit_post_allows_dont_know_fallback_when_general_knowledge_contract_fails() -> None:
     state = replace(
         _base_state(),
         final_answer=NON_KNOWLEDGE_UNCERTAINTY_ANSWER,
@@ -182,12 +182,12 @@ def test_validate_answer_post_allows_dont_know_fallback_when_general_knowledge_c
         alignment_decision={**_base_state().alignment_decision, "final_alignment_decision": "allow"},
     )
 
-    result = validate_answer_post(state)
+    result = validate_answer_commit_post(state)
 
     assert result.passed
 
 
-def test_validate_answer_post_allows_deny_when_safety_dimension_fails() -> None:
+def test_validate_answer_commit_post_allows_deny_when_safety_dimension_fails() -> None:
     invariant_decisions = {**_base_state().invariant_decisions, "answer_mode": "deny"}
     alignment_decision = {
         "objective_version": "2026-03-05.v3",
@@ -209,14 +209,14 @@ def test_validate_answer_post_allows_deny_when_safety_dimension_fails() -> None:
         alignment_decision=alignment_decision,
     )
 
-    result = validate_answer_post(state)
+    result = validate_answer_commit_post(state)
 
     assert result.passed
 
 
 
 
-def test_validate_answer_post_rejects_knowing_mode_without_provenance_metadata() -> None:
+def test_validate_answer_commit_post_rejects_knowing_mode_without_provenance_metadata() -> None:
     state = replace(
         _base_state(),
         invariant_decisions={**_base_state().invariant_decisions, "answer_mode": "memory-grounded"},
@@ -226,13 +226,13 @@ def test_validate_answer_post_rejects_knowing_mode_without_provenance_metadata()
         basis_statement="",
     )
 
-    result = validate_answer_post(state)
+    result = validate_answer_commit_post(state)
 
     assert not result.passed
     assert "knowing_mode_requires_provenance_metadata" in result.failures
 
 
-def test_validate_answer_post_allows_knowing_mode_with_provenance_metadata() -> None:
+def test_validate_answer_commit_post_allows_knowing_mode_with_provenance_metadata() -> None:
     state = replace(
         _base_state(),
         invariant_decisions={**_base_state().invariant_decisions, "answer_mode": "memory-grounded"},
@@ -241,12 +241,12 @@ def test_validate_answer_post_allows_knowing_mode_with_provenance_metadata() -> 
         basis_statement="Answer synthesized from reranked memory context.",
     )
 
-    result = validate_answer_post(state)
+    result = validate_answer_commit_post(state)
 
     assert result.passed
 
 
-def test_validate_answer_post_rejects_unknowing_mode_without_explicit_uncertainty_fallback() -> None:
+def test_validate_answer_commit_post_rejects_unknowing_mode_without_explicit_uncertainty_fallback() -> None:
     state = replace(
         _base_state(),
         confidence_decision={"context_confident": False},
@@ -255,13 +255,13 @@ def test_validate_answer_post_rejects_unknowing_mode_without_explicit_uncertaint
         alignment_decision={**_base_state().alignment_decision, "final_alignment_decision": "allow"},
     )
 
-    result = validate_answer_post(state)
+    result = validate_answer_commit_post(state)
 
     assert not result.passed
     assert "unknowing_mode_requires_explicit_uncertainty_fallback" in result.failures
 
 
-def test_validate_answer_post_allows_unknowing_mode_with_explicit_uncertainty_response() -> None:
+def test_validate_answer_commit_post_allows_unknowing_mode_with_explicit_uncertainty_response() -> None:
     state = replace(
         _base_state(),
         confidence_decision={"context_confident": False},
@@ -270,14 +270,14 @@ def test_validate_answer_post_allows_unknowing_mode_with_explicit_uncertainty_re
         alignment_decision={**_base_state().alignment_decision, "final_alignment_decision": "allow"},
     )
 
-    result = validate_answer_post(state)
+    result = validate_answer_commit_post(state)
 
     assert result.passed
-def test_validate_answer_post_rejects_missing_provenance_dimension_for_non_trivial_answer() -> None:
+def test_validate_answer_commit_post_rejects_missing_provenance_dimension_for_non_trivial_answer() -> None:
     state = _base_state()
     state.alignment_decision["dimensions"].pop("provenance_transparency")
 
-    result = validate_answer_post(state)
+    result = validate_answer_commit_post(state)
 
     assert not result.passed
     assert "alignment_dimensions_present" in result.failures
@@ -325,7 +325,7 @@ def test_stage_answer_non_memory_invalid_gk_contract_routes_to_safe_fallback_and
     assert answer_state.final_answer == NON_KNOWLEDGE_UNCERTAINTY_ANSWER
     assert answer_state.invariant_decisions["answer_mode"] == "dont-know"
 
-    result = validate_answer_post(answer_state)
+    result = validate_answer_commit_post(answer_state)
 
     assert result.passed is True
 
@@ -355,10 +355,10 @@ def test_stage_answer_social_statement_with_invalid_gk_contract_degrades_to_unce
     assert answer_state.invariant_decisions["general_knowledge_contract_valid"] is False
     assert answer_state.final_answer == NON_KNOWLEDGE_UNCERTAINTY_ANSWER
     assert answer_state.invariant_decisions["answer_mode"] == "dont-know"
-    assert validate_answer_post(answer_state).passed is True
+    assert validate_answer_commit_post(answer_state).passed is True
 
 
-def test_validate_answer_post_rejects_non_fallback_factual_answer_when_gk_contract_invalid() -> None:
+def test_validate_answer_commit_post_rejects_non_fallback_factual_answer_when_gk_contract_invalid() -> None:
     state = replace(
         _base_state(),
         final_answer="Life is the condition that distinguishes organisms from inorganic matter.",
@@ -370,7 +370,7 @@ def test_validate_answer_post_rejects_non_fallback_factual_answer_when_gk_contra
         alignment_decision={**_base_state().alignment_decision, "final_alignment_decision": "allow"},
     )
 
-    result = validate_answer_post(state)
+    result = validate_answer_commit_post(state)
 
     assert not result.passed
     assert "inv_003_general_knowledge_contract_enforced" in result.failures
@@ -401,7 +401,7 @@ def test_stage_answer_memory_hit_without_ambiguity_uses_contract_safe_recovery_a
     assert "doc_id: d-1" in answered.final_answer
     assert answered.invariant_decisions["answer_mode"] == "memory-grounded"
     assert answered.alignment_decision["final_alignment_decision"] == "allow"
-    assert validate_answer_post(answered).passed
+    assert validate_answer_commit_post(answered).passed
 
 
 
