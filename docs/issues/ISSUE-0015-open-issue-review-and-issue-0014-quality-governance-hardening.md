@@ -173,9 +173,9 @@ Review scope was limited to open issues (`open` or `in_progress`) and issue-gove
 
 ### Open blockers (red-tag)
 
-- **AC6:** **satisfied** — governance linkage evidence is attached in ISSUE-0014/ISSUE-0013 and lifecycle dependency language is synchronized across ISSUE-0013/0014/0015/RED_TAG using a consistent "evidence satisfied, closure decision pending" posture.
+- **AC6:** **in_progress** — governance linkage remains active, but synchronized lifecycle language now reflects unresolved dependency evidence because the authoritative bundle still reports canonical all-green gate failure.
 - **AC7:** **satisfied** — targeted deterministic regression coverage passes, canonical all-green reports pass under warning-mode KPI policy, and closure-proof CLI traces are attached for identity semantic preservation, retrieval activation on self-reference recall, and confirmed identity fact promotion at commit.
-- **AC9 (dependency gate):** **in_progress (evidence satisfied; closure sequencing pending)** — dependency evaluation is executed with AC-0013-11 behavioral evidence satisfied; gate remains in progress only to preserve coordinated close-order governance across linked issues.
+- **AC9 (dependency gate):** **in_progress (evidence incomplete; closure blocked)** — dependency evaluation confirms AC-0013-11 evidence is not yet satisfied due to failing canonical all-green gate evidence in the referenced bundle.
 
 ### Exit conditions for ISSUE-0015 closure (dependency on ISSUE-0013 / ISSUE-0014)
 
@@ -183,7 +183,7 @@ ISSUE-0015 remains `Status: open` and `Severity: red` until all dependency condi
 
 1. **ISSUE-0014 behavioral exit condition met:** deterministic evidence confirms identity declaration semantic preservation, retrieval activation on immediate self-reference recall, and confirmed identity fact promotion at commit.
 2. **ISSUE-0013 governance exit condition met:** AC-0013-11 is marked complete with linked evidence proving ISSUE-0014 Phase 1 behavior is passing in deterministic tests plus reproducible CLI traces.
-3. **Cross-artifact consistency exit condition met:** `docs/issues/RED_TAG.md` plus issue files (`ISSUE-0013`, `ISSUE-0014`, `ISSUE-0015`) explicitly reflect the same lifecycle interpretation ("evidence satisfied, closure decision pending" vs fully closed).
+3. **Cross-artifact consistency exit condition met:** `docs/issues/RED_TAG.md` plus issue files (`ISSUE-0013`, `ISSUE-0014`, `ISSUE-0015`) explicitly reflect the same lifecycle interpretation (currently: "dependency evidence incomplete; closure blocked pending canonical gate pass").
 
 ## 2026-03-09 Dependency Evaluation Update (AC6/AC7/AC9)
 
@@ -191,19 +191,36 @@ ISSUE-0015 remains `Status: open` and `Severity: red` until all dependency condi
 - Attached command logs:
   - `docs/issues/evidence/2026-03-09-issue-0014-0013-behave.log` (**pass**)
   - `docs/issues/evidence/2026-03-09-issue-0014-0013-focused-pytests.log` (**pass**)
-  - `docs/issues/evidence/2026-03-09-issue-0014-0013-all-green-gate.log` (**pass with warning mode**)
+  - `docs/issues/evidence/2026-03-09-issue-0014-0013-all-green-gate.log` (**fail**: `product_behave`)
   - `artifacts/all-green-gate-summary.json` (**passed** summary; warning on optional `qa_validate_kpi_guardrails`)
   - `docs/issues/evidence/2026-03-09-issue-0014-cli-identity-semantic-preservation-trace.md` (**pass**)
   - `docs/issues/evidence/2026-03-09-issue-0014-cli-self-reference-retrieval-activation-trace.md` (**pass**)
   - `docs/issues/evidence/2026-03-09-issue-0014-cli-confirmed-fact-promotion-trace.md` (**pass**)
 - Closure interpretation:
-  - AC6: satisfied with synchronized dependency-language governance references across ISSUE-0013/0014/0015/RED_TAG.
+  - AC6: in progress; governance linkage remains synchronized to an open dependency posture because gate evidence is still failing.
   - AC7: satisfied with deterministic coverage and all three required reproducible CLI identity-continuity traces attached.
-  - AC9: evidence-satisfied and retained in-progress only for close-order governance sequencing across linked issues.
-- Result: ISSUE-0015 stays `Status: open`, `Severity: red` until explicit close-order governance action is taken.
+  - AC9: blocked on missing deterministic evidence (canonical all-green gate pass artifact).
+- Result: ISSUE-0015 stays `Status: open`, `Severity: red` with explicit missing-evidence actions until canonical all-green gate evidence is passing and dependency language can be upgraded.
+
+
+### Missing evidence checklist (owner + due date)
+
+- [ ] **Owner: runtime-pipeline** — Resolve `product_behave` failures referenced by the Phase 1 evidence bundle and document corrective changes in ISSUE-0014. **Due: 2026-03-16**.
+- [ ] **Owner: platform-qa** — Re-run `python scripts/all_green_gate.py --json-output artifacts/all-green-gate-summary.json` and attach updated log/summary showing pass status. **Due: 2026-03-16**.
+- [ ] **Owner: release-governance** — After refreshed passing evidence is attached, update ISSUE-0013/0014/0015 and RED_TAG lifecycle text from blocked to evidence-satisfied sequencing posture. **Due: 2026-03-17**.
 
 
 ## 2026-03-09 Governance validator rerun
 
 - `python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main` -> **pass** (`origin/main` unavailable; fallback `HEAD~1`).
 - `python scripts/validate_issues.py --all-issue-files --base-ref origin/main` -> **pass** (`--pr-body-file` not provided; `origin/main` unavailable; fallback `HEAD~1`).
+
+
+Validator output excerpts:
+```text
+[WARN] Base ref 'origin/main' is unavailable; falling back to 'HEAD~1'.
+Governance validation passed.
+[INFO] No --pr-body-file provided; skipping PR description validation.
+[WARN] Base ref 'origin/main' is unavailable; falling back to 'HEAD~1'.
+Issue validation passed.
+```

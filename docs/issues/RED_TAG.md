@@ -33,7 +33,7 @@ KPI evidence updates are mandatory for red-tag triage. If any KPI guardrail fail
 - ISSUE-0013 is the routing anchor for this chain; all linked issue files and RED_TAG entries must use the same blocker/dependent/parallel-stream labels.
 - Closure of ISSUE-0015 remains blocked until blocker conditions are evidence-satisfied (including ISSUE-0013 AC-0013-11 and ISSUE-0014 Phase 1 behavioral criteria with deterministic evidence + reproducible CLI traces).
 - If any blocker is unresolved, keep ISSUE-0015 in the Active red-tag list and avoid resolved-language in related issue files.
-- 2026-03-09 lifecycle sync note: latest ISSUE-0014/0013 deterministic evidence bundle plus reproducible CLI identity-continuity closure-proof traces are attached for identity semantic preservation, retrieval activation on self-reference recall, and confirmed identity fact promotion at commit; dependency evidence is satisfied and lifecycle language is synchronized across ISSUE-0013/0014/0015/RED_TAG as "evidence satisfied, closure decision pending", so ISSUE-0015/0014 remain active red-tag until close-order governance action.
+- 2026-03-09 lifecycle sync note: latest ISSUE-0014/0013 deterministic evidence bundle plus reproducible CLI identity-continuity closure-proof traces are attached, but dependency evidence remains incomplete because the canonical all-green gate artifact is failing (`product_behave`); lifecycle language across ISSUE-0013/0014/0015/RED_TAG must remain in blocked/open posture until refreshed passing gate evidence is attached.
 
 ## Active
 
@@ -41,14 +41,20 @@ KPI evidence updates are mandatory for red-tag triage. If any KPI guardrail fail
   - Last reviewed: 2026-03-09
   - Next review due: 2026-03-16
   - KPI evidence: docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md
-  - Decision notes: Deterministic phase-1 suites, canonical all-green gate, and all required reproducible CLI identity-continuity traces are attached; dependency evidence is satisfied and red-tag remains open only for governance close-order sequencing.
+  - Decision notes: Deterministic phase-1 suites and required reproducible CLI traces are attached, but dependency remains blocked because the referenced canonical all-green gate artifact is failing (`product_behave`). Missing-evidence owners/due dates are tracked below.
 - ISSUE-0014 — **CLI self-identity turns are stabilized structurally but semantically misrouted before memory retrieval and durable fact promotion**: Open red-tag regression; evidence indicates rewrite-stage semantic inversion and self-reference misrouting prevent retrieval activation and confirmed-user-fact promotion. This is a blocking dependency for ISSUE-0013 AC-0013-11 and ISSUE-0015 closure gates.
   - Last reviewed: 2026-03-09
   - Next review due: 2026-03-16
   - KPI evidence: docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md
-  - Decision notes: Behavioral deterministic checks are passing, canonical gate is passing under warning-mode KPI policy, and required reproducible CLI identity-continuity closure-proof traces are attached; dependency evidence is satisfied and issue remains active red-tag for synchronized governance close-order handling.
+  - Decision notes: Behavioral deterministic checks and required reproducible CLI identity-continuity closure-proof traces are attached, but canonical all-green gate evidence remains failing in the current bundle; issue remains active red-tag pending refreshed passing gate evidence.
 
-Dependency evidence pointer (2026-03-09): `docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md` with linked behave/pytest pass logs and canonical all-green gate pass-with-warning log.
+Dependency evidence pointer (2026-03-09): `docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md` with linked behave/pytest pass logs and canonical all-green gate **fail** log (`product_behave`).
+
+## Missing evidence checklist (dependency gate)
+
+- [ ] **Owner: runtime-pipeline** — Resolve `product_behave` failures cited in `docs/issues/evidence/2026-03-09-issue-0014-0013-all-green-gate.log`. **Due: 2026-03-16**.
+- [ ] **Owner: platform-qa** — Re-run canonical gate and publish refreshed passing artifacts (`...all-green-gate.log`, `artifacts/all-green-gate-summary.json`). **Due: 2026-03-16**.
+- [ ] **Owner: release-governance** — Update lifecycle language in ISSUE-0013/0014/0015/RED_TAG once refreshed evidence confirms AC-0013-11 dependency satisfaction. **Due: 2026-03-17**.
 
 ## Resolved
 

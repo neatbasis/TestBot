@@ -94,10 +94,14 @@ Status legend: `[ ] pending`, `[~] partial`, `[x] complete`.
   - exit condition EC-0013-11-B: the deterministic validation set required by ISSUE-0014 Phase 1 runs clean in the current branch (no identity-continuity regressions).
   - exit condition EC-0013-11-C: ISSUE-0015 dependency gate is updated from open to satisfied, confirming closure-governance alignment across ISSUE-0013/0014/0015.
   - 2026-03-09 evidence update:
-    - EC-0013-11-A: **satisfied (behavioral evidence complete)** (targeted ISSUE-0014 Phase 1 suites pass and reproducible CLI closure-proof traces are attached for identity semantic preservation, retrieval activation on self-reference recall, and confirmed identity fact promotion at commit).
-    - EC-0013-11-B: **satisfied (deterministic evidence complete)** (required deterministic suites and canonical gate pass under current warning policy; CLI closure-proof trace artifacts are attached.)
-    - EC-0013-11-C: **in_progress (governance synchronization)** (ISSUE-0015 dependency gate now has required evidence; cross-artifact lifecycle language is synchronized to "evidence satisfied, closure decision pending").
+    - EC-0013-11-A: **in_progress (partial behavioral evidence)** (targeted ISSUE-0014 Phase 1 suites and CLI closure-proof traces are attached, but deterministic dependency closure remains blocked by failing canonical all-green gate evidence).
+    - EC-0013-11-B: **unsatisfied (deterministic gate incomplete)** (evidence bundle records canonical all-green gate failure on `product_behave`; refreshed passing gate artifact is required).
+    - EC-0013-11-C: **in_progress (governance synchronization)** (ISSUE-0015 dependency gate tracks missing evidence actions and cross-artifact lifecycle language is synchronized to blocked/open dependency posture).
     - linked evidence: `docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md`, `docs/issues/evidence/2026-03-09-issue-0014-0013-behave.log`, `docs/issues/evidence/2026-03-09-issue-0014-0013-focused-pytests.log`, `docs/issues/evidence/2026-03-09-issue-0014-0013-all-green-gate.log`, `artifacts/all-green-gate-summary.json`.
+    - missing-evidence checklist:
+      - [ ] **Owner: runtime-pipeline** — resolve `product_behave` failures in canonical gate evidence. **Due: 2026-03-16**.
+      - [ ] **Owner: platform-qa** — rerun canonical all-green gate and attach passing artifacts. **Due: 2026-03-16**.
+      - [ ] **Owner: release-governance** — promote lifecycle language to evidence-satisfied only after refreshed passing gate evidence is attached across ISSUE-0013/0014/0015/RED_TAG. **Due: 2026-03-17**.
 - [~] [AC-0013-12] `docs/qa/feature-status.yaml` canonical pipeline capability slices are advanced from `planned` to implemented maturity states that reflect delivered behavior.
   - evidence: `docs/qa/feature-status.yaml`
   - evidence: `docs/qa/feature-status-report.md`
@@ -175,7 +179,7 @@ Status legend: `[ ] pending`, `[~] partial`, `[x] complete`.
 - Last reviewed: 2026-03-09
 - Next review due: 2026-03-16
 - KPI evidence: docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md
-- Decision notes: Deterministic behave/pytest bundle, canonical all-green gate, and required CLI identity-continuity closure traces are all attached; ISSUE-0013 dependency is now evidence-satisfied and remains open only for coordinated governance closure sequencing across ISSUE-0013/0014/0015 and RED_TAG.
+- Decision notes: Deterministic behave/pytest bundle and required CLI identity-continuity closure traces are attached, but AC-0013-11 dependency remains unresolved because the referenced canonical all-green gate artifact is failing (`product_behave`).
 
 - 2026-03-07: Opened as the primary bug-elimination program to align runtime behavior with the canonical turn pipeline contract and eliminate raw-utterance-first routing as the dominant defect source.
 - 2026-03-07: Cross-system traceability note — ISSUE-0013 is the implementation and bug-elimination counterpart to `ISSUE-0012-canonical-turn-pipeline-delivery-plan.md` (delivery planning/governance anchor).
