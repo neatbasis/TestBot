@@ -3,19 +3,18 @@
 ## What
 TestBot is a memory-grounded chatbot loop for Home Assistant Assist Satellite.
 
-## Mission
-TestBot awareness is produced from both conversational memory and source ingestion from external systems.
+## Vision
+TestBot is a user-steered assistant that combines conversational memory with ingested external sources to produce evidence-backed responses without overstating certainty or autonomy.
 
-### How Mission is operationalized
-- **Source ingestion** continuously normalizes external evidence into retrievable records alongside conversation memory.
-- **Provenance** is required on knowing-mode answers so users can see what memory and source evidence informed the response.
-- **Trust tier** metadata is preserved for ingested sources so policy and retrieval can apply explicit trust boundaries.
-- **Deterministic fallback** ensures the assistant degrades safely (including uncertainty responses) when evidence is weak or unavailable.
+### How Vision is operationalized
+- **Evidence-backed knowing responses**: source ingestion continuously normalizes external evidence into retrievable records, and knowing-mode answers include provenance so users can inspect what memory and source evidence informed the response.
+- **Explicit uncertainty when evidence is weak or conflicting**: trust-tier metadata is preserved for ingested sources, and disagreement between memory and source evidence resolves to visible uncertainty/clarification behavior rather than unsupported claims.
+- **Safe fallback and clarifier behavior**: deterministic fallback policy routes low-trust, unavailable, or conflicting evidence to safe fallback paths, including user-facing clarification prompts.
 
 TestBot operates in two explicit response intents:
 
-- **Knowing mode**: provide a grounded answer based on available evidence and include provenance for where the answer came from.
-- **Unknowing mode**: do not fabricate; explicitly state uncertainty and either ask for clarification or provide a safe fallback path.
+- **Knowing mode**: provide an evidence-backed grounded answer with provenance for where the answer came from.
+- **Unknowing mode**: do not fabricate; explicitly state uncertainty, keep confidence calibration visible to the user, and either ask for clarification or provide a safe fallback path.
 
 ### Start here by role
 - **Operator**: read [docs/quickstart.md](docs/quickstart.md).
