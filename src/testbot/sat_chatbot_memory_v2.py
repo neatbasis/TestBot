@@ -2164,13 +2164,16 @@ def _answer_assemble_stage(
     clock: Clock | None = None,
     timezone: str = "Europe/Helsinki",
 ) -> AnswerAssembleResult:
+    resolved_intent = IntentType(state.resolved_intent or classify_intent(state.user_input).value)
+    if not state.resolved_intent:
+        state = replace(state, resolved_intent=resolved_intent.value)
+
     if selected_decision is not None:
         answer_routing = _answer_routing_from_decision_object(
             selected_decision,
             capability_status=capability_status,
         )
     else:
-        resolved_intent = IntentType(state.resolved_intent or IntentType.KNOWLEDGE_QUESTION.value)
         answer_routing = resolve_answer_routing(
             AnswerPolicyInput(
                 intent=_intent_class_for_policy(resolved_intent),
@@ -2249,6 +2252,7 @@ def stage_answer(
         chat_history=chat_history,
         hits=hits,
         capability_status=capability_status,
+        selected_decision=selected_decision,
         runtime_capability_status=runtime_capability_status,
         clock=clock,
         timezone=timezone,
@@ -2954,6 +2958,7 @@ def _run_canonical_turn_pipeline(
             {
                 "utterance": utterance,
                 "intent": intent_label,
+                "retrieval_branch": "memory_retrieval" if requires_retrieval else "direct_answer",
                 "intent_classified": intent_resolution.classified_intent.value,
                 "intent_resolved": intent_resolution.resolved_intent.value,
                 "retrieval_requirement": dict(ctx.artifacts["retrieval_requirement"]),

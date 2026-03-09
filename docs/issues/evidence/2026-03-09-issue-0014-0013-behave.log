@@ -1,0 +1,492 @@
+USING RUNNER: behave.runner:Runner
+@Rule:CitationContract @Role:Resident @Priority:High @fast
+Feature: Memory recall behavior # features/memory_recall.feature:2
+  In order to trust responses grounded in memory
+  As a resident
+  I want cited answers when memory is sufficient and progressive fallback when it is not
+  Scenario: cited memory-grounded answer path                           # features/memory_recall.feature:7
+    Given a deterministic in-memory recall harness                      # features/steps/memory_steps.py:232
+    And eval cases are loaded from "eval/cases.jsonl"                   # features/steps/memory_steps.py:238
+    When the user asks about eval case "sleep-followup"                 # features/steps/memory_steps.py:244
+    Then the assistant returns a memory-grounded answer                 # features/steps/memory_steps.py:342
+    And the answer includes citation fields "doc_id" and "ts"           # features/steps/memory_steps.py:349
+    And the response includes memory provenance transparency fields     # features/steps/memory_steps.py:355
+    And the response includes a grounding basis statement               # features/steps/memory_steps.py:363
+    And the response includes deterministic citation-context formatting # features/steps/memory_steps.py:557
+
+  Scenario: progressive assist fallback path                  # features/memory_recall.feature:17
+    Given a deterministic in-memory recall harness            # features/steps/memory_steps.py:232
+    And eval cases are loaded from "eval/cases.jsonl"         # features/steps/memory_steps.py:238
+    When the user asks about eval case "no-memory-match"      # features/steps/memory_steps.py:244
+    Then the assistant returns an assistive fallback response # features/steps/memory_steps.py:369
+
+  @Rule:AmbiguityHandling
+  Scenario: equivalent candidates remain ambiguous after tie-break  # features/memory_recall.feature:24
+    Given a deterministic in-memory recall harness                  # features/steps/memory_steps.py:232
+    When equivalent top candidates remain after tie-break           # features/steps/memory_steps.py:270
+    Then the assistant returns a bridging clarification response    # features/steps/memory_steps.py:453
+
+  @Rule:FallbackSemantics
+  Scenario: empty and scored-empty typed states keep distinct downstream fallback contracts                                                         # features/memory_recall.feature:31
+    Given a deterministic in-memory recall harness                                                                                                  # features/steps/memory_steps.py:232
+    When typed memory fallback contracts are resolved for empty and scored-empty evidence                                                           # features/steps/memory_steps.py:379
+    Then typed evidence states should remain distinct for empty and scored-empty in memory recall                                                   # features/steps/memory_steps.py:420
+    And the memory evidence-state mapping should include decision class "ask_for_clarification" and provenance label "UNKNOWN" for "E.empty"        # features/steps/memory_steps.py:429
+    And the memory evidence-state mapping should include decision class "ask_for_clarification" and provenance label "UNKNOWN" for "E.scored_empty" # features/steps/memory_steps.py:429
+    And the memory evidence-state mapping should include fallback strategy "ASK_CLARIFIER" for "E.empty"                                            # features/steps/memory_steps.py:442
+    And the memory evidence-state mapping should include fallback strategy "ANSWER_UNKNOWN" for "E.scored_empty"                                    # features/steps/memory_steps.py:442
+    And the memory evidence-state mapping should include fallback strategy "OFFER_ASSIST_ALTERNATIVES" for "E.scored_empty_non_memory"              # features/steps/memory_steps.py:442
+
+  @Rule:TemporalRouting
+  Scenario: pronoun temporal follow-up resolves anchor before routing               # features/memory_recall.feature:42
+    Given a deterministic in-memory recall harness                                  # features/steps/memory_steps.py:232
+    And recall candidates include a recent anchor and older distractor              # features/steps/memory_steps.py:462
+    When the user asks a pronoun temporal follow-up "how long ago was it yesterday" # features/steps/memory_steps.py:485
+    Then the temporal anaphora bridge selects the anchor before rerank              # features/steps/memory_steps.py:504
+    And the bridge emits elapsed delta and yesterday window details                 # features/steps/memory_steps.py:511
+
+  Scenario: observe and stabilize happen before route authority                  # features/memory_recall.feature:49
+    Given a canonical stage harness with a raw utterance "My name is Sebastian"  # features/steps/memory_steps.py:519
+    When canonical stages execute stabilize then intent resolve then retrieve    # features/steps/memory_steps.py:564
+    Then stabilization artifacts are persisted before route authority assignment # features/steps/answer_contract_steps.py:418
+    And route authority cannot be finalized until stabilization outputs exist    # features/steps/answer_contract_steps.py:427
+
+  Scenario: observe.turn stores user claims only as observation artifacts in-turn             # features/memory_recall.feature:55
+    Given a canonical memory claim harness with claim "My favorite color is green"            # features/steps/memory_steps.py:648
+    When observe.turn captures the claim for turn "turn-memory-1"                             # features/steps/memory_steps.py:659
+    And retrieval executes in the same turn before answer.commit                              # features/steps/memory_steps.py:666
+    Then observed artifact ids should be "obs-turn-memory-1-claim-1"                          # features/steps/memory_steps.py:689
+    And committed memory ids should be empty                                                  # features/steps/memory_steps.py:695
+    And same-turn retrieval should not return committed memory id "mem-turn-memory-1-claim-1" # features/steps/memory_steps.py:700
+
+  Scenario: committed claims become retrievable memory only in a later turn                # features/memory_recall.feature:63
+    Given a canonical memory claim harness with claim "My favorite color is green"         # features/steps/memory_steps.py:648
+    When observe.turn captures the claim for turn "turn-memory-1"                          # features/steps/memory_steps.py:659
+    And answer.commit persists the observed claim as memory id "mem-turn-memory-1-claim-1" # features/steps/memory_steps.py:671
+    And retrieval executes in a later turn "turn-memory-2"                                 # features/steps/memory_steps.py:677
+    Then observed artifact ids should be "obs-turn-memory-1-claim-1"                       # features/steps/memory_steps.py:689
+    And committed memory ids should include "mem-turn-memory-1-claim-1"                    # features/steps/memory_steps.py:705
+    And later-turn retrieval should return committed memory id "mem-turn-memory-1-claim-1" # features/steps/memory_steps.py:711
+
+  Scenario: same-turn retrieval that returns a just-observed claim is rejected                               # features/memory_recall.feature:72
+    Given a canonical memory claim harness with claim "My favorite color is green"                           # features/steps/memory_steps.py:648
+    When observe.turn captures the claim for turn "turn-memory-1"                                            # features/steps/memory_steps.py:659
+    And retrieval incorrectly returns just-observed artifact id "obs-turn-memory-1-claim-1" in the same turn # features/steps/memory_steps.py:683
+    Then same-turn retrieval should be rejected as invalid durable memory                                    # features/steps/memory_steps.py:716
+
+  @Rule:AmbiguityHandling
+  Scenario: multi-antecedent pronoun follow-up requires disambiguation before committed-context reuse                     # features/memory_recall.feature:79
+    Given a canonical multi-antecedent commit-state harness                                                               # features/steps/memory_steps.py:724
+    When a pronoun follow-up "when did it start" is evaluated at the next turn boundary                                   # features/steps/memory_steps.py:738
+    Then the follow-up should require disambiguation before committed context is reused                                   # features/steps/memory_steps.py:756
+    And commit-state transitions should persist multi-antecedent facts and clear selected antecedent at the turn boundary # features/steps/memory_steps.py:762
+
+  Scenario: segment-aware continuity groups multi-turn self-profile memory  # features/memory_recall.feature:86
+    Given derived memory segments for follow-up self-profile turns          # features/steps/memory_steps.py:788
+    Then the segment id remains stable across those turns                   # features/steps/memory_steps.py:799
+
+  Scenario: strata-aware retrieval prefers semantic memory over episodic utterance  # features/memory_recall.feature:90
+    Given a segment with semantic and episodic memory candidates                    # features/steps/memory_steps.py:805
+    When evidence is bundled for policy consumption                                 # features/steps/memory_steps.py:830
+    Then semantic memory is retained as canonical evidence for that segment         # features/steps/memory_steps.py:835
+    And raw episodic utterance evidence for that segment is de-prioritized          # features/steps/memory_steps.py:840
+
+  @ISSUE-0013 @AC-0013-01 @AC-0013-03 @AC-0013-05 @AC-0013-10
+  Scenario Outline: canonical pre-route artifacts are established for ISSUE-0013 regression utterances -- @1.1   # features/memory_recall.feature:106
+    Given a canonical stage harness with a raw utterance "Hi! I'm Sebastian"                                     # features/steps/memory_steps.py:519
+    When canonical observe encode and stabilize execute                                                          # features/steps/memory_steps.py:524
+    Then the stage artifacts include a typed turn observation                                                    # features/steps/memory_steps.py:540
+    And stabilization provides same-turn exclusion doc ids before intent resolve                                 # features/steps/memory_steps.py:546
+
+  @ISSUE-0013 @AC-0013-01 @AC-0013-03 @AC-0013-05 @AC-0013-10
+  Scenario Outline: canonical pre-route artifacts are established for ISSUE-0013 regression utterances -- @1.2   # features/memory_recall.feature:107
+    Given a canonical stage harness with a raw utterance "The memory today"                                      # features/steps/memory_steps.py:519
+    When canonical observe encode and stabilize execute                                                          # features/steps/memory_steps.py:524
+    Then the stage artifacts include a typed turn observation                                                    # features/steps/memory_steps.py:540
+    And stabilization provides same-turn exclusion doc ids before intent resolve                                 # features/steps/memory_steps.py:546
+
+  @ISSUE-0013 @AC-0013-01 @AC-0013-03 @AC-0013-05 @AC-0013-10
+  Scenario Outline: canonical pre-route artifacts are established for ISSUE-0013 regression utterances -- @1.3   # features/memory_recall.feature:108
+    Given a canonical stage harness with a raw utterance "How log ago did I ask you something?"                  # features/steps/memory_steps.py:519
+    When canonical observe encode and stabilize execute                                                          # features/steps/memory_steps.py:524
+    Then the stage artifacts include a typed turn observation                                                    # features/steps/memory_steps.py:540
+    And stabilization provides same-turn exclusion doc ids before intent resolve                                 # features/steps/memory_steps.py:546
+
+@Rule:IntentGrounding @Role:Resident @Priority:High @fast
+Feature: Intent-specific grounding and provenance behavior # features/intent_grounding.feature:2
+  In order to keep non-memory responses trustworthy
+  As a resident
+  I want intent-aware answers to carry explicit grounding and basis statements
+  @ISSUE-0008 @AC-0008-01
+  Scenario: knowledge question with memory miss returns labeled general answer and clarification   # features/intent_grounding.feature:8
+    Given an intent response harness                                                               # features/steps/intent_grounding_steps.py:75
+    When a knowledge question misses memory context                                                # features/steps/intent_grounding_steps.py:169
+    Then the assistant returns a labeled general answer with clarification                         # features/steps/intent_grounding_steps.py:371
+    And the rendered answer should include semantic markers                                        # features/steps/semantic_rendering_steps.py:47
+      | marker                  |
+      | general_knowledge_label |
+      | clarification_prompt    |
+    And the response records general-knowledge provenance and basis                                # features/steps/intent_grounding_steps.py:377
+    And the provenance and basis should include "GENERAL_KNOWLEDGE" and "General-knowledge basis:" # features/steps/intent_grounding_steps.py:447
+
+  @ISSUE-0008 @AC-0008-02
+  Scenario: meta question what did I ask uses chat-history grounding              # features/intent_grounding.feature:20
+    Given an intent response harness                                              # features/steps/intent_grounding_steps.py:75
+    When the user asks "what did I ask?"                                          # features/steps/intent_grounding_steps.py:199
+    Then the assistant replies from chat history                                  # features/steps/intent_grounding_steps.py:384
+    And the rendered answer should include semantic markers                       # features/steps/semantic_rendering_steps.py:47
+      | marker             |
+      | chat_history_recap |
+    And the response records chat-history provenance and basis                    # features/steps/intent_grounding_steps.py:390
+    And the provenance and basis should include "CHAT_HISTORY" and "chat history" # features/steps/intent_grounding_steps.py:447
+
+  @ISSUE-0008 @AC-0008-03
+  Scenario: relevance question returns summarized relevance with basis statement              # features/intent_grounding.feature:31
+    Given an intent response harness                                                          # features/steps/intent_grounding_steps.py:75
+    When the user asks a relevance question                                                   # features/steps/intent_grounding_steps.py:217
+    Then the assistant returns a summarized relevance answer                                  # features/steps/intent_grounding_steps.py:396
+    And the rendered answer should include semantic markers                                   # features/steps/semantic_rendering_steps.py:47
+      | marker          |
+      | relevance_label |
+    And the response includes a relevance basis assertion                                     # features/steps/intent_grounding_steps.py:402
+    And the provenance and basis should include "CHAT_HISTORY" and "Relevance summary basis:" # features/steps/intent_grounding_steps.py:447
+
+  @Rule:SourceBackedAnswer @ISSUE-0008 @AC-0008-04
+  Scenario: source-backed knowing answer includes source citation provenance     # features/intent_grounding.feature:43
+    Given an intent response harness                                             # features/steps/intent_grounding_steps.py:75
+    When the user asks a source-backed knowing question                          # features/steps/intent_grounding_steps.py:236
+    Then the assistant returns a source-backed answer with citation              # features/steps/intent_grounding_steps.py:408
+    And the provenance and basis should include "MEMORY" and "source evidence"   # features/steps/intent_grounding_steps.py:447
+    And the source provenance includes "calendar://work/event-42" and "calendar" # features/steps/intent_grounding_steps.py:414
+
+  @Rule:SourceBackedAnswer @Rule:FallbackSemantics @ISSUE-0008 @AC-0008-05
+  Scenario: source confidence insufficient triggers progressive unknowing response  # features/intent_grounding.feature:53
+    Given an intent response harness                                                # features/steps/intent_grounding_steps.py:75
+    When source confidence is insufficient for a knowing answer                     # features/steps/intent_grounding_steps.py:281
+    Then the assistant returns a progressive unknowing response                     # features/steps/intent_grounding_steps.py:422
+    And the rendered answer should include semantic markers                         # features/steps/semantic_rendering_steps.py:47
+      | marker      |
+      | uncertainty |
+      | safe_action |
+    And the provenance and basis should include "UNKNOWN" and "Trivial fallback"    # features/steps/intent_grounding_steps.py:447
+    And the fallback reason should be "non_memory_low_source_confidence"            # features/steps/intent_grounding_steps.py:1149
+
+  @Rule:SourceBackedAnswer @Rule:FallbackSemantics @ISSUE-0008 @AC-0008-06
+  Scenario: low-confidence source evidence avoids direct source-backed claims    # features/intent_grounding.feature:67
+    Given an intent response harness                                             # features/steps/intent_grounding_steps.py:75
+    When source evidence remains low-confidence after retrieval                  # features/steps/intent_grounding_steps.py:315
+    Then the assistant returns a progressive unknowing response                  # features/steps/intent_grounding_steps.py:422
+    And the response should not include "source_uri:"                            # features/steps/intent_grounding_steps.py:841
+    And the provenance and basis should include "UNKNOWN" and "Trivial fallback" # features/steps/intent_grounding_steps.py:447
+    And the fallback reason should be "insufficient_reliable_memory"             # features/steps/intent_grounding_steps.py:1149
+
+  @Rule:SourceBackedAnswer @ISSUE-0008 @AC-0008-07
+  Scenario: assembled answer object combines memory and source evidence with explicit fields  # features/intent_grounding.feature:77
+    Given an intent response harness                                                          # features/steps/intent_grounding_steps.py:75
+    When memory and source evidence are assembled into a knowing response                     # features/steps/source_ingestion_steps.py:107
+    Then the assembled answer object includes memory and source evidence references           # features/steps/source_ingestion_steps.py:132
+
+  @Rule:SourceBackedAnswer @ISSUE-0008 @AC-0008-08
+  Scenario: assembled answer object enforces required attribution fields by evidence type        # features/intent_grounding.feature:84
+    Given an intent response harness                                                             # features/steps/intent_grounding_steps.py:75
+    When memory and source evidence are assembled into a knowing response                        # features/steps/source_ingestion_steps.py:107
+    Then the assembled answer object includes required attribution fields for each evidence type # features/steps/source_ingestion_steps.py:142
+
+  @Rule:SourceBackedAnswer @ISSUE-0008 @AC-0008-09
+  Scenario: assembled answer object resolves evidence conflicts to clarification posture  # features/intent_grounding.feature:91
+    Given an intent response harness                                                      # features/steps/intent_grounding_steps.py:75
+    When assembled evidence inputs disagree for the same intent response                  # features/steps/source_ingestion_steps.py:155
+    Then the assembled answer object records conflict-resolution fallback behavior        # features/steps/source_ingestion_steps.py:184
+
+  @Rule:AmbiguityHandling @Rule:FallbackSemantics @ISSUE-0008 @AC-0008-10
+  Scenario: conflicting source evidence asks a targeted clarifying question                                          # features/intent_grounding.feature:99
+    Given an intent response harness                                                                                 # features/steps/intent_grounding_steps.py:75
+    When source evidence conflicts across candidate records                                                          # features/steps/intent_grounding_steps.py:338
+    Then the assistant asks a targeted clarifying question                                                           # features/steps/intent_grounding_steps.py:365
+    And the rendered answer should include normative phrase "Which person, event, or time window should I focus on?" # features/steps/semantic_rendering_steps.py:55
+    And the provenance and basis should include "UNKNOWN" and "Trivial fallback"                                     # features/steps/intent_grounding_steps.py:447
+    And the fallback reason should be "ambiguous_memory_candidates_without_ask"                                      # features/steps/intent_grounding_steps.py:1149
+
+  @ISSUE-0008 @AC-0008-11
+  Scenario: affirmation follow-up preserves clarification intent continuity         # features/intent_grounding.feature:109
+    Given an intent response harness                                                # features/steps/intent_grounding_steps.py:75
+    When the user asks to ask something via satellite and follows up with "yes"     # features/steps/intent_grounding_steps.py:453
+    Then the resolved follow-up intent should preserve capabilities help continuity # features/steps/intent_grounding_steps.py:468
+
+  @ISSUE-0008 @AC-0008-12
+  Scenario: delayed yes after topic shift does not preserve stale clarification continuity               # features/intent_grounding.feature:115
+    Given an intent response harness                                                                     # features/steps/intent_grounding_steps.py:75
+    And a prior clarification commit-state harness for capabilities help                                 # features/steps/intent_grounding_steps.py:939
+    When a topic shift turn is committed before delayed follow-up "yes"                                  # features/steps/intent_grounding_steps.py:954
+    Then delayed follow-up should re-evaluate instead of preserving prior clarification intent           # features/steps/intent_grounding_steps.py:982
+    And commit-state transitions should clear stale clarification continuity at the topic-shift boundary # features/steps/intent_grounding_steps.py:988
+
+  @ISSUE-0008 @AC-0008-13
+  Scenario: hostile or sarcastic affirmation does not auto-preserve clarification continuity              # features/intent_grounding.feature:123
+    Given an intent response harness                                                                      # features/steps/intent_grounding_steps.py:75
+    And a prior clarification commit-state harness for capabilities help                                  # features/steps/intent_grounding_steps.py:939
+    When a hostile follow-up "yeah sure whatever" is evaluated against prior clarification state          # features/steps/intent_grounding_steps.py:997
+    Then hostile affirmation should not preserve prior clarification intent                               # features/steps/intent_grounding_steps.py:1015
+    And commit-state transitions should clear clarification obligations at the hostile follow-up boundary # features/steps/intent_grounding_steps.py:1021
+
+  @ISSUE-0008 @AC-0008-14
+  Scenario: non-memory question with no ambiguity does not trigger clarifier  # features/intent_grounding.feature:133
+    Given an intent response harness                                          # features/steps/intent_grounding_steps.py:75
+    When a non-memory knowledge question has no ambiguity                     # features/steps/intent_grounding_steps.py:475
+    Then the response should remain in direct knowledge-answer flow           # features/steps/intent_grounding_steps.py:505
+    And the response should not use clarifier mode                            # features/steps/intent_grounding_steps.py:512
+    And the rendered answer should include semantic markers                   # features/steps/semantic_rendering_steps.py:47
+      | marker                  |
+      | general_knowledge_label |
+
+  @ISSUE-0008 @AC-0008-15
+  Scenario: definitional prompt uses retrieval-enabled branch logging                    # features/intent_grounding.feature:143
+    Given an intent response harness                                                     # features/steps/intent_grounding_steps.py:75
+    When the user asks a definitional knowledge prompt in runtime loop                   # features/steps/intent_grounding_steps.py:518
+    Then retrieval branch logging should show memory retrieval with unskipped candidates # features/steps/intent_grounding_steps.py:527
+
+  @ISSUE-0008 @AC-0008-16
+  Scenario: conversational prompt avoids knowledge retrieval branch logging         # features/intent_grounding.feature:149
+    Given an intent response harness                                                # features/steps/intent_grounding_steps.py:75
+    When the user asks a conversational prompt in runtime loop                      # features/steps/intent_grounding_steps.py:539
+    Then retrieval branch logging should show direct answer with skipped candidates # features/steps/intent_grounding_steps.py:548
+
+  @ISSUE-0008 @AC-0008-17
+  Scenario: self-identity recall follow-up forces retrieval before direct-answer shortcut  # features/intent_grounding.feature:156
+    Given an intent response harness                                                       # features/steps/intent_grounding_steps.py:75
+    When the user says "Hi! I'm sebastian" then asks "Who am I?"                           # features/steps/intent_grounding_steps.py:558
+    Then identity recall guard should force memory retrieval branch evaluation             # features/steps/intent_grounding_steps.py:581
+
+  @ISSUE-0008 @AC-0008-18
+  Scenario: retrieval policy distinguishes empty evidence from scored-empty candidates      # features/intent_grounding.feature:163
+    Given an intent response harness                                                        # features/steps/intent_grounding_steps.py:75
+    When retrieval policy evaluates empty and scored-empty evidence states                  # features/steps/intent_grounding_steps.py:873
+    Then retrieval policy should record empty-evidence and scored-empty postures distinctly # features/steps/intent_grounding_steps.py:889
+
+  @ISSUE-0008 @AC-0008-19
+  Scenario: memory-recall follow-up scored-empty keeps clarification class and memory branch                 # features/intent_grounding.feature:169
+    Given an intent response harness                                                                         # features/steps/intent_grounding_steps.py:75
+    When memory-recall follow-up is evaluated under scored-empty evidence                                    # features/steps/intent_grounding_steps.py:897
+    Then memory-recall follow-up policy should keep clarification decision class and memory retrieval branch # features/steps/intent_grounding_steps.py:907
+
+  @ISSUE-0008 @AC-0008-20
+  Scenario: continuity-sensitive routing preserves prior intent only for affirmative clarifier follow-ups  # features/intent_grounding.feature:176
+    Given an intent response harness                                                                       # features/steps/intent_grounding_steps.py:75
+    When intent continuity is evaluated for affirmative and non-affirmative follow-ups                     # features/steps/intent_grounding_steps.py:913
+    Then continuity routing should preserve prior intent only for affirmative clarification follow-ups     # features/steps/intent_grounding_steps.py:933
+
+  @ISSUE-0008 @AC-0008-21
+  Scenario: encode candidates retain multiple plausible intents before routing       # features/intent_grounding.feature:182
+    Given an intent response harness                                                 # features/steps/intent_grounding_steps.py:75
+    When encode candidates include multiple plausible intents pre-route              # features/steps/intent_grounding_steps.py:588
+    Then encode candidates should retain multiple intents without premature collapse # features/steps/intent_grounding_steps.py:600
+
+  @ISSUE-0008 @AC-0008-22
+  Scenario: encode candidates normalize duplicate candidate ids deterministically  # features/intent_grounding.feature:188
+    Given an intent response harness                                               # features/steps/intent_grounding_steps.py:75
+    When encode candidates include duplicate candidate ids                         # features/steps/intent_grounding_steps.py:608
+    Then encode candidates should dedupe candidate ids deterministically           # features/steps/intent_grounding_steps.py:621
+
+  @ISSUE-0008 @AC-0008-23
+  Scenario: encode candidates reject malformed provenance before downstream stages      # features/intent_grounding.feature:194
+    Given an intent response harness                                                    # features/steps/intent_grounding_steps.py:75
+    When encode candidates include null or malformed provenance                         # features/steps/intent_grounding_steps.py:630
+    Then malformed provenance candidates should be quarantined before downstream stages # features/steps/intent_grounding_steps.py:642
+
+  @ISSUE-0008 @AC-0008-24
+  Scenario: control phrasing wins over ambiguous help and memory language  # features/intent_grounding.feature:200
+    Given an intent response harness                                       # features/steps/intent_grounding_steps.py:75
+    When the user asks an ambiguous control-help-memory phrase             # features/steps/intent_grounding_steps.py:650
+    Then the utterance should route to control intent deterministically    # features/steps/intent_grounding_steps.py:655
+
+  @ISSUE-0008 @AC-0008-25
+  Scenario: capabilities satellite phrasing wins over meta-conversation cue       # features/intent_grounding.feature:206
+    Given an intent response harness                                              # features/steps/intent_grounding_steps.py:75
+    When the user asks an ambiguous satellite-versus-meta phrase                  # features/steps/intent_grounding_steps.py:660
+    Then the utterance should route to capabilities help intent deterministically # features/steps/intent_grounding_steps.py:665
+
+  @Rule:AmbiguityHandling @ISSUE-0008 @AC-0008-26
+  Scenario: unmatched ambiguous phrasing falls back to knowledge question            # features/intent_grounding.feature:213
+    Given an intent response harness                                                 # features/steps/intent_grounding_steps.py:75
+    When the user asks an unmatched ambiguous phrase                                 # features/steps/intent_grounding_steps.py:670
+    Then the utterance should route to knowledge-question fallback deterministically # features/steps/intent_grounding_steps.py:675
+
+  @ISSUE-0008 @AC-0008-27
+  Scenario Outline: taxonomy contract maps ambiguous prompts to deterministic typed intents -- @1.1   # features/intent_grounding.feature:228
+    Given an intent response harness                                                                  # features/steps/intent_grounding_steps.py:75
+    When intent taxonomy mapping is evaluated for ambiguous prompts                                   # features/steps/intent_grounding_steps.py:680
+      | prompt                                         | expected_intent | expected_pathway | temporal | memory | capability | control |
+      | stop, can you help me remember what did I ask? | control         | control          | false    | false  | false      | true    |
+    Then typed intent object fields should match the taxonomy mapping table                           # features/steps/intent_grounding_steps.py:702
+
+  @ISSUE-0008 @AC-0008-27
+  Scenario Outline: taxonomy contract maps ambiguous prompts to deterministic typed intents -- @1.2   # features/intent_grounding.feature:229
+    Given an intent response harness                                                                  # features/steps/intent_grounding_steps.py:75
+    When intent taxonomy mapping is evaluated for ambiguous prompts                                   # features/steps/intent_grounding_steps.py:680
+      | prompt                        | expected_intent   | expected_pathway | temporal | memory | capability | control |
+      | use satellite about this chat | capabilities_help | capabilities     | false    | false  | true       | false   |
+    Then typed intent object fields should match the taxonomy mapping table                           # features/steps/intent_grounding_steps.py:702
+
+  @ISSUE-0008 @AC-0008-27
+  Scenario Outline: taxonomy contract maps ambiguous prompts to deterministic typed intents -- @1.3   # features/intent_grounding.feature:230
+    Given an intent response harness                                                                  # features/steps/intent_grounding_steps.py:75
+    When intent taxonomy mapping is evaluated for ambiguous prompts                                   # features/steps/intent_grounding_steps.py:680
+      | prompt                                 | expected_intent | expected_pathway | temporal | memory | capability | control |
+      | what did I ask about satellite earlier | memory_recall   | memory_recall    | false    | true   | true       | false   |
+    Then typed intent object fields should match the taxonomy mapping table                           # features/steps/intent_grounding_steps.py:702
+
+  @ISSUE-0008 @AC-0008-27
+  Scenario Outline: taxonomy contract maps ambiguous prompts to deterministic typed intents -- @1.4   # features/intent_grounding.feature:231
+    Given an intent response harness                                                                  # features/steps/intent_grounding_steps.py:75
+    When intent taxonomy mapping is evaluated for ambiguous prompts                                   # features/steps/intent_grounding_steps.py:680
+      | prompt                                   | expected_intent | expected_pathway | temporal | memory | capability | control |
+      | how many minutes ago did we talk before? | time_query      | time_query       | true     | true   | false      | false   |
+    Then typed intent object fields should match the taxonomy mapping table                           # features/steps/intent_grounding_steps.py:702
+
+  @ISSUE-0008 @AC-0008-27
+  Scenario Outline: taxonomy contract maps ambiguous prompts to deterministic typed intents -- @1.5   # features/intent_grounding.feature:232
+    Given an intent response harness                                                                  # features/steps/intent_grounding_steps.py:75
+    When intent taxonomy mapping is evaluated for ambiguous prompts                                   # features/steps/intent_grounding_steps.py:680
+      | prompt                              | expected_intent    | expected_pathway | temporal | memory | capability | control |
+      | this seems mixed and maybe relevant | knowledge_question | non_memory       | false    | false  | false      | false   |
+    Then typed intent object fields should match the taxonomy mapping table                           # features/steps/intent_grounding_steps.py:702
+
+  @ISSUE-0008 @AC-0008-28
+  Scenario Outline: taxonomy contract rejects invalid class and facet combinations -- @1.1   # features/intent_grounding.feature:244
+    Given an intent response harness                                                         # features/steps/intent_grounding_steps.py:75
+    When typed intent objects are validated for class and facet compatibility                # features/steps/intent_grounding_steps.py:715
+      | intent_class | temporal | memory | capability | control | expected_reason                     |
+      | control      | false    | false  | true       | true    | control_cannot_include_other_facets |
+    Then invalid typed intent objects should be rejected with deterministic reasons          # features/steps/intent_grounding_steps.py:737
+
+  @ISSUE-0008 @AC-0008-28
+  Scenario Outline: taxonomy contract rejects invalid class and facet combinations -- @1.2   # features/intent_grounding.feature:245
+    Given an intent response harness                                                         # features/steps/intent_grounding_steps.py:75
+    When typed intent objects are validated for class and facet compatibility                # features/steps/intent_grounding_steps.py:715
+      | intent_class      | temporal | memory | capability | control | expected_reason                       |
+      | capabilities_help | false    | false  | false      | false   | capabilities_help_requires_capability |
+    Then invalid typed intent objects should be rejected with deterministic reasons          # features/steps/intent_grounding_steps.py:737
+
+  @ISSUE-0008 @AC-0008-28
+  Scenario Outline: taxonomy contract rejects invalid class and facet combinations -- @1.3   # features/intent_grounding.feature:246
+    Given an intent response harness                                                         # features/steps/intent_grounding_steps.py:75
+    When typed intent objects are validated for class and facet compatibility                # features/steps/intent_grounding_steps.py:715
+      | intent_class      | temporal | memory | capability | control | expected_reason                     |
+      | meta_conversation | true     | false  | false      | false   | meta_cannot_include_temporal_memory |
+    Then invalid typed intent objects should be rejected with deterministic reasons          # features/steps/intent_grounding_steps.py:737
+
+  @ISSUE-0008 @AC-0008-28
+  Scenario Outline: taxonomy contract rejects invalid class and facet combinations -- @1.4   # features/intent_grounding.feature:247
+    Given an intent response harness                                                         # features/steps/intent_grounding_steps.py:75
+    When typed intent objects are validated for class and facet compatibility                # features/steps/intent_grounding_steps.py:715
+      | intent_class | temporal | memory | capability | control | expected_reason              |
+      | time_query   | false    | true   | false      | false   | time_query_requires_temporal |
+    Then invalid typed intent objects should be rejected with deterministic reasons          # features/steps/intent_grounding_steps.py:737
+
+  @ISSUE-0008 @AC-0008-28
+  Scenario Outline: taxonomy contract rejects invalid class and facet combinations -- @1.5   # features/intent_grounding.feature:248
+    Given an intent response harness                                                         # features/steps/intent_grounding_steps.py:75
+    When typed intent objects are validated for class and facet compatibility                # features/steps/intent_grounding_steps.py:715
+      | intent_class       | temporal | memory | capability | control | expected_reason                       |
+      | knowledge_question | false    | false  | false      | true    | control_facet_requires_control_intent |
+    Then invalid typed intent objects should be rejected with deterministic reasons          # features/steps/intent_grounding_steps.py:737
+
+  @Rule:AmbiguityHandling @ISSUE-0008 @AC-0008-29
+  Scenario: ambiguous prompt enumerates explanation space before convergence     # features/intent_grounding.feature:252
+    Given an intent response harness                                             # features/steps/intent_grounding_steps.py:75
+    When the user asks an ambiguous prompt requiring divergent analysis          # features/steps/intent_grounding_steps.py:744
+    Then the assistant enumerates plausible explanation spaces before converging # features/steps/intent_grounding_steps.py:759
+    And the rendered answer should include semantic markers                      # features/steps/semantic_rendering_steps.py:47
+      | marker                    |
+      | possible_explanations_tag |
+      | converged_recommendation  |
+
+  @ISSUE-0008 @AC-0008-30
+  Scenario: multi-framework prompt switches perspectives before final synthesis  # features/intent_grounding.feature:262
+    Given an intent response harness                                             # features/steps/intent_grounding_steps.py:75
+    When the user asks for a multi-framework perspective switch                  # features/steps/intent_grounding_steps.py:768
+    Then the assistant presents multiple frameworks and a synthesized conclusion # features/steps/intent_grounding_steps.py:783
+    And the rendered answer should include semantic markers                      # features/steps/semantic_rendering_steps.py:47
+      | marker               |
+      | framework_systems    |
+      | framework_behavioral |
+      | synthesis_label      |
+
+  @ISSUE-0008 @AC-0008-31
+  Scenario: self-identification utterance routes to non-knowledge intent             # features/intent_grounding.feature:274
+    Given an intent response harness                                                 # features/steps/intent_grounding_steps.py:75
+    When the user provides a self-identification utterance                           # features/steps/intent_grounding_steps.py:792
+    Then the utterance should route to non-knowledge social intent deterministically # features/steps/intent_grounding_steps.py:836
+
+  @ISSUE-0008 @AC-0008-32
+  Scenario: self-identification rewrite preserves user discourse object              # features/intent_grounding.feature:280
+    Given an intent response harness                                                 # features/steps/intent_grounding_steps.py:75
+    When the user provides a self-identification utterance for rewrite               # features/steps/intent_grounding_steps.py:807
+    Then rewrite output should preserve identity declaration wording                 # features/steps/intent_grounding_steps.py:815
+    And rewrite output should not be assistant-focused for self-identification input # features/steps/intent_grounding_steps.py:820
+
+  @ISSUE-0008 @AC-0008-33
+  Scenario: greeting utterance routes to non-knowledge intent                        # features/intent_grounding.feature:287
+    Given an intent response harness                                                 # features/steps/intent_grounding_steps.py:75
+    When the user provides a greeting utterance                                      # features/steps/intent_grounding_steps.py:826
+    Then the utterance should route to non-knowledge social intent deterministically # features/steps/intent_grounding_steps.py:836
+
+  @ISSUE-0008 @AC-0008-34
+  Scenario: say-hello command routes to command intent                  # features/intent_grounding.feature:293
+    Given an intent response harness                                    # features/steps/intent_grounding_steps.py:75
+    When the user provides a say-hello command                          # features/steps/intent_grounding_steps.py:831
+    Then the utterance should route to control intent deterministically # features/steps/intent_grounding_steps.py:655
+
+  @Rule:TemporalRouting @ISSUE-0008 @AC-0008-35
+  Scenario: mixed temporal and memory phrasing preserves time intent with memory facet visibility  # features/intent_grounding.feature:300
+    Given an intent response harness                                                               # features/steps/intent_grounding_steps.py:75
+    When the user asks a mixed temporal-memory phrase                                              # features/steps/intent_grounding_steps.py:845
+    Then the utterance should route to time-query intent with temporal and memory facets           # features/steps/intent_grounding_steps.py:852
+
+  @ISSUE-0008 @AC-0008-36
+  Scenario: capabilities in context preserves knowledge routing with capability facet  # features/intent_grounding.feature:306
+    Given an intent response harness                                                   # features/steps/intent_grounding_steps.py:75
+    When the user asks a capabilities-in-context phrase                                # features/steps/intent_grounding_steps.py:859
+    Then the utterance should route to knowledge intent with capability facet          # features/steps/intent_grounding_steps.py:866
+
+  @ISSUE-0008 @AC-0008-37
+  Scenario: typed decision outcomes are selected deterministically                                        # features/intent_grounding.feature:312
+    Given an intent response harness                                                                      # features/steps/intent_grounding_steps.py:75
+    When policy decision objects are resolved from typed evidence states                                  # features/steps/intent_grounding_steps.py:1030
+    Then the decision outcomes should include "answer_from_memory" and "answer_general_knowledge_labeled" # features/steps/intent_grounding_steps.py:1059
+    And the decision outcomes should include "ask_for_clarification" and "continue_repair_reconstruction" # features/steps/intent_grounding_steps.py:1066
+
+  @ISSUE-0008 @AC-0008-38
+  Scenario: typed empty and scored-empty evidence states map to distinct fallback behaviors                                                        # features/intent_grounding.feature:319
+    Given an intent response harness                                                                                                               # features/steps/intent_grounding_steps.py:75
+    When typed fallback contracts are resolved for empty and scored-empty evidence                                                                 # features/steps/intent_grounding_steps.py:1073
+    Then typed evidence states should remain distinct for empty and scored-empty                                                                   # features/steps/intent_grounding_steps.py:1114
+    And the typed evidence-state mapping should include decision class "ask_for_clarification" and provenance label "UNKNOWN" for "E.empty"        # features/steps/intent_grounding_steps.py:1123
+    And the typed evidence-state mapping should include decision class "ask_for_clarification" and provenance label "UNKNOWN" for "E.scored_empty" # features/steps/intent_grounding_steps.py:1123
+    And the typed evidence-state mapping should include fallback strategy "ASK_CLARIFIER" for "E.empty"                                            # features/steps/intent_grounding_steps.py:1136
+    And the typed evidence-state mapping should include fallback strategy "ANSWER_UNKNOWN" for "E.scored_empty"                                    # features/steps/intent_grounding_steps.py:1136
+    And the typed evidence-state mapping should include fallback strategy "OFFER_ASSIST_ALTERNATIVES" for "E.scored_empty_non_memory"              # features/steps/intent_grounding_steps.py:1136
+
+  @ISSUE-0008 @AC-0008-39
+  Scenario: note-taking utterance preserves direct-answer assist contract                                                                                                                                                        # features/intent_grounding.feature:331
+    Given an intent response harness                                                                                                                                                                                             # features/steps/intent_grounding_steps.py:75
+    When note-taking utterance contract probe is resolved through canonical decisioning                                                                                                                                          # features/steps/intent_grounding_steps.py:1199
+    Then the canonical contract should resolve intent "meta_conversation" retrieval branch "direct_answer" decision class "answer_general_knowledge_labeled" fallback action "ANSWER_GENERAL_KNOWLEDGE" and answer mode "assist" # features/steps/intent_grounding_steps.py:1209
+
+  @ISSUE-0008 @AC-0008-40
+  Scenario: memory-write utterance preserves direct-answer assist contract                                                                                                                                                       # features/intent_grounding.feature:337
+    Given an intent response harness                                                                                                                                                                                             # features/steps/intent_grounding_steps.py:75
+    When memory-write utterance contract probe is resolved through canonical decisioning                                                                                                                                         # features/steps/intent_grounding_steps.py:1204
+    Then the canonical contract should resolve intent "meta_conversation" retrieval branch "direct_answer" decision class "answer_general_knowledge_labeled" fallback action "ANSWER_GENERAL_KNOWLEDGE" and answer mode "assist" # features/steps/intent_grounding_steps.py:1209
+
+  @ISSUE-0008 @AC-0008-41
+  Scenario: intent-heavy routing waits for stabilization outputs before authority finalization          # features/intent_grounding.feature:343
+    Given a canonical stage harness with a raw utterance "could you ask satellite to message sebastian" # features/steps/memory_steps.py:519
+    When canonical stages execute stabilize then intent resolve then retrieve                           # features/steps/memory_steps.py:564
+    Then stabilization artifacts are persisted before route authority assignment                        # features/steps/answer_contract_steps.py:418
+    And route authority cannot be finalized until stabilization outputs exist                           # features/steps/answer_contract_steps.py:427
+
+2 features passed, 0 failed, 0 skipped
+64 scenarios passed, 0 failed, 0 skipped
+254 steps passed, 0 failed, 0 skipped
+Took 0min 0.048s

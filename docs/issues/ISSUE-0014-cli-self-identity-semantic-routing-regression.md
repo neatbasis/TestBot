@@ -188,9 +188,9 @@ Key observed indicators in evidence include:
 - Evidence bundle: [`docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md`](evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md)
 - BDD result (**pass**): [`2026-03-09-issue-0014-0013-behave.log`](evidence/2026-03-09-issue-0014-0013-behave.log)
 - Focused pytest result (**pass**): [`2026-03-09-issue-0014-0013-focused-pytests.log`](evidence/2026-03-09-issue-0014-0013-focused-pytests.log)
-- Canonical all-green gate result (**fail**): [`2026-03-09-issue-0014-0013-all-green-gate.log`](evidence/2026-03-09-issue-0014-0013-all-green-gate.log), [`artifacts/all-green-gate-summary.json`](../../artifacts/all-green-gate-summary.json)
+- Canonical all-green gate result (**pass with warning mode**): [`2026-03-09-issue-0014-0013-all-green-gate.log`](evidence/2026-03-09-issue-0014-0013-all-green-gate.log), [`artifacts/all-green-gate-summary.json`](../../artifacts/all-green-gate-summary.json)
 
-Phase 1 status: **not yet satisfied**. Targeted deterministic checks pass, but the canonical all-green gate fails; ISSUE-0014 remains open/red until full gate readiness and reproducible CLI evidence are both satisfied.
+Phase 1 status: **partially satisfied**. Targeted deterministic checks pass and the canonical gate now reports `status=passed` with warning-mode KPI guardrail violations (non-blocking by current gate policy). Dependency state remains **open** until reproducible CLI identity-continuity evidence and cross-issue closure synchronization (ISSUE-0013/ISSUE-0015) are explicitly marked complete.
 
 ## Closure Notes
 
@@ -248,7 +248,8 @@ Phase 1 status: **not yet satisfied**. Targeted deterministic checks pass, but t
     - `python -m pytest tests/test_intent_router.py::test_resolve_turn_intent_requires_diagnostic_only_mode`
     - `python -m pytest tests/test_pipeline_semantic_contracts.py::test_resolve_turn_intent_matches_canonical_intent_resolution_for_identity_followup`
 
-- 2026-03-09: Phase 1 deterministic verification set for ISSUE-0014/0013 executed and evidence-linked.
+- 2026-03-09: Phase 1 deterministic verification set for ISSUE-0014/0013 re-executed and evidence-linked with refreshed outcomes.
   - Pass evidence: `python -m behave features/memory_recall.feature features/intent_grounding.feature` and focused regression suites (`tests/test_pipeline_semantic_contracts.py`, `tests/test_canonical_turn_orchestrator.py`, `tests/test_intent_router.py`).
-  - Fail evidence: canonical gate remains failing at `product_behave`, so ISSUE-0014 behavioral exit condition is still open.
+  - Gate evidence: canonical gate now reports overall `passed` with a KPI guardrail warning (`qa_validate_kpi_guardrails` in optional warning mode), so blocking product/safety/qa checks are green under current policy.
+  - Dependency-state language: ISSUE-0014 remains open as a governed dependency until ISSUE-0013 AC-0013-11 and ISSUE-0015 AC6/AC7/AC9 lifecycle text is synchronized to closure criteria.
   - Evidence artifacts: `docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md`, `docs/issues/evidence/2026-03-09-issue-0014-0013-behave.log`, `docs/issues/evidence/2026-03-09-issue-0014-0013-focused-pytests.log`, `docs/issues/evidence/2026-03-09-issue-0014-0013-all-green-gate.log`, `artifacts/all-green-gate-summary.json`.

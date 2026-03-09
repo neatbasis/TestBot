@@ -239,6 +239,6 @@ Status legend: `[ ] pending`, `[~] partial`, `[x] complete`.
 
 - 2026-03-09: AC-0013-11 dependency evidence refreshed with explicit pass/fail linkage for ISSUE-0014 Phase 1 behavioral exits.
   - Deterministic targeted suites pass: BDD (`python -m behave features/memory_recall.feature features/intent_grounding.feature`) and focused regression pytests (`tests/test_pipeline_semantic_contracts.py`, `tests/test_canonical_turn_orchestrator.py`, `tests/test_intent_router.py`).
-  - Canonical readiness gate still fails: `python scripts/all_green_gate.py --json-output artifacts/all-green-gate-summary.json` exits non-zero on `product_behave`.
-  - Governance outcome: AC-0013-11 remains open (`[~]`) pending clean deterministic gate and synchronized dependency satisfaction in ISSUE-0015.
+  - Canonical readiness gate now reports `status=passed` with warning-mode KPI guardrail violations: `python scripts/all_green_gate.py --json-output artifacts/all-green-gate-summary.json` (non-blocking warning on `qa_validate_kpi_guardrails`).
+  - Governance outcome: AC-0013-11 remains open (`[~]`) pending synchronized dependency satisfaction language in ISSUE-0015/ISSUE-0014 and reproducible closure-proof CLI traces.
   - Evidence links: `docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md`, `docs/issues/evidence/2026-03-09-issue-0014-0013-behave.log`, `docs/issues/evidence/2026-03-09-issue-0014-0013-focused-pytests.log`, `docs/issues/evidence/2026-03-09-issue-0014-0013-all-green-gate.log`, `artifacts/all-green-gate-summary.json`.
