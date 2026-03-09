@@ -235,6 +235,18 @@ def test_eval_runtime_parity_high_similarity_but_weak_objective_not_confident() 
     assert runtime["top_score"] < 0.2
 
 
+
+
+def test_structured_mode_distinguishes_knowing_vs_unknowing_paths() -> None:
+    knowing_signals = {"intent": "memory-grounded", "ambiguity_detected": False}
+    ambiguous_signals = {"intent": "dont-know", "ambiguity_detected": True}
+    low_conf_signals = {"intent": "dont-know", "ambiguity_detected": False}
+
+    assert _structured_mode(knowing_signals) == "memory-grounded"
+    assert _structured_mode(ambiguous_signals) == "dont-know-ambiguous"
+    assert _structured_mode(low_conf_signals) == "dont-know-low-confidence"
+
+
 def test_eval_runtime_parity_confidence_boundary_exact_threshold() -> None:
     utterance = "What did I say about hydration this morning?"
     candidates = [

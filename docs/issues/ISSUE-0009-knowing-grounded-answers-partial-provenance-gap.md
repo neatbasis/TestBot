@@ -43,6 +43,16 @@ The `knowing_grounded_answers` capability remains `partial`. ISSUE-0009 is the p
 - AC-0009-R1: Canonical gate evidence currently does not expose `safety_behave_answer_contract_and_memory` and `qa_eval_fixtures_and_runtime_parity` check IDs in `artifacts/all-green-gate-summary.json`; acceptance criterion 3 cannot be satisfied until those expected checks are restored or this issue's gate contract is explicitly migrated to the current canonical check names with validator coverage.
 - AC-0009-R2: `docs/qa/feature-status.yaml` still declares `knowing_grounded_answers` as `partial`, so criterion 4 remains intentionally unmet pending AC-0009-R1 resolution.
 
+
+## Enforcement mapping (implementation anchors)
+
+| Acceptance criterion | Runtime/Policy enforcement points |
+| --- | --- |
+| AC #1 (`behave` answer+memory features) | `src/testbot/answer_validate.py` (compat alias) -> `validate_answer_assembly_boundary`; `src/testbot/answer_render.py` (compat alias) -> `render_answer`; `src/testbot/policy_decision.py::decide_from_evidence` for memory-grounded vs clarify branching. |
+| AC #2 (`pytest` runtime logging + eval parity) | `src/testbot/policy_decision.py::decide` + `decide_from_evidence` for scored/empty posture determinism, exercised by eval/runtime parity and runtime logging assertions. |
+| AC #3 (all-green gate check IDs passed) | Gate check evidence consumed by `scripts/all_green_gate.py`; behavioral proofs are enforced in `policy_decision` + answer validation/render boundaries above. |
+| AC #4 (status move to implemented) | `docs/qa/feature-status.yaml` capability status lifecycle, regenerated into `docs/qa/feature-status-report.md` and `artifacts/feature-status-summary.json`. |
+
 ## Work Plan
 
 - [x] Capture production-debug evidence trace and map symptoms to ISSUE-0009/ISSUE-0010 acceptance criteria (`docs/issues/evidence/production-debug-cli-trace-2026-03-07.md`).

@@ -107,6 +107,19 @@ Feature: Answer citation contract enforcement
     And the deterministic fixture does not leak unvalidated draft content
     And the deterministic fixture records validation failure reason "missing_provenance"
 
+  @ISSUE-0009 @ISSUE-0010 @AC-0009-13 @AC-0010-05
+  Scenario: knowing and unknowing failure modes remain deterministic and distinct
+    Given a deterministic answer validation fixture with factual claim "The launch date is Friday at 09:00."
+    When the deterministic answer validation fixture executes
+    Then the deterministic fixture emits a safe fallback answer
+    And the deterministic fixture records validation failure reason "missing_provenance"
+    Given an answer policy input with intent "non_memory", context confidence false, ambiguity false, and memory hit count 0
+    And ask capability status is "ask_unavailable"
+    And source confidence is 0.2
+    When the answer routing policy resolves the request
+    Then the fallback action should be "ANSWER_UNKNOWN"
+    And the canonical response token should be "NON_KNOWLEDGE_UNCERTAINTY_ANSWER"
+
   @Rule:SourceBackedAnswer
   @ISSUE-0009 @AC-0009-13
   Scenario: invalid citation shape triggers safe fallback
