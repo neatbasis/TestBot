@@ -137,3 +137,12 @@ Feature: Answer citation contract enforcement
     Then the deterministic fixture emits a safe fallback answer
     And the deterministic fixture does not leak unvalidated draft content
     And the deterministic fixture records validation failure reason "validation_exception"
+
+
+  @ISSUE-0009 @AC-0009-15
+  Scenario: async background ingestion uses pending non-clarify fallback
+    Given a memory recall question awaiting background ingestion
+    And a canonical decision object class "pending_lookup_background_ingestion"
+    When stage answer runs with canonical decision authority
+    Then the fallback action should remain pending lookup
+    And the answer mode should remain non-clarify while lookup is pending

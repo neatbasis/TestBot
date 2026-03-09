@@ -12,6 +12,7 @@ class DecisionClass(StrEnum):
     ANSWER_FROM_MEMORY = "answer_from_memory"
     ASK_FOR_CLARIFICATION = "ask_for_clarification"
     CONTINUE_REPAIR_RECONSTRUCTION = "continue_repair_reconstruction"
+    PENDING_LOOKUP_BACKGROUND_INGESTION = "pending_lookup_background_ingestion"
     ANSWER_GENERAL_KNOWLEDGE_LABELED = "answer_general_knowledge_labeled"
 
 
@@ -93,6 +94,19 @@ def decide(
 
 
 def decide_from_evidence(*, intent: IntentType, retrieval: RetrievalResult, repair_required: bool = False) -> DecisionObject:
+    if repair_required and retrieval.evidence_posture == EvidencePosture.EMPTY_EVIDENCE:
+        return DecisionObject(
+            decision_class=DecisionClass.PENDING_LOOKUP_BACKGROUND_INGESTION,
+            retrieval_branch="memory_retrieval",
+            rationale="retrieval required but empty evidence while background ingestion is in progress",
+            reasoning={
+                "repair_required": True,
+                "background_ingestion_in_progress": True,
+                "evidence_posture": retrieval.evidence_posture.value,
+                **retrieval.reasoning,
+            },
+        )
+
     if repair_required:
         return DecisionObject(
             decision_class=DecisionClass.CONTINUE_REPAIR_RECONSTRUCTION,

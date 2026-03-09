@@ -28,6 +28,7 @@ DECISION_TO_RENDERED_CLASS = {
     "ask_for_clarification": "ask_for_clarification",
     "continue_repair_reconstruction": "continue_repair_reconstruction",
     "answer_general_knowledge_labeled": "answer_general_knowledge_labeled",
+    "pending_lookup_background_ingestion": "pending_lookup_background_ingestion",
 }
 
 

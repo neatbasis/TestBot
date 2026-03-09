@@ -2137,6 +2137,8 @@ def answer_validate(
         basis_statement=basis_statement,
     )
 
+    pending_lookup = bool(state.confidence_decision.get("background_ingestion_in_progress", False))
+
     answer_mode_decision = resolve_answer_mode(
         final_answer=assembled.final_answer,
         fallback_action=assembled.fallback_action,
@@ -2146,6 +2148,7 @@ def answer_validate(
         is_assist_alternatives_answer=assembled.final_answer == ASSIST_ALTERNATIVES_ANSWER,
         is_fallback_answer=assembled.final_answer == FALLBACK_ANSWER,
         is_non_knowledge_uncertainty_answer=assembled.final_answer == NON_KNOWLEDGE_UNCERTAINTY_ANSWER,
+        pending_lookup=pending_lookup,
     )
     answer_mode = answer_mode_decision.answer_mode
     ambiguity_policy_allows_non_memory_clarify = bool(state.confidence_decision.get("allow_non_memory_clarify", False))
@@ -2225,6 +2228,10 @@ def _answer_routing_from_decision_object(
             fallback_action = "ASK_CLARIFYING_QUESTION"
             token = "PARTIAL_MEMORY_CLARIFIER"
             clarification_allowed = True
+        case DecisionClass.PENDING_LOOKUP_BACKGROUND_INGESTION:
+            fallback_action = "ANSWER_UNKNOWN"
+            token = "NON_KNOWLEDGE_UNCERTAINTY_ANSWER"
+            clarification_allowed = False
         case DecisionClass.ANSWER_GENERAL_KNOWLEDGE_LABELED:
             fallback_action = "ANSWER_GENERAL_KNOWLEDGE"
             token = "LLM_DRAFT"
@@ -3115,6 +3122,13 @@ def _run_canonical_turn_pipeline(
             if not docs_and_scores and bool(runtime.get("source_ingest_async_continuation", False)):
                 _start_background_source_ingestion(runtime=runtime, store=store)
                 background_in_progress = bool(runtime.get("source_ingest_background_in_progress", False))
+            ctx.state = replace(
+                ctx.state,
+                confidence_decision={
+                    **ctx.state.confidence_decision,
+                    "background_ingestion_in_progress": background_in_progress,
+                },
+            )
             ctx.artifacts["background_ingestion_in_progress"] = background_in_progress
             if background_in_progress:
                 ctx.artifacts["continuation_required"] = True
@@ -3280,7 +3294,6 @@ def _run_canonical_turn_pipeline(
         if bool(ctx.artifacts.get("background_ingestion_in_progress", False)):
             ctx.artifacts["rendered_answer"] = AnswerRenderResult(
                 final_answer="I'm ingesting external sources in the background now…",
-                rendered_format="plain_text",
             )
         else:
             ctx.artifacts["rendered_answer"] = _answer_render_stage(ctx.artifacts["validated_answer"])

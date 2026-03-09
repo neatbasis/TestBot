@@ -105,3 +105,17 @@ def test_memory_recall_scored_empty_remains_clarification_not_generic_knowledge(
     assert decision.decision_class is DecisionClass.ASK_FOR_CLARIFICATION
     assert decision.retrieval_branch == "memory_retrieval"
     assert decision.reasoning["empty_vs_scored"] == "scored_empty"
+
+
+def test_memory_recall_empty_evidence_with_background_ingestion_uses_pending_lookup_decision() -> None:
+    retrieval = retrieval_result(
+        evidence_bundle=EvidenceBundle(),
+        retrieval_candidates_considered=0,
+        hit_count=0,
+    )
+
+    decision = decide_from_evidence(intent=IntentType.MEMORY_RECALL, retrieval=retrieval, repair_required=True)
+
+    assert decision.decision_class is DecisionClass.PENDING_LOOKUP_BACKGROUND_INGESTION
+    assert decision.reasoning["background_ingestion_in_progress"] is True
+    assert decision.reasoning["evidence_posture"] == "empty_evidence"
