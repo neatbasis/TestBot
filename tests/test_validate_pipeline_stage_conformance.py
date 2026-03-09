@@ -57,6 +57,110 @@ def test_validate_pipeline_stage_conformance_detects_missing_u_to_i_guard_in_inv
     assert "forbidden early U -> I projection guard" in "\n".join(errors)
 
 
+def test_validate_pipeline_ontology_separation_fails_when_pipeline_semantics_use_only_inv_ids(tmp_path: Path) -> None:
+    traceability_doc = tmp_path / "traceability-matrix.md"
+    traceability_doc.write_text(
+        "\n".join(
+            [
+                "## Canonical stage checkpoints (ISSUE-0013)",
+                "| Phase | Stage boundary | Runtime implementation anchors | BDD scenario coverage | Gate commands | Runtime telemetry evidence | Exit criteria + invariant linkage |",
+                "|---|---|---|---|---|---|---|",
+                "| **Foundation** | `observe.turn` → `encode.candidates` | impl | bdd | gate | telemetry | Stage semantics described here with **INV-002** only. |",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    pipeline_doc = tmp_path / "pipeline.md"
+    pipeline_doc.write_text(
+        "\n".join(
+            [
+                "## Stage transition contracts",
+                "| Stage | Preconditions | Postconditions | Invariant linkage |",
+                "|---|---|---|---|",
+                "| `observe.turn` | pre | post | `PINV-002` |",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    errors = validator.validate_pipeline_ontology_separation(
+        traceability_doc=traceability_doc,
+        pipeline_invariants_doc=pipeline_doc,
+    )
+
+    assert any("reference only response-policy IDs" in error for error in errors)
+
+
+def test_validate_pipeline_ontology_separation_passes_with_pipeline_specific_linkage(tmp_path: Path) -> None:
+    traceability_doc = tmp_path / "traceability-matrix.md"
+    traceability_doc.write_text(
+        "\n".join(
+            [
+                "## Canonical stage checkpoints (ISSUE-0013)",
+                "| Phase | Stage boundary | Runtime implementation anchors | BDD scenario coverage | Gate commands | Runtime telemetry evidence | Exit criteria + invariant linkage |",
+                "|---|---|---|---|---|---|---|",
+                "| **Foundation** | `observe.turn` → `encode.candidates` | impl | bdd | gate | telemetry | Stage semantics described here with **PINV-001** and **PINV-002**. |",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    pipeline_doc = tmp_path / "pipeline.md"
+    pipeline_doc.write_text(
+        "\n".join(
+            [
+                "## Stage transition contracts",
+                "| Stage | Preconditions | Postconditions | Invariant linkage |",
+                "|---|---|---|---|",
+                "| `observe.turn` | pre | post | `PINV-002` |",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    assert (
+        validator.validate_pipeline_ontology_separation(
+            traceability_doc=traceability_doc,
+            pipeline_invariants_doc=pipeline_doc,
+        )
+        == []
+    )
+
+
+def test_validate_pipeline_ontology_separation_allows_mixed_when_downstream_consequence_is_explicit(tmp_path: Path) -> None:
+    traceability_doc = tmp_path / "traceability-matrix.md"
+    traceability_doc.write_text(
+        "\n".join(
+            [
+                "## Canonical stage checkpoints (ISSUE-0013)",
+                "| Phase | Stage boundary | Runtime implementation anchors | BDD scenario coverage | Gate commands | Runtime telemetry evidence | Exit criteria + invariant linkage |",
+                "|---|---|---|---|---|---|---|",
+                "| **Decisioning** | `intent.resolve` → `retrieve.evidence` | impl | bdd | gate | telemetry | Pipeline semantics enforced by **PINV-003** and downstream answer-policy consequence guarded by **INV-003**. |",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    pipeline_doc = tmp_path / "pipeline.md"
+    pipeline_doc.write_text(
+        "\n".join(
+            [
+                "## Stage transition contracts",
+                "| Stage | Preconditions | Postconditions | Invariant linkage |",
+                "|---|---|---|---|",
+                "| `observe.turn` | pre | post | `PINV-002` |",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    assert (
+        validator.validate_pipeline_ontology_separation(
+            traceability_doc=traceability_doc,
+            pipeline_invariants_doc=pipeline_doc,
+        )
+        == []
+    )
+
+
 def test_main_returns_failure_when_conformance_violations_detected(
     monkeypatch: pytest.MonkeyPatch,
     capsys: pytest.CaptureFixture[str],
