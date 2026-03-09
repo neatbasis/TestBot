@@ -70,6 +70,10 @@ flowchart LR
    - Enrich state with pending repair, obligations, prior-offer anchors, and focus references.
 5. **`intent.resolve`**
    - Resolve intent from enriched state rather than raw text projection.
+   - Emit both intent fields on the canonical state and telemetry:
+     - `classified_intent`: pattern-classifier output before context authority.
+     - `resolved_intent`: context-enriched authoritative intent used for routing/policy.
+     - `intent` (telemetry alias): always equal to `resolved_intent`.
 6. **`retrieve.evidence`**
    - Retrieve evidence coherent with resolved intent and stabilized turn state.
 7. **`policy.decide`**

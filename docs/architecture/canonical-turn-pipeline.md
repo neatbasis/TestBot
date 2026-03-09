@@ -124,9 +124,14 @@ Input:
 
 Output:
 - interpreted intent/state `I`
+- intent contract fields (state + telemetry):
+  - `classified_intent`: classifier-only result from utterance/pattern signals.
+  - `resolved_intent`: authoritative context-enriched intent used by downstream stages.
+  - `intent` (telemetry alias): MUST mirror `resolved_intent` and never diverge.
 
 Invariant:
 - Intent is derived from enriched state, not raw text alone.
+- Downstream logging/routing MUST read intent fields from one post-resolution `PipelineState` instance.
 
 ### 6) `retrieve.evidence`
 
