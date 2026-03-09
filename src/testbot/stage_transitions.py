@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Callable
 
 from testbot.memory_cards import utc_now_iso
-from testbot.pipeline_state import CandidateHit, PipelineState, ProvenanceType
+from testbot.pipeline_state import CandidateHit, PipelineState, ProvenanceType, StageArtifact
 
 
 FALLBACK_ANSWER = "I don't know from memory."
@@ -82,6 +82,20 @@ def _is_scored_candidate_list(candidates: list[CandidateHit]) -> bool:
         isinstance(c.doc_id, str) and isinstance(c.score, float) and isinstance(c.ts, str) and isinstance(c.card_type, str)
         for c in candidates
     )
+
+
+def _artifact_payload_has_content(payload: object, *, key_fields: tuple[str, ...] = ()) -> bool:
+    artifact_dict: dict[str, object] | None = None
+    if isinstance(payload, StageArtifact):
+        artifact_dict = payload.to_dict()
+    elif isinstance(payload, dict):
+        artifact_dict = payload
+
+    if artifact_dict is None:
+        return False
+    if artifact_dict:
+        return True
+    return any(field in artifact_dict for field in key_fields)
 
 
 
@@ -462,7 +476,12 @@ def validate_stabilize_pre_route_post(state: PipelineState) -> TransitionCheckRe
         stage="stabilize.pre_route",
         boundary="post",
         invariant_refs=("PINV-002",),
-        checks=[("candidate_facts_recorded", lambda s: isinstance(s.candidate_facts, dict) and bool(s.candidate_facts))],
+        checks=[
+            (
+                "candidate_facts_recorded",
+                lambda s: _artifact_payload_has_content(s.candidate_facts, key_fields=("facts",)),
+            )
+        ],
         state=state,
     )
 
@@ -472,7 +491,12 @@ def validate_context_resolve_pre(state: PipelineState) -> TransitionCheckResult:
         stage="context.resolve",
         boundary="pre",
         invariant_refs=("PINV-002",),
-        checks=[("candidate_facts_available", lambda s: isinstance(s.candidate_facts, dict) and bool(s.candidate_facts))],
+        checks=[
+            (
+                "candidate_facts_available",
+                lambda s: _artifact_payload_has_content(s.candidate_facts, key_fields=("facts",)),
+            )
+        ],
         state=state,
     )
 
@@ -482,7 +506,12 @@ def validate_context_resolve_post(state: PipelineState) -> TransitionCheckResult
         stage="context.resolve",
         boundary="post",
         invariant_refs=("PINV-002",),
-        checks=[("resolved_context_recorded", lambda s: isinstance(s.resolved_context, dict) and bool(s.resolved_context))],
+        checks=[
+            (
+                "resolved_context_recorded",
+                lambda s: _artifact_payload_has_content(s.resolved_context, key_fields=("entities", "time_window")),
+            )
+        ],
         state=state,
     )
 
@@ -492,7 +521,12 @@ def validate_intent_resolve_pre(state: PipelineState) -> TransitionCheckResult:
         stage="intent.resolve",
         boundary="pre",
         invariant_refs=("PINV-002",),
-        checks=[("resolved_context_available", lambda s: isinstance(s.resolved_context, dict) and bool(s.resolved_context))],
+        checks=[
+            (
+                "resolved_context_available",
+                lambda s: _artifact_payload_has_content(s.resolved_context, key_fields=("entities", "time_window")),
+            )
+        ],
         state=state,
     )
 
