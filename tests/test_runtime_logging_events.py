@@ -427,8 +427,8 @@ def test_chat_loop_definitional_question_attempts_retrieval_and_does_not_mark_sk
     branch_payload = next(payload for event, payload in events if event == "retrieval_branch_selected")
     retrieval_payload = next(payload for event, payload in events if event == "retrieval_candidates")
 
-    assert branch_payload["retrieval_branch"] == "direct_answer"
-    assert retrieval_payload.get("skipped") is True
+    assert branch_payload["retrieval_branch"] == "memory_retrieval"
+    assert retrieval_payload.get("skipped") is not True
 
 
 def test_chat_loop_conversational_prompt_skips_knowledge_retrieval_path(monkeypatch) -> None:
