@@ -14,6 +14,7 @@ TestBot is a stateful, retrieval-augmented conversational agent with persistent 
 - **commit stage** → memory update / memory consolidation
 
 Internal names remain canonical identifiers; standard terms are provided for wider community readability.
+See [docs/terminology.md](docs/terminology.md) for the canonical terminology policy, including rules for combining internal identifiers with standard AI terms.
 
 ### Cognitive architecture alignment
 TestBot's pipeline mirrors a perception → memory → reasoning → action model:
