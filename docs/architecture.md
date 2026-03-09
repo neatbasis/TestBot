@@ -20,6 +20,8 @@ These design decisions prioritize deterministic memory-grounded answers with exp
 TestBot awareness is produced from both conversational memory and source ingestion from external systems.
 
 ### How Mission is operationalized
+
+Policy-facing, testable product principles that operationalize Mission claims are defined in [docs/directives/product-principles.md](directives/product-principles.md).
 - **Source ingestion** continuously normalizes external evidence into retrievable records alongside conversation memory.
 - **Provenance** is required on knowing-mode answers so users can see what memory and source evidence informed the response.
 - **Trust tier** metadata is preserved for ingested sources so policy and retrieval can apply explicit trust boundaries.

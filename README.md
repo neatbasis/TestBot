@@ -11,6 +11,8 @@ For stakeholder-critical outputs, trust must be measurable: responses should be 
 Non-goal: TestBot does not claim perfect truth, complete source coverage, or universally correct answers across all domains.
 
 ### How Vision is operationalized
+
+Policy-facing, testable product principles that operationalize Vision claims are defined in [docs/directives/product-principles.md](docs/directives/product-principles.md).
 - **Evidence-backed knowing responses**: source ingestion continuously normalizes external evidence into retrievable records, and knowing-mode answers include provenance so users can inspect what memory and source evidence informed the response.
 - **Explicit uncertainty when evidence is weak or conflicting**: trust-tier metadata is preserved for ingested sources, and disagreement between memory and source evidence resolves to visible uncertainty/clarification behavior rather than unsupported claims.
 - **Safe fallback and clarifier behavior**: deterministic fallback policy routes low-trust, unavailable, or conflicting evidence to safe fallback paths, including user-facing clarification prompts.
