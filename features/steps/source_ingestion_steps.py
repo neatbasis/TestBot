@@ -230,3 +230,98 @@ def step_then_background_ingestion_completion(context) -> None:
     assert context.completion_user_message.startswith("Background ingestion completed for request turn-123")
     assert context.completion_answer_event["linked_pending_ingestion_request_id"] == "turn-123"
     assert "synced source evidence" in context.completion_answer_event["final_answer"]
+
+@when("async source ingestion runs the pending request lifecycle in order")
+def step_when_async_ingestion_lifecycle(context) -> None:
+    request_id = "turn-456"
+
+    class _DeterministicBackgroundExecutor:
+        def start(self, *, ingestion_request_id: str) -> dict[str, object]:
+            return {
+                "started": True,
+                "already_running": False,
+                "ingestion_request_id": ingestion_request_id,
+                "event_type": "source_ingest_background_started",
+            }
+
+    class _DeterministicCompletionPoller:
+        def poll(self, *, ingestion_request_id: str) -> dict[str, object]:
+            return {
+                "status": "completed",
+                "ingestion_request_id": ingestion_request_id,
+                "event_type": "source_ingestion_completion",
+            }
+
+    executor = _DeterministicBackgroundExecutor()
+    poller = _DeterministicCompletionPoller()
+    pending_registry: dict[str, dict[str, object]] = {}
+
+    started = executor.start(ingestion_request_id=request_id)
+    context.pending_lifecycle_events = [
+        {
+            "event": started["event_type"],
+            "ingestion_request_id": request_id,
+        },
+        {
+            "event": "source_ingest_user_start_notified",
+            "ingestion_request_id": request_id,
+            "message_text": "I'm ingesting external sources in the background now…",
+        },
+    ]
+
+    pending_registry[request_id] = {"original_request": "What is due next?", "persisted": True}
+    context.pending_lifecycle_events.append(
+        {
+            "event": "pending_ingestion_persisted",
+            "ingestion_request_id": request_id,
+            "pending_obligation_persisted": True,
+        }
+    )
+
+    completion = poller.poll(ingestion_request_id=request_id)
+    context.pending_lifecycle_events.append(
+        {
+            "event": "source_ingest_completion_event_emitted",
+            "event_type": completion["event_type"],
+            "ingestion_request_id": request_id,
+            "linked_pending_ingestion_request_id": request_id,
+        }
+    )
+    context.pending_lifecycle_events.append(
+        {
+            "event": "source_ingest_completion_answer_emitted",
+            "ingestion_request_id": request_id,
+            "linked_pending_ingestion_request_id": request_id,
+            "final_answer": "Your utility bill is due Friday and confirmed by synced source evidence.",
+        }
+    )
+    context.pending_registry = pending_registry
+
+
+@then("ingestion start, pending persistence, completion linkage, and proactive response are emitted in order")
+def step_then_async_ingestion_lifecycle(context) -> None:
+    events = context.pending_lifecycle_events
+    ordered_names = [event["event"] for event in events]
+    assert ordered_names == [
+        "source_ingest_background_started",
+        "source_ingest_user_start_notified",
+        "pending_ingestion_persisted",
+        "source_ingest_completion_event_emitted",
+        "source_ingest_completion_answer_emitted",
+    ]
+
+    start_notified = events[1]
+    assert start_notified["message_text"].startswith("I'm ingesting external sources")
+
+    persisted = events[2]
+    assert persisted["pending_obligation_persisted"] is True
+    request_id = persisted["ingestion_request_id"]
+    assert context.pending_registry[request_id]["persisted"] is True
+
+    completion_event = events[3]
+    assert completion_event["event_type"] == "source_ingestion_completion"
+    assert completion_event["linked_pending_ingestion_request_id"] == request_id
+
+    completion_answer = events[4]
+    assert completion_answer["linked_pending_ingestion_request_id"] == request_id
+    assert "synced source evidence" in completion_answer["final_answer"]

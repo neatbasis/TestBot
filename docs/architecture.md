@@ -267,7 +267,23 @@ Trust boundaries:
 
 Set `SOURCE_INGEST_ASYNC_CONTINUATION=1` to enable background source ingestion when retrieval is required but returns no candidates.
 
-- Runtime uses a single-worker background executor plus a lock to prevent duplicate concurrent ingestion jobs.
-- Each turn polls background ingestion status and records continuation artifacts while work is in progress.
-- `policy.decide` sets `repair_required=True` during background ingestion, preserving continuation-class decision behavior under existing invariants.
-- `answer.render` returns an explicit progress response while ingestion is active: “I’m ingesting external sources in the background now…”.
+Finalized pending-ingestion lifecycle contract:
+
+1. **Ingestion start**
+   - Runtime starts a single background ingestion job and emits `source_ingest_background_started` with `ingestion_request_id` (correlation ID).
+2. **Explicit user start notification**
+   - Runtime returns the progress response: “I’m ingesting external sources in the background now…”.
+3. **Pending obligation persistence**
+   - Runtime persists pending continuation context under `pending_ingestion_registry[ingestion_request_id]` so completion can be causally linked to the original request.
+4. **Completion detection**
+   - Runtime polls background ingestion each turn and proceeds only when status is `completed`.
+5. **Causal linkage to original request**
+   - Runtime emits `source_ingest_completion_event_emitted` and `source_ingest_completion_user_message_emitted` with both `ingestion_request_id` and `linked_pending_ingestion_request_id` set to the original correlation ID.
+6. **Proactive completion answer**
+   - Runtime sends a completion notice and a regenerated grounded answer, logging `source_ingest_completion_answer_emitted` with the linked correlation ID and final answer payload.
+
+Acceptance evidence references:
+
+- BDD lifecycle scenario: `features/source_ingestion.feature` (`@AC-0013-08`).
+- BDD deterministic step harness and ordered lifecycle assertions: `features/steps/source_ingestion_steps.py`.
+- Runtime regression for event ordering + payload fields (`ingestion_request_id`, `linked_pending_ingestion_request_id`, and user notification event): `tests/test_runtime_logging_events.py`.

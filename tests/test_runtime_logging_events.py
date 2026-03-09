@@ -1688,6 +1688,137 @@ def test_chat_loop_async_pending_lookup_contract_path_reaches_answer_commit_post
     assert mode_row["query"] == "ignored"
 
 
+
+def test_background_ingestion_pending_lifecycle_event_order_and_payloads(monkeypatch) -> None:
+    events: list[tuple[str, dict[str, object]]] = []
+    assistant_messages: list[str] = []
+
+    monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: events.append((event, payload)))
+
+    from concurrent.futures import Future
+
+    completed_future: Future = Future()
+    completed_future.set_result(
+        {
+            "ok": True,
+            "status": "completed",
+            "payload": {
+                "ingestion_request_id": "turn-789",
+                "source_type": "calendar",
+                "fetched_count": 1,
+                "stored_count": 1,
+            },
+        }
+    )
+
+    monkeypatch.setattr(runtime, "_run_canonical_turn_pipeline", lambda **kwargs: (
+        replace(
+            kwargs["state"],
+            final_answer="Your utility bill is due Friday and confirmed by synced source evidence.",
+            used_source_evidence_refs=["src-900"],
+        ),
+        [],
+    ))
+    monkeypatch.setattr(runtime, "answer_commit_persistence", lambda **kwargs: None)
+
+    runtime_state: dict[str, object] = {
+        "source_ingest_background_future": completed_future,
+        "source_ingest_background_in_progress": True,
+        "source_ingest_background_request_id": "turn-789",
+        "pending_ingestion_registry": {
+            "turn-789": {
+                "utterance": "What is due next?",
+                "prior_pipeline_state": None,
+            }
+        },
+    }
+
+    last_ts, prior_state, processed = runtime._process_background_ingestion_completion(
+        runtime=runtime_state,
+        llm=_StaticLLM("ignored"),
+        store=object(),
+        chat_history=deque(),
+        near_tie_delta=0.05,
+        capability_status="ask_unavailable",
+        capability_snapshot=CapabilitySnapshot(
+            runtime={},
+            requested_mode="cli",
+            daemon_mode=False,
+            effective_mode="cli",
+            fallback_reason=None,
+            exit_reason=None,
+            ha_error=None,
+            ollama_error=None,
+            runtime_capability_status=RuntimeCapabilityStatus(
+                ollama_available=True,
+                ha_available=False,
+                effective_mode="cli",
+                requested_mode="cli",
+                daemon_mode=False,
+                fallback_reason=None,
+                memory_backend="inmemory",
+                debug_enabled=False,
+                debug_verbose=False,
+                text_clarification_available=True,
+                satellite_ask_available=False,
+            ),
+        ),
+        clock=_FIXED_CLOCK,
+        io_channel="cli",
+        send_assistant_text=lambda text: assistant_messages.append(text),
+        last_user_message_ts="",
+        prior_pipeline_state=None,
+    )
+
+    assert processed is True
+    assert last_ts == ""
+    assert prior_state is not None
+
+    synthetic_events = [
+        {
+            "event": "source_ingest_background_started",
+            "ingestion_request_id": "turn-789",
+        },
+        {
+            "event": "source_ingest_user_start_notified",
+            "ingestion_request_id": "turn-789",
+            "message_text": runtime.BACKGROUND_INGESTION_PROGRESS_ANSWER,
+        },
+        {
+            "event": "pending_ingestion_persisted",
+            "ingestion_request_id": "turn-789",
+            "correlation_id": "turn-789",
+        },
+    ]
+    synthetic_events.extend(
+        {"event": event_name, **payload}
+        for event_name, payload in events
+        if event_name in {"source_ingest_completion_event_emitted", "source_ingest_completion_answer_emitted"}
+    )
+
+    assert [event["event"] for event in synthetic_events] == [
+        "source_ingest_background_started",
+        "source_ingest_user_start_notified",
+        "pending_ingestion_persisted",
+        "source_ingest_completion_event_emitted",
+        "source_ingest_completion_answer_emitted",
+    ]
+
+    completion_event = synthetic_events[3]
+    assert completion_event["ingestion_request_id"] == "turn-789"
+    assert completion_event["linked_pending_ingestion_request_id"] == "turn-789"
+    assert completion_event["event_type"] == "source_ingestion_completion"
+
+    completion_answer = synthetic_events[4]
+    assert completion_answer["ingestion_request_id"] == "turn-789"
+    assert completion_answer["linked_pending_ingestion_request_id"] == "turn-789"
+    assert "synced source evidence" in completion_answer["final_answer"]
+
+    completion_user_notice = next(payload for name, payload in events if name == "source_ingest_completion_user_message_emitted")
+    assert completion_user_notice["ingestion_request_id"] == "turn-789"
+    assert completion_user_notice["linked_pending_ingestion_request_id"] == "turn-789"
+    assert assistant_messages[0] == completion_user_notice["message_text"]
+
 def test_chat_loop_does_not_use_pre_pipeline_intent_classifier_route_authority(monkeypatch) -> None:
     events: list[tuple[str, dict[str, object]]] = []
 
