@@ -845,6 +845,72 @@ def test_chat_loop_alignment_decision_event_writes_json_safe_session_log(tmp_pat
     assert isinstance(alignment_row["alignment_dimensions"], dict)
 
 
+
+def test_chat_loop_intent_telemetry_uses_resolved_state_contract(tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(runtime, "_validate_and_log_transition", lambda _result: None)
+    monkeypatch.setattr(runtime, "store_doc", lambda *args, **kwargs: None)
+    monkeypatch.setattr(runtime, "generate_reflection_yaml", lambda *args, **kwargs: "claims: []")
+    monkeypatch.setattr(runtime, "persist_promoted_context", lambda *args, **kwargs: [])
+
+    prompts = iter(["hello there", "stop"])
+
+    _run_chat_loop(
+        llm=_StaticLLM("hi"),
+        store=object(),
+        chat_history=deque(),
+        near_tie_delta=0.05,
+        io_channel="cli",
+        capability_status="ask_unavailable",
+        capability_snapshot=CapabilitySnapshot(
+            runtime={},
+            requested_mode="cli",
+            daemon_mode=False,
+            effective_mode="cli",
+            fallback_reason=None,
+            exit_reason=None,
+            ha_error=None,
+            ollama_error=None,
+            runtime_capability_status=RuntimeCapabilityStatus(
+                ollama_available=True,
+                ha_available=False,
+                effective_mode="cli",
+                requested_mode="cli",
+                daemon_mode=False,
+                fallback_reason=None,
+                memory_backend="inmemory",
+                debug_enabled=False,
+                debug_verbose=False,
+                text_clarification_available=True,
+                satellite_ask_available=False,
+            ),
+        ),
+        read_user_utterance=lambda: next(prompts, None),
+        send_assistant_text=lambda _text: None,
+        clock=_FIXED_CLOCK,
+    )
+
+    rows = [json.loads(line) for line in (tmp_path / "logs" / "session.jsonl").read_text(encoding="utf-8").splitlines() if line.strip()]
+    intent_rows = [
+        row
+        for row in rows
+        if row.get("event")
+        in {
+            "retrieval_branch_selected",
+            "intent_classified",
+            "fallback_action_selected",
+            "provenance_summary",
+            "alignment_decision_evaluated",
+            "rerank_skipped",
+        }
+    ]
+
+    assert intent_rows
+    for row in intent_rows:
+        assert row["intent"] == row["intent_resolved"]
+        assert row["intent_classified"]
+
+
 def test_append_session_log_accepts_alignment_decision_artifact_payload(tmp_path, monkeypatch) -> None:
     monkeypatch.chdir(tmp_path)
     alignment_decision = AlignmentDecision(

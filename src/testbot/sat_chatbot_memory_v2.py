@@ -614,6 +614,24 @@ def append_session_log(event: str, payload: dict, *, log_path: Path = Path("./lo
         f.write(json.dumps(row, ensure_ascii=False) + "\n")
 
 
+def _intent_telemetry_payload(
+    *,
+    state: PipelineState,
+    utterance: str | None = None,
+    extra: dict[str, object] | None = None,
+) -> dict[str, object]:
+    payload: dict[str, object] = {
+        "intent": state.resolved_intent,
+        "intent_classified": state.classified_intent,
+        "intent_resolved": state.resolved_intent,
+    }
+    if utterance is not None:
+        payload["utterance"] = utterance
+    if extra:
+        payload.update(extra)
+    return payload
+
+
 def doc_to_candidate_hit(doc: Document, score: float) -> CandidateHit:
     return CandidateHit(
         doc_id=str(doc.id or doc.metadata.get("doc_id") or ""),
@@ -2969,23 +2987,22 @@ def _run_canonical_turn_pipeline(
                 "retrieval_branch": retrieval_routing.retrieval_branch,
             },
         )
-        intent_label = _intent_label(intent_resolution.resolved_intent)
         append_session_log(
             "retrieval_branch_selected",
-            {
-                "utterance": utterance,
-                "intent": intent_label,
-                "retrieval_branch": retrieval_routing.retrieval_branch,
-                "intent_classified": intent_resolution.classified_intent.value,
-                "intent_resolved": intent_resolution.resolved_intent.value,
-                "retrieval_requirement": dict(ctx.artifacts["retrieval_requirement"]),
-                "stabilized_turn_id": stabilized.turn_id,
-                "stabilized_candidate_fact_count": len(stabilized.candidate_facts),
-                "stabilized_dialogue_state_count": len(stabilized.candidate_dialogue_state),
-                "context_continuity_posture": context_resolution.continuity_posture.value,
-                "context_history_anchors": list(context_resolution.history_anchors),
-                "guard_forced_memory_retrieval": bool(ctx.artifacts.get("guard_forced_memory_retrieval", False)),
-            },
+            _intent_telemetry_payload(
+                state=ctx.state,
+                utterance=utterance,
+                extra={
+                    "retrieval_branch": retrieval_routing.retrieval_branch,
+                    "retrieval_requirement": dict(ctx.artifacts["retrieval_requirement"]),
+                    "stabilized_turn_id": stabilized.turn_id,
+                    "stabilized_candidate_fact_count": len(stabilized.candidate_facts),
+                    "stabilized_dialogue_state_count": len(stabilized.candidate_dialogue_state),
+                    "context_continuity_posture": context_resolution.continuity_posture.value,
+                    "context_history_anchors": list(context_resolution.history_anchors),
+                    "guard_forced_memory_retrieval": bool(ctx.artifacts.get("guard_forced_memory_retrieval", False)),
+                },
+            ),
         )
         append_pipeline_snapshot("intent", ctx.state)
         return ctx
@@ -3116,12 +3133,14 @@ def _run_canonical_turn_pipeline(
             )
             append_session_log(
                 "rerank_skipped",
-                {
-                    "utterance": utterance,
-                    "reason": "intent_routed_to_direct_answer",
-                    "intent": state.resolved_intent,
-                    "retrieval_branch": ctx.artifacts["policy_decision"].retrieval_branch,
-                },
+                _intent_telemetry_payload(
+                    state=ctx.state,
+                    utterance=utterance,
+                    extra={
+                        "reason": "intent_routed_to_direct_answer",
+                        "retrieval_branch": ctx.artifacts["policy_decision"].retrieval_branch,
+                    },
+                ),
             )
         append_pipeline_snapshot("rerank", ctx.state)
         return ctx
@@ -3192,14 +3211,14 @@ def _run_canonical_turn_pipeline(
         ctx.artifacts["ambiguity_score"] = ambiguity_score
         append_session_log(
             "intent_classified",
-            {
-                "utterance": utterance,
-                "intent": state.resolved_intent,
-                "intent_classified": state.classified_intent,
-                "intent_resolved": state.resolved_intent,
-                "ambiguity_score": ambiguity_score,
-                "user_followup_signal_proxy": round(ambiguity_score, 4),
-            },
+            _intent_telemetry_payload(
+                state=ctx.state,
+                utterance=utterance,
+                extra={
+                    "ambiguity_score": ambiguity_score,
+                    "user_followup_signal_proxy": round(ambiguity_score, 4),
+                },
+            ),
         )
         append_session_log(
             "commit_stage_recorded",
@@ -3335,46 +3354,46 @@ def _run_chat_loop(
         )
         append_session_log(
             "fallback_action_selected",
-            {
-                "utterance": utterance,
-                "intent": state.resolved_intent,
-                "intent_classified": state.classified_intent,
-                "intent_resolved": state.resolved_intent,
-                "ambiguity_score": ambiguity_score,
-                "chosen_action": chosen_action,
-                "user_followup_signal_proxy": followup_proxy,
-            },
+            _intent_telemetry_payload(
+                state=state,
+                utterance=utterance,
+                extra={
+                    "ambiguity_score": ambiguity_score,
+                    "chosen_action": chosen_action,
+                    "user_followup_signal_proxy": followup_proxy,
+                },
+            ),
         )
         append_session_log(
             "provenance_summary",
-            {
-                "utterance": utterance,
-                "intent": state.resolved_intent,
-                "intent_classified": state.classified_intent,
-                "intent_resolved": state.resolved_intent,
-                "ambiguity_score": ambiguity_score,
-                "chosen_action": chosen_action,
-                "user_followup_signal_proxy": followup_proxy,
-                "claims": state.claims,
-                "provenance_types": [p.value for p in state.provenance_types],
-                "used_memory_refs": state.used_memory_refs,
-                "used_source_evidence_refs": state.used_source_evidence_refs,
-                "source_evidence_attribution": state.source_evidence_attribution,
-                "basis_statement": state.basis_statement,
-            },
+            _intent_telemetry_payload(
+                state=state,
+                utterance=utterance,
+                extra={
+                    "ambiguity_score": ambiguity_score,
+                    "chosen_action": chosen_action,
+                    "user_followup_signal_proxy": followup_proxy,
+                    "claims": state.claims,
+                    "provenance_types": [p.value for p in state.provenance_types],
+                    "used_memory_refs": state.used_memory_refs,
+                    "used_source_evidence_refs": state.used_source_evidence_refs,
+                    "source_evidence_attribution": state.source_evidence_attribution,
+                    "basis_statement": state.basis_statement,
+                },
+            ),
         )
         append_session_log(
             "alignment_decision_evaluated",
-            {
-                "utterance": utterance,
-                "intent": state.resolved_intent,
-                "intent_classified": state.classified_intent,
-                "intent_resolved": state.resolved_intent,
-                "alignment_decision": state.alignment_decision.to_dict(),
-                "alignment_dimension_inputs_raw": state.alignment_decision.get("dimension_inputs", {}).get("raw", {}),
-                "alignment_dimension_inputs_normalized": state.alignment_decision.get("dimension_inputs", {}).get("normalized", {}),
-                "alignment_dimensions": state.alignment_decision.get("dimensions", {}),
-            },
+            _intent_telemetry_payload(
+                state=state,
+                utterance=utterance,
+                extra={
+                    "alignment_decision": state.alignment_decision.to_dict(),
+                    "alignment_dimension_inputs_raw": state.alignment_decision.get("dimension_inputs", {}).get("raw", {}),
+                    "alignment_dimension_inputs_normalized": state.alignment_decision.get("dimension_inputs", {}).get("normalized", {}),
+                    "alignment_dimensions": state.alignment_decision.get("dimensions", {}),
+                },
+            ),
         )
 
         if capability_snapshot.runtime_capability_status.debug_enabled:
