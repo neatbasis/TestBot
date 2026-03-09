@@ -90,6 +90,8 @@ def _artifact_payload_has_content(payload: object, *, key_fields: tuple[str, ...
         artifact_dict = payload.to_dict()
     elif isinstance(payload, dict):
         artifact_dict = payload
+    elif hasattr(payload, "__dict__") and isinstance(payload.__dict__, dict):
+        artifact_dict = payload.__dict__
 
     if artifact_dict is None:
         return False
@@ -561,7 +563,10 @@ def validate_answer_validate_pre(
             (
                 "draft_answer_present",
                 lambda s: _artifact_has_non_empty_text_field(artifacts.get("assembled_answer"), field="draft_answer")
-                or _artifact_payload_has_content(artifacts.get("answer_assembly_contract"))
+                or _artifact_payload_has_content(
+                    artifacts.get("answer_assembly_contract"),
+                    key_fields=("decision_class", "rendered_class", "retrieval_branch"),
+                )
                 or bool((s.draft_answer or "").strip()),
             )
         ],

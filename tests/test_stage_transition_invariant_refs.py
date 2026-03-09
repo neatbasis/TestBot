@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 
+from testbot.answer_assembly import AnswerCandidate
 from testbot.canonical_turn_orchestrator import CanonicalTurnOrchestrator
 from testbot.pipeline_state import CandidateFactsArtifact, PipelineState, ResolvedContextArtifact
 from testbot.stage_transitions import (
@@ -200,10 +201,25 @@ def test_answer_assemble_to_validate_sequence_uses_artifact_contract() -> None:
     assert validate_pre.failures == ()
 
 
-def test_answer_validate_pre_accepts_answer_assembly_contract_without_state_draft_answer() -> None:
-    state = PipelineState(user_input="What did I say yesterday?", confidence_decision={"context_confident": True})
+def test_answer_validate_pre_accepts_typed_answer_assembly_contract_without_state_draft_answer() -> None:
+    state = PipelineState(
+        user_input="What did I say yesterday?",
+        confidence_decision={"context_confident": True},
+        draft_answer="",
+    )
 
-    result = validate_answer_validate_pre(state, {"answer_assembly_contract": {"decision_class": "answer_from_memory"}})
+    contract = AnswerCandidate(
+        decision_class="answer_from_memory",
+        rendered_class="answer_from_memory",
+        retrieval_branch="memory",
+        rationale="has evidence",
+        evidence_counts={"structured_facts": 1},
+        pending_repair_state={"required": False, "reason": "none"},
+        resolved_obligations=["repair_state_not_required"],
+        remaining_obligations=[],
+        confirmed_user_facts=["You said hi yesterday."],
+    )
+    result = validate_answer_validate_pre(state, {"answer_assembly_contract": contract})
 
     assert result.passed
     assert result.failures == ()
