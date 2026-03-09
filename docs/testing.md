@@ -427,3 +427,34 @@ Fixture files live in `eval/` (source eval patterns) and `tests/fixtures/` (test
 - [ ] Default test suite remains deterministic and offline.
 - [ ] Citation/fallback answer contract is explicitly tested.
 - [ ] Temporal rerank behavior is validated with fixed-time fixtures.
+
+## Governance cadence for drift control
+
+Use this recurring cadence to keep behavior, policy artifacts, and issue records aligned:
+
+- **Sprint cadence (mini drift review at sprint close):**
+  - Review behavior changes merged during the sprint for traceability gaps.
+  - Confirm any touched directives/invariants and issue records remain aligned with shipped behavior.
+- **Release cadence (full drift review before release cut):**
+  - Run a full drift review across behavior specs, runtime docs, invariants/directives, and issue governance artifacts.
+  - Treat unresolved drift as a release blocker until reconciled.
+
+### Drift review ownership roles
+
+Assign explicit reviewers for each governance area:
+
+- **Architecture reviewer:** validates architectural consistency and confirms touched behavior still matches documented runtime design boundaries.
+- **Behavior contract reviewer:** validates BDD and deterministic tests reflect stakeholder-visible behavior and fallback/citation contract requirements.
+- **Issue hygiene reviewer:** validates issue status transitions, acceptance criteria reconciliation, and issue-link integrity.
+
+## PR and release governance checklist
+
+For every PR and release candidate, complete this checklist in addition to feature/testing checks:
+
+- [ ] **Traceability matrix updates:** matrix rows are updated for every changed stakeholder-visible behavior.
+- [ ] **Issue criterion reconciliation:** when issue status changes, issue criteria and status rationale are reconciled in the corresponding issue artifact.
+- [ ] **Directive/invariant cross-check:** all touched behavior is cross-checked against applicable directives and invariants, with docs/code aligned.
+- [ ] **Canonical validation gate run:** `python scripts/all_green_gate.py` executed and passing.
+- [ ] **Issue validators run when issue artifacts are touched:**
+  - `python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main`
+  - `python scripts/validate_issues.py --all-issue-files --base-ref origin/main`
