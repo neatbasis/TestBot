@@ -1,5 +1,5 @@
 contract_version: 1
-last_updated: 2026-03-08
+last_updated: 2026-03-09
 report:
   canonical_generated_report: docs/qa/feature-status-report.md
   default_gate_summary: artifacts/all-green-gate-summary.json
@@ -28,7 +28,7 @@ capabilities:
   runtime_dependency_flags:
   - SOURCE_INGEST_ENABLED
   - TESTBOT_RERANK_OBJECTIVE_CONFIG
-  current_status: partial
+  current_status: implemented
   roadmap_priority_refs:
   - P2
   - P4
@@ -48,7 +48,7 @@ capabilities:
   - safety_reflection_and_runtime_logging_pytests
   runtime_dependency_flags:
   - TESTBOT_DEBUG
-  current_status: partial
+  current_status: implemented
   roadmap_priority_refs:
   - P3
   open_issues:

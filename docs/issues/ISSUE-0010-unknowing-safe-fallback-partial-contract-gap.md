@@ -42,6 +42,16 @@ The `unknowing_safe_fallback` capability is still marked `partial`. ISSUE-0010 i
 - AC-0010-R1: Canonical gate evidence currently does not expose `safety_reflection_and_runtime_logging_pytests` check ID in `artifacts/all-green-gate-summary.json`; acceptance criterion 3 cannot be fully satisfied until expected check naming/output is restored or this issue's gate contract is explicitly migrated to current canonical check names with validation updates.
 - AC-0010-R2: `docs/qa/feature-status.yaml` still declares `unknowing_safe_fallback` as `partial`, so criterion 4 remains intentionally unmet pending AC-0010-R1 resolution.
 
+
+## Enforcement mapping (implementation anchors)
+
+| Acceptance criterion | Runtime/Policy enforcement points |
+| --- | --- |
+| AC #1 (`behave` answer+intent features) | `src/testbot/reflection_policy.py::decide_fallback_action` and `fallback_reason` enforce deterministic unknowing route selection and reason codes; `src/testbot/answer_render.py` and `src/testbot/answer_validate.py` keep render/validation boundaries explicit. |
+| AC #2 (`pytest` reflection policy + runtime logging) | `src/testbot/reflection_policy.py` fallback matrix + reason strings plus `src/testbot/policy_decision.py` clarify-vs-labeled-general-knowledge decisioning for low-confidence and scored-empty paths. |
+| AC #3 (all-green gate check IDs passed) | Canonical gate evidence from `scripts/all_green_gate.py`; policy/validation execution points remain `reflection_policy`, `policy_decision`, and answer validate/render boundaries. |
+| AC #4 (status move to implemented) | `docs/qa/feature-status.yaml` capability status lifecycle, regenerated into markdown/JSON status artifacts. |
+
 ## Work Plan
 
 - [x] Capture production-debug evidence trace and map symptoms to ISSUE-0009/ISSUE-0010 acceptance criteria (`docs/issues/evidence/production-debug-cli-trace-2026-03-07.md`).

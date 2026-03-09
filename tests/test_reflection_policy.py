@@ -141,3 +141,29 @@ def test_answer_routing_rationale_sets_deterministic_fallback_reason_for_ambiguo
 
     assert policy.fallback_action == "ASK_CLARIFYING_QUESTION"
     assert policy.rationale["fallback_reason"] == "ambiguous_memory_candidates_without_ask"
+
+
+def test_answer_routing_memory_confident_hit_is_knowing_success_path() -> None:
+    policy = resolve_answer_routing(
+        AnswerPolicyInput(
+            intent="memory_recall",
+            confidence_decision={"context_confident": True, "ambiguity_detected": False, "memory_hit_count": 1},
+            capability_status="ask_unavailable",
+        )
+    )
+
+    assert policy.fallback_action == "ANSWER_FROM_MEMORY"
+    assert policy.canonical_response_token == "LLM_DRAFT"
+
+
+def test_answer_routing_memory_no_hit_is_rejection_path() -> None:
+    policy = resolve_answer_routing(
+        AnswerPolicyInput(
+            intent="memory_recall",
+            confidence_decision={"context_confident": False, "ambiguity_detected": False, "memory_hit_count": 0},
+            capability_status="ask_unavailable",
+        )
+    )
+
+    assert policy.fallback_action == "OFFER_CAPABILITY_ALTERNATIVES"
+    assert policy.canonical_response_token == "ASSIST_ALTERNATIVES_ANSWER"

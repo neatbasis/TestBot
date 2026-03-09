@@ -1531,3 +1531,48 @@ def test_resolve_context_consumes_commit_receipt_continuity_deterministically() 
         "commit.pending_repair_state:required",
         "commit.remaining_obligations:continue_repair_reconstruction",
     )
+
+
+def test_stage_answer_distinguishes_knowing_success_and_unknowing_rejection_paths() -> None:
+    knowing_state = PipelineState(
+        user_input="what did i note about release prep?",
+        resolved_intent=IntentType.MEMORY_RECALL.value,
+        confidence_decision={"context_confident": True, "ambiguity_detected": False},
+    )
+    knowing = stage_answer(
+        _StaticLLM("From memory, I found: release prep requires changelog review."),
+        knowing_state,
+        chat_history=deque(),
+        hits=[
+            Document(
+                page_content="release prep requires changelog review",
+                metadata={"doc_id": "mem-11", "ts": "2026-03-02T10:00:00Z"},
+            )
+        ],
+        capability_status="ask_unavailable",
+        clock=_FIXED_CLOCK,
+    )
+
+    rejecting_state = PipelineState(
+        user_input="what is ontology?",
+        resolved_intent=IntentType.KNOWLEDGE_QUESTION.value,
+        confidence_decision={
+            "context_confident": False,
+            "ambiguity_detected": False,
+            "general_knowledge_confidence": 0.1,
+            "general_knowledge_support": 0,
+        },
+    )
+    rejecting = stage_answer(
+        _StaticLLM("Ontology is the study of being and existence."),
+        rejecting_state,
+        chat_history=deque(),
+        hits=[],
+        capability_status="ask_unavailable",
+        clock=_FIXED_CLOCK,
+    )
+
+    assert knowing.invariant_decisions.get("answer_mode") == "memory-grounded"
+    assert knowing.invariant_decisions.get("fallback_action") == "ANSWER_FROM_MEMORY"
+    assert rejecting.invariant_decisions.get("fallback_action") in {"ANSWER_UNKNOWN", "ANSWER_GENERAL_KNOWLEDGE"}
+    assert "reliable memory" in rejecting.final_answer.lower()
