@@ -1529,14 +1529,16 @@ def test_chat_loop_async_pending_lookup_commits_pending_answer_and_logs_semantic
     monkeypatch.setattr(runtime, "generate_reflection_yaml", lambda *args, **kwargs: "claims: []")
     monkeypatch.setattr(runtime, "persist_promoted_context", lambda *args, **kwargs: [])
 
-    def _start_background_ingest(*, runtime: dict[str, object], store: object) -> dict[str, object]:
+    def _start_background_ingest(*, runtime: dict[str, object], store: object, ingestion_request_id: str = "") -> dict[str, object]:
         del store
         runtime["source_ingest_background_in_progress"] = True
         runtime["source_ingest_background_future"] = None
         runtime["source_ingest_background_stub"] = True
+        request_id = ingestion_request_id or "stub-ingest-1"
+        runtime["source_ingest_background_request_id"] = request_id
         from testbot import sat_chatbot_memory_v2 as runtime_module
-        runtime_module.append_session_log("source_ingest_background_started", {"background": True})
-        return {"started": True, "already_running": False}
+        runtime_module.append_session_log("source_ingest_background_started", {"background": True, "ingestion_request_id": request_id})
+        return {"started": True, "already_running": False, "ingestion_request_id": request_id}
 
     monkeypatch.setattr(runtime, "_start_background_source_ingestion", _start_background_ingest)
 
@@ -1591,6 +1593,7 @@ def test_chat_loop_async_pending_lookup_commits_pending_answer_and_logs_semantic
 
     commit_row = next(row for row in rows if row.get("event") == "commit_stage_recorded")
     assert commit_row["pending_repair_state"]["required"] is True
+    assert commit_row["pending_ingestion_request_id"] != ""
 
     mode_row = next(row for row in rows if row.get("event") == "final_answer_mode")
     assert mode_row["mode"] == "assist"
@@ -1603,15 +1606,17 @@ def test_chat_loop_async_pending_lookup_contract_path_reaches_answer_commit_post
     monkeypatch.setattr(runtime, "generate_reflection_yaml", lambda *args, **kwargs: "claims: []")
     monkeypatch.setattr(runtime, "persist_promoted_context", lambda *args, **kwargs: [])
 
-    def _start_background_ingest(*, runtime: dict[str, object], store: object) -> dict[str, object]:
+    def _start_background_ingest(*, runtime: dict[str, object], store: object, ingestion_request_id: str = "") -> dict[str, object]:
         del store
         runtime["source_ingest_background_in_progress"] = True
         runtime["source_ingest_background_future"] = None
         runtime["source_ingest_background_stub"] = True
+        request_id = ingestion_request_id or "stub-ingest-1"
+        runtime["source_ingest_background_request_id"] = request_id
         from testbot import sat_chatbot_memory_v2 as runtime_module
 
-        runtime_module.append_session_log("source_ingest_background_started", {"background": True})
-        return {"started": True, "already_running": False}
+        runtime_module.append_session_log("source_ingest_background_started", {"background": True, "ingestion_request_id": request_id})
+        return {"started": True, "already_running": False, "ingestion_request_id": request_id}
 
     monkeypatch.setattr(runtime, "_start_background_source_ingestion", _start_background_ingest)
 
@@ -1676,6 +1681,7 @@ def test_chat_loop_async_pending_lookup_contract_path_reaches_answer_commit_post
 
     commit_row = next(row for row in rows if row.get("event") == "commit_stage_recorded")
     assert commit_row["pending_repair_state"]["required"] is True
+    assert commit_row["pending_ingestion_request_id"] != ""
 
     mode_row = next(row for row in rows if row.get("event") == "final_answer_mode")
     assert mode_row["mode"] == "assist"
@@ -1842,6 +1848,7 @@ def test_resolve_context_consumes_commit_receipt_continuity_deterministically() 
             "commit_stage": "answer.commit",
             "pending_repair_state": {"required": True, "reason": "decision_requires_repair"},
             "remaining_obligations": ["continue_repair_reconstruction"],
+            "pending_ingestion_request_id": "ingest-42",
             "confirmed_user_facts": ["name=Sam", "timezone=PST"],
         },
     )
@@ -1853,6 +1860,7 @@ def test_resolve_context_consumes_commit_receipt_continuity_deterministically() 
         "commit.confirmed_user_facts:name=Sam",
         "commit.confirmed_user_facts:timezone=PST",
         "commit.pending_repair_state:required",
+        "commit.pending_ingestion_request_id:ingest-42",
         "commit.remaining_obligations:continue_repair_reconstruction",
     )
 

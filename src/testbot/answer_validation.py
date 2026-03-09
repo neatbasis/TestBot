@@ -17,6 +17,7 @@ REQUIRED_ASSEMBLY_KEYS = (
     "retrieval_branch",
     "rationale",
     "pending_repair_state",
+    "pending_ingestion_request_id",
     "resolved_obligations",
     "remaining_obligations",
     "confirmed_user_facts",
@@ -52,6 +53,10 @@ def validate_answer_assembly_boundary(assembly: AnswerCandidate) -> ValidatedAns
         failures.append("remaining_obligations_not_list")
     if not isinstance(as_mapping.get("confirmed_user_facts"), list):
         failures.append("confirmed_user_facts_not_list")
+
+    pending_ingestion_request_id = as_mapping.get("pending_ingestion_request_id")
+    if not isinstance(pending_ingestion_request_id, str):
+        failures.append("pending_ingestion_request_id_not_str")
 
     decision_class = str(as_mapping.get("decision_class") or "")
     rendered_class = str(as_mapping.get("rendered_class") or "")

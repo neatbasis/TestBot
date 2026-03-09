@@ -101,6 +101,7 @@ def test_answer_validation_rejects_rendered_class_conflict() -> None:
         rationale=candidate.rationale,
         evidence_counts=candidate.evidence_counts,
         pending_repair_state=candidate.pending_repair_state,
+        pending_ingestion_request_id=candidate.pending_ingestion_request_id,
         resolved_obligations=candidate.resolved_obligations,
         remaining_obligations=candidate.remaining_obligations,
         confirmed_user_facts=candidate.confirmed_user_facts,

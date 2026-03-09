@@ -163,10 +163,16 @@ _BACKGROUND_SOURCE_INGEST_EXECUTOR = ThreadPoolExecutor(max_workers=1, thread_na
 _BACKGROUND_SOURCE_INGEST_LOCK = Lock()
 
 
-def _execute_source_ingestion(*, runtime: dict[str, object], store: MemoryStore, background: bool = False) -> dict[str, object]:
+def _execute_source_ingestion(
+    *,
+    runtime: dict[str, object],
+    store: MemoryStore,
+    background: bool = False,
+    ingestion_request_id: str = "",
+) -> dict[str, object]:
     connector = _build_source_connector(runtime)
     if connector is None:
-        return {"ok": False, "status": "skipped", "background": background}
+        return {"ok": False, "status": "skipped", "background": background, "ingestion_request_id": ingestion_request_id}
 
     ingestor = SourceIngestor(connector=connector, memory_store=store)
     cursor = str(runtime.get("source_ingest_cursor")) if runtime.get("source_ingest_cursor") is not None else None
@@ -196,6 +202,7 @@ def _execute_source_ingestion(*, runtime: dict[str, object], store: MemoryStore,
             "exception_class": exc.__class__.__name__,
             "exception_message": str(exc),
             "background": background,
+            "ingestion_request_id": ingestion_request_id,
         }
         return {"ok": False, "status": "failed", "payload": payload}
 
@@ -207,26 +214,37 @@ def _execute_source_ingestion(*, runtime: dict[str, object], store: MemoryStore,
         "memory_doc_ids": [str(doc.id or "") for doc in result.memory_documents],
         "evidence_doc_ids": [str(doc.id or "") for doc in result.evidence_documents],
         "background": background,
+        "ingestion_request_id": ingestion_request_id,
     }
     return {"ok": True, "status": "completed", "payload": payload}
 
 
-def _start_background_source_ingestion(*, runtime: dict[str, object], store: MemoryStore) -> dict[str, object]:
+def _start_background_source_ingestion(
+    *,
+    runtime: dict[str, object],
+    store: MemoryStore,
+    ingestion_request_id: str = "",
+) -> dict[str, object]:
     with _BACKGROUND_SOURCE_INGEST_LOCK:
         existing_future = runtime.get("source_ingest_background_future")
         if isinstance(existing_future, Future) and not existing_future.done():
-            return {"started": False, "already_running": True}
+            existing_request_id = str(runtime.get("source_ingest_background_request_id") or "")
+            return {"started": False, "already_running": True, "ingestion_request_id": existing_request_id}
+
+        request_id = str(ingestion_request_id or runtime.get("active_ingestion_request_id") or uuid.uuid4())
+        runtime["source_ingest_background_request_id"] = request_id
 
         future = _BACKGROUND_SOURCE_INGEST_EXECUTOR.submit(
             _execute_source_ingestion,
             runtime=runtime,
             store=store,
             background=True,
+            ingestion_request_id=request_id,
         )
         runtime["source_ingest_background_future"] = future
         runtime["source_ingest_background_in_progress"] = True
-        append_session_log("source_ingest_background_started", {"background": True})
-        return {"started": True, "already_running": False}
+        append_session_log("source_ingest_background_started", {"background": True, "ingestion_request_id": request_id})
+        return {"started": True, "already_running": False, "ingestion_request_id": request_id}
 
 
 def _poll_background_source_ingestion(*, runtime: dict[str, object]) -> dict[str, object] | None:
@@ -237,12 +255,16 @@ def _poll_background_source_ingestion(*, runtime: dict[str, object]) -> dict[str
             return None
         if not future.done():
             runtime["source_ingest_background_in_progress"] = True
-            return {"status": "running"}
+            return {"status": "running", "ingestion_request_id": str(runtime.get("source_ingest_background_request_id") or "")}
 
         runtime["source_ingest_background_in_progress"] = False
         runtime["source_ingest_background_future"] = None
+        request_id = str(runtime.get("source_ingest_background_request_id") or "")
+        runtime["source_ingest_background_request_id"] = ""
 
     result = future.result()
+    if request_id and "payload" in result and isinstance(result["payload"], dict) and not result["payload"].get("ingestion_request_id"):
+        result["payload"]["ingestion_request_id"] = request_id
     if result.get("ok"):
         append_session_log("source_ingest_completed", dict(result["payload"]))
     elif result.get("status") == "failed":
@@ -487,6 +509,7 @@ def _read_runtime_env() -> dict[str, object]:
         ),
         "source_ingest_background_future": None,
         "source_ingest_background_in_progress": False,
+        "source_ingest_background_request_id": "",
         "debug_verbose": debug_verbose,
     }
 
@@ -2994,12 +3017,19 @@ def _run_canonical_turn_pipeline(
     io_channel: str = "cli",
 ) -> tuple[PipelineState, list[Document]]:
     runtime = runtime or {}
+    prior_pending_ingestion_request_id = ""
+    if prior_pipeline_state is not None:
+        prior_pending_ingestion_request_id = str(
+            prior_pipeline_state.commit_receipt.get("pending_ingestion_request_id") or ""
+        )
+
     context = CanonicalTurnContext(
         state=state,
         artifacts={
             "utterance": utterance,
             "policy_decision": None,
             "turn_id": turn_id,
+            "pending_ingestion_request_id": prior_pending_ingestion_request_id,
             "docs_and_scores": [],
             "hits": [],
             "ambiguity_score": 0.0,
@@ -3182,9 +3212,18 @@ def _run_canonical_turn_pipeline(
     def _retrieve_evidence(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
         background_poll = _poll_background_source_ingestion(runtime=runtime)
         background_in_progress = bool(runtime.get("source_ingest_background_in_progress", False))
+        if background_in_progress and not ctx.artifacts.get("pending_ingestion_request_id"):
+            live_request_id = str(runtime.get("source_ingest_background_request_id") or "")
+            if live_request_id:
+                ctx.artifacts["pending_ingestion_request_id"] = live_request_id
         ctx.artifacts["background_ingestion_in_progress"] = background_in_progress
         if background_poll is not None:
             ctx.artifacts["background_ingestion_poll"] = background_poll
+            poll_payload = background_poll.get("payload") if isinstance(background_poll, dict) else None
+            if isinstance(poll_payload, dict):
+                polled_request_id = str(poll_payload.get("ingestion_request_id") or "")
+                if polled_request_id:
+                    ctx.artifacts["pending_ingestion_request_id"] = polled_request_id
 
         retrieval_requirement = ctx.artifacts.get("retrieval_requirement") or {}
         if bool(retrieval_requirement.get("requires_retrieval", False)):
@@ -3216,7 +3255,14 @@ def _run_canonical_turn_pipeline(
             )
             _validate_and_log_transition(validate_retrieve_evidence_post(ctx.state))
             if not docs_and_scores and bool(runtime.get("source_ingest_async_continuation", False)):
-                _start_background_source_ingestion(runtime=runtime, store=store)
+                start_result = _start_background_source_ingestion(
+                    runtime=runtime,
+                    store=store,
+                    ingestion_request_id=str(ctx.artifacts.get("turn_id") or ""),
+                )
+                start_request_id = str(start_result.get("ingestion_request_id") or "")
+                if start_request_id:
+                    ctx.artifacts["pending_ingestion_request_id"] = start_request_id
                 background_in_progress = bool(runtime.get("source_ingest_background_in_progress", False))
             ctx.state = replace(
                 ctx.state,
@@ -3375,6 +3421,7 @@ def _run_canonical_turn_pipeline(
         ctx.artifacts["answer_assembly_contract"] = assemble_answer_contract(
             decision=decision_object,
             evidence_bundle=retrieval_result_obj.evidence_bundle,
+            pending_ingestion_request_id=str(ctx.artifacts.get("pending_ingestion_request_id") or ""),
         )
         append_pipeline_snapshot("answer.assemble", ctx.state)
         return ctx
@@ -3458,6 +3505,7 @@ def _run_canonical_turn_pipeline(
                 "resolved_obligations": ctx.state.commit_receipt.get("resolved_obligations", []),
                 "remaining_obligations": ctx.state.commit_receipt.get("remaining_obligations", []),
                 "confirmed_user_facts": ctx.state.commit_receipt.get("confirmed_user_facts", []),
+                "pending_ingestion_request_id": ctx.state.commit_receipt.get("pending_ingestion_request_id", ""),
                 "retrieval_continuity_evidence": list(ctx.artifacts.get("retrieval_continuity_evidence", ())),
             },
         )
@@ -3523,6 +3571,7 @@ def _run_chat_loop(
     runtime = runtime or {}
     runtime.setdefault("source_ingest_background_future", None)
     runtime.setdefault("source_ingest_background_in_progress", False)
+    runtime.setdefault("source_ingest_background_request_id", "")
     last_user_message_ts = ""
     prior_pipeline_state: PipelineState | None = None
     while True:

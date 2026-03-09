@@ -627,18 +627,20 @@ def test_execute_source_ingestion_returns_failed_payload(monkeypatch) -> None:
 def test_background_source_ingestion_start_and_poll_completion(monkeypatch) -> None:
     logs: list[tuple[str, dict[str, object]]] = []
 
-    def _fake_execute(*, runtime: dict[str, object], store, background: bool = False):
+    def _fake_execute(*, runtime: dict[str, object], store, background: bool = False, ingestion_request_id: str = ""):
         del runtime, store
-        return {"ok": True, "status": "completed", "payload": {"background": background, "stored_count": 2}}
+        return {"ok": True, "status": "completed", "payload": {"background": background, "stored_count": 2, "ingestion_request_id": ingestion_request_id}}
 
     monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: logs.append((event, payload)))
     monkeypatch.setattr(runtime, "_execute_source_ingestion", _fake_execute)
 
-    rt = {"source_ingest_background_future": None, "source_ingest_background_in_progress": False}
-    started = runtime._start_background_source_ingestion(runtime=rt, store=object())
+    rt = {"source_ingest_background_future": None, "source_ingest_background_in_progress": False, "source_ingest_background_request_id": ""}
+    started = runtime._start_background_source_ingestion(runtime=rt, store=object(), ingestion_request_id="turn-abc")
 
     assert started["started"] is True
+    assert started["ingestion_request_id"] == "turn-abc"
     assert logs[0][0] == "source_ingest_background_started"
+    assert logs[0][1]["ingestion_request_id"] == "turn-abc"
 
     while True:
         polled = runtime._poll_background_source_ingestion(runtime=rt)
@@ -650,6 +652,7 @@ def test_background_source_ingestion_start_and_poll_completion(monkeypatch) -> N
     assert rt["source_ingest_background_in_progress"] is False
     assert logs[-1][0] == "source_ingest_completed"
     assert logs[-1][1]["background"] is True
+    assert logs[-1][1]["ingestion_request_id"] == "turn-abc"
 
 
 def test_read_runtime_env_sync_retry_wait_budget_defaults(monkeypatch) -> None:

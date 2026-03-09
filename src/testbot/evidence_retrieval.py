@@ -88,6 +88,10 @@ def continuity_evidence_from_prior_state(prior_pipeline_state: PipelineState | N
         if normalized:
             anchors.append(f"commit.confirmed_user_facts:{normalized}")
 
+    pending_ingestion_request_id = str(commit_receipt.get("pending_ingestion_request_id") or "").strip()
+    if pending_ingestion_request_id:
+        anchors.append(f"commit.pending_ingestion_request_id:{pending_ingestion_request_id}")
+
     for obligation in commit_receipt.get("remaining_obligations", []):
         normalized = str(obligation).strip()
         if normalized:

@@ -21,6 +21,7 @@ from testbot.candidate_encoding import FactCandidate
 from testbot.intent_resolution import IntentResolutionInput, resolve as resolve_intent
 from testbot.intent_router import IntentType
 from testbot.pipeline_state import PipelineState
+from testbot.evidence_retrieval import continuity_evidence_from_prior_state
 from testbot.rerank import adaptive_sigma_fractional, rerank_docs_with_time_and_type_outcome
 from testbot.sat_chatbot_memory_v2 import has_sufficient_context_confidence
 
@@ -322,6 +323,7 @@ def test_canonical_continuity_parity_consumes_prior_commit_artifacts_across_turn
             "commit_stage": "answer.commit",
             "pending_repair_state": {"required": False, "reason": "none"},
             "resolved_obligations": ["repair_state_not_required"],
+            "pending_ingestion_request_id": "ingest-abc",
             "confirmed_user_facts": ["name=Sam"],
         },
         final_answer="Can you clarify which prior memory you mean?",
@@ -349,11 +351,11 @@ def test_canonical_continuity_parity_consumes_prior_commit_artifacts_across_turn
     assert context.history_anchors == (
         "prior_intent:memory_recall",
         "commit.confirmed_user_facts:name=Sam",
+        "commit.pending_ingestion_request_id:ingest-abc",
         "clarification_continuity",
     )
     assert intent_resolution.classified_intent is IntentType.KNOWLEDGE_QUESTION
     assert intent_resolution.resolved_intent is IntentType.MEMORY_RECALL
 
-    committed_facts = turn_one_state.commit_receipt.get("confirmed_user_facts", [])
-    retrieval_evidence = [f"commit.confirmed_user_facts:{fact}" for fact in committed_facts]
-    assert retrieval_evidence == ["commit.confirmed_user_facts:name=Sam"]
+    retrieval_evidence = continuity_evidence_from_prior_state(turn_one_state)
+    assert retrieval_evidence == ("commit.confirmed_user_facts:name=Sam", "commit.pending_ingestion_request_id:ingest-abc")
