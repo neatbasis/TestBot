@@ -44,49 +44,132 @@ Dependent open-issue routing is sequenced through ISSUE-0013 using the following
 
 Status legend: `[ ] pending`, `[~] partial`, `[x] complete`.
 
+Dependency labels (machine-auditable ordered chain):
+- `DEP-0008-BLOCKER` -> `DEP-0011-BLOCKER` -> `DEP-0012-PARALLEL` -> `DEP-0014-BLOCKER` -> `DEP-0015-DEPENDENT`
+
 - [~] [AC-0013-01] Main turn runtime enforces canonical stage ordering and removes direct raw-utterance-first routing (`U -> I`) from the primary loop.
-  - evidence: `docs/architecture/canonical-turn-pipeline.md`
-  - evidence: `src/testbot/sat_chatbot_memory_v2.py`
-  - evidence: `src/testbot/intent_router.py`
+  - dependency-labels: `DEP-0008-BLOCKER`, `DEP-0011-BLOCKER`, `DEP-0012-PARALLEL`
+  - code-paths: `src/testbot/canonical_turn_orchestrator.py`, `src/testbot/sat_chatbot_memory_v2.py`, `src/testbot/intent_router.py`
+  - behavior-specs: `features/intent_grounding.feature`, `features/memory_recall.feature`
+  - deterministic-tests: `tests/test_canonical_turn_orchestrator.py`, `tests/test_pipeline_semantic_contracts.py`, `tests/test_intent_router.py`
+  - verification:
+    ```bash
+    python -m pytest tests/test_canonical_turn_orchestrator.py tests/test_pipeline_semantic_contracts.py tests/test_intent_router.py
+    # expected pass signal: all selected tests PASS; no anti-projection/stage-order failures
+    ```
+
 - [~] [AC-0013-02] Typed artifacts exist and are used at stage boundaries for `TurnObservation`, `SpeechActCandidate`, `FactCandidate`, `RepairCandidate`, `DialogueStateCandidate`, `StabilizedTurnState`, `ResolvedContext`, `ResolvedIntent`, `EvidenceBundle`, `DecisionObject`, `AnswerCandidate`, `ValidatedAnswer`, and `CommittedTurnState`.
-  - evidence: `src/testbot/stabilization.py`
-  - evidence: `src/testbot/evidence_retrieval.py`
-  - evidence: `tests/test_runtime_logging_events.py`
+  - dependency-labels: `DEP-0008-BLOCKER`, `DEP-0011-BLOCKER`, `DEP-0012-PARALLEL`
+  - code-paths: `src/testbot/pipeline_state.py`, `src/testbot/stage_transitions.py`, `src/testbot/stabilization.py`, `src/testbot/evidence_retrieval.py`
+  - behavior-specs: `features/intent_grounding.feature`
+  - deterministic-tests: `tests/test_canonical_turn_pipeline_contract_ac_0013_02.py`, `tests/test_pipeline_state_artifacts.py`, `tests/test_pipeline_semantic_contracts.py`
+  - verification:
+    ```bash
+    python -m pytest tests/test_canonical_turn_pipeline_contract_ac_0013_02.py tests/test_pipeline_state_artifacts.py tests/test_pipeline_semantic_contracts.py
+    # expected pass signal: artifact-contract tests PASS with typed boundary assertions satisfied
+    ```
+
 - [~] [AC-0013-03] `stabilize.pre_route` becomes the first durable semantic boundary and persists utterance card, candidate facts with provenance, candidate dialogue state, and durable references before route authority.
-  - evidence: `src/testbot/stabilization.py`
-  - evidence: `tests/test_runtime_logging_events.py::test_chat_loop_logs_commit_stage_record_with_durable_commit_state`
+  - dependency-labels: `DEP-0008-BLOCKER`, `DEP-0011-BLOCKER`, `DEP-0012-PARALLEL`
+  - code-paths: `src/testbot/stabilization.py`, `src/testbot/sat_chatbot_memory_v2.py`, `src/testbot/runtime_logging.py`
+  - behavior-specs: `features/memory_recall.feature`
+  - deterministic-tests: `tests/test_runtime_logging_events.py`, `tests/test_pipeline_state_artifacts.py`
+  - verification:
+    ```bash
+    python -m pytest tests/test_runtime_logging_events.py -k "stabilize or pre_route or durable"
+    # expected pass signal: stabilize/pre-route durable artifact assertions PASS
+    ```
+
 - [~] [AC-0013-04] Retrieval keeps evidence classes distinct in `EvidenceBundle` (structured facts, episodic utterances, repair anchors/offers, reflections/hypotheses, source evidence) and does not flatten to a single undifferentiated top-k before policy.
-  - evidence: `src/testbot/evidence_retrieval.py`
-  - evidence: `tests/test_evidence_retrieval_mapping.py`
+  - dependency-labels: `DEP-0008-BLOCKER`, `DEP-0011-BLOCKER`, `DEP-0012-PARALLEL`
+  - code-paths: `src/testbot/evidence_retrieval.py`, `src/testbot/policy_decision.py`
+  - behavior-specs: `features/memory_recall.feature`
+  - deterministic-tests: `tests/test_evidence_retrieval_mapping.py`, `tests/test_decisioning_stages.py`
+  - verification:
+    ```bash
+    python -m pytest tests/test_evidence_retrieval_mapping.py tests/test_decisioning_stages.py
+    # expected pass signal: evidence-bundle class mapping and policy-consumption tests PASS
+    ```
+
 - [~] [AC-0013-05] Same-turn retrieval hygiene is enforced by construction: `same_turn_exclusion_doc_ids` is populated during stabilization, standard answer-evidence retrieval excludes same-turn artifacts, and only explicitly permitted same-turn access classes (for example observation-state and repair anchors) are allowed.
-  - evidence: `src/testbot/stabilization.py`
-  - evidence: `src/testbot/evidence_retrieval.py`
-  - evidence: `features/memory_recall.feature`
+  - dependency-labels: `DEP-0008-BLOCKER`, `DEP-0011-BLOCKER`, `DEP-0012-PARALLEL`
+  - code-paths: `src/testbot/stabilization.py`, `src/testbot/evidence_retrieval.py`, `src/testbot/vector_store.py`
+  - behavior-specs: `features/memory_recall.feature`
+  - deterministic-tests: `tests/test_evidence_retrieval_mapping.py`, `tests/test_runtime_logging_events.py`, `tests/test_vector_store.py`
+  - verification:
+    ```bash
+    python -m pytest tests/test_evidence_retrieval_mapping.py tests/test_runtime_logging_events.py -k "same_turn"
+    # expected pass signal: same-turn exclusion assertions PASS with explicit allowlist behavior
+    ```
+
 - [~] [AC-0013-06] Durable memory strata are implemented and persisted for episodic, semantic, and procedural/dialogue-state memory.
-  - evidence: `src/testbot/memory_strata.py`
-  - evidence: `src/testbot/sat_chatbot_memory_v2.py`
-  - evidence: `tests/test_memory_segments_and_strata.py`
+  - dependency-labels: `DEP-0011-BLOCKER`, `DEP-0012-PARALLEL`
+  - code-paths: `src/testbot/memory_strata.py`, `src/testbot/sat_chatbot_memory_v2.py`, `src/testbot/answer_commit.py`
+  - behavior-specs: `features/memory_recall.feature`
+  - deterministic-tests: `tests/test_memory_segments_and_strata.py`, `tests/test_answer_commit_identity_promotion.py`
+  - verification:
+    ```bash
+    python -m pytest tests/test_memory_segments_and_strata.py tests/test_answer_commit_identity_promotion.py
+    # expected pass signal: strata persistence + promotion-path tests PASS
+    ```
+
 - [~] [AC-0013-07] Segment-level memory construction and retrieval are introduced with minimum segment types (contiguous topic, repair, task, self-profile, temporal episode), and segment IDs and membership edges are persisted.
-  - evidence: `src/testbot/memory_strata.py`
-  - evidence: `src/testbot/vector_store.py`
-  - evidence: `tests/test_memory_segments_and_strata.py`
+  - dependency-labels: `DEP-0011-BLOCKER`, `DEP-0012-PARALLEL`
+  - code-paths: `src/testbot/memory_strata.py`, `src/testbot/vector_store.py`, `src/testbot/context_resolution.py`
+  - behavior-specs: `features/memory_recall.feature`
+  - deterministic-tests: `tests/test_memory_segments_and_strata.py`, `tests/test_vector_store.py`
+  - verification:
+    ```bash
+    python -m pytest tests/test_memory_segments_and_strata.py tests/test_vector_store.py -k "segment"
+    # expected pass signal: segment membership/edge persistence tests PASS
+    ```
+
 - [~] [AC-0013-08] `policy.decide` is explicitly typed and separated from `answer.assemble`; answer assembly consumes only the `DecisionObject` + `EvidenceBundle` contract and disallows free-form decision drift.
-  - evidence: `src/testbot/intent_router.py`
-  - evidence: `tests/test_runtime_logging_events.py`
-  - evidence: `features/intent_grounding.feature`
+  - dependency-labels: `DEP-0008-BLOCKER`, `DEP-0011-BLOCKER`, `DEP-0012-PARALLEL`
+  - code-paths: `src/testbot/policy_decision.py`, `src/testbot/answer_assembly.py`, `src/testbot/sat_chatbot_memory_v2.py`
+  - behavior-specs: `features/answer_contract.feature`, `features/intent_grounding.feature`
+  - deterministic-tests: `tests/test_decisioning_stages.py`, `tests/test_answer_contract.py`, `tests/test_pipeline_semantic_contracts.py`
+  - verification:
+    ```bash
+    python -m pytest tests/test_decisioning_stages.py tests/test_answer_contract.py tests/test_pipeline_semantic_contracts.py
+    # expected pass signal: typed decision boundary assertions PASS
+    ```
+
 - [~] [AC-0013-09] `answer.commit` persists continuity-critical state, including pending repair state, obligations, and confirmed facts promotion path.
-  - evidence: `src/testbot/answer_commit.py`
-  - evidence: `src/testbot/context_resolution.py`
-  - evidence: `src/testbot/evidence_retrieval.py`
-  - evidence: `tests/test_runtime_logging_events.py::test_chat_loop_two_turn_commit_continuity_is_consumed_by_context_and_retrieval`
-  - evidence: `tests/test_runtime_logging_events.py::test_resolve_context_consumes_commit_receipt_continuity_deterministically`
-  - evidence: `tests/test_turn_analytics_aggregator.py::test_aggregate_turn_dataset_multi_turn_commit_continuity_fields_preserved`
-  - evidence: `tests/test_turn_analytics_aggregator.py::test_normalize_and_validate_rows_preserves_commit_audit_payload_completeness`
+  - dependency-labels: `DEP-0011-BLOCKER`, `DEP-0012-PARALLEL`, `DEP-0014-BLOCKER`
+  - code-paths: `src/testbot/answer_commit.py`, `src/testbot/context_resolution.py`, `src/testbot/evidence_retrieval.py`
+  - behavior-specs: `features/memory_recall.feature`
+  - deterministic-tests: `tests/test_runtime_logging_events.py`, `tests/test_turn_analytics_aggregator.py`, `tests/test_answer_commit_identity_promotion.py`
+  - verification:
+    ```bash
+    python -m pytest tests/test_runtime_logging_events.py tests/test_turn_analytics_aggregator.py tests/test_answer_commit_identity_promotion.py
+    # expected pass signal: commit continuity + next-turn consumption tests PASS
+    ```
+
 - [~] [AC-0013-10] Deterministic behavior scenarios pass for observe-before-infer, stabilize-before-route, same-turn retrieval exclusion, self-identification persistence (for example `user_name=Sebastian`), repair-offer continuation (`What do you need?` after assistant repair offer), empty-evidence distinct from scored-empty, and semantic-memory recall winning over raw utterance recall when both exist.
-  - evidence: `features/intent_grounding.feature`
-  - evidence: `features/memory_recall.feature`
-  - evidence: `tests/test_runtime_logging_events.py`
+  - dependency-labels: `DEP-0008-BLOCKER`, `DEP-0011-BLOCKER`, `DEP-0012-PARALLEL`, `DEP-0014-BLOCKER`
+  - code-paths: `src/testbot/canonical_turn_orchestrator.py`, `src/testbot/stabilization.py`, `src/testbot/evidence_retrieval.py`, `src/testbot/policy_decision.py`
+  - behavior-specs: `features/intent_grounding.feature`, `features/memory_recall.feature`, `features/answer_contract.feature`
+  - deterministic-tests: `tests/test_runtime_logging_events.py`, `tests/test_evidence_retrieval_mapping.py`, `tests/test_intent_router.py`, `tests/test_promotion_policy.py`
+  - verification:
+    ```bash
+    python -m behave features/intent_grounding.feature features/memory_recall.feature features/answer_contract.feature
+    python -m pytest tests/test_runtime_logging_events.py tests/test_evidence_retrieval_mapping.py tests/test_intent_router.py tests/test_promotion_policy.py
+    # expected pass signal: behave scenarios PASS; deterministic pytest suites PASS
+    ```
+
 - [~] [AC-0013-11] ISSUE-0013 identity-continuity closure is explicitly dependent on ISSUE-0014 Phase 1 behavioral evidence and cannot be treated as satisfied by structural instrumentation progress alone.
+  - dependency-labels: `DEP-0014-BLOCKER`, `DEP-0015-DEPENDENT`
+  - code-paths: `src/testbot/intent_resolution.py`, `src/testbot/stage_rewrite_query.py`, `src/testbot/answer_commit.py`, `src/testbot/context_resolution.py`
+  - behavior-specs: `features/memory_recall.feature`, `features/intent_grounding.feature`
+  - deterministic-tests: `tests/test_intent_router.py`, `tests/test_promotion_policy.py`, `tests/test_answer_commit_identity_promotion.py`
+  - verification:
+    ```bash
+    python -m pytest tests/test_intent_router.py tests/test_promotion_policy.py tests/test_answer_commit_identity_promotion.py
+    python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main
+    python scripts/validate_issues.py --all-issue-files --base-ref origin/main
+    # expected pass signal: dependency tests PASS and issue validators report zero errors
+    ```
   - required dependency evidence (ISSUE-0014): identity declaration semantic preservation, retrieval activation on self-reference recall, and confirmed identity fact promotion at commit.
   - dependency cross-links: [ISSUE-0014 Defect Taxonomy](ISSUE-0014-cli-self-identity-semantic-routing-regression.md#defect-taxonomy), [ISSUE-0014 Stage Contract Clauses](ISSUE-0014-cli-self-identity-semantic-routing-regression.md#stage-contract-clauses), [ISSUE-0014 Required Observability Fields](ISSUE-0014-cli-self-identity-semantic-routing-regression.md#required-observability-fields)
   - closure rule: structural telemetry/stage instrumentation updates are insufficient for ISSUE-0013 closure unless the linked behavioral criteria are passing in deterministic tests and reproducible CLI evidence.
@@ -102,10 +185,18 @@ Status legend: `[ ] pending`, `[~] partial`, `[x] complete`.
       - [ ] **Owner: runtime-pipeline** — resolve `product_behave` failures in canonical gate evidence. **Due: 2026-03-16**.
       - [ ] **Owner: platform-qa** — rerun canonical all-green gate and attach passing artifacts. **Due: 2026-03-16**.
       - [ ] **Owner: release-governance** — promote lifecycle language to evidence-satisfied only after refreshed passing gate evidence is attached across ISSUE-0013/0014/0015/RED_TAG. **Due: 2026-03-17**.
+
 - [~] [AC-0013-12] `docs/qa/feature-status.yaml` canonical pipeline capability slices are advanced from `planned` to implemented maturity states that reflect delivered behavior.
-  - evidence: `docs/qa/feature-status.yaml`
-  - evidence: `docs/qa/feature-status-report.md`
-  - evidence: `artifacts/feature-status-summary.json`
+  - dependency-labels: `DEP-0012-PARALLEL`, `DEP-0014-BLOCKER`, `DEP-0015-DEPENDENT`
+  - code-paths: `src/testbot/capabilities_runtime_status.py`, `src/testbot/canonical_turn_orchestrator.py`
+  - behavior-specs: `features/capabilities.feature`
+  - deterministic-tests: `tests/test_capabilities_runtime_status.py`, `tests/test_report_feature_status.py`, `tests/test_all_green_gate.py`
+  - verification:
+    ```bash
+    python scripts/report_feature_status.py --output docs/qa/feature-status-report.md --json-output artifacts/feature-status-summary.json
+    python -m pytest tests/test_capabilities_runtime_status.py tests/test_report_feature_status.py tests/test_all_green_gate.py
+    # expected pass signal: report artifact generation succeeds and status/gate tests PASS
+    ```
 
 ## Work Plan
 
