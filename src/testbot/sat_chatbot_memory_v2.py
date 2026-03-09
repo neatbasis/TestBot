@@ -2196,10 +2196,42 @@ def answer_validate(
     )
     answer_mode = answer_mode_decision.answer_mode
     ambiguity_policy_allows_non_memory_clarify = bool(state.confidence_decision.get("allow_non_memory_clarify", False))
+    explicit_no_clarify_mode = (
+        "allow_non_memory_clarify" in state.confidence_decision
+        and not ambiguity_policy_allows_non_memory_clarify
+    )
+    invariant_degrade_reason: str | None = None
     if answer_mode == "clarify" and assembled.intent_class != "memory_recall" and not ambiguity_policy_allows_non_memory_clarify:
-        raise AssertionError(
-            "Non-memory intent produced answer_mode=clarify without explicit ambiguity policy override."
-        )
+        if pending_lookup or explicit_no_clarify_mode:
+            safe_final = NON_KNOWLEDGE_UNCERTAINTY_ANSWER if pending_lookup else ASSIST_ALTERNATIVES_ANSWER
+            provenance_types, claims, basis_statement, used_memory_refs, used_source_evidence_refs, source_evidence_attribution = build_provenance_metadata(
+                final_answer=safe_final,
+                hits=hits,
+                chat_history=chat_history,
+                packed_history=packed_history,
+            )
+            assembled = replace(assembled, final_answer=safe_final)
+            answer_mode_decision = resolve_answer_mode(
+                final_answer=assembled.final_answer,
+                fallback_action=assembled.fallback_action,
+                social_or_non_knowledge_intent=assembled.social_or_non_knowledge_intent,
+                is_clarification_answer=is_clarification_answer(assembled.final_answer),
+                is_deny_answer=assembled.final_answer == DENY_ANSWER,
+                is_assist_alternatives_answer=assembled.final_answer == ASSIST_ALTERNATIVES_ANSWER,
+                is_fallback_answer=assembled.final_answer == FALLBACK_ANSWER,
+                is_non_knowledge_uncertainty_answer=assembled.final_answer == NON_KNOWLEDGE_UNCERTAINTY_ANSWER,
+                pending_lookup=pending_lookup,
+            )
+            answer_mode = answer_mode_decision.answer_mode
+            invariant_degrade_reason = (
+                "non_memory_clarify_pending_lookup_degraded"
+                if pending_lookup
+                else "non_memory_clarify_no_clarify_mode_degraded"
+            )
+        else:
+            raise AssertionError(
+                "Non-memory intent produced answer_mode=clarify without explicit ambiguity policy override."
+            )
 
     invariant_decisions = {
         "response_contains_claims": bool(claims),
@@ -2213,6 +2245,7 @@ def answer_validate(
         "fallback_action": assembled.fallback_action,
         "answer_policy_rationale": assembled.answer_policy_rationale,
         "answer_mode_rationale": answer_mode_decision.rationale,
+        "invariant_degrade_reason": invariant_degrade_reason,
         "provenance_recorded": bool(not is_non_trivial_answer(assembled.final_answer) or provenance_types),
     }
     return AnswerValidateResult(
