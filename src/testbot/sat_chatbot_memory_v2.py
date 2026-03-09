@@ -976,7 +976,27 @@ def _is_clarification_or_capability_confirmation_answer(text: str) -> bool:
     return is_clarification_answer(normalized) or _is_capabilities_help_answer(normalized)
 
 
-def resolve_turn_intent(*, utterance: str, prior_pipeline_state: PipelineState | None) -> tuple[IntentType, IntentType]:
+def resolve_turn_intent(
+    *,
+    utterance: str,
+    prior_pipeline_state: PipelineState | None,
+    diagnostic_only: bool = True,
+) -> tuple[IntentType, IntentType]:
+    """Resolve intent for diagnostics-only parity checks.
+
+    This helper intentionally runs outside the canonical turn pipeline and must
+    not be used for authoritative production routing decisions.
+    """
+    if not diagnostic_only:
+        raise RuntimeError(
+            "resolve_turn_intent is diagnostic-only and non-authoritative; "
+            "production routing must use canonical orchestrator artifacts"
+        )
+
+    _LOGGER.warning(
+        "resolve_turn_intent invoked in diagnostic-only mode; output is non-authoritative",
+        extra={"authority": "non_authoritative", "helper": "resolve_turn_intent"},
+    )
     seed_state = PipelineState(user_input=utterance)
     observation = observe_turn(
         seed_state,

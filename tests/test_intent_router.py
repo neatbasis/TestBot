@@ -3,6 +3,7 @@ from testbot.sat_chatbot_memory_v2 import CLARIFY_ANSWER, ROUTE_TO_ASK_ANSWER, r
 from testbot.intent_router import IntentType, classify_intent, extract_intent_facets, planning_pathway_for_intent
 from testbot.evidence_retrieval import EvidenceBundle, EvidenceRecord, retrieval_result
 from testbot.policy_decision import DecisionClass, decide_from_evidence
+import pytest
 
 
 def test_classify_intent_memory_recall_ambiguous_what_did_i_ask() -> None:
@@ -145,6 +146,18 @@ def test_resolve_turn_intent_invalid_prior_intent_does_not_override_classificati
     assert classified is IntentType.KNOWLEDGE_QUESTION
     assert resolved is IntentType.KNOWLEDGE_QUESTION
 
+
+
+
+def test_resolve_turn_intent_requires_diagnostic_only_mode() -> None:
+    prior_state = PipelineState(user_input="who am i")
+
+    with pytest.raises(RuntimeError, match="diagnostic-only and non-authoritative"):
+        resolve_turn_intent(
+            utterance="Who am I?",
+            prior_pipeline_state=prior_state,
+            diagnostic_only=False,
+        )
 
 def test_classify_intent_capabilities_help_ask_via_satellite() -> None:
     assert classify_intent("ask via satellite") is IntentType.CAPABILITIES_HELP

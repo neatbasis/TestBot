@@ -228,3 +228,14 @@ Key observed indicators in evidence include:
     - `python -m pytest tests/test_pipeline_semantic_contracts.py::test_policy_authority_is_not_written_before_policy_decide_stage`
     - `python -m pytest tests/test_canonical_turn_orchestrator.py::test_orchestrator_stabilizes_before_route_authority_assignment`
     - `python -m pytest tests/test_pipeline_semantic_contracts.py tests/test_canonical_turn_orchestrator.py`
+
+- 2026-03-09: Hardened non-authoritative intent helper isolation to prevent silent routing influence outside canonical orchestration.
+  - Runtime guard: `resolve_turn_intent(...)` in `src/testbot/sat_chatbot_memory_v2.py` is now explicitly diagnostic-only and raises when called as authoritative (`diagnostic_only=False`).
+  - Explicit labeling: helper invocation emits non-authoritative diagnostic warning metadata (`authority=non_authoritative`).
+  - Deterministic regression evidence:
+    - `tests/test_intent_router.py::test_resolve_turn_intent_requires_diagnostic_only_mode`
+    - `tests/test_pipeline_semantic_contracts.py::test_resolve_turn_intent_matches_canonical_intent_resolution_for_identity_followup`
+  - Verification commands:
+    - `python -m pytest tests/test_intent_router.py::test_resolve_turn_intent_requires_diagnostic_only_mode`
+    - `python -m pytest tests/test_pipeline_semantic_contracts.py::test_resolve_turn_intent_matches_canonical_intent_resolution_for_identity_followup`
+
