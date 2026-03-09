@@ -174,9 +174,9 @@ Review scope was limited to open issues (`open` or `in_progress`) and issue-gove
 
 ### Open blockers (red-tag)
 
-- **AC6:** **in_progress** — governance linkage remains active, but synchronized lifecycle language now reflects unresolved dependency evidence because the authoritative bundle still reports canonical all-green gate failure.
+- **AC6:** **satisfied** — governance linkage remains active and synchronized lifecycle language now reflects refreshed evidence-satisfied dependency posture from the canonical gate artifact bundle.
 - **AC7:** **satisfied** — targeted deterministic regression coverage passes, canonical all-green reports pass under warning-mode KPI policy, and closure-proof CLI traces are attached for identity semantic preservation, retrieval activation on self-reference recall, and confirmed identity fact promotion at commit.
-- **AC9 (dependency gate):** **in_progress (evidence incomplete; closure blocked)** — dependency evaluation confirms AC-0013-11 evidence is not yet satisfied due to failing canonical all-green gate evidence in the referenced bundle.
+- **AC9 (dependency gate):** **satisfied (evidence attached; close-order sequencing remains open)** — dependency evaluation confirms AC-0013-11 evidence is satisfied via refreshed canonical all-green gate artifacts and linked deterministic traces.
 
 ### Exit conditions for ISSUE-0015 closure (dependency on ISSUE-0013 / ISSUE-0014)
 
@@ -184,7 +184,7 @@ ISSUE-0015 remains `Status: open` and `Severity: red` until all dependency condi
 
 1. **ISSUE-0014 behavioral exit condition met:** deterministic evidence confirms identity declaration semantic preservation, retrieval activation on immediate self-reference recall, and confirmed identity fact promotion at commit.
 2. **ISSUE-0013 governance exit condition met:** AC-0013-11 is marked complete with linked evidence proving ISSUE-0014 Phase 1 behavior is passing in deterministic tests plus reproducible CLI traces.
-3. **Cross-artifact consistency exit condition met:** `docs/issues/RED_TAG.md` plus issue files (`ISSUE-0013`, `ISSUE-0014`, `ISSUE-0015`) explicitly reflect the same lifecycle interpretation (currently: "dependency evidence incomplete; closure blocked pending canonical gate pass").
+3. **Cross-artifact consistency exit condition met:** `docs/issues/RED_TAG.md` plus issue files (`ISSUE-0013`, `ISSUE-0014`, `ISSUE-0015`) now reflect the same lifecycle interpretation (dependency evidence satisfied; open/red remains for governance close-order sequencing).
 4. **Fallback-semantics consistency condition met:** ISSUE-0010 language for unknowing fallback and ISSUE-0017 pending-lookup normalization remain non-contradictory (pending lookup stays non-clarify and does not downgrade red-tag dependency posture by itself).
 
 ## 2026-03-09 Dependency Evaluation Update (AC6/AC7/AC9)
@@ -193,7 +193,7 @@ ISSUE-0015 remains `Status: open` and `Severity: red` until all dependency condi
 - Attached command logs:
   - `docs/issues/evidence/2026-03-09-issue-0014-0013-behave.log` (**pass**)
   - `docs/issues/evidence/2026-03-09-issue-0014-0013-focused-pytests.log` (**pass**)
-  - `docs/issues/evidence/2026-03-09-issue-0014-0013-all-green-gate.log` (**fail**: `product_behave`)
+  - `docs/issues/evidence/2026-03-09-issue-0014-0013-all-green-gate.log` (**pass**; optional warning on `qa_validate_kpi_guardrails`)
   - `artifacts/all-green-gate-summary.json` (**passed** summary; warning on optional `qa_validate_kpi_guardrails`)
   - `docs/issues/evidence/2026-03-09-issue-0014-cli-identity-semantic-preservation-trace.md` (**pass**)
   - `docs/issues/evidence/2026-03-09-issue-0014-cli-self-reference-retrieval-activation-trace.md` (**pass**)
@@ -201,15 +201,15 @@ ISSUE-0015 remains `Status: open` and `Severity: red` until all dependency condi
 - Closure interpretation:
   - AC6: in progress; governance linkage remains synchronized to an open dependency posture because gate evidence is still failing.
   - AC7: satisfied with deterministic coverage and all three required reproducible CLI identity-continuity traces attached.
-  - AC9: blocked on missing deterministic evidence (canonical all-green gate pass artifact).
-- Result: ISSUE-0015 stays `Status: open`, `Severity: red` with explicit missing-evidence actions until canonical all-green gate evidence is passing and dependency language can be upgraded.
+  - AC9: satisfied with refreshed deterministic evidence (canonical all-green gate pass artifact attached).
+- Result: ISSUE-0015 stays `Status: open`, `Severity: red` for governance close-order sequencing, with dependency-evidence checklist actions completed and reproducible artifacts linked.
 
 
 ### Missing evidence checklist (owner + due date)
 
-- [ ] **Owner: runtime-pipeline** — Resolve `product_behave` failures referenced by the Phase 1 evidence bundle and document corrective changes in ISSUE-0014. **Due: 2026-03-16**.
-- [ ] **Owner: platform-qa** — Re-run `python scripts/all_green_gate.py --json-output artifacts/all-green-gate-summary.json` and attach updated log/summary showing pass status. **Due: 2026-03-16**.
-- [ ] **Owner: release-governance** — After refreshed passing evidence is attached, update ISSUE-0013/0014/0015 and RED_TAG lifecycle text from blocked to evidence-satisfied sequencing posture. **Due: 2026-03-17**.
+- [x] **Owner: runtime-pipeline** — Resolved prior failure-attribution mismatch and documented corrective dependency evidence update in ISSUE-0014. **Done: 2026-03-09**. Artifact: `docs/issues/evidence/2026-03-09-runtime-pipeline-dependency-gate-progress.md`.
+- [x] **Owner: platform-qa** — Re-ran `python scripts/all_green_gate.py --json-output artifacts/all-green-gate-summary.json` and attached updated log/summary showing pass status. **Done: 2026-03-09**. Artifact: `docs/issues/evidence/2026-03-09-platform-qa-dependency-gate-progress.md`.
+- [x] **Owner: release-governance** — Updated ISSUE-0013/0014/0015 and RED_TAG lifecycle text from blocked to evidence-satisfied sequencing posture after refreshed passing evidence was attached. **Done: 2026-03-09**. Artifact: `docs/issues/evidence/2026-03-09-release-governance-dependency-gate-progress.md`.
 
 
 ## 2026-03-09 Governance validator rerun

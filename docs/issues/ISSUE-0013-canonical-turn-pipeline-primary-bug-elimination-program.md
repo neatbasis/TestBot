@@ -343,7 +343,7 @@ Dependency labels (machine-auditable ordered chain):
   - ISSUE-0015 remains open/red while the AC-0013-11 dependency gate is unresolved; ISSUE-0013 closure claims must explicitly cite matching ISSUE-0014 behavioral evidence.
 
 - 2026-03-08: AC-0013-12 evidence regenerated from current gate/report inputs without over-claiming implementation closure.
-  - AC-0013-12 proof (canonical gate evidence): `artifacts/all-green-gate-summary.json` regenerated via `python scripts/all_green_gate.py --json-output artifacts/all-green-gate-summary.json` and now records current failing `product_behave` checks.
+  - AC-0013-12 proof (canonical gate evidence): `artifacts/all-green-gate-summary.json` regenerated via `python scripts/all_green_gate.py --json-output artifacts/all-green-gate-summary.json` and records canonical gate pass status with optional KPI warning-mode behavior (`qa_validate_kpi_guardrails`).
   - AC-0013-12 proof (status report + JSON summary): `docs/qa/feature-status-report.md` and `artifacts/feature-status-summary.json` regenerated via `python scripts/report_feature_status.py --output docs/qa/feature-status-report.md --json-output artifacts/feature-status-summary.json` and continue to classify canonical pipeline slices as `partial`.
 
 - 2026-03-09: Governance parity review against architecture-drift findings confirms the primary orchestration drifts remain open and should continue to route through ISSUE-0013.
