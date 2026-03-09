@@ -38,6 +38,11 @@ The `knowing_grounded_answers` capability remains `partial`. ISSUE-0009 is the p
 3. `python scripts/all_green_gate.py --continue-on-failure --json-output artifacts/all-green-gate-summary.json` reports `product_behave`, `safety_behave_answer_contract_and_memory`, and `qa_eval_fixtures_and_runtime_parity` as `passed`.
 4. `docs/qa/feature-status.yaml` is updated to `implemented` for `knowing_grounded_answers` only after criteria 1-3 are met.
 
+### Residual blockers (post-PR #325 verification, 2026-03-09)
+
+- AC-0009-R1: Canonical gate evidence currently does not expose `safety_behave_answer_contract_and_memory` and `qa_eval_fixtures_and_runtime_parity` check IDs in `artifacts/all-green-gate-summary.json`; acceptance criterion 3 cannot be satisfied until those expected checks are restored or this issue's gate contract is explicitly migrated to the current canonical check names with validator coverage.
+- AC-0009-R2: `docs/qa/feature-status.yaml` still declares `knowing_grounded_answers` as `partial`, so criterion 4 remains intentionally unmet pending AC-0009-R1 resolution.
+
 ## Work Plan
 
 - [x] Capture production-debug evidence trace and map symptoms to ISSUE-0009/ISSUE-0010 acceptance criteria (`docs/issues/evidence/production-debug-cli-trace-2026-03-07.md`).
@@ -61,14 +66,18 @@ The `knowing_grounded_answers` capability remains `partial`. ISSUE-0009 is the p
 ## Verification
 
 - Command: `python -m behave features/answer_contract.feature features/memory_recall.feature`
-  - Expected: exits `0`.
+  - Observed (2026-03-09): exit `0` (pass).
 - Command: `python -m pytest tests/test_runtime_logging_events.py tests/test_eval_runtime_parity.py`
-  - Expected: exits `0`.
+  - Observed (2026-03-09): exit `0` (pass).
 - Command: `python scripts/all_green_gate.py --continue-on-failure --json-output artifacts/all-green-gate-summary.json`
-  - Expected: required gate checks pass.
+  - Observed (2026-03-09): overall gate `failed` because `qa_validate_markdown_paths` failed; however `product_behave` is `passed` in the generated summary.
+- Command: `python - <<'PY' ...` (JSON probe of `artifacts/all-green-gate-summary.json` for `product_behave`, `safety_behave_answer_contract_and_memory`, and `qa_eval_fixtures_and_runtime_parity` check IDs)
+  - Observed (2026-03-09): `product_behave=passed`; `safety_behave_answer_contract_and_memory` and `qa_eval_fixtures_and_runtime_parity` are missing from the summary, so AC #3 is not fully satisfiable with current canonical gate output.
 
 ## Closure Notes
 
 - 2026-03-06: Opened to provide capability-specific governance traceability for partial knowing-mode grounded answers.
 
 - 2026-03-09: Completed remaining deltas for memory-recall recovery, citation-context formatting, and debug fallback reason accuracy; reran deterministic verification and refreshed readiness artifacts.
+
+- 2026-03-09 (PR #325 verification refresh): Acceptance criteria 1-2 are currently satisfied by deterministic behave/pytest runs, but acceptance criterion 3 remains unmet because required check IDs are absent from current canonical gate summary output and the latest run also fails `qa_validate_markdown_paths`; status remains open with explicit residual blockers (AC-0009-R1, AC-0009-R2).
