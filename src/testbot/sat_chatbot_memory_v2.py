@@ -6,6 +6,7 @@ import logging
 import os
 import re
 import sys
+import time
 import uuid
 from concurrent.futures import Future, ThreadPoolExecutor
 from threading import Lock
@@ -479,10 +480,53 @@ def _read_runtime_env() -> dict[str, object]:
         "source_wikipedia_language": os.getenv("SOURCE_WIKIPEDIA_LANGUAGE", "en"),
         "source_arxiv_query": os.getenv("SOURCE_ARXIV_QUERY", ""),
         "source_ingest_async_continuation": os.getenv("SOURCE_INGEST_ASYNC_CONTINUATION", "0") == "1",
+        "source_ingest_sync_retry_wait_budget_seconds": max(
+            0.0,
+            _parse_env_float("SOURCE_INGEST_SYNC_RETRY_WAIT_BUDGET_SECONDS", 0.15),
+        ),
         "source_ingest_background_future": None,
         "source_ingest_background_in_progress": False,
         "debug_verbose": debug_verbose,
     }
+
+
+def _bounded_wait_for_sync_retrieval_retry(*, wait_budget_seconds: float, poll_interval_seconds: float = 0.05) -> float:
+    budget = max(0.0, float(wait_budget_seconds))
+    if budget <= 0.0:
+        return 0.0
+
+    interval = max(0.001, float(poll_interval_seconds))
+    waited = 0.0
+    while waited < budget:
+        sleep_for = min(interval, budget - waited)
+        time.sleep(sleep_for)
+        waited += sleep_for
+    return waited
+
+
+def _run_retrieval_with_optional_sync_retry(
+    *,
+    retrieve_once,
+    source_ingest_async_continuation: bool,
+    wait_budget_seconds: float,
+):
+    state, docs_and_scores = retrieve_once()
+    retry = {"attempted": False, "waited_seconds": 0.0, "reason": "not_needed"}
+    if docs_and_scores:
+        return state, docs_and_scores, retry
+
+    if source_ingest_async_continuation:
+        retry["reason"] = "async_continuation_enabled"
+        return state, docs_and_scores, retry
+
+    retry["attempted"] = True
+    retry["waited_seconds"] = round(
+        _bounded_wait_for_sync_retrieval_retry(wait_budget_seconds=wait_budget_seconds),
+        4,
+    )
+    retry["reason"] = "sync_retry_completed"
+    state, docs_and_scores = retrieve_once()
+    return state, docs_and_scores, retry
 
 
 def _ha_connection_error(api_url: str, token: str, entity_id: str) -> str | None:
@@ -3109,14 +3153,21 @@ def _run_canonical_turn_pipeline(
             segment_constraints = ctx.state.candidate_facts.get("retrieval_constraints", {})
             retrieval_segment_ids = set(segment_constraints.get("segment_ids", []))
             retrieval_segment_types = set(segment_constraints.get("segment_types", []))
-            ctx.state, docs_and_scores = stage_retrieve(
-                store,
-                ctx.state,
-                exclude_doc_ids=retrieval_exclude_doc_ids,
-                exclude_source_ids=retrieval_exclude_source_ids,
-                exclude_turn_scoped_ids=retrieval_exclude_turn_scoped_ids,
-                segment_ids=retrieval_segment_ids,
-                segment_types=retrieval_segment_types,
+            def _retrieve_once() -> tuple[PipelineState, list[tuple[Document, float]]]:
+                return stage_retrieve(
+                    store,
+                    ctx.state,
+                    exclude_doc_ids=retrieval_exclude_doc_ids,
+                    exclude_source_ids=retrieval_exclude_source_ids,
+                    exclude_turn_scoped_ids=retrieval_exclude_turn_scoped_ids,
+                    segment_ids=retrieval_segment_ids,
+                    segment_types=retrieval_segment_types,
+                )
+
+            ctx.state, docs_and_scores, retrieval_retry = _run_retrieval_with_optional_sync_retry(
+                retrieve_once=_retrieve_once,
+                source_ingest_async_continuation=bool(runtime.get("source_ingest_async_continuation", False)),
+                wait_budget_seconds=float(runtime.get("source_ingest_sync_retry_wait_budget_seconds", 0.15) or 0.0),
             )
             _validate_and_log_transition(validate_retrieve_evidence_post(ctx.state))
             if not docs_and_scores and bool(runtime.get("source_ingest_async_continuation", False)):
@@ -3133,6 +3184,7 @@ def _run_canonical_turn_pipeline(
             if background_in_progress:
                 ctx.artifacts["continuation_required"] = True
 
+            ctx.artifacts["retrieval_retry"] = dict(retrieval_retry)
             ctx.artifacts["docs_and_scores"] = docs_and_scores
             considered = int(ctx.state.confidence_decision.get("retrieval_candidates_considered", len(docs_and_scores)) or 0)
             prerank_bundle = build_evidence_bundle_from_docs_and_scores(docs_and_scores)
@@ -3160,9 +3212,11 @@ def _run_canonical_turn_pipeline(
                         "segment_ids": sorted(retrieval_segment_ids),
                         "segment_types": sorted(retrieval_segment_types),
                     },
+                    "retry": dict(ctx.artifacts.get("retrieval_retry", {})),
                 },
             )
         else:
+            ctx.artifacts["retrieval_retry"] = {"attempted": False, "waited_seconds": 0.0, "reason": "retrieval_not_required"}
             ctx.artifacts["pre_rerank_evidence_bundle"] = EvidenceBundle()
             ctx.artifacts["retrieval_result"] = retrieval_result(
                 evidence_bundle=EvidenceBundle(),
