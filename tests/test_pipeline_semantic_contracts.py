@@ -260,3 +260,72 @@ def test_answer_render_fails_when_validated_semantics_are_mutated_after_validati
 
     with pytest.raises(RuntimeError, match="answer.render detected class drift"):
         CanonicalTurnOrchestrator(stages=stages).run(context)
+
+
+def test_policy_authority_is_not_written_before_policy_decide_stage() -> None:
+    state = PipelineState(user_input="Who am I?")
+    context = CanonicalTurnContext(state=state, artifacts={"policy_decision": None, "decision_object": None})
+
+    def _noop(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        return ctx
+
+    def _observe(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        ctx.artifacts["turn_observation"] = {"turn_id": "turn-1", "utterance": "Who am I?"}
+        return ctx
+
+    def _encode(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        ctx.artifacts["encoded_candidates"] = {"facts": [{"key": "utterance_raw", "value": "Who am I?"}]}
+        return ctx
+
+    def _stabilize(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        ctx.artifacts["stabilized_turn_state"] = {"candidate_facts": [{"key": "utterance_raw", "value": "Who am I?"}]}
+        return ctx
+
+    def _context(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        ctx.artifacts["resolved_context"] = ResolvedContext(
+            history_anchors=("commit.confirmed_user_facts:user_name=Sebastian",),
+            ambiguity_flags=(),
+            continuity_posture=ContinuityPosture.REEVALUATE,
+            prior_intent=None,
+        )
+        return ctx
+
+    def _intent(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        ctx.state = replace(ctx.state, classified_intent="memory_recall", resolved_intent="memory_recall")
+        ctx.artifacts["retrieval_requirement"] = {"requires_retrieval": True, "reason": "resolved_memory_recall_intent"}
+        assert ctx.artifacts.get("policy_decision") is None
+        assert ctx.artifacts.get("decision_object") is None
+        return ctx
+
+    def _retrieve(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        assert ctx.artifacts.get("policy_decision") is None
+        assert ctx.artifacts.get("decision_object") is None
+        ctx.artifacts["retrieval_result"] = {"posture": "scored_non_empty", "hit_count": 1}
+        return ctx
+
+    def _policy(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        ctx.artifacts["policy_decision"] = {"retrieval_branch": "memory_retrieval"}
+        ctx.artifacts["decision_object"] = {"decision_class": "answer_from_memory"}
+        return ctx
+
+    def _validate(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        ctx.artifacts["answer_validation_contract"] = type("Validation", (), {"passed": True})()
+        return ctx
+
+    stages = [
+        CanonicalStage("observe.turn", _observe),
+        CanonicalStage("encode.candidates", _encode),
+        CanonicalStage("stabilize.pre_route", _stabilize),
+        CanonicalStage("context.resolve", _context),
+        CanonicalStage("intent.resolve", _intent),
+        CanonicalStage("retrieve.evidence", _retrieve),
+        CanonicalStage("policy.decide", _policy),
+        CanonicalStage("answer.assemble", _noop),
+        CanonicalStage("answer.validate", _validate),
+        CanonicalStage("answer.render", _noop),
+        CanonicalStage("answer.commit", _noop),
+    ]
+
+    final_context = CanonicalTurnOrchestrator(stages=stages).run(context)
+    assert final_context.artifacts["policy_decision"] == {"retrieval_branch": "memory_retrieval"}
+    assert final_context.artifacts["decision_object"] == {"decision_class": "answer_from_memory"}

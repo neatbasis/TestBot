@@ -223,3 +223,11 @@ Status legend: `[ ] pending`, `[~] partial`, `[x] complete`.
   - Confirmed still-open drift: canonical `answer.validate` currently enforces `validate_answer_assembly_boundary(...)` while heavier answer-policy validation remains coupled to earlier stage-answer path (`src/testbot/sat_chatbot_memory_v2.py`).
   - Confirmed still-open drift: `resolve_turn_intent(...)` remains an offline mini-pipeline (`store=None`) outside full canonical commit-continuity semantics and should be treated as diagnostic unless parity requirements are formalized (`src/testbot/sat_chatbot_memory_v2.py`).
   - Marked partially outdated prior finding: stage-transition invariant-reference migration is now in progress and no longer accurately described as wholly unresolved, because transition validators emit `PINV-*` with explicit legacy `INV-*` mapping bridge (`src/testbot/stage_transitions.py`).
+
+- 2026-03-09: Stage-authority contract tightened so `intent.resolve` no longer writes authoritative policy/decision objects; retrieval gating is now an intent-derived retrieval requirement artifact and policy authority is deferred to `policy.decide`.
+  - Runtime proof surface: `src/testbot/sat_chatbot_memory_v2.py` (`intent.resolve`, `retrieve.evidence`, `policy.decide`).
+  - Deterministic regression proof: `tests/test_pipeline_semantic_contracts.py::test_policy_authority_is_not_written_before_policy_decide_stage` and `tests/test_canonical_turn_orchestrator.py::test_orchestrator_stabilizes_before_route_authority_assignment`.
+  - Deterministic proof commands:
+    - `python -m pytest tests/test_pipeline_semantic_contracts.py::test_policy_authority_is_not_written_before_policy_decide_stage`
+    - `python -m pytest tests/test_canonical_turn_orchestrator.py::test_orchestrator_stabilizes_before_route_authority_assignment`
+    - `python -m pytest tests/test_pipeline_semantic_contracts.py tests/test_canonical_turn_orchestrator.py`

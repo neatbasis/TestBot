@@ -120,10 +120,17 @@ def test_orchestrator_stabilizes_before_route_authority_assignment() -> None:
                 assert ctx.artifacts.get("stabilized_turn_state") == {"turn_id": "turn-1"}
                 assert ctx.artifacts.get("policy_decision") is None
                 assert ctx.artifacts.get("resolved_context") == {"continuity_posture": "reevaluate"}
-                ctx.artifacts["policy_decision"] = {"retrieval_branch": "direct_answer"}
+                ctx.artifacts["retrieval_requirement"] = {"requires_retrieval": False, "reason": "non_memory_intent"}
             if name == "retrieve.evidence":
-                assert ctx.artifacts.get("policy_decision") == {"retrieval_branch": "direct_answer"}
+                assert ctx.artifacts.get("policy_decision") is None
+                assert ctx.artifacts.get("retrieval_requirement") == {
+                    "requires_retrieval": False,
+                    "reason": "non_memory_intent",
+                }
                 ctx.artifacts["retrieval_result"] = {"posture": "not_requested"}
+            if name == "policy.decide":
+                assert ctx.artifacts.get("policy_decision") is None
+                ctx.artifacts["policy_decision"] = {"retrieval_branch": "direct_answer"}
             if name == "answer.assemble":
                 ctx.artifacts["answer_assembly_contract"] = {"decision_class": "answer_from_memory"}
             if name == "answer.validate":
