@@ -3184,7 +3184,7 @@ def _run_canonical_turn_pipeline(
         return ctx
 
     def _answer_validate(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
-        _validate_and_log_transition(validate_answer_validate_pre(ctx.state))
+        _validate_and_log_transition(validate_answer_validate_pre(ctx.state, ctx.artifacts))
         ctx.artifacts["validated_answer"] = _answer_validate_stage(
             ctx.state,
             assembled=ctx.artifacts["assembled_answer"],
@@ -3201,7 +3201,7 @@ def _run_canonical_turn_pipeline(
         return ctx
 
     def _answer_render(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
-        _validate_and_log_transition(validate_answer_render_pre(ctx.state))
+        _validate_and_log_transition(validate_answer_render_pre(ctx.state, ctx.artifacts))
         ctx.artifacts["rendered_answer"] = _answer_render_stage(ctx.artifacts["validated_answer"])
         ctx.artifacts["answer_render_contract"] = render_answer(
             assembly=ctx.artifacts["answer_assembly_contract"],
@@ -3213,7 +3213,7 @@ def _run_canonical_turn_pipeline(
         return ctx
 
     def _answer_commit(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
-        _validate_and_log_transition(validate_answer_commit_pre(ctx.state))
+        _validate_and_log_transition(validate_answer_commit_pre(ctx.state, ctx.artifacts))
         ctx.state = _answer_commit_stage(
             ctx.state,
             assembled=ctx.artifacts["assembled_answer"],

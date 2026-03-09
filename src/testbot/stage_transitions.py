@@ -98,6 +98,13 @@ def _artifact_payload_has_content(payload: object, *, key_fields: tuple[str, ...
     return any(field in artifact_dict for field in key_fields)
 
 
+def _artifact_has_non_empty_text_field(payload: object, *, field: str) -> bool:
+    if payload is None:
+        return False
+    value = getattr(payload, field, None)
+    return isinstance(value, str) and bool(value.strip())
+
+
 
 
 def _is_non_trivial_answer(answer: str) -> bool:
@@ -541,12 +548,23 @@ def validate_intent_resolve_post(state: PipelineState) -> TransitionCheckResult:
     )
 
 
-def validate_answer_validate_pre(state: PipelineState) -> TransitionCheckResult:
+def validate_answer_validate_pre(
+    state: PipelineState,
+    artifacts: dict[str, object] | None = None,
+) -> TransitionCheckResult:
+    artifacts = artifacts or {}
     return _run_checks(
         stage="answer.validate",
         boundary="pre",
         invariant_refs=("PINV-001",),
-        checks=[("draft_answer_present", lambda s: bool((s.draft_answer or "").strip()))],
+        checks=[
+            (
+                "draft_answer_present",
+                lambda s: _artifact_has_non_empty_text_field(artifacts.get("assembled_answer"), field="draft_answer")
+                or _artifact_payload_has_content(artifacts.get("answer_assembly_contract"))
+                or bool((s.draft_answer or "").strip()),
+            )
+        ],
         state=state,
     )
 
@@ -561,12 +579,23 @@ def validate_answer_validate_post(state: PipelineState) -> TransitionCheckResult
     )
 
 
-def validate_answer_render_pre(state: PipelineState) -> TransitionCheckResult:
+def validate_answer_render_pre(
+    state: PipelineState,
+    artifacts: dict[str, object] | None = None,
+) -> TransitionCheckResult:
+    artifacts = artifacts or {}
     return _run_checks(
         stage="answer.render",
         boundary="pre",
         invariant_refs=("PINV-001",),
-        checks=[("final_answer_present", lambda s: bool((s.final_answer or "").strip()))],
+        checks=[
+            (
+                "final_answer_present",
+                lambda s: _artifact_has_non_empty_text_field(artifacts.get("validated_answer"), field="final_answer")
+                or _artifact_payload_has_content(artifacts.get("answer_validation_contract"))
+                or bool((s.final_answer or "").strip()),
+            )
+        ],
         state=state,
     )
 
@@ -581,12 +610,23 @@ def validate_answer_render_post(state: PipelineState) -> TransitionCheckResult:
     )
 
 
-def validate_answer_commit_pre(state: PipelineState) -> TransitionCheckResult:
+def validate_answer_commit_pre(
+    state: PipelineState,
+    artifacts: dict[str, object] | None = None,
+) -> TransitionCheckResult:
+    artifacts = artifacts or {}
     return _run_checks(
         stage="answer.commit",
         boundary="pre",
         invariant_refs=("PINV-001",),
-        checks=[("final_answer_present", lambda s: bool((s.final_answer or "").strip()))],
+        checks=[
+            (
+                "final_answer_present",
+                lambda s: _artifact_has_non_empty_text_field(artifacts.get("rendered_answer"), field="final_answer")
+                or _artifact_payload_has_content(artifacts.get("answer_render_contract"))
+                or bool((s.final_answer or "").strip()),
+            )
+        ],
         state=state,
     )
 

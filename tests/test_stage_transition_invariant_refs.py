@@ -158,3 +158,52 @@ def test_stabilize_pre_route_post_accepts_populated_candidate_facts_artifact() -
 
     assert result.passed
     assert result.failures == ()
+
+
+def test_answer_validate_pre_accepts_artifact_handoff_without_state_draft_answer() -> None:
+    state = PipelineState(user_input="What did I say yesterday?", confidence_decision={"context_confident": True})
+
+    assembled = type("Assembled", (), {"draft_answer": "You said hi. doc_id: 1 ts: 2025-01-01T00:00:00Z"})()
+    result = validate_answer_validate_pre(state, {"assembled_answer": assembled})
+
+    assert result.passed
+    assert result.failures == ()
+
+
+def test_answer_render_and_commit_pre_accept_artifact_handoff_without_state_final_answer() -> None:
+    state = PipelineState(user_input="What did I say yesterday?")
+
+    validated = type("Validated", (), {"final_answer": "You said hi. doc_id: 1 ts: 2025-01-01T00:00:00Z"})()
+    rendered = type("Rendered", (), {"final_answer": "You said hi. doc_id: 1 ts: 2025-01-01T00:00:00Z"})()
+
+    render_pre = validate_answer_render_pre(state, {"validated_answer": validated})
+    commit_pre = validate_answer_commit_pre(state, {"rendered_answer": rendered})
+
+    assert render_pre.passed
+    assert commit_pre.passed
+
+
+def test_answer_assemble_to_validate_sequence_uses_artifact_contract() -> None:
+    state = PipelineState(
+        user_input="What did I say yesterday?",
+        confidence_decision={"context_confident": True},
+        draft_answer="",
+    )
+
+    assemble_pre = validate_answer_assemble_pre(state)
+    assert assemble_pre.passed
+
+    assembled = type("Assembled", (), {"draft_answer": "You said hi. doc_id: 1 ts: 2025-01-01T00:00:00Z"})()
+    validate_pre = validate_answer_validate_pre(state, {"assembled_answer": assembled})
+
+    assert validate_pre.passed
+    assert validate_pre.failures == ()
+
+
+def test_answer_validate_pre_accepts_answer_assembly_contract_without_state_draft_answer() -> None:
+    state = PipelineState(user_input="What did I say yesterday?", confidence_decision={"context_confident": True})
+
+    result = validate_answer_validate_pre(state, {"answer_assembly_contract": {"decision_class": "answer_from_memory"}})
+
+    assert result.passed
+    assert result.failures == ()
