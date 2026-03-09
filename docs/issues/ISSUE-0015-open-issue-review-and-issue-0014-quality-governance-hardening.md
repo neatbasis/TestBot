@@ -164,9 +164,9 @@ Review scope was limited to open issues (`open` or `in_progress`) and issue-gove
 
 ### Open blockers (red-tag)
 
-- **AC6:** **in_progress** — governance linkage language exists, but closure is blocked until ISSUE-0013 and ISSUE-0014 meet dependent behavioral exit conditions and evidence is attached in both issue files.
-- **AC7:** **in_progress** — deterministic regression coverage is specified, but still requires all linked deterministic checks to pass on current code without identity-continuity regression failures.
-- **AC9 (dependency gate):** **pending** — ISSUE-0015 cannot close until the ISSUE-0013 dependency gate is satisfied using the explicit exit conditions below.
+- **AC6:** **in_progress (evidence-linked, unresolved)** — governance linkage evidence is now explicitly attached in ISSUE-0014/ISSUE-0013 using the 2026-03-09 deterministic bundle, but closure remains blocked because the canonical all-green gate is failing.
+- **AC7:** **in_progress (partial pass)** — targeted deterministic regression coverage now passes (BDD + focused pytest suites), but full deterministic readiness is still blocked by failing canonical all-green `product_behave` checks.
+- **AC9 (dependency gate):** **in_progress (unsatisfied)** — dependency evaluation was executed and documented, but remains unsatisfied until AC-0013-11 exit conditions fully pass.
 
 ### Exit conditions for ISSUE-0015 closure (dependency on ISSUE-0013 / ISSUE-0014)
 
@@ -175,3 +175,17 @@ ISSUE-0015 remains `Status: open` and `Severity: red` until all dependency condi
 1. **ISSUE-0014 behavioral exit condition met:** deterministic evidence confirms identity declaration semantic preservation, retrieval activation on immediate self-reference recall, and confirmed identity fact promotion at commit.
 2. **ISSUE-0013 governance exit condition met:** AC-0013-11 is marked complete with linked evidence proving ISSUE-0014 Phase 1 behavior is passing in deterministic tests plus reproducible CLI traces.
 3. **Cross-artifact consistency exit condition met:** `docs/issues/RED_TAG.md` and both issue files (`ISSUE-0015`, `ISSUE-0013`) explicitly reflect the same lifecycle interpretation (open dependency vs resolved dependency).
+
+## 2026-03-09 Dependency Evaluation Update (AC6/AC7/AC9)
+
+- Evidence bundle recorded: `docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md`.
+- Attached command logs:
+  - `docs/issues/evidence/2026-03-09-issue-0014-0013-behave.log` (**pass**)
+  - `docs/issues/evidence/2026-03-09-issue-0014-0013-focused-pytests.log` (**pass**)
+  - `docs/issues/evidence/2026-03-09-issue-0014-0013-all-green-gate.log` (**fail**)
+  - `artifacts/all-green-gate-summary.json` (**failed** summary; `product_behave` non-zero)
+- Closure interpretation:
+  - AC6: governance linkage hardening is present and now evidenced, but not closable.
+  - AC7: deterministic coverage is partially green; canonical gate keeps criterion open.
+  - AC9: dependency gate remains open because ISSUE-0013 AC-0013-11 EC-B/C are not yet satisfied.
+- Result: ISSUE-0015 stays `Status: open`, `Severity: red`.

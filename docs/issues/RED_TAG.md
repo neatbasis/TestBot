@@ -32,11 +32,14 @@ KPI evidence updates are mandatory for red-tag triage. If any KPI guardrail fail
 - ISSUE-0015, ISSUE-0014, and ISSUE-0013 must report a consistent lifecycle state for the identity-continuity dependency chain.
 - Closure of ISSUE-0015 is blocked until ISSUE-0013 AC-0013-11 exit conditions and ISSUE-0014 Phase 1 behavioral exit conditions are both satisfied with deterministic evidence + reproducible CLI traces.
 - If any dependency is unresolved, keep ISSUE-0015 in the Active red-tag list and avoid resolved-language in related issue files.
+- 2026-03-09 lifecycle sync note: latest ISSUE-0014/0013 deterministic evidence bundle shows targeted suites passing but canonical all-green gate failing; dependency chain remains unresolved, so ISSUE-0015/0014 stay active red-tag.
 
 ## Active
 
 - ISSUE-0015 — **Open-issue review identifies ISSUE-0014 quality/governance gaps that could permit partial-fix closure**: Open red-tag governance hardening issue. Lifecycle interpretation: remains open/red until dependency exit conditions are met in ISSUE-0013 AC-0013-11 and ISSUE-0014 Phase 1 (identity semantic preservation, retrieval activation on self-reference recall, and confirmed identity fact promotion at commit).
 - ISSUE-0014 — **CLI self-identity turns are stabilized structurally but semantically misrouted before memory retrieval and durable fact promotion**: Open red-tag regression; evidence indicates rewrite-stage semantic inversion and self-reference misrouting prevent retrieval activation and confirmed-user-fact promotion. This is a blocking dependency for ISSUE-0013 AC-0013-11 and ISSUE-0015 closure gates.
+
+Dependency evidence pointer (2026-03-09): `docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md` with linked behave/pytest pass logs and failing all-green gate log.
 
 ## Resolved
 
