@@ -254,6 +254,105 @@ def _answer_mode_respects_intent(state: PipelineState) -> bool:
     return allow_non_memory_clarify
 
 
+def _response_policy_contract_checks() -> list[tuple[str, Callable[[PipelineState], bool]]]:
+    return [
+        (
+            "invariant_decisions_recorded",
+            lambda s: hasattr(s.invariant_decisions, "get") and bool(s.invariant_decisions),
+        ),
+        (
+            "inv_001_contract_enforced",
+            lambda s: bool(s.invariant_decisions.get("answer_contract_valid", False))
+            or s.invariant_decisions.get("answer_mode") in {"deny", "dont-know", "clarify", "assist"},
+        ),
+        (
+            "inv_003_general_knowledge_contract_enforced",
+            lambda s: bool(s.invariant_decisions.get("general_knowledge_contract_valid", True))
+            or _fallback_invariant_outcomes(s)["inv_003_general_knowledge_contract_safe_fallback"],
+        ),
+        (
+            "inv_002_progressive_fallback_enforced",
+            lambda s: _fallback_invariant_outcomes(s)["inv_002_progressive_fallback"],
+        ),
+    ]
+
+
+def _alignment_shape_and_decision_checks() -> list[tuple[str, Callable[[PipelineState], bool]]]:
+    return [
+        (
+            "alignment_decision_recorded",
+            lambda s: hasattr(s.alignment_decision, "get")
+            and isinstance(s.alignment_decision.get("dimensions"), dict)
+            and isinstance(s.alignment_decision.get("final_alignment_decision"), str),
+        ),
+        (
+            "alignment_dimensions_present",
+            lambda s: all(
+                isinstance(s.alignment_decision.get("dimensions", {}).get(dim), float)
+                for dim in REQUIRED_ALIGNMENT_DIMENSIONS
+            ),
+        ),
+        (
+            "alignment_decision_consistent",
+            lambda s: s.alignment_decision.get("final_alignment_decision") == "deny"
+            if s.final_answer == DENY_ANSWER
+            else (
+                s.alignment_decision.get("final_alignment_decision") == "fallback"
+                if s.final_answer == FALLBACK_ANSWER
+                else s.alignment_decision.get("final_alignment_decision") == "allow"
+            ),
+        ),
+    ]
+
+
+def _provenance_requirement_checks() -> list[tuple[str, Callable[[PipelineState], bool]]]:
+    return [
+        (
+            "provenance_enum_values_valid",
+            lambda s: _has_allowed_provenance_types(s),
+        ),
+        (
+            "provenance_present_for_non_trivial_answers",
+            lambda s: (not _is_non_trivial_answer(s.final_answer))
+            or (
+                bool(s.claims)
+                and bool(s.provenance_types)
+                and bool((s.basis_statement or "").strip())
+            ),
+        ),
+        (
+            "knowing_mode_requires_provenance_metadata",
+            lambda s: _has_knowing_mode_provenance_metadata(s),
+        ),
+        (
+            "knowing_mode_disallows_heuristic_only_inference_provenance",
+            lambda s: _knowing_mode_not_heuristic_only(s),
+        ),
+    ]
+
+
+def _stage_semantics_checks() -> list[tuple[str, Callable[[PipelineState], bool]]]:
+    return [
+        (
+            "answer_mode_intent_consistent",
+            lambda s: _answer_mode_respects_intent(s),
+        ),
+        (
+            "unknowing_mode_requires_explicit_uncertainty_fallback",
+            lambda s: _has_explicit_unknowing_uncertainty_fallback(s),
+        ),
+    ]
+
+
+def _answer_commit_post_checks() -> list[tuple[str, Callable[[PipelineState], bool]]]:
+    return [
+        *_response_policy_contract_checks(),
+        *_alignment_shape_and_decision_checks(),
+        *_provenance_requirement_checks(),
+        *_stage_semantics_checks(),
+    ]
+
+
 def _run_checks(
     *,
     stage: str,
@@ -472,78 +571,7 @@ def validate_answer_commit_post(state: PipelineState) -> TransitionCheckResult:
         stage="answer.commit",
         boundary="post",
         invariant_refs=("PINV-001", "PINV-002", "PINV-003"),
-        checks=[
-            (
-                "invariant_decisions_recorded",
-                lambda s: hasattr(s.invariant_decisions, "get") and bool(s.invariant_decisions),
-            ),
-            (
-                "alignment_decision_recorded",
-                lambda s: hasattr(s.alignment_decision, "get")
-                and isinstance(s.alignment_decision.get("dimensions"), dict)
-                and isinstance(s.alignment_decision.get("final_alignment_decision"), str),
-            ),
-            (
-                "alignment_dimensions_present",
-                lambda s: all(
-                    isinstance(s.alignment_decision.get("dimensions", {}).get(dim), float)
-                    for dim in REQUIRED_ALIGNMENT_DIMENSIONS
-                ),
-            ),
-            (
-                "inv_001_contract_enforced",
-                lambda s: bool(s.invariant_decisions.get("answer_contract_valid", False))
-                or s.invariant_decisions.get("answer_mode") in {"deny", "dont-know", "clarify", "assist"},
-            ),
-            (
-                "inv_003_general_knowledge_contract_enforced",
-                lambda s: bool(s.invariant_decisions.get("general_knowledge_contract_valid", True))
-                or _fallback_invariant_outcomes(s)["inv_003_general_knowledge_contract_safe_fallback"],
-            ),
-            (
-                "inv_002_progressive_fallback_enforced",
-                lambda s: _fallback_invariant_outcomes(s)["inv_002_progressive_fallback"],
-            ),
-            (
-                "answer_mode_intent_consistent",
-                lambda s: _answer_mode_respects_intent(s),
-            ),
-            (
-                "alignment_decision_consistent",
-                lambda s: s.alignment_decision.get("final_alignment_decision") == "deny"
-                if s.final_answer == DENY_ANSWER
-                else (
-                    s.alignment_decision.get("final_alignment_decision") == "fallback"
-                    if s.final_answer == FALLBACK_ANSWER
-                    else s.alignment_decision.get("final_alignment_decision") == "allow"
-                ),
-            ),
-            (
-                "provenance_enum_values_valid",
-                lambda s: _has_allowed_provenance_types(s),
-            ),
-            (
-                "provenance_present_for_non_trivial_answers",
-                lambda s: (not _is_non_trivial_answer(s.final_answer))
-                or (
-                    bool(s.claims)
-                    and bool(s.provenance_types)
-                    and bool((s.basis_statement or "").strip())
-                ),
-            ),
-            (
-                "knowing_mode_requires_provenance_metadata",
-                lambda s: _has_knowing_mode_provenance_metadata(s),
-            ),
-            (
-                "knowing_mode_disallows_heuristic_only_inference_provenance",
-                lambda s: _knowing_mode_not_heuristic_only(s),
-            ),
-            (
-                "unknowing_mode_requires_explicit_uncertainty_fallback",
-                lambda s: _has_explicit_unknowing_uncertainty_fallback(s),
-            ),
-        ],
+        checks=_answer_commit_post_checks(),
         state=state,
     )
 
