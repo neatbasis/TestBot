@@ -2,7 +2,7 @@
 
 - **ID:** ISSUE-0016
 - **Title:** Startup degraded-mode user messaging lacks explicit BDD coverage
-- **Status:** open
+- **Status:** closed
 - **Severity:** amber
 - **Owner:** platform-qa
 - **Created:** 2026-03-09
@@ -46,22 +46,26 @@ This leaves a behavior-contract gap between policy language and executable accep
 
 ## Work Plan
 
-- [ ] Draft startup degraded-mode stakeholder-visible scenarios first in `features/`.
-- [ ] Add/adjust step definitions under `features/steps/` as needed.
-- [ ] Add/adjust deterministic pytest coverage in `tests/`.
-- [ ] Make minimal runtime changes in `src/testbot/sat_chatbot_memory_v2.py` only if scenario/test gaps require it.
-- [ ] Update `docs/governance/mission-vision-alignment.md` and any affected directive/testing docs to keep traceability synchronized.
-- [ ] Validate via behave, pytest (non-live-smoke), and canonical all-green gate.
+- [x] Draft startup degraded-mode stakeholder-visible scenarios first in `features/`.
+- [x] Add/adjust step definitions under `features/steps/` as needed.
+- [x] Add/adjust deterministic pytest coverage in `tests/`.
+- [x] Make minimal runtime changes in `src/testbot/sat_chatbot_memory_v2.py` only if scenario/test gaps require it. (No runtime changes were required.)
+- [x] Update `docs/governance/mission-vision-alignment.md` and any affected directive/testing docs to keep traceability synchronized. (Directive obligations already captured this requirement; no additional governance doc diff was required.)
+- [x] Validate via behave, pytest (non-live-smoke), and canonical all-green gate.
 
 ## Verification
 
 - Command: `python -m behave`
   - Expected: exits `0` with startup degraded-mode scenarios included.
+  - Outcome: pass (`0`); includes new `features/startup_status.feature` degraded startup scenario covering explicit CLI fallback and continuity messaging.
 - Command: `python -m pytest -m "not live_smoke"`
   - Expected: exits `0`.
+  - Outcome: pass (`0`); includes deterministic startup/runtime assertions for degraded startup contract.
 - Command: `python scripts/all_green_gate.py`
   - Expected: canonical gate exits `0`.
+  - Outcome: pass (`0`); canonical repository gate green in same change window.
 
 ## Closure Notes
 
 - 2026-03-09: Opened from mission/vision alignment audit to close P4 executable contract gap with BDD-first coverage.
+- 2026-03-09: Closed with explicit startup degraded-mode BDD coverage in `features/startup_status.feature`, new step harness in `features/steps/startup_status_steps.py`, and aligned deterministic runtime-mode/startup-status assertions in `tests/test_runtime_modes.py` and `tests/test_startup_status.py`. Evidence commands completed successfully: `python -m behave`; `python -m pytest -m "not live_smoke"`; `python scripts/all_green_gate.py`.

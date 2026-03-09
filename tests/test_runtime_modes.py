@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+from contextlib import redirect_stdout
+from io import StringIO
 from types import SimpleNamespace
 from urllib.error import HTTPError
 
@@ -130,7 +132,14 @@ def _patch_main_dependencies(
 def test_main_auto_daemon_ha_unavailable_exits_without_cli_fallback(monkeypatch, capsys) -> None:
     calls = {"cli": 0, "satellite": 0}
     args = SimpleNamespace(mode="auto", daemon=True)
-    _patch_main_dependencies(monkeypatch, args=args, ha_error="auth failed", ollama_error=None, calls=calls)
+    _patch_main_dependencies(
+        monkeypatch,
+        args=args,
+        ha_error="auth failed",
+        ollama_error=None,
+        calls=calls,
+        runtime_overrides={"memory_store_backend": "in_memory"},
+    )
 
     runtime.main([])
 
@@ -162,6 +171,38 @@ def test_main_satellite_mode_reports_cli_as_effective_mode_when_fallback_applies
     assert startup["effective_mode"] == "cli"
     assert startup["fallback_reason"] == "satellite connection is unavailable"
 
+
+
+
+def test_main_auto_non_daemon_ha_unavailable_emits_cli_fallback_and_continuity_messages(monkeypatch) -> None:
+    calls = {"cli": 0, "satellite": 0}
+    args = SimpleNamespace(mode="auto", daemon=False)
+    captured: dict[str, str] = {}
+
+    original_print_startup_status = runtime._print_startup_status
+
+    def _capture_startup_output(**kwargs):
+        stream = StringIO()
+        with redirect_stdout(stream):
+            original_print_startup_status(**kwargs)
+        captured["output"] = stream.getvalue()
+
+    _patch_main_dependencies(
+        monkeypatch,
+        args=args,
+        ha_error="auth failed",
+        ollama_error=None,
+        calls=calls,
+        runtime_overrides={"memory_store_backend": "in_memory"},
+    )
+    monkeypatch.setattr(runtime, "_print_startup_status", _capture_startup_output)
+
+    runtime.main([])
+
+    assert calls == {"cli": 1, "satellite": 0}
+    output = captured["output"]
+    assert "CLI fallback will be used unless --daemon is set" in output
+    assert "Continuity: memory cards are shared across interfaces in-process via one vector store." in output
 
 def test_main_auto_non_daemon_ollama_unavailable_exits_early(monkeypatch, capsys) -> None:
     calls = {"cli": 0, "satellite": 0}
