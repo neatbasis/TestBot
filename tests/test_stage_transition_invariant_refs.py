@@ -120,7 +120,7 @@ def test_every_canonical_stage_has_transition_validation_boundary_check() -> Non
         validate_policy_decide_post(state),
         validate_answer_assemble_pre(state),
         validate_answer_validate_pre(state),
-        validate_answer_validate_post(state),
+        validate_answer_validate_post(state, {"answer_validation_contract": {"passed": True}}),
         validate_answer_render_pre(state),
         validate_answer_render_post(state),
         validate_answer_commit_pre(state),
@@ -204,6 +204,36 @@ def test_answer_validate_pre_accepts_answer_assembly_contract_without_state_draf
     state = PipelineState(user_input="What did I say yesterday?", confidence_decision={"context_confident": True})
 
     result = validate_answer_validate_pre(state, {"answer_assembly_contract": {"decision_class": "answer_from_memory"}})
+
+    assert result.passed
+    assert result.failures == ()
+
+def test_answer_validate_post_allows_empty_final_answer_when_validation_artifact_present() -> None:
+    state = PipelineState(user_input="What did I say yesterday?")
+
+    result = validate_answer_validate_post(
+        state,
+        {"answer_validation_contract": {"passed": True, "failures": []}, "validated_answer": object()},
+    )
+
+    assert result.passed
+    assert result.failures == ()
+
+
+def test_answer_validate_post_fails_when_validation_artifact_missing() -> None:
+    state = PipelineState(user_input="What did I say yesterday?")
+
+    result = validate_answer_validate_post(state)
+
+    assert not result.passed
+    assert result.failures == ("validation_artifact_present",)
+
+
+def test_answer_render_post_accepts_artifact_handoff_before_state_final_answer_commit() -> None:
+    state = PipelineState(user_input="What did I say yesterday?")
+
+    rendered = type("Rendered", (), {"final_answer": "You said hi. doc_id: 1 ts: 2025-01-01T00:00:00Z"})()
+    result = validate_answer_render_post(state, {"rendered_answer": rendered})
 
     assert result.passed
     assert result.failures == ()
