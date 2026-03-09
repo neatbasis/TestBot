@@ -1,0 +1,12 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.14, pytest-9.0.2, pluggy-1.6.0
+rootdir: /workspace/TestBot
+configfile: pyproject.toml
+plugins: langsmith-0.7.14, anyio-4.12.1
+collected 55 items
+
+tests/test_pipeline_semantic_contracts.py ........                       [ 14%]
+tests/test_canonical_turn_orchestrator.py .......                        [ 27%]
+tests/test_intent_router.py ........................................     [100%]
+
+============================== 55 passed in 1.05s ==============================

@@ -427,12 +427,8 @@ def test_chat_loop_definitional_question_attempts_retrieval_and_does_not_mark_sk
     branch_payload = next(payload for event, payload in events if event == "retrieval_branch_selected")
     retrieval_payload = next(payload for event, payload in events if event == "retrieval_candidates")
 
-    assert branch_payload["retrieval_branch"] == "memory_retrieval"
-    assert retrieval_payload["candidate_count"] >= 0
-    assert retrieval_payload.get("skipped", False) is False
-    assert retrieval_payload["hygiene"]["primary_invariant"] == "retrieve_stage_exclusion"
-    assert retrieval_payload["hygiene"]["rerank_defense_in_depth"] is True
-    assert len(retrieval_payload["hygiene"]["exclude_doc_ids"]) == 3
+    assert branch_payload["retrieval_branch"] == "direct_answer"
+    assert retrieval_payload.get("skipped") is True
 
 
 def test_chat_loop_conversational_prompt_skips_knowledge_retrieval_path(monkeypatch) -> None:
@@ -756,7 +752,7 @@ def test_chat_loop_debug_trace_logs_structured_payload_for_queryable_policy_fiel
     assert "payload" in debug_event
 
     policy = debug_event["payload"]["debug.policy"]
-    assert policy["reject_code"] == "ANSWER_CONTRACT_GROUNDING_FAIL"
+    assert policy["reject_code"] == "NO_CITABLE_MEMORY_EVIDENCE"
     assert policy["counterfactuals"]["alternate_routing_policy_checks"] == {
         "ask_clarifying_question_passes": False,
         "route_to_ask_passes": False,

@@ -164,8 +164,8 @@ Review scope was limited to open issues (`open` or `in_progress`) and issue-gove
 
 ### Open blockers (red-tag)
 
-- **AC6:** **in_progress (evidence-linked, unresolved)** — governance linkage evidence is now explicitly attached in ISSUE-0014/ISSUE-0013 using the 2026-03-09 deterministic bundle, but closure remains blocked because the canonical all-green gate is failing.
-- **AC7:** **in_progress (partial pass)** — targeted deterministic regression coverage now passes (BDD + focused pytest suites), but full deterministic readiness is still blocked by failing canonical all-green `product_behave` checks.
+- **AC6:** **in_progress (evidence-linked, unresolved)** — governance linkage evidence is attached in ISSUE-0014/ISSUE-0013 using the 2026-03-09 deterministic bundle; dependency remains open pending synchronized closure-state language across ISSUE-0013/0014/0015.
+- **AC7:** **in_progress (partial pass)** — targeted deterministic regression coverage passes and canonical all-green now reports pass under warning-mode KPI policy; dependency remains open pending closure-proof CLI trace evidence and cross-artifact lifecycle alignment.
 - **AC9 (dependency gate):** **in_progress (unsatisfied)** — dependency evaluation was executed and documented, but remains unsatisfied until AC-0013-11 exit conditions fully pass.
 
 ### Exit conditions for ISSUE-0015 closure (dependency on ISSUE-0013 / ISSUE-0014)
@@ -182,10 +182,10 @@ ISSUE-0015 remains `Status: open` and `Severity: red` until all dependency condi
 - Attached command logs:
   - `docs/issues/evidence/2026-03-09-issue-0014-0013-behave.log` (**pass**)
   - `docs/issues/evidence/2026-03-09-issue-0014-0013-focused-pytests.log` (**pass**)
-  - `docs/issues/evidence/2026-03-09-issue-0014-0013-all-green-gate.log` (**fail**)
-  - `artifacts/all-green-gate-summary.json` (**failed** summary; `product_behave` non-zero)
+  - `docs/issues/evidence/2026-03-09-issue-0014-0013-all-green-gate.log` (**pass with warning mode**)
+  - `artifacts/all-green-gate-summary.json` (**passed** summary; warning on optional `qa_validate_kpi_guardrails`)
 - Closure interpretation:
-  - AC6: governance linkage hardening is present and now evidenced, but not closable.
-  - AC7: deterministic coverage is partially green; canonical gate keeps criterion open.
+  - AC6: governance linkage hardening is present and evidenced, but not closable until dependency lifecycle text is synchronized.
+  - AC7: deterministic coverage and gate posture are green under current warning policy; criterion remains open for dependency-governed closure semantics.
   - AC9: dependency gate remains open because ISSUE-0013 AC-0013-11 EC-B/C are not yet satisfied.
 - Result: ISSUE-0015 stays `Status: open`, `Severity: red`.
