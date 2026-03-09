@@ -34,6 +34,7 @@ KPI evidence updates are mandatory for red-tag triage. If any KPI guardrail fail
 - Closure of ISSUE-0015 remains blocked until blocker conditions are evidence-satisfied (including ISSUE-0013 AC-0013-11 and ISSUE-0014 Phase 1 behavioral criteria with deterministic evidence + reproducible CLI traces).
 - If any blocker is unresolved, keep ISSUE-0015 in the Active red-tag list and avoid resolved-language in related issue files.
 - 2026-03-09 lifecycle sync note: latest ISSUE-0014/0013 deterministic evidence bundle plus reproducible CLI identity-continuity closure-proof traces are attached, but dependency evidence remains incomplete because the canonical all-green gate artifact is failing (`product_behave`); lifecycle language across ISSUE-0013/0014/0015/RED_TAG must remain in blocked/open posture until refreshed passing gate evidence is attached.
+- ISSUE-0017 (amber) tracks pending-lookup fallback normalization for answer-commit invariants and must stay text-consistent with ISSUE-0010/INV-002 wording; this does not alter the active red-tag blocker/dependent chain unless ISSUE-0013 dependency evidence changes.
 
 ## Active
 

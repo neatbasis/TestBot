@@ -14,7 +14,7 @@
 
 - Routing anchor: ISSUE-0013 (**dependent** in current execution order; governance close-order stream).
 - Execution-order linkage: ISSUE-0008 -> ISSUE-0011 -> ISSUE-0012 (parallel stream) -> ISSUE-0014 -> ISSUE-0015.
-- Companion issue references: ISSUE-0014 (defect narrative under review), ISSUE-0012 (delivery-plan governance).
+- Companion issue references: ISSUE-0014 (defect narrative under review), ISSUE-0012 (delivery-plan governance), ISSUE-0017 (pending-lookup fallback invariant normalization that must stay lifecycle-consistent with ISSUE-0010 policy text).
 
 ## Problem Statement
 
@@ -184,6 +184,7 @@ ISSUE-0015 remains `Status: open` and `Severity: red` until all dependency condi
 1. **ISSUE-0014 behavioral exit condition met:** deterministic evidence confirms identity declaration semantic preservation, retrieval activation on immediate self-reference recall, and confirmed identity fact promotion at commit.
 2. **ISSUE-0013 governance exit condition met:** AC-0013-11 is marked complete with linked evidence proving ISSUE-0014 Phase 1 behavior is passing in deterministic tests plus reproducible CLI traces.
 3. **Cross-artifact consistency exit condition met:** `docs/issues/RED_TAG.md` plus issue files (`ISSUE-0013`, `ISSUE-0014`, `ISSUE-0015`) explicitly reflect the same lifecycle interpretation (currently: "dependency evidence incomplete; closure blocked pending canonical gate pass").
+4. **Fallback-semantics consistency condition met:** ISSUE-0010 language for unknowing fallback and ISSUE-0017 pending-lookup normalization remain non-contradictory (pending lookup stays non-clarify and does not downgrade red-tag dependency posture by itself).
 
 ## 2026-03-09 Dependency Evaluation Update (AC6/AC7/AC9)
 
