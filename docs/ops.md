@@ -31,7 +31,8 @@ Common events include:
 
 - **v1 (legacy):** rows may omit `schema_version`.
 - **v2 (compatibility):** rows include `schema_version: 2`.
-- **v3 (authoritative current schema):** rows include `schema_version: 3`.
+- **v3 (compatibility):** rows include `schema_version: 3` and may still include legacy transition aliases.
+- **v4 (authoritative current schema):** rows include `schema_version: 4`.
 
 Runtime emitters set this field via `append_session_log(...)` in
 `src/testbot/sat_chatbot_memory_v2.py`.
@@ -45,7 +46,7 @@ Compatibility rules for replay/analytics tooling:
 5. Keep at least one previous schema version readable during migrations.
 
 Current event contracts are validated by `scripts/validate_log_schema.py`, with canonical
-`v3` fixtures in `tests/fixtures/log_schema/current_schema_v3.jsonl`:
+`v4` fixtures in `tests/fixtures/log_schema/current_schema_v4.jsonl`:
 
 - Common required keys: `ts` (`str`), `event` (`str`)
 - `pipeline_state_snapshot`: `stage` (`str`), `state` (`dict`)
@@ -56,9 +57,9 @@ Use fixture artifacts in `tests/fixtures/log_schema/` to keep both current and p
 versions valid over time.
 
 
-### Stage-transition invariant namespace migration (v3)
+### Stage-transition schema migration notes (v3→v4)
 
-`stage_transition_validation.invariant_refs` moved to the canonical pipeline namespace in `schema_version: 3` payloads. Runtime now emits `PINV-*` identifiers for stage pre/post validators, replacing prior mixed `INV-*` references.
+`stage_transition_validation.invariant_refs` moved to the canonical pipeline namespace in `schema_version: 3` payloads. Runtime emits `PINV-*` identifiers for stage pre/post validators, replacing prior mixed `INV-*` references.
 
 Canonical migration map (defined in `src/testbot/stage_transitions.py` as `LEGACY_TO_PIPELINE_INVARIANT_REF_MAP`):
 
@@ -66,11 +67,14 @@ Canonical migration map (defined in `src/testbot/stage_transitions.py` as `LEGAC
 - `INV-002` → `PINV-002`
 - `INV-003` → `PINV-003`
 
-Migration decision: **clean schema/version bump** for `stage_transition_validation` payloads.
+`schema_version: 4` removes `stage_transition_validation.legacy_stage`; consumers must read canonical `stage` values (`observe.turn`, `encode.candidates`, `retrieve.evidence`, `policy.decide`, `answer.assemble`, `answer.commit`, etc.).
 
-- `v1`/`v2` logs remain readable historical artifacts and may contain legacy `INV-*` stage-transition references.
-- `v3` is authoritative for current telemetry and emits only pipeline-semantics IDs for stage-transition validation events.
-- Evidence/log consumers should branch by `schema_version` when interpreting `invariant_refs` and should not treat response-policy `INV-*` IDs as current pipeline-stage identifiers.
+Compatibility window:
+
+- `v1`/`v2` logs remain readable historical artifacts and may contain legacy `INV-*` stage-transition references and coarse stage values.
+- `v3` logs remain readable during cutover and may include `legacy_stage` aliases.
+- `v4` is authoritative for current telemetry and emits canonical `stage` only (no `legacy_stage`).
+- Evidence/log consumers should branch by `schema_version` when interpreting `invariant_refs` and stage identifiers.
 
 
 ## Turn analytics + KPI loop
@@ -109,7 +113,7 @@ building per-turn rows:
   - `intent_classified`
   - `fallback_action_selected`
   - `provenance_summary`
-- For supported schemas (`v1`, `v2`, `v3`), required keys and basic value types are validated by event.
+- For supported schemas (`v1`, `v2`, `v3`, `v4`), required keys and basic value types are validated by event.
 
 Invalid analytics event rows are **skipped** (not fail-fast) and accounted for in
 `logs/turn_analytics_summary.json` via:

@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-CURRENT_SCHEMA_VERSION = 3
+CURRENT_SCHEMA_VERSION = 4
 
 COMMON_FIELDS: dict[str, type] = {
     "ts": str,
@@ -75,7 +75,7 @@ def validate_row(row: dict[str, Any], *, row_label: str = "row") -> list[str]:
     schema_version = row.get("schema_version", 1)
     if not isinstance(schema_version, int):
         errors.append(f"{row_label}: key 'schema_version' expected int when present")
-    elif schema_version not in {1, 2, CURRENT_SCHEMA_VERSION}:
+    elif schema_version not in {1, 2, 3, CURRENT_SCHEMA_VERSION}:
         errors.append(f"{row_label}: unsupported schema_version '{schema_version}'")
 
     event = row.get("event")

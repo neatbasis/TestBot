@@ -38,6 +38,10 @@ Terminology note: use canonical pipeline identifiers as normative names and pair
 
 Program linkage: [`ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md`](issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md) is the project's **primary bug-elimination program** in the current state; contributors should triage canonical pipeline defects and follow-on work against ISSUE-0013 first, with ISSUE-0012 treated as linked delivery planning context in [`ISSUE-0012-canonical-turn-pipeline-delivery-plan.md`](issues/ISSUE-0012-canonical-turn-pipeline-delivery-plan.md).
 
+## Transition-log schema cutover note
+
+`stage_transition_validation` telemetry uses canonical pipeline `stage` names. As of `schema_version: 4`, runtime no longer emits `legacy_stage`; downstream consumers must read canonical values directly (for example `observe.turn`, `answer.assemble`, `answer.commit`). During the compatibility window, keep `v3` readers available for historical replay, but treat `v4` as authoritative for new telemetry.
+
 ## Legacy v0 compatibility note (historical)
 
 Earlier revisions described a simplified 6-stage flow (`observe → intent → encode → retrieve → rerank → answer`). Treat that model as historical shorthand only; runtime design and acceptance criteria are governed by the canonical 11-stage pipeline in [docs/architecture/canonical-turn-pipeline.md](architecture/canonical-turn-pipeline.md).

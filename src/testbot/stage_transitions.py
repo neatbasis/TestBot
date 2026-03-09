@@ -20,16 +20,7 @@ ASSIST_ALTERNATIVES_ANSWER = (
     "I can either help you reconstruct the timeline from what you remember, "
     "or suggest where to check next for the missing detail."
 )
-TRANSITION_VALIDATION_SCHEMA_VERSION = 3
-
-LEGACY_STAGE_ALIAS_MAP: dict[str, str] = {
-    "observe.turn": "observe",
-    "encode.candidates": "encode",
-    "retrieve.evidence": "retrieve",
-    "policy.decide": "rerank",
-    "answer.assemble": "answer",
-    "answer.commit": "answer",
-}
+TRANSITION_VALIDATION_SCHEMA_VERSION = 4
 
 # One-release migration bridge for downstream telemetry consumers that still
 # normalize historical stage transition events keyed by legacy INV-* IDs.
@@ -668,7 +659,6 @@ def append_transition_validation_log(
         "ts": utc_now_iso(),
         "event": "stage_transition_validation",
         "schema_version": TRANSITION_VALIDATION_SCHEMA_VERSION,
-        "legacy_stage": LEGACY_STAGE_ALIAS_MAP.get(result.stage, result.stage),
         **result.to_dict(),
     }
     with log_path.open("a", encoding="utf-8") as f:

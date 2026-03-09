@@ -20,6 +20,7 @@ def test_validate_log_schema_accepts_previous_and_current_fixture_artifacts() ->
         FIXTURE_DIR / "previous_schema_v1.jsonl",
         FIXTURE_DIR / "current_schema_v2.jsonl",
         FIXTURE_DIR / "current_schema_v3.jsonl",
+        FIXTURE_DIR / "current_schema_v4.jsonl",
     ]
 
     for fixture_path in fixture_paths:
@@ -42,7 +43,7 @@ def test_validate_log_schema_rejects_provenance_summary_missing_source_fields() 
     row = {
         "ts": "2026-03-03T00:00:00Z",
         "event": "provenance_summary",
-        "schema_version": 3,
+        "schema_version": 4,
         "provenance_types": ["memory"],
         "used_memory_refs": [],
         "basis_statement": "derived from memory",
@@ -58,7 +59,7 @@ def test_validate_log_schema_requires_debug_turn_trace_payload() -> None:
     row = {
         "ts": "2026-03-03T00:00:00Z",
         "event": "debug_turn_trace",
-        "schema_version": 3,
+        "schema_version": 4,
         "trace": "[debug] compact",
     }
 
@@ -71,7 +72,7 @@ def test_validate_log_schema_accepts_debug_turn_trace_without_legacy_trace() -> 
     row = {
         "ts": "2026-03-03T00:00:00Z",
         "event": "debug_turn_trace",
-        "schema_version": 3,
+        "schema_version": 4,
         "payload": {"debug.policy": {"reject_code": "CONTEXT_CONF_BELOW_THRESHOLD"}},
     }
 

@@ -150,3 +150,7 @@ If needed, force an explicit detached-friendly base ref:
 python scripts/validate_issue_links.py --all-issue-files --base-ref HEAD~1
 python scripts/validate_issues.py --all-issue-files --base-ref HEAD~1
 ```
+
+## Governance note: transition-log schema cutovers
+
+When issue work changes `stage_transition_validation` schema (for example removing compatibility keys like `legacy_stage`), include in issue/PR metadata: the schema version bump, expected consumer migration target (`stage` canonical identifiers), and a compatibility window statement describing which older schema versions remain readable.
