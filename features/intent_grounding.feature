@@ -145,6 +145,13 @@ Feature: Intent-specific grounding and provenance behavior
     When the user asks a definitional knowledge prompt in runtime loop
     Then retrieval branch logging should show memory retrieval with unskipped candidates
 
+  @ISSUE-0008 @AC-0008-30
+  Scenario: definitional prompt with initial empty retrieval performs bounded sync retry once
+    Given an intent response harness
+    When a definitional knowledge prompt has initial empty retrieval and async continuation is off
+    Then retrieval retry logging should show one bounded sync retry
+    And fallback outcome should remain deterministic when evidence stays empty
+
   @ISSUE-0008 @AC-0008-16
   Scenario: conversational prompt avoids knowledge retrieval branch logging
     Given an intent response harness

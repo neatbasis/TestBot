@@ -1215,3 +1215,47 @@ def step_then_canonical_contract_probe(context, intent: str, retrieval_branch: s
         "fallback_action": fallback_action,
         "answer_mode": answer_mode,
     }
+
+@when("a definitional knowledge prompt has initial empty retrieval and async continuation is off")
+def step_when_definitional_prompt_sync_retry(context) -> None:
+    context.retrieval_log_events = [
+        ("retrieval_branch_selected", {"retrieval_branch": "memory_retrieval"}),
+        (
+            "retrieval_candidates",
+            {
+                "candidate_count": 0,
+                "skipped": False,
+                "retry": {"attempted": True, "waited_seconds": 0.15, "reason": "sync_retry_completed"},
+            },
+        ),
+    ]
+    context.pipeline_state = _build_base_state(
+        user_input="What is ontology?",
+        final_answer="General definition (not from your memory): Ontology organizes concepts and relations.",
+        draft_answer="General definition (not from your memory): Ontology organizes concepts and relations.",
+        confidence_decision={
+            "context_confident": False,
+            "ambiguity_detected": False,
+            "retrieval_branch": "memory_retrieval",
+            "retrieval_candidates_considered": 0,
+        },
+    )
+    context.pipeline_state = replace(
+        context.pipeline_state,
+        invariant_decisions={"answer_mode": "assist", "fallback_action": "ANSWER_GENERAL_KNOWLEDGE"},
+    )
+
+
+@then("retrieval retry logging should show one bounded sync retry")
+def step_then_retrieval_retry_logging_sync_once(context) -> None:
+    candidates_payload = next(payload for event, payload in context.retrieval_log_events if event == "retrieval_candidates")
+    retry_payload = candidates_payload.get("retry", {})
+    assert retry_payload.get("attempted") is True
+    assert retry_payload.get("reason") == "sync_retry_completed"
+    assert float(retry_payload.get("waited_seconds", 0.0)) >= 0.0
+
+
+@then("fallback outcome should remain deterministic when evidence stays empty")
+def step_then_fallback_deterministic_after_sync_retry(context) -> None:
+    assert context.pipeline_state.invariant_decisions.get("answer_mode") == "assist"
+    assert context.pipeline_state.invariant_decisions.get("fallback_action") == "ANSWER_GENERAL_KNOWLEDGE"
