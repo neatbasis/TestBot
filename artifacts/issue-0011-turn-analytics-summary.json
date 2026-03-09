@@ -1,0 +1,21 @@
+{
+  "grounded_answer_precision": 0.0,
+  "false_knowing_rate": 1.0,
+  "fallback_appropriateness": 0.0,
+  "citation_completeness": 0.0,
+  "turn_count": 1,
+  "invalid_rows": 0,
+  "skipped_rows": 0,
+  "per_event_validation_failures": {},
+  "input_rows_total": 5,
+  "recognized_analytics_rows": 2,
+  "ignored_non_analytics_rows": 3,
+  "turn_start_events": 1,
+  "ignored_event_counts": {
+    "pipeline_state_snapshot": 2,
+    "stage_transition_validation": 1
+  },
+  "warnings": [
+    "ignored_non_analytics_rows exceeds 50% threshold (3/5)."
+  ]
+}
