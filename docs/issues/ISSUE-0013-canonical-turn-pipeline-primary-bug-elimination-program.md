@@ -84,9 +84,9 @@ Status legend: `[ ] pending`, `[~] partial`, `[x] complete`.
   - exit condition EC-0013-11-B: the deterministic validation set required by ISSUE-0014 Phase 1 runs clean in the current branch (no identity-continuity regressions).
   - exit condition EC-0013-11-C: ISSUE-0015 dependency gate is updated from open to satisfied, confirming closure-governance alignment across ISSUE-0013/0014/0015.
   - 2026-03-09 evidence update:
-    - EC-0013-11-A: **partial** (targeted ISSUE-0014 Phase 1 suites pass, but reproducible CLI identity-continuity closure traces are not yet attached as closure-proof artifacts).
-    - EC-0013-11-B: **partial/open** (required deterministic suites and canonical gate pass under current warning policy; dependency remains open until CLI closure-proof traces are added and lifecycle language is synchronized across ISSUE-0014/ISSUE-0015/RED_TAG).
-    - EC-0013-11-C: **open** (ISSUE-0015 dependency gate intentionally remains unresolved).
+    - EC-0013-11-A: **partial** (targeted ISSUE-0014 Phase 1 suites pass, but reproducible CLI closure-proof traces are not yet attached for identity semantic preservation, retrieval activation on self-reference recall, and confirmed identity fact promotion at commit).
+    - EC-0013-11-B: **partial/open** (required deterministic suites and canonical gate pass under current warning policy; dependency remains open until the three closure-proof CLI trace artifacts are attached and lifecycle language remains synchronized across ISSUE-0014/ISSUE-0015/RED_TAG).
+    - EC-0013-11-C: **open** (ISSUE-0015 dependency gate intentionally remains unresolved and must not be represented as resolved in any linked artifact).
     - linked evidence: `docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md`, `docs/issues/evidence/2026-03-09-issue-0014-0013-behave.log`, `docs/issues/evidence/2026-03-09-issue-0014-0013-focused-pytests.log`, `docs/issues/evidence/2026-03-09-issue-0014-0013-all-green-gate.log`, `artifacts/all-green-gate-summary.json`.
 - [~] [AC-0013-12] `docs/qa/feature-status.yaml` canonical pipeline capability slices are advanced from `planned` to implemented maturity states that reflect delivered behavior.
   - evidence: `docs/qa/feature-status.yaml`
@@ -146,6 +146,10 @@ Status legend: `[ ] pending`, `[~] partial`, `[x] complete`.
   - Expected: ISSUE-0013 file passes canonical issue schema checks.
 - Command: `python scripts/all_green_gate.py`
   - Expected: deterministic merge/readiness gate passes with canonical pipeline tests included.
+- Command: `python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main`
+  - Result (2026-03-09): **pass** with documented base-ref fallback `origin/main` -> `HEAD~1`.
+- Command: `python scripts/validate_issues.py --all-issue-files --base-ref origin/main`
+  - Result (2026-03-09): **pass** (`--pr-body-file` not provided; base-ref fallback `origin/main` -> `HEAD~1`).
 
 ## Closure Notes
 
@@ -156,7 +160,7 @@ Status legend: `[ ] pending`, `[~] partial`, `[x] complete`.
 - Last reviewed: 2026-03-09
 - Next review due: 2026-03-16
 - KPI evidence: docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md
-- Decision notes: Deterministic behave/pytest bundle and canonical all-green gate pass under warning-mode KPI policy, but ISSUE-0013 closure dependency remains open until reproducible CLI identity-continuity closure traces are attached and lifecycle language is synchronized across ISSUE-0013/0014/0015 and RED_TAG.
+- Decision notes: Deterministic behave/pytest bundle and canonical all-green gate pass under warning-mode KPI policy, but ISSUE-0013 closure dependency remains open until reproducible CLI identity-continuity closure traces are attached for identity semantic preservation, retrieval activation on self-reference recall, and confirmed identity fact promotion at commit, and lifecycle language remains synchronized across ISSUE-0013/0014/0015 and RED_TAG.
 
 - 2026-03-07: Opened as the primary bug-elimination program to align runtime behavior with the canonical turn pipeline contract and eliminate raw-utterance-first routing as the dominant defect source.
 - 2026-03-07: Cross-system traceability note — ISSUE-0013 is the implementation and bug-elimination counterpart to `ISSUE-0012-canonical-turn-pipeline-delivery-plan.md` (delivery planning/governance anchor).
@@ -206,7 +210,7 @@ Status legend: `[ ] pending`, `[~] partial`, `[x] complete`.
   - Evidence bundling now preserves segment-aware fields and applies strata precedence so semantic memory wins over same-segment episodic utterance recall (`src/testbot/evidence_retrieval.py`).
   - Deterministic proof coverage added for segment continuity, segment-constrained retrieval, and semantic-over-episodic precedence (`tests/test_memory_segments_and_strata.py`, `tests/test_evidence_retrieval_mapping.py`, `features/memory_recall.feature`, `features/steps/memory_steps.py`).
 
-- 2026-03-08: Canonical acceptance criteria considered satisfied across foundation, decisioning, and commit/audit slices; ISSUE-0013 is closed so completed canonical-turn capabilities are no longer downgraded by an open blocker in feature-status effective-state reporting.
+- 2026-03-08: Historical progress note retained for traceability: foundation/decisioning/commit slices were assessed as materially advanced at that time, but lifecycle interpretation is superseded by the active dependency gate; ISSUE-0013 remains open until AC-0013-11 exit conditions are fully satisfied.
 
 - 2026-03-08: Status artifacts were regenerated during an earlier closure attempt (`python scripts/report_feature_status.py --output docs/qa/feature-status-report.md --json-output artifacts/feature-status-summary.json`); this claim is now superseded by reopened ISSUE-0013 evidence and reverted partial canonical slice status.
 
@@ -249,5 +253,6 @@ Status legend: `[ ] pending`, `[~] partial`, `[x] complete`.
 - 2026-03-09: AC-0013-11 dependency evidence refreshed with explicit pass/fail linkage for ISSUE-0014 Phase 1 behavioral exits.
   - Deterministic targeted suites pass: BDD (`python -m behave features/memory_recall.feature features/intent_grounding.feature`) and focused regression pytests (`tests/test_pipeline_semantic_contracts.py`, `tests/test_canonical_turn_orchestrator.py`, `tests/test_intent_router.py`).
   - Canonical readiness gate now reports `status=passed` with warning-mode KPI guardrail violations: `python scripts/all_green_gate.py --json-output artifacts/all-green-gate-summary.json` (non-blocking warning on `qa_validate_kpi_guardrails`).
-  - Governance outcome: AC-0013-11 remains open (`[~]`) pending synchronized dependency satisfaction language in ISSUE-0015/ISSUE-0014 and reproducible closure-proof CLI traces.
+  - Governance validators rerun and passing: `python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main` and `python scripts/validate_issues.py --all-issue-files --base-ref origin/main` (both with documented `origin/main` -> `HEAD~1` fallback behavior).
+  - Governance outcome: AC-0013-11 remains open (`[~]`) pending synchronized dependency satisfaction language and reproducible closure-proof CLI traces for identity semantic preservation, retrieval activation on self-reference recall, and confirmed identity fact promotion at commit.
   - Evidence links: `docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md`, `docs/issues/evidence/2026-03-09-issue-0014-0013-behave.log`, `docs/issues/evidence/2026-03-09-issue-0014-0013-focused-pytests.log`, `docs/issues/evidence/2026-03-09-issue-0014-0013-all-green-gate.log`, `artifacts/all-green-gate-summary.json`.

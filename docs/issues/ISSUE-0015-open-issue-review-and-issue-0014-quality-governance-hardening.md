@@ -173,9 +173,9 @@ Review scope was limited to open issues (`open` or `in_progress`) and issue-gove
 
 ### Open blockers (red-tag)
 
-- **AC6:** **in_progress (evidence-linked, unresolved)** — governance linkage evidence is attached in ISSUE-0014/ISSUE-0013 using the 2026-03-09 deterministic bundle; dependency remains open pending synchronized closure-state language across ISSUE-0013/0014/0015.
-- **AC7:** **in_progress (partial pass)** — targeted deterministic regression coverage passes and canonical all-green now reports pass under warning-mode KPI policy; dependency remains open pending closure-proof CLI trace evidence and cross-artifact lifecycle alignment.
-- **AC9 (dependency gate):** **in_progress (unsatisfied)** — dependency evaluation was executed and documented, but remains unsatisfied until AC-0013-11 exit conditions fully pass.
+- **AC6:** **in_progress (evidence-linked, unresolved)** — governance linkage evidence is attached in ISSUE-0014/ISSUE-0013 using the 2026-03-09 deterministic bundle; dependency remains open pending synchronized lifecycle language across ISSUE-0013/0014/0015/RED_TAG and attachment of the three closure-proof CLI trace artifacts.
+- **AC7:** **in_progress (partial pass)** — targeted deterministic regression coverage passes and canonical all-green now reports pass under warning-mode KPI policy; dependency remains open pending closure-proof CLI traces for identity semantic preservation, retrieval activation on self-reference recall, and confirmed identity fact promotion at commit, plus cross-artifact lifecycle alignment.
+- **AC9 (dependency gate):** **in_progress (unsatisfied)** — dependency evaluation was executed and documented, but remains unsatisfied until AC-0013-11 exit conditions fully pass and no linked artifact uses resolved-language prematurely.
 
 ### Exit conditions for ISSUE-0015 closure (dependency on ISSUE-0013 / ISSUE-0014)
 
@@ -196,5 +196,11 @@ ISSUE-0015 remains `Status: open` and `Severity: red` until all dependency condi
 - Closure interpretation:
   - AC6: governance linkage hardening is present and evidenced, but not closable until dependency lifecycle text is synchronized.
   - AC7: deterministic coverage and gate posture are green under current warning policy; criterion remains open for dependency-governed closure semantics.
-  - AC9: dependency gate remains open because reproducible CLI identity-continuity closure-proof traces are not yet attached and cross-artifact lifecycle wording is not yet synchronized across ISSUE-0013/0014/0015 and RED_TAG.
+  - AC9: dependency gate remains open because reproducible CLI identity-continuity closure-proof traces are not yet attached for the three required proof points (identity semantic preservation, retrieval activation on self-reference recall, confirmed identity fact promotion at commit), and cross-artifact lifecycle wording must remain synchronized across ISSUE-0013/0014/0015 and RED_TAG.
 - Result: ISSUE-0015 stays `Status: open`, `Severity: red`.
+
+
+## 2026-03-09 Governance validator rerun
+
+- `python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main` -> **pass** (`origin/main` unavailable; fallback `HEAD~1`).
+- `python scripts/validate_issues.py --all-issue-files --base-ref origin/main` -> **pass** (`--pr-body-file` not provided; `origin/main` unavailable; fallback `HEAD~1`).
