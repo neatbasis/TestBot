@@ -1,6 +1,6 @@
 # Invariant Registry (Directive View)
 
-This file is a mirror view for readers in `docs/directives/`. The synchronized block below mirrors `docs/invariants/answer-policy.md` and is intentionally scoped to response-policy invariants only.
+This file is a mirror view for readers in `docs/directives/`. The synchronized block below mirrors `docs/invariants/answer-policy.md` and is intentionally scoped to response-policy invariants only (`INV-*`). Pipeline semantics use the separate `PINV-*` namespace in `docs/invariants/pipeline.md`.
 
 <!-- BEGIN_SYNCED_INVARIANTS_TABLE_AND_SCENARIO_MAP -->
 
@@ -29,4 +29,4 @@ Canonical stage transition conformance is enforced by `scripts/validate_pipeline
 
 `observe.turn → encode.candidates → stabilize.pre_route → context.resolve → intent.resolve → retrieve.evidence → policy.decide → answer.assemble → answer.validate → answer.render → answer.commit`
 
-Directive guard: intent resolution must consume enriched artifacts (`turn_observation`, `encoded_candidates`, `stabilized_turn_state`) and must not collapse raw utterance directly to interpreted intent (`U → I`).
+Directive guard: intent resolution must consume enriched artifacts (`turn_observation`, `encoded_candidates`, `stabilized_turn_state`) and must not collapse raw utterance directly to interpreted intent (`U → I`) per `PINV-003`; the fixed stage ordering requirement is `PINV-001` and stage artifact-precondition enforcement is `PINV-002`.
