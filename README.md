@@ -6,6 +6,10 @@ TestBot is a memory-grounded chatbot loop for Home Assistant Assist Satellite.
 ## Vision
 TestBot is a user-steered assistant that combines conversational memory with ingested external sources to produce evidence-backed responses without overstating certainty or autonomy.
 
+For stakeholder-critical outputs, trust must be measurable: responses should be attributable to explicit evidence references (for example `used_source_evidence_refs` plus `source_evidence_attribution` / `used_memory_refs` metadata) and fallback decisions should remain policy-explainable through directive traceability artifacts such as [docs/directives/traceability-matrix.md](docs/directives/traceability-matrix.md) and [docs/directives/source-map.md](docs/directives/source-map.md).
+
+Non-goal: TestBot does not claim perfect truth, complete source coverage, or universally correct answers across all domains.
+
 ### How Vision is operationalized
 - **Evidence-backed knowing responses**: source ingestion continuously normalizes external evidence into retrievable records, and knowing-mode answers include provenance so users can inspect what memory and source evidence informed the response.
 - **Explicit uncertainty when evidence is weak or conflicting**: trust-tier metadata is preserved for ingested sources, and disagreement between memory and source evidence resolves to visible uncertainty/clarification behavior rather than unsupported claims.
