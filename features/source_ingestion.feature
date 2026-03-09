@@ -39,3 +39,9 @@ Feature: Source-backed ingestion behavior
     Given a deterministic source-ingestion harness
     When retrieval requires evidence but returns no source-backed hits and async continuation is enabled
     Then the runtime marks continuation artifacts and returns background-ingestion progress response
+
+  @ISSUE-0013 @AC-0013-07
+  Scenario: completion proactively informs user with linked answer
+    Given a deterministic source-ingestion harness
+    When background ingestion completes for a pending request correlation key
+    Then the runtime emits completion event and proactive user message with linked grounded answer
