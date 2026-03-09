@@ -82,6 +82,8 @@ When a directive changes, the same PR must update linked artifacts to preserve e
 
 A directive change is incomplete unless traceability matrix entries and BDD scenarios remain synchronized.
 
+Pipeline-semantics directive updates must preserve ontology separation: stage-semantics linkage rows/sections must include `PINV-*` references (from `docs/invariants/pipeline.md`) and cannot be expressed exclusively via response-policy `INV-*` IDs. Mixed `PINV-*` + `INV-*` linkage is allowed only when downstream answer-policy consequences are explicitly stated. This is enforced by `python scripts/validate_pipeline_stage_conformance.py` and therefore blocks `python scripts/all_green_gate.py` on violations.
+
 ## Review and merge gate
 
 Before merge, reviewers must confirm:

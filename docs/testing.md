@@ -180,6 +180,8 @@ Run pipeline stage conformance validator directly:
 python scripts/validate_pipeline_stage_conformance.py
 ```
 
+This validator also enforces ontology separation for pipeline-semantics artifacts: stage-semantics rows in `docs/directives/traceability-matrix.md` and section rows in `docs/invariants/pipeline.md` must include at least one `PINV-*` reference, cannot rely solely on response-policy `INV-*` IDs, and may only mix `PINV-*` + `INV-*` when downstream answer-policy consequences are explicitly stated.
+
 Run BDD scenarios directly (requires canonical contributor install `pip install -e .[dev]` first):
 
 ```bash

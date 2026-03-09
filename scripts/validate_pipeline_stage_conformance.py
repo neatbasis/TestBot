@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-"""Validate canonical pipeline stage ordering and anti-projection safeguards."""
+"""Validate canonical pipeline stage ordering and ontology-separation safeguards."""
 
 from __future__ import annotations
 
 import ast
+import re
+from dataclasses import dataclass
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -25,10 +27,53 @@ REQUIRED_INTENT_PRECONDITION_KEYS: tuple[str, ...] = (
     "encoded_candidates",
     "stabilized_turn_state",
 )
+PIPELINE_INVARIANT_PATTERN = re.compile(r"\bPINV-\d+\b")
+RESPONSE_POLICY_INVARIANT_PATTERN = re.compile(r"\bINV-\d+\b")
+DOWNSTREAM_POLICY_CONSEQUENCE_MARKERS: tuple[str, ...] = (
+    "downstream answer-policy",
+    "downstream response-policy",
+    "answer-policy consequence",
+    "response-policy consequence",
+    "answer-contract consequence",
+    "downstream answer contract",
+)
 
 
 class ValidationError(RuntimeError):
     """Raised when validation source files are malformed or incomplete."""
+
+
+@dataclass(frozen=True)
+class PipelineOntologyTableRule:
+    section_heading: str | None
+    header_first_cells: tuple[str, ...]
+    description: str
+
+
+@dataclass(frozen=True)
+class MarkdownTableRow:
+    section_heading: str
+    row_label: str
+    text: str
+    line_number: int
+
+
+PIPELINE_ONTOLOGY_TABLE_RULES: dict[str, tuple[PipelineOntologyTableRule, ...]] = {
+    "docs/directives/traceability-matrix.md": (
+        PipelineOntologyTableRule(
+            section_heading=None,
+            header_first_cells=("Canonical stage group", "Phase"),
+            description="pipeline stage checkpoint rows",
+        ),
+    ),
+    "docs/invariants/pipeline.md": (
+        PipelineOntologyTableRule(
+            section_heading="## Stage transition contracts",
+            header_first_cells=("Stage",),
+            description="stage transition contract rows",
+        ),
+    ),
+}
 
 
 def _extract_stages_from_architecture_doc(path: Path) -> list[str]:
@@ -115,18 +160,104 @@ def _extract_intent_precondition_keys(path: Path) -> set[str]:
             if not test.comparators:
                 continue
             comparator = test.comparators[0]
-            if not (
-                isinstance(comparator, ast.Attribute)
-                and comparator.attr == "artifacts"
-            ):
+            if not (isinstance(comparator, ast.Attribute) and comparator.attr == "artifacts"):
                 continue
-            if not (
-                isinstance(test.ops[0], ast.NotIn)
-                and isinstance(test.left.value, str)
-            ):
+            if not (isinstance(test.ops[0], ast.NotIn) and isinstance(test.left.value, str)):
                 continue
             observed_keys.add(test.left.value)
     return observed_keys
+
+
+def _extract_markdown_table_rows_for_section(path: Path, rule: PipelineOntologyTableRule) -> list[MarkdownTableRow]:
+    lines = path.read_text(encoding="utf-8").splitlines()
+    section_line_index = 0
+    if rule.section_heading is not None:
+        section_line_index = None
+        for idx, line in enumerate(lines):
+            if line.strip() == rule.section_heading:
+                section_line_index = idx
+                break
+        if section_line_index is None:
+            raise ValidationError(f"Missing required section '{rule.section_heading}' in {path}")
+
+    rows: list[MarkdownTableRow] = []
+    found_header = False
+    for idx in range(section_line_index + 1, len(lines)):
+        stripped = lines[idx].strip()
+        if stripped.startswith("## ") and rule.section_heading is not None:
+            break
+        if not stripped.startswith("|"):
+            continue
+        cells = [cell.strip() for cell in stripped.strip("|").split("|")]
+        if not cells:
+            continue
+        if not found_header:
+            if cells[0] in rule.header_first_cells:
+                found_header = True
+            continue
+        if set(cells[0]) <= {"-", ":"}:
+            continue
+        if cells[0] in {"Phase", "Stage", "Pipeline Invariant ID", "Canonical stage group"}:
+            continue
+        rows.append(
+            MarkdownTableRow(
+                section_heading=rule.section_heading or "<document-level-table>",
+                row_label=cells[0],
+                text=" ".join(cells),
+                line_number=idx + 1,
+            )
+        )
+    if not found_header:
+        raise ValidationError(
+            f"Could not find expected table header in {rule.header_first_cells} for ontology rule in {path}"
+        )
+    return rows
+
+
+def _allows_mixed_ontology(row_text: str) -> bool:
+    lowered = row_text.lower()
+    return any(marker in lowered for marker in DOWNSTREAM_POLICY_CONSEQUENCE_MARKERS)
+
+
+def validate_pipeline_ontology_separation(
+    *,
+    traceability_doc: Path = REPO_ROOT / "docs" / "directives" / "traceability-matrix.md",
+    pipeline_invariants_doc: Path = REPO_ROOT / "docs" / "invariants" / "pipeline.md",
+) -> list[str]:
+    errors: list[str] = []
+    docs = {
+        "docs/directives/traceability-matrix.md": traceability_doc,
+        "docs/invariants/pipeline.md": pipeline_invariants_doc,
+    }
+
+    for doc_key, rules in PIPELINE_ONTOLOGY_TABLE_RULES.items():
+        path = docs[doc_key]
+        for rule in rules:
+            for row in _extract_markdown_table_rows_for_section(path, rule):
+                pipeline_refs = PIPELINE_INVARIANT_PATTERN.findall(row.text)
+                response_refs = RESPONSE_POLICY_INVARIANT_PATTERN.findall(row.text)
+                location = f"{doc_key}:{row.line_number} [{rule.section_heading} | row='{row.row_label}']"
+
+                if not pipeline_refs:
+                    if response_refs:
+                        errors.append(
+                            f"{location} violates ontology split: {rule.description} reference only response-policy IDs "
+                            f"{sorted(set(response_refs))}; add at least one PINV-* reference."
+                        )
+                    else:
+                        errors.append(
+                            f"{location} violates ontology split: {rule.description} must include at least one "
+                            "pipeline invariant reference (PINV-*)."
+                        )
+                    continue
+
+                if response_refs and not _allows_mixed_ontology(row.text):
+                    errors.append(
+                        f"{location} mixes PINV/INV references without explicit downstream answer-policy consequences; "
+                        f"include one of {DOWNSTREAM_POLICY_CONSEQUENCE_MARKERS}."
+                    )
+
+    return errors
 
 
 def validate_pipeline_stage_conformance(
@@ -134,6 +265,7 @@ def validate_pipeline_stage_conformance(
     architecture_doc: Path = REPO_ROOT / "docs" / "architecture.md",
     canonical_pipeline_doc: Path = REPO_ROOT / "docs" / "architecture" / "canonical-turn-pipeline.md",
     invariants_doc: Path = REPO_ROOT / "docs" / "invariants" / "pipeline.md",
+    traceability_doc: Path = REPO_ROOT / "docs" / "directives" / "traceability-matrix.md",
     orchestrator_path: Path = REPO_ROOT / "src" / "testbot" / "canonical_turn_orchestrator.py",
 ) -> list[str]:
     errors: list[str] = []
@@ -177,6 +309,12 @@ def validate_pipeline_stage_conformance(
             f"missing checks for keys: {missing_keys}"
         )
 
+    errors.extend(
+        validate_pipeline_ontology_separation(
+            traceability_doc=traceability_doc,
+            pipeline_invariants_doc=invariants_doc,
+        )
+    )
     return errors
 
 
