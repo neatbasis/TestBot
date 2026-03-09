@@ -22,6 +22,15 @@ ASSIST_ALTERNATIVES_ANSWER = (
 )
 TRANSITION_VALIDATION_SCHEMA_VERSION = 3
 
+LEGACY_STAGE_ALIAS_MAP: dict[str, str] = {
+    "observe.turn": "observe",
+    "encode.candidates": "encode",
+    "retrieve.evidence": "retrieve",
+    "policy.decide": "rerank",
+    "answer.assemble": "answer",
+    "answer.commit": "answer",
+}
+
 # One-release migration bridge for downstream telemetry consumers that still
 # normalize historical stage transition events keyed by legacy INV-* IDs.
 LEGACY_TO_PIPELINE_INVARIANT_REF_MAP: dict[str, str] = {
@@ -201,8 +210,13 @@ def _run_checks(
 
 
 def validate_observe_pre(state: PipelineState) -> TransitionCheckResult:
+    """Deprecated coarse-stage alias; use validate_observe_turn_pre."""
+    return validate_observe_turn_pre(state)
+
+
+def validate_observe_turn_pre(state: PipelineState) -> TransitionCheckResult:
     return _run_checks(
-        stage="observe",
+        stage="observe.turn",
         boundary="pre",
         invariant_refs=("PINV-002",),
         checks=[("user_input_required", lambda s: bool((s.user_input or "").strip()))],
@@ -211,8 +225,13 @@ def validate_observe_pre(state: PipelineState) -> TransitionCheckResult:
 
 
 def validate_observe_post(state: PipelineState) -> TransitionCheckResult:
+    """Deprecated coarse-stage alias; use validate_observe_turn_post."""
+    return validate_observe_turn_post(state)
+
+
+def validate_observe_turn_post(state: PipelineState) -> TransitionCheckResult:
     return _run_checks(
-        stage="observe",
+        stage="observe.turn",
         boundary="post",
         invariant_refs=("PINV-002",),
         checks=[("user_input_preserved", lambda s: bool((s.user_input or "").strip()))],
@@ -221,8 +240,13 @@ def validate_observe_post(state: PipelineState) -> TransitionCheckResult:
 
 
 def validate_encode_pre(state: PipelineState) -> TransitionCheckResult:
+    """Deprecated coarse-stage alias; use validate_encode_candidates_pre."""
+    return validate_encode_candidates_pre(state)
+
+
+def validate_encode_candidates_pre(state: PipelineState) -> TransitionCheckResult:
     return _run_checks(
-        stage="encode",
+        stage="encode.candidates",
         boundary="pre",
         invariant_refs=("PINV-002",),
         checks=[("user_input_available", lambda s: bool((s.user_input or "").strip()))],
@@ -231,8 +255,13 @@ def validate_encode_pre(state: PipelineState) -> TransitionCheckResult:
 
 
 def validate_encode_post(state: PipelineState) -> TransitionCheckResult:
+    """Deprecated coarse-stage alias; use validate_encode_candidates_post."""
+    return validate_encode_candidates_post(state)
+
+
+def validate_encode_candidates_post(state: PipelineState) -> TransitionCheckResult:
     return _run_checks(
-        stage="encode",
+        stage="encode.candidates",
         boundary="post",
         invariant_refs=("PINV-002",),
         checks=[("rewritten_query_available", lambda s: bool((s.rewritten_query or "").strip()))],
@@ -241,8 +270,13 @@ def validate_encode_post(state: PipelineState) -> TransitionCheckResult:
 
 
 def validate_retrieve_pre(state: PipelineState) -> TransitionCheckResult:
+    """Deprecated coarse-stage alias; use validate_retrieve_evidence_pre."""
+    return validate_retrieve_evidence_pre(state)
+
+
+def validate_retrieve_evidence_pre(state: PipelineState) -> TransitionCheckResult:
     return _run_checks(
-        stage="retrieve",
+        stage="retrieve.evidence",
         boundary="pre",
         invariant_refs=("PINV-002",),
         checks=[("rewritten_query_available", lambda s: bool((s.rewritten_query or "").strip()))],
@@ -251,8 +285,13 @@ def validate_retrieve_pre(state: PipelineState) -> TransitionCheckResult:
 
 
 def validate_retrieve_post(state: PipelineState) -> TransitionCheckResult:
+    """Deprecated coarse-stage alias; use validate_retrieve_evidence_post."""
+    return validate_retrieve_evidence_post(state)
+
+
+def validate_retrieve_evidence_post(state: PipelineState) -> TransitionCheckResult:
     return _run_checks(
-        stage="retrieve",
+        stage="retrieve.evidence",
         boundary="post",
         invariant_refs=("PINV-002",),
         checks=[("retrieval_candidates_shape", lambda s: _is_scored_candidate_list(s.retrieval_candidates))],
@@ -261,8 +300,13 @@ def validate_retrieve_post(state: PipelineState) -> TransitionCheckResult:
 
 
 def validate_rerank_pre(state: PipelineState) -> TransitionCheckResult:
+    """Deprecated coarse-stage alias; use validate_policy_decide_pre."""
+    return validate_policy_decide_pre(state)
+
+
+def validate_policy_decide_pre(state: PipelineState) -> TransitionCheckResult:
     return _run_checks(
-        stage="rerank",
+        stage="policy.decide",
         boundary="pre",
         invariant_refs=("PINV-002",),
         checks=[("retrieval_candidates_shape", lambda s: _is_scored_candidate_list(s.retrieval_candidates))],
@@ -271,8 +315,13 @@ def validate_rerank_pre(state: PipelineState) -> TransitionCheckResult:
 
 
 def validate_rerank_post(state: PipelineState) -> TransitionCheckResult:
+    """Deprecated coarse-stage alias; use validate_policy_decide_post."""
+    return validate_policy_decide_post(state)
+
+
+def validate_policy_decide_post(state: PipelineState) -> TransitionCheckResult:
     return _run_checks(
-        stage="rerank",
+        stage="policy.decide",
         boundary="post",
         invariant_refs=("PINV-002",),
         checks=[
@@ -284,8 +333,13 @@ def validate_rerank_post(state: PipelineState) -> TransitionCheckResult:
 
 
 def validate_answer_pre(state: PipelineState) -> TransitionCheckResult:
+    """Deprecated coarse-stage alias; use validate_answer_assemble_pre."""
+    return validate_answer_assemble_pre(state)
+
+
+def validate_answer_assemble_pre(state: PipelineState) -> TransitionCheckResult:
     return _run_checks(
-        stage="answer",
+        stage="answer.assemble",
         boundary="pre",
         invariant_refs=("PINV-001", "PINV-002", "PINV-003"),
         checks=[
@@ -296,8 +350,13 @@ def validate_answer_pre(state: PipelineState) -> TransitionCheckResult:
 
 
 def validate_answer_post(state: PipelineState) -> TransitionCheckResult:
+    """Deprecated coarse-stage alias; use validate_answer_commit_post."""
+    return validate_answer_commit_post(state)
+
+
+def validate_answer_commit_post(state: PipelineState) -> TransitionCheckResult:
     return _run_checks(
-        stage="answer",
+        stage="answer.commit",
         boundary="post",
         invariant_refs=("PINV-001", "PINV-002", "PINV-003"),
         checks=[
@@ -388,6 +447,116 @@ def validate_answer_post(state: PipelineState) -> TransitionCheckResult:
     )
 
 
+def validate_stabilize_pre_route_pre(state: PipelineState) -> TransitionCheckResult:
+    return _run_checks(
+        stage="stabilize.pre_route",
+        boundary="pre",
+        invariant_refs=("PINV-002",),
+        checks=[("rewritten_query_available", lambda s: bool((s.rewritten_query or "").strip()))],
+        state=state,
+    )
+
+
+def validate_stabilize_pre_route_post(state: PipelineState) -> TransitionCheckResult:
+    return _run_checks(
+        stage="stabilize.pre_route",
+        boundary="post",
+        invariant_refs=("PINV-002",),
+        checks=[("candidate_facts_recorded", lambda s: isinstance(s.candidate_facts, dict) and bool(s.candidate_facts))],
+        state=state,
+    )
+
+
+def validate_context_resolve_pre(state: PipelineState) -> TransitionCheckResult:
+    return _run_checks(
+        stage="context.resolve",
+        boundary="pre",
+        invariant_refs=("PINV-002",),
+        checks=[("candidate_facts_available", lambda s: isinstance(s.candidate_facts, dict) and bool(s.candidate_facts))],
+        state=state,
+    )
+
+
+def validate_context_resolve_post(state: PipelineState) -> TransitionCheckResult:
+    return _run_checks(
+        stage="context.resolve",
+        boundary="post",
+        invariant_refs=("PINV-002",),
+        checks=[("resolved_context_recorded", lambda s: isinstance(s.resolved_context, dict) and bool(s.resolved_context))],
+        state=state,
+    )
+
+
+def validate_intent_resolve_pre(state: PipelineState) -> TransitionCheckResult:
+    return _run_checks(
+        stage="intent.resolve",
+        boundary="pre",
+        invariant_refs=("PINV-002",),
+        checks=[("resolved_context_available", lambda s: isinstance(s.resolved_context, dict) and bool(s.resolved_context))],
+        state=state,
+    )
+
+
+def validate_intent_resolve_post(state: PipelineState) -> TransitionCheckResult:
+    return _run_checks(
+        stage="intent.resolve",
+        boundary="post",
+        invariant_refs=("PINV-002",),
+        checks=[("resolved_intent_recorded", lambda s: bool((s.resolved_intent or "").strip()))],
+        state=state,
+    )
+
+
+def validate_answer_validate_pre(state: PipelineState) -> TransitionCheckResult:
+    return _run_checks(
+        stage="answer.validate",
+        boundary="pre",
+        invariant_refs=("PINV-001",),
+        checks=[("draft_answer_present", lambda s: bool((s.draft_answer or "").strip()))],
+        state=state,
+    )
+
+
+def validate_answer_validate_post(state: PipelineState) -> TransitionCheckResult:
+    return _run_checks(
+        stage="answer.validate",
+        boundary="post",
+        invariant_refs=("PINV-001",),
+        checks=[("final_answer_present", lambda s: bool((s.final_answer or "").strip()))],
+        state=state,
+    )
+
+
+def validate_answer_render_pre(state: PipelineState) -> TransitionCheckResult:
+    return _run_checks(
+        stage="answer.render",
+        boundary="pre",
+        invariant_refs=("PINV-001",),
+        checks=[("final_answer_present", lambda s: bool((s.final_answer or "").strip()))],
+        state=state,
+    )
+
+
+def validate_answer_render_post(state: PipelineState) -> TransitionCheckResult:
+    return _run_checks(
+        stage="answer.render",
+        boundary="post",
+        invariant_refs=("PINV-001",),
+        checks=[("final_answer_present", lambda s: bool((s.final_answer or "").strip()))],
+        state=state,
+    )
+
+
+def validate_answer_commit_pre(state: PipelineState) -> TransitionCheckResult:
+    return _run_checks(
+        stage="answer.commit",
+        boundary="pre",
+        invariant_refs=("PINV-001",),
+        checks=[("final_answer_present", lambda s: bool((s.final_answer or "").strip()))],
+        state=state,
+    )
+
+
 def append_transition_validation_log(
     result: TransitionCheckResult,
     *,
@@ -398,6 +567,7 @@ def append_transition_validation_log(
         "ts": utc_now_iso(),
         "event": "stage_transition_validation",
         "schema_version": TRANSITION_VALIDATION_SCHEMA_VERSION,
+        "legacy_stage": LEGACY_STAGE_ALIAS_MAP.get(result.stage, result.stage),
         **result.to_dict(),
     }
     with log_path.open("a", encoding="utf-8") as f:
