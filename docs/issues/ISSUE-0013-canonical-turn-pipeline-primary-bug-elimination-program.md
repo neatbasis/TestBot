@@ -83,6 +83,11 @@ Status legend: `[ ] pending`, `[~] partial`, `[x] complete`.
   - exit condition EC-0013-11-A: ISSUE-0014 marks its Phase 1 behavioral criteria as satisfied with linked deterministic test evidence and reproducible CLI traces.
   - exit condition EC-0013-11-B: the deterministic validation set required by ISSUE-0014 Phase 1 runs clean in the current branch (no identity-continuity regressions).
   - exit condition EC-0013-11-C: ISSUE-0015 dependency gate is updated from open to satisfied, confirming closure-governance alignment across ISSUE-0013/0014/0015.
+  - 2026-03-09 evidence update:
+    - EC-0013-11-A: **partial** (targeted ISSUE-0014 Phase 1 suites pass, but full gate still failing).
+    - EC-0013-11-B: **fail/open** (canonical deterministic set not clean due to all-green `product_behave` failures).
+    - EC-0013-11-C: **open** (ISSUE-0015 dependency gate intentionally remains unresolved).
+    - linked evidence: `docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md`, `docs/issues/evidence/2026-03-09-issue-0014-0013-behave.log`, `docs/issues/evidence/2026-03-09-issue-0014-0013-focused-pytests.log`, `docs/issues/evidence/2026-03-09-issue-0014-0013-all-green-gate.log`, `artifacts/all-green-gate-summary.json`.
 - [~] [AC-0013-12] `docs/qa/feature-status.yaml` canonical pipeline capability slices are advanced from `planned` to implemented maturity states that reflect delivered behavior.
   - evidence: `docs/qa/feature-status.yaml`
   - evidence: `docs/qa/feature-status-report.md`
@@ -231,3 +236,9 @@ Status legend: `[ ] pending`, `[~] partial`, `[x] complete`.
     - `python -m pytest tests/test_pipeline_semantic_contracts.py::test_policy_authority_is_not_written_before_policy_decide_stage`
     - `python -m pytest tests/test_canonical_turn_orchestrator.py::test_orchestrator_stabilizes_before_route_authority_assignment`
     - `python -m pytest tests/test_pipeline_semantic_contracts.py tests/test_canonical_turn_orchestrator.py`
+
+- 2026-03-09: AC-0013-11 dependency evidence refreshed with explicit pass/fail linkage for ISSUE-0014 Phase 1 behavioral exits.
+  - Deterministic targeted suites pass: BDD (`python -m behave features/memory_recall.feature features/intent_grounding.feature`) and focused regression pytests (`tests/test_pipeline_semantic_contracts.py`, `tests/test_canonical_turn_orchestrator.py`, `tests/test_intent_router.py`).
+  - Canonical readiness gate still fails: `python scripts/all_green_gate.py --json-output artifacts/all-green-gate-summary.json` exits non-zero on `product_behave`.
+  - Governance outcome: AC-0013-11 remains open (`[~]`) pending clean deterministic gate and synchronized dependency satisfaction in ISSUE-0015.
+  - Evidence links: `docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md`, `docs/issues/evidence/2026-03-09-issue-0014-0013-behave.log`, `docs/issues/evidence/2026-03-09-issue-0014-0013-focused-pytests.log`, `docs/issues/evidence/2026-03-09-issue-0014-0013-all-green-gate.log`, `artifacts/all-green-gate-summary.json`.

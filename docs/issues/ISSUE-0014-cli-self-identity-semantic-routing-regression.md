@@ -183,6 +183,15 @@ Key observed indicators in evidence include:
 - Command: `python scripts/all_green_gate.py --json-output artifacts/all-green-gate-summary.json`
   - Expected: gate reflects resolved regression without masking unrelated failures.
 
+## Phase 1 Behavioral Exit Evidence (2026-03-09)
+
+- Evidence bundle: [`docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md`](evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md)
+- BDD result (**pass**): [`2026-03-09-issue-0014-0013-behave.log`](evidence/2026-03-09-issue-0014-0013-behave.log)
+- Focused pytest result (**pass**): [`2026-03-09-issue-0014-0013-focused-pytests.log`](evidence/2026-03-09-issue-0014-0013-focused-pytests.log)
+- Canonical all-green gate result (**fail**): [`2026-03-09-issue-0014-0013-all-green-gate.log`](evidence/2026-03-09-issue-0014-0013-all-green-gate.log), [`artifacts/all-green-gate-summary.json`](../../artifacts/all-green-gate-summary.json)
+
+Phase 1 status: **not yet satisfied**. Targeted deterministic checks pass, but the canonical all-green gate fails; ISSUE-0014 remains open/red until full gate readiness and reproducible CLI evidence are both satisfied.
+
 ## Closure Notes
 
 - 2026-03-08: Opened from production-style CLI session evidence showing stabilization progress with persistent semantic routing and fact-promotion defects in identity continuity turns.
@@ -239,3 +248,7 @@ Key observed indicators in evidence include:
     - `python -m pytest tests/test_intent_router.py::test_resolve_turn_intent_requires_diagnostic_only_mode`
     - `python -m pytest tests/test_pipeline_semantic_contracts.py::test_resolve_turn_intent_matches_canonical_intent_resolution_for_identity_followup`
 
+- 2026-03-09: Phase 1 deterministic verification set for ISSUE-0014/0013 executed and evidence-linked.
+  - Pass evidence: `python -m behave features/memory_recall.feature features/intent_grounding.feature` and focused regression suites (`tests/test_pipeline_semantic_contracts.py`, `tests/test_canonical_turn_orchestrator.py`, `tests/test_intent_router.py`).
+  - Fail evidence: canonical gate remains failing at `product_behave`, so ISSUE-0014 behavioral exit condition is still open.
+  - Evidence artifacts: `docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md`, `docs/issues/evidence/2026-03-09-issue-0014-0013-behave.log`, `docs/issues/evidence/2026-03-09-issue-0014-0013-focused-pytests.log`, `docs/issues/evidence/2026-03-09-issue-0014-0013-all-green-gate.log`, `artifacts/all-green-gate-summary.json`.
