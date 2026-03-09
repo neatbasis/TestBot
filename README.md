@@ -1,7 +1,32 @@
 # TestBot
 
 ## What
-TestBot is a memory-grounded chatbot loop for Home Assistant Assist Satellite.
+TestBot is a stateful, retrieval-augmented conversational agent with persistent memory and multi-interface interaction.
+
+### Terminology (ontology crosswalk)
+- **turn pipeline** → agent inference pipeline
+- **memory cards** → episodic memory store
+- **vector store retrieval** → retrieval-augmented generation (RAG)
+- **durable facts** → persistent memory / long-term memory
+- **CLI / satellite** → interaction interfaces
+- **structured logs** → telemetry / observability
+- **context resolution** → context management
+- **commit stage** → memory update / memory consolidation
+
+Internal names remain canonical identifiers; standard terms are provided for wider community readability.
+
+### Cognitive architecture alignment
+TestBot's pipeline mirrors a perception → memory → reasoning → action model:
+
+| Cognitive architecture | TestBot concept |
+| --- | --- |
+| perception | observe stage |
+| encoding | encode stage |
+| working memory | canonical state |
+| episodic memory | vector store |
+| reasoning | inference |
+| action | answer generation |
+| learning | commit stage |
 
 ## Vision
 TestBot is a user-steered assistant that combines conversational memory with ingested external sources to produce evidence-backed responses without overstating certainty or autonomy.
@@ -19,7 +44,7 @@ Policy-facing, testable product principles that operationalize Vision claims are
 
 ### Continuity commitments
 - **`answer.commit` is mandatory continuity write-through**: each turn must persist confirmed user facts, obligations, repair state, and assistant-turn provenance so follow-up turns inherit durable state instead of re-deriving it.
-- **Continuity evidence must stay traceable**: retrieval/context layers must treat `commit_receipt` artifacts as first-class continuity evidence so downstream behavior can point to committed anchors, not implicit guesswork.
+- **Continuity evidence must stay traceable**: retrieval/context layers must treat `commit_receipt` artifacts (memory update receipts) as first-class continuity evidence so downstream behavior can point to committed anchors, not implicit guesswork.
 - **Persistence must preserve user agency over time**: carrying forward explicit commitments lets users correct facts, close obligations, and steer repairs across turns with auditable state transitions.
 
 TestBot operates in two explicit response intents:
@@ -39,7 +64,7 @@ Project issue tracking is now standardized in-repo and remains the default workf
 - Canonical workflow: `docs/issues.md`
 - Issue records: `docs/issues/`
 - Red-tag escalation index: `docs/issues/RED_TAG.md`
-- Current canonical pipeline program: [`ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md`](docs/issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md) is the project's **primary bug-elimination program** in the current state; align canonical pipeline delivery planning from `ISSUE-0012` under this program first.
+- Current canonical pipeline program: [`ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md`](docs/issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md) is the project's **primary bug-elimination program** in the current state; align canonical turn pipeline (agent inference pipeline) delivery planning from `ISSUE-0012` under this program first.
 
 Use issue IDs (for example `ISSUE-0002`) in PR descriptions and non-trivial commit messages for any non-trivial change.
 
