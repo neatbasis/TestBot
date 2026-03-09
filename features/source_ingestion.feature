@@ -45,3 +45,9 @@ Feature: Source-backed ingestion behavior
     Given a deterministic source-ingestion harness
     When background ingestion completes for a pending request correlation key
     Then the runtime emits completion event and proactive user message with linked grounded answer
+
+  @ISSUE-0013 @AC-0013-08
+  Scenario: pending ingestion lifecycle emits ordered continuation events
+    Given a deterministic source-ingestion harness
+    When async source ingestion runs the pending request lifecycle in order
+    Then ingestion start, pending persistence, completion linkage, and proactive response are emitted in order
