@@ -133,7 +133,7 @@ def validate_pipeline_stage_conformance(
     *,
     architecture_doc: Path = REPO_ROOT / "docs" / "architecture.md",
     canonical_pipeline_doc: Path = REPO_ROOT / "docs" / "architecture" / "canonical-turn-pipeline.md",
-    invariants_doc: Path = REPO_ROOT / "docs" / "invariants.md",
+    invariants_doc: Path = REPO_ROOT / "docs" / "invariants" / "pipeline.md",
     orchestrator_path: Path = REPO_ROOT / "src" / "testbot" / "canonical_turn_orchestrator.py",
 ) -> list[str]:
     errors: list[str] = []
@@ -148,7 +148,7 @@ def validate_pipeline_stage_conformance(
     invariant_stages = _extract_stages_from_invariants_table(invariants_doc)
     if tuple(invariant_stages) != CANONICAL_STAGE_ORDER:
         errors.append(
-            "docs/invariants.md stage transition contracts must match canonical stage ordering: "
+            "docs/invariants/pipeline.md stage transition contracts must match canonical stage ordering: "
             f"expected {CANONICAL_STAGE_ORDER}, got {tuple(invariant_stages)}"
         )
 
@@ -160,7 +160,7 @@ def validate_pipeline_stage_conformance(
 
     invariants_text = invariants_doc.read_text(encoding="utf-8")
     if "U → I" not in invariants_text and "U -> I" not in invariants_text:
-        errors.append("docs/invariants.md must explicitly document the forbidden early U -> I projection guard.")
+        errors.append("docs/invariants/pipeline.md must explicitly document the forbidden early U -> I projection guard.")
 
     stage_order = _extract_orchestrator_stage_order(orchestrator_path)
     if stage_order != CANONICAL_STAGE_ORDER:

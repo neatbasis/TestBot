@@ -1,6 +1,10 @@
-# Invariant Registry (Directive View)
+# Answer Policy Invariants
 
-This file is a mirror view for readers in `docs/directives/`. The synchronized block below mirrors `docs/invariants/answer-policy.md` and is intentionally scoped to response-policy invariants only.
+This registry defines response-policy/UX contract invariants for answer behavior. Each invariant has a stable ID and explicit traceability to enforcement and verification coverage.
+
+## Canonical mirror source (exact sync block)
+
+The block between the markers below is the **single source section** for answer-policy invariants and the scenario map. `docs/directives/invariants.md` must mirror this block exactly via `python scripts/sync_invariants_mirror.py`.
 
 <!-- BEGIN_SYNCED_INVARIANTS_TABLE_AND_SCENARIO_MAP -->
 
@@ -22,11 +26,3 @@ This file is a mirror view for readers in `docs/directives/`. The synchronized b
 - `BDD-AC-04`: `features/answer_contract.feature` → `Scenario: non-memory general-knowledge fallback stays knowledge-safe`
 
 <!-- END_SYNCED_INVARIANTS_TABLE_AND_SCENARIO_MAP -->
-
-## Stage transition conformance directive
-
-Canonical stage transition conformance is enforced by `scripts/validate_pipeline_stage_conformance.py` and must preserve the exact 11-stage order:
-
-`observe.turn → encode.candidates → stabilize.pre_route → context.resolve → intent.resolve → retrieve.evidence → policy.decide → answer.assemble → answer.validate → answer.render → answer.commit`
-
-Directive guard: intent resolution must consume enriched artifacts (`turn_observation`, `encoded_candidates`, `stabilized_turn_state`) and must not collapse raw utterance directly to interpreted intent (`U → I`).

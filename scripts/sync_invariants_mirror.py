@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Sync the directive invariants mirror from canonical invariants documentation."""
+"""Sync the directive invariants mirror from canonical answer-policy invariants."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import difflib
 import sys
 from pathlib import Path
 
-CANONICAL_PATH = Path("docs/invariants.md")
+CANONICAL_PATH = Path("docs/invariants/answer-policy.md")
 MIRROR_PATH = Path("docs/directives/invariants.md")
 SYNC_BEGIN = "<!-- BEGIN_SYNCED_INVARIANTS_TABLE_AND_SCENARIO_MAP -->"
 SYNC_END = "<!-- END_SYNCED_INVARIANTS_TABLE_AND_SCENARIO_MAP -->"
@@ -30,6 +30,16 @@ def _extract_synced_block(text: str, *, path: Path) -> str:
     block = text[start:end].strip("\n")
     if not block:
         raise SyncError(f"Synced block is empty in {path}")
+
+    if "## Response-policy invariants" not in block:
+        raise SyncError(
+            f"Synced block in {path} must contain the '## Response-policy invariants' section heading"
+        )
+
+    if "## Stage transition contracts" in block:
+        raise SyncError(
+            f"Synced block in {path} must be scoped to response-policy invariants only"
+        )
 
     return block
 
@@ -79,7 +89,7 @@ def main() -> int:
         return 1
 
     MIRROR_PATH.write_text(expected_mirror, encoding="utf-8")
-    print(f"Updated {MIRROR_PATH} from {CANONICAL_PATH}.")
+    print(f"Updated {MIRROR_PATH} from canonical answer-policy source {CANONICAL_PATH}.")
     return 0
 
 

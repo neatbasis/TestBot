@@ -6,12 +6,14 @@ This policy defines how directive artifacts are versioned and changed. It applie
 
 The following directive documents are canonical references and must be treated as the source of truth when processing directive changes:
 
-- `docs/invariants.md` (canonical invariant registry)
+- `docs/invariants.md` (invariant index and migration boundary)
+- `docs/invariants/answer-policy.md` (canonical response-policy invariant registry)
+- `docs/invariants/pipeline.md` (canonical pipeline semantics invariant registry)
 - `docs/directives/source-map.md`
 - `docs/directives/terms.md`
 - `docs/directives/traceability-matrix.md`
 
-`docs/directives/invariants.md` is a required mirror of the canonical sync block in `docs/invariants.md` and must not diverge on invariant IDs, invariant statements, or scenario-ID mappings.
+`docs/directives/invariants.md` is a required mirror of the canonical sync block in `docs/invariants/answer-policy.md` and must not diverge on invariant IDs, invariant statements, or scenario-ID mappings.
 
 If a change conflicts with these references, either:
 
@@ -22,7 +24,10 @@ If a change conflicts with these references, either:
 
 For any invariant change, apply updates in this order:
 
-1. Edit `docs/invariants.md` first (canonical source-of-truth).
+1. Edit the appropriate canonical source first:
+   - `docs/invariants/answer-policy.md` for response-policy invariant changes.
+   - `docs/invariants/pipeline.md` for stage semantics and anti-projection changes.
+   - `docs/invariants.md` to maintain index/migration-boundary guidance when scope changes.
 2. Run `python scripts/sync_invariants_mirror.py` to refresh `docs/directives/invariants.md` from the canonical sync block.
 3. Run `python scripts/sync_invariants_mirror.py --check` (or `python scripts/validate_invariant_sync.py`) and ensure it passes before merge.
 
