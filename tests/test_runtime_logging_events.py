@@ -753,6 +753,10 @@ def test_chat_loop_debug_trace_logs_structured_payload_for_queryable_policy_fiel
 
     policy = debug_event["payload"]["debug.policy"]
     assert policy["reject_code"] == "NO_CITABLE_MEMORY_EVIDENCE"
+    assert policy["fallback_reason"] in {
+        "memory_recall_no_confident_hit",
+        "ambiguous_memory_candidates_without_ask",
+    }
     assert policy["counterfactuals"]["alternate_routing_policy_checks"] == {
         "ask_clarifying_question_passes": False,
         "route_to_ask_passes": False,

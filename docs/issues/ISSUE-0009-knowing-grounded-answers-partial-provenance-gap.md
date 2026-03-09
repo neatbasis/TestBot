@@ -41,10 +41,10 @@ The `knowing_grounded_answers` capability remains `partial`. ISSUE-0009 is the p
 ## Work Plan
 
 - [x] Capture production-debug evidence trace and map symptoms to ISSUE-0009/ISSUE-0010 acceptance criteria (`docs/issues/evidence/production-debug-cli-trace-2026-03-07.md`).
-- [ ] **Remaining delta: confident memory-recall recovery** — fix equivalent-candidate ambiguity/tie-break flow so `features/memory_recall.feature:22` passes consistently.
-- [ ] **Remaining delta: citation-context format** — align memory-hit citation/provenance formatting with deterministic contract expectations across BDD and pytest parity checks.
-- [ ] **Remaining delta: debug reason accuracy** — ensure debug/trace reason values reflect true confidence/ambiguity branch decisions for memory-recall turns.
-- [ ] Regenerate report/status artifacts with existing scripts only after acceptance criteria 1-3 are fully implemented and validated as passing.
+- [x] **Remaining delta: confident memory-recall recovery** — fix equivalent-candidate ambiguity/tie-break flow so `features/memory_recall.feature:22` passes consistently.
+- [x] **Remaining delta: citation-context format** — align memory-hit citation/provenance formatting with deterministic contract expectations across BDD and pytest parity checks.
+- [x] **Remaining delta: debug reason accuracy** — ensure debug/trace reason values reflect true confidence/ambiguity branch decisions for memory-recall turns.
+- [x] Regenerate report/status artifacts with existing scripts only after acceptance criteria 1-3 are fully implemented and validated as passing (`artifacts/all-green-gate-summary.json`, `logs/turn_analytics_summary.json`).
 
 ### Remaining delta stage map
 
@@ -70,3 +70,5 @@ The `knowing_grounded_answers` capability remains `partial`. ISSUE-0009 is the p
 ## Closure Notes
 
 - 2026-03-06: Opened to provide capability-specific governance traceability for partial knowing-mode grounded answers.
+
+- 2026-03-09: Completed remaining deltas for memory-recall recovery, citation-context formatting, and debug fallback reason accuracy; reran deterministic verification and refreshed readiness artifacts.

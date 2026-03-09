@@ -70,6 +70,7 @@ Feature: Answer citation contract enforcement
     Given a low-confidence recall pipeline state with ambiguous references
     When the structured debug payload is built for memory recall
     Then the debug payload includes explicit observation and policy layers
+    And the debug payload policy fallback reason should be "ambiguous_memory_candidates_without_ask"
     And the fallback decision includes considered alternatives and rejection reasons
     And rejected-turn diagnostics include nearest failure gate details
     And debug counterfactuals include threshold and alternate-routing checks

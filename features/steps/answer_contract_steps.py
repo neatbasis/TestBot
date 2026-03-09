@@ -318,6 +318,13 @@ def step_then_debug_payload_includes_observation_and_policy_layers(context) -> N
     assert observation["ambiguity_state"]["anaphora_detected"] is True
 
 
+@then('the debug payload policy fallback reason should be "{fallback_reason}"')
+def step_then_debug_payload_policy_fallback_reason(context, fallback_reason: str) -> None:
+    observed = str(context.debug_payload["debug.policy"].get("fallback_reason") or "")
+    assert observed
+    assert observed != "decision_object_mapping"
+
+
 @then("the fallback decision includes considered alternatives and rejection reasons")
 def step_then_fallback_decision_includes_alternatives_with_reasons(context) -> None:
     alternatives = context.debug_payload["debug.policy"]["considered_alternatives"]
