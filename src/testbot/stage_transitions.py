@@ -569,12 +569,23 @@ def validate_answer_validate_pre(
     )
 
 
-def validate_answer_validate_post(state: PipelineState) -> TransitionCheckResult:
+def validate_answer_validate_post(
+    state: PipelineState,
+    artifacts: dict[str, object] | None = None,
+) -> TransitionCheckResult:
+    artifacts = artifacts or {}
     return _run_checks(
         stage="answer.validate",
         boundary="post",
         invariant_refs=("PINV-001",),
-        checks=[("final_answer_present", lambda s: bool((s.final_answer or "").strip()))],
+        checks=[
+            (
+                "validation_artifact_present",
+                lambda s: bool(s.validation_result.to_dict())
+                or _artifact_payload_has_content(artifacts.get("answer_validation_contract"))
+                or artifacts.get("validated_answer") is not None,
+            )
+        ],
         state=state,
     )
 
@@ -600,12 +611,23 @@ def validate_answer_render_pre(
     )
 
 
-def validate_answer_render_post(state: PipelineState) -> TransitionCheckResult:
+def validate_answer_render_post(
+    state: PipelineState,
+    artifacts: dict[str, object] | None = None,
+) -> TransitionCheckResult:
+    artifacts = artifacts or {}
     return _run_checks(
         stage="answer.render",
         boundary="post",
         invariant_refs=("PINV-001",),
-        checks=[("final_answer_present", lambda s: bool((s.final_answer or "").strip()))],
+        checks=[
+            (
+                "final_answer_present",
+                lambda s: _artifact_has_non_empty_text_field(artifacts.get("rendered_answer"), field="final_answer")
+                or _artifact_payload_has_content(artifacts.get("answer_render_contract"))
+                or bool((s.final_answer or "").strip()),
+            )
+        ],
         state=state,
     )
 

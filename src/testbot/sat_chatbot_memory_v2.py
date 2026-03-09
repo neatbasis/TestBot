@@ -3196,7 +3196,7 @@ def _run_canonical_turn_pipeline(
         )
         if not ctx.artifacts["answer_validation_contract"].passed:
             raise RuntimeError("answer assembly contract validation failed before render/commit")
-        _validate_and_log_transition(validate_answer_validate_post(ctx.state))
+        _validate_and_log_transition(validate_answer_validate_post(ctx.state, ctx.artifacts))
         append_pipeline_snapshot("answer.validate", ctx.state)
         return ctx
 
@@ -3208,7 +3208,7 @@ def _run_canonical_turn_pipeline(
             validation=ctx.artifacts["answer_validation_contract"],
             preferred_text=ctx.artifacts["rendered_answer"].final_answer,
         )
-        _validate_and_log_transition(validate_answer_render_post(ctx.state))
+        _validate_and_log_transition(validate_answer_render_post(ctx.state, ctx.artifacts))
         append_pipeline_snapshot("answer.render", ctx.state)
         return ctx
 
