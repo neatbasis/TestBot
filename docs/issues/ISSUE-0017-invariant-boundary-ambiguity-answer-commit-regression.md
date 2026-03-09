@@ -51,19 +51,27 @@ This indicates an invariant-definition gap: response-policy constraints are not 
 
 ## Work Plan
 
-- [ ] Capture minimal deterministic reproduction fixture for the pending-lookup CLI path in unit/integration tests.
-- [ ] Normalize fallback-policy predicate definitions so assist/dont-know pending-lookup behavior is unambiguous and non-conflicting.
-- [ ] Decouple commit-post checks into concern-specific groups (policy, alignment/provenance integrity, pipeline-stage semantics) while preserving existing contracts.
-- [ ] Sync invariant docs and directive mirror text to match executable policy.
-- [ ] Validate with targeted pytest + governance validators + canonical all-green gate.
+- [x] Capture minimal deterministic reproduction fixture for the pending-lookup CLI path in unit/integration tests (unit/integration coverage landed).
+- [x] Normalize fallback-policy predicate definitions so assist/dont-know pending-lookup behavior is unambiguous and non-conflicting.
+- [x] Decouple commit-post checks into concern-specific groups (policy, alignment/provenance integrity, pipeline-stage semantics) while preserving existing contracts.
+- [x] Sync invariant docs and directive mirror text to match executable policy.
+- [ ] Validate with targeted pytest + governance validators + canonical all-green gate (including the reopened CLI-path evidence set).
 
 ## Verification
 
-- Pending implementation.
+- Implementation delivered in:
+  - `ad5d5e3` (`src/testbot/stage_transitions.py` fallback classification normalization)
+  - `70115a8` (`src/testbot/stage_transitions.py` concern-specific validator refactor + `tests/test_alignment_transitions.py` coverage)
+  - `a90a466` (pending-lookup regression path coverage in `tests/test_runtime_logging_events.py`)
+  - `6291fe3` (invariant/directive and issue-governance text sync)
 - Initial duplicate-prevention pre-check command executed successfully:
   - `python scripts/report_feature_status.py --output docs/qa/feature-status-report.md --json-output artifacts/feature-status-summary.json` (pass)
+- Reopen evidence (operator report, 2026-03-09): with `SOURCE_INGEST_ASYNC_CONTINUATION=1 TESTBOT_DEBUG=1 testbot --mode cli --debug-verbose`, first-turn `What is life?` entered `pending_lookup_background_ingestion` (`answer_mode=assist`, `fallback_action=ANSWER_UNKNOWN`) and produced uncertainty fallback text; issue remains open until the expected pending-lookup UX/policy outcome is explicitly validated and attached to deterministic acceptance evidence.
+- Canonical validation commands for this issue remain mandatory before closure (`pytest` targets + issue validators + `all_green_gate`).
 
 ## Closure Notes
 
 - 2026-03-09: Opened to track invariant-definition and enforcement-boundary ambiguity causing runtime `answer.commit.post` assertion failures on pending-lookup fallback branches.
 - Routed under ISSUE-0013 as canonical pipeline bug-elimination anchor with explicit ISSUE-0010 linkage for unknowing fallback contract semantics.
+- 2026-03-09: Marked resolved after fallback normalization, commit-post validator separation, deterministic regression coverage, and invariant/doc sync landed.
+- 2026-03-09: Reopened after operator CLI verification under `SOURCE_INGEST_ASYNC_CONTINUATION=1` showed unresolved pending-lookup closure evidence gap; do not re-close until canonical validation bundle and explicit expected-outcome evidence are attached.
