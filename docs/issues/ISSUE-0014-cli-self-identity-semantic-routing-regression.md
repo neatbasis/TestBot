@@ -190,9 +190,18 @@ Key observed indicators in evidence include:
 - Focused pytest result (**pass**): [`2026-03-09-issue-0014-0013-focused-pytests.log`](evidence/2026-03-09-issue-0014-0013-focused-pytests.log)
 - Canonical all-green gate result (**pass with warning mode**): [`2026-03-09-issue-0014-0013-all-green-gate.log`](evidence/2026-03-09-issue-0014-0013-all-green-gate.log), [`artifacts/all-green-gate-summary.json`](../../artifacts/all-green-gate-summary.json)
 
-Phase 1 status: **partially satisfied**. Targeted deterministic checks pass and the canonical gate now reports `status=passed` with warning-mode KPI guardrail violations (non-blocking by current gate policy). Dependency state remains **open** until reproducible CLI identity-continuity evidence and cross-issue closure synchronization (ISSUE-0013/ISSUE-0015) are explicitly marked complete.
+Phase 1 status: **partially satisfied**. Targeted deterministic checks pass and the canonical gate now reports `status=passed` with warning-mode KPI guardrail violations (non-blocking by current gate policy). Dependency state remains **open** until reproducible CLI identity-continuity closure-proof traces are attached and cross-issue lifecycle language is synchronized across ISSUE-0013, ISSUE-0014, ISSUE-0015, and RED_TAG.
 
 ## Closure Notes
+
+- 2026-03-09: Closure posture remains open by dependency gate; see synchronized red-tag triage note below for current blocker state.
+
+## Red-tag triage note (dependency gate)
+
+- Last reviewed: 2026-03-09
+- Next review due: 2026-03-16
+- KPI evidence: docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md
+- Decision notes: Phase 1 deterministic suites are passing and canonical gate is passing under warning-mode KPI policy; issue remains open/red until closure-proof CLI identity-continuity traces are attached and dependency/closure language is synchronized with ISSUE-0013, ISSUE-0015, and RED_TAG.
 
 - 2026-03-08: Opened from production-style CLI session evidence showing stabilization progress with persistent semantic routing and fact-promotion defects in identity continuity turns.
 

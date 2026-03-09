@@ -84,8 +84,8 @@ Status legend: `[ ] pending`, `[~] partial`, `[x] complete`.
   - exit condition EC-0013-11-B: the deterministic validation set required by ISSUE-0014 Phase 1 runs clean in the current branch (no identity-continuity regressions).
   - exit condition EC-0013-11-C: ISSUE-0015 dependency gate is updated from open to satisfied, confirming closure-governance alignment across ISSUE-0013/0014/0015.
   - 2026-03-09 evidence update:
-    - EC-0013-11-A: **partial** (targeted ISSUE-0014 Phase 1 suites pass, but full gate still failing).
-    - EC-0013-11-B: **fail/open** (canonical deterministic set not clean due to all-green `product_behave` failures).
+    - EC-0013-11-A: **partial** (targeted ISSUE-0014 Phase 1 suites pass, but reproducible CLI identity-continuity closure traces are not yet attached as closure-proof artifacts).
+    - EC-0013-11-B: **partial/open** (required deterministic suites and canonical gate pass under current warning policy; dependency remains open until CLI closure-proof traces are added and lifecycle language is synchronized across ISSUE-0014/ISSUE-0015/RED_TAG).
     - EC-0013-11-C: **open** (ISSUE-0015 dependency gate intentionally remains unresolved).
     - linked evidence: `docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md`, `docs/issues/evidence/2026-03-09-issue-0014-0013-behave.log`, `docs/issues/evidence/2026-03-09-issue-0014-0013-focused-pytests.log`, `docs/issues/evidence/2026-03-09-issue-0014-0013-all-green-gate.log`, `artifacts/all-green-gate-summary.json`.
 - [~] [AC-0013-12] `docs/qa/feature-status.yaml` canonical pipeline capability slices are advanced from `planned` to implemented maturity states that reflect delivered behavior.
@@ -148,6 +148,15 @@ Status legend: `[ ] pending`, `[~] partial`, `[x] complete`.
   - Expected: deterministic merge/readiness gate passes with canonical pipeline tests included.
 
 ## Closure Notes
+
+- 2026-03-09: Closure posture remains open by dependency gate; see synchronized red-tag triage note below for current blocker state.
+
+## Red-tag triage note (dependency gate)
+
+- Last reviewed: 2026-03-09
+- Next review due: 2026-03-16
+- KPI evidence: docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md
+- Decision notes: Deterministic behave/pytest bundle and canonical all-green gate pass under warning-mode KPI policy, but ISSUE-0013 closure dependency remains open until reproducible CLI identity-continuity closure traces are attached and lifecycle language is synchronized across ISSUE-0013/0014/0015 and RED_TAG.
 
 - 2026-03-07: Opened as the primary bug-elimination program to align runtime behavior with the canonical turn pipeline contract and eliminate raw-utterance-first routing as the dominant defect source.
 - 2026-03-07: Cross-system traceability note — ISSUE-0013 is the implementation and bug-elimination counterpart to `ISSUE-0012-canonical-turn-pipeline-delivery-plan.md` (delivery planning/governance anchor).
