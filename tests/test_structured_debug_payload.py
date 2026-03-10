@@ -72,6 +72,8 @@ def test_structured_debug_payload_knowledge_includes_contract_gate_scalars() -> 
 
     _assert_gate_shape(payload["debug.contract"]["answer_contract_gate"])
     _assert_gate_shape(payload["debug.contract"]["general_knowledge_contract_gate"])
+    assert payload["debug.contract"]["general_knowledge_contract_applicability"] == "applicable"
+    assert payload["debug.contract"]["general_knowledge_contract_failed_when_applicable"] is False
 
 
 
@@ -472,3 +474,30 @@ def test_debug_payload_generation_is_observational_only_for_pipeline_state() -> 
 
     assert state.confidence_decision.to_dict() == before_confidence
     assert state.invariant_decisions.to_dict() == before_invariant
+
+
+def test_structured_debug_payload_non_applicable_gk_contract_does_not_emit_false_failure() -> None:
+    state = PipelineState(
+        user_input="help me figure this out",
+        rewritten_query="help me figure this out",
+        classified_intent="knowledge_question",
+        resolved_intent="knowledge_question",
+        confidence_decision={
+            "context_confident": False,
+            "ambiguity_detected": False,
+            "retrieval_branch": "direct_answer",
+        },
+        invariant_decisions={
+            "answer_mode": "assist",
+            "fallback_action": "ANSWER_GENERAL_KNOWLEDGE",
+            "answer_contract_valid": True,
+            "general_knowledge_contract_valid": False,
+            "general_knowledge_contract_applicability": "not_applicable",
+        },
+    )
+
+    payload = _build_debug_turn_payload(state=state, intent_label="knowledge_question", hits=[])
+
+    assert payload["debug.contract"]["general_knowledge_contract_gate"]["passed"] is True
+    assert payload["debug.contract"]["general_knowledge_contract_applicability"] == "not_applicable"
+    assert payload["debug.contract"]["general_knowledge_contract_failed_when_applicable"] is False

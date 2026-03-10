@@ -1468,6 +1468,7 @@ def _derive_response_blocker_reason(
     ambiguity_detected: bool,
     answer_contract_valid: bool,
     general_knowledge_contract_valid: bool,
+    general_knowledge_contract_applicability: str,
 ) -> str:
     signal = derive_reject_signal(
         intent_label="non_memory",
@@ -1479,6 +1480,7 @@ def _derive_response_blocker_reason(
         ambiguity_detected=ambiguity_detected,
         answer_contract_valid=answer_contract_valid,
         general_knowledge_contract_valid=general_knowledge_contract_valid,
+        general_knowledge_contract_applicability=general_knowledge_contract_applicability,
     )
     return signal.reason
 
@@ -1494,6 +1496,7 @@ def _derive_reject_signal(
     ambiguity_detected: bool,
     answer_contract_valid: bool,
     general_knowledge_contract_valid: bool,
+    general_knowledge_contract_applicability: str,
 ) -> RejectSignal:
     return derive_reject_signal(
         intent_label=intent_label,
@@ -1505,6 +1508,7 @@ def _derive_reject_signal(
         ambiguity_detected=ambiguity_detected,
         answer_contract_valid=answer_contract_valid,
         general_knowledge_contract_valid=general_knowledge_contract_valid,
+        general_knowledge_contract_applicability=general_knowledge_contract_applicability,
     )
 
 
@@ -1517,6 +1521,7 @@ def _derive_response_blocker_reason_legacy(
     ambiguity_detected: bool,
     answer_contract_valid: bool,
     general_knowledge_contract_valid: bool,
+    general_knowledge_contract_applicability: str,
 ) -> str:
     if answer_mode == "clarify" or fallback_action in {"ASK_CLARIFYING_QUESTION", "ROUTE_TO_ASK"}:
         if hit_count == 0:
@@ -1621,6 +1626,7 @@ def _counterfactual_policy_passes(
     ambiguity_detected: bool,
     answer_contract_valid: bool,
     general_knowledge_contract_valid: bool,
+    general_knowledge_contract_applicability: str,
 ) -> bool:
     action_to_mode = {
         "ROUTE_TO_ASK": "clarify",
@@ -1642,6 +1648,7 @@ def _counterfactual_policy_passes(
         ambiguity_detected=ambiguity_detected,
         answer_contract_valid=answer_contract_valid,
         general_knowledge_contract_valid=general_knowledge_contract_valid,
+        general_knowledge_contract_applicability=general_knowledge_contract_applicability,
     )
     return signal.reject_code == "NONE"
 
@@ -1760,6 +1767,19 @@ def _validate_debug_turn_payload_schema(payload: dict[str, object]) -> None:
                     f"expected={sorted(required_gate_fields)}, actual={sorted(gate.keys())}"
                 )
 
+        if section_key == "debug.contract":
+            applicability = section.get("general_knowledge_contract_applicability")
+            if applicability not in {"applicable", "not_applicable"}:
+                raise ValueError(
+                    "debug payload schema drift: debug.contract.general_knowledge_contract_applicability "
+                    "must be 'applicable' or 'not_applicable'"
+                )
+            if not isinstance(section.get("general_knowledge_contract_failed_when_applicable"), bool):
+                raise ValueError(
+                    "debug payload schema drift: debug.contract.general_knowledge_contract_failed_when_applicable "
+                    "must be a boolean"
+                )
+
 def _build_debug_turn_payload(*, state: PipelineState, intent_label: str, hits: list[Document]) -> dict[str, object]:
     confidence_payload = state.confidence_decision.to_dict()
     invariant_payload = state.invariant_decisions.to_dict()
@@ -1770,6 +1790,9 @@ def _build_debug_turn_payload(*, state: PipelineState, intent_label: str, hits: 
     ambiguity_detected = bool(confidence_payload.get("ambiguity_detected", False))
     answer_contract_valid = bool(invariant_payload.get("answer_contract_valid", True))
     general_knowledge_contract_valid = bool(invariant_payload.get("general_knowledge_contract_valid", True))
+    general_knowledge_contract_applicability = str(
+        invariant_payload.get("general_knowledge_contract_applicability", "applicable") or "applicable"
+    )
     scored_candidates = confidence_payload.get("scored_candidates", [])
     top_score = 0.0
     second_score = 0.0
@@ -1797,6 +1820,7 @@ def _build_debug_turn_payload(*, state: PipelineState, intent_label: str, hits: 
         ambiguity_detected=ambiguity_detected,
         answer_contract_valid=answer_contract_valid,
         general_knowledge_contract_valid=general_knowledge_contract_valid,
+        general_knowledge_contract_applicability=general_knowledge_contract_applicability,
     )
     doc_ids = [(doc.id or doc.metadata.get("doc_id") or "") for doc in hits[:3]]
     ambiguity_score = 1.0 if not ambiguity_detected else 0.0
@@ -1892,8 +1916,15 @@ def _build_debug_turn_payload(*, state: PipelineState, intent_label: str, hits: 
         threshold=1.0,
     )
     general_knowledge_contract_gate = _gate_metrics(
-        passed=general_knowledge_contract_valid,
-        score=1.0 if general_knowledge_contract_valid else 0.0,
+        passed=(
+            general_knowledge_contract_applicability == "not_applicable"
+            or general_knowledge_contract_valid
+        ),
+        score=(
+            1.0
+            if general_knowledge_contract_applicability == "not_applicable"
+            else (1.0 if general_knowledge_contract_valid else 0.0)
+        ),
         threshold=1.0,
     )
 
@@ -1959,6 +1990,7 @@ def _build_debug_turn_payload(*, state: PipelineState, intent_label: str, hits: 
         ambiguity_detected=ambiguity_detected,
         answer_contract_valid=answer_contract_valid,
         general_knowledge_contract_valid=general_knowledge_contract_valid,
+        general_knowledge_contract_applicability=general_knowledge_contract_applicability,
     )
     route_to_ask_policy_passes = _counterfactual_policy_passes(
         intent_label=intent_label,
@@ -1969,6 +2001,7 @@ def _build_debug_turn_payload(*, state: PipelineState, intent_label: str, hits: 
         ambiguity_detected=ambiguity_detected,
         answer_contract_valid=answer_contract_valid,
         general_knowledge_contract_valid=general_knowledge_contract_valid,
+        general_knowledge_contract_applicability=general_knowledge_contract_applicability,
     )
 
     payload = {
@@ -2044,6 +2077,10 @@ def _build_debug_turn_payload(*, state: PipelineState, intent_label: str, hits: 
         "debug.contract": {
             "answer_contract_gate": answer_contract_gate,
             "general_knowledge_contract_gate": general_knowledge_contract_gate,
+            "general_knowledge_contract_applicability": general_knowledge_contract_applicability,
+            "general_knowledge_contract_failed_when_applicable": (
+                general_knowledge_contract_applicability == "applicable" and not general_knowledge_contract_valid
+            ),
         },
         "debug.policy": {
             "chosen_action": fallback_action,
@@ -2392,6 +2429,11 @@ def answer_validate(
     )
 
     if assembled.capability_help_short_circuit:
+        general_knowledge_contract_valid, general_knowledge_contract_applicability, contract_exempt_reason = assess_general_knowledge_contract(
+            assembled.final_answer,
+            provenance_types=provenance_types,
+            confidence_decision=state.confidence_decision,
+        )
         alignment_decision = evaluate_alignment_decision(
             user_input=state.user_input,
             draft_answer="",
@@ -2413,7 +2455,9 @@ def answer_validate(
                 "response_contains_claims": False,
                 "has_required_memory_citation": False,
                 "answer_contract_valid": True,
-                "general_knowledge_contract_valid": True,
+                "general_knowledge_contract_valid": general_knowledge_contract_valid,
+                "general_knowledge_contract_applicability": general_knowledge_contract_applicability,
+                "contract_exempt_reason": contract_exempt_reason,
                 "has_general_knowledge_marker": False,
                 "general_knowledge_confidence_gate_passed": True,
                 "answer_mode": "assist",
@@ -2423,16 +2467,12 @@ def answer_validate(
             alignment_decision=alignment_decision,
         )
 
-    general_knowledge_contract_valid = (
-        True
-        if assembled.fallback_action == "ANSWER_TIME"
-        else validate_general_knowledge_contract(
-            assembled.final_answer,
-            provenance_types=provenance_types,
-            confidence_decision=state.confidence_decision,
-        )
+    pre_enforcement_general_knowledge_contract_valid, _, _ = assess_general_knowledge_contract(
+        assembled.final_answer,
+        provenance_types=provenance_types,
+        confidence_decision=state.confidence_decision,
     )
-    if assembled.final_answer != FALLBACK_ANSWER and not general_knowledge_contract_valid and not (
+    if assembled.final_answer != FALLBACK_ANSWER and not pre_enforcement_general_knowledge_contract_valid and not (
         assembled.social_or_non_knowledge_intent
         and bool(assembled.draft_answer)
         and assembled.final_answer == assembled.draft_answer
@@ -2445,6 +2485,12 @@ def answer_validate(
             packed_history=packed_history,
         )
         assembled = replace(assembled, final_answer=safe_final)
+
+    general_knowledge_contract_valid, general_knowledge_contract_applicability, contract_exempt_reason = assess_general_knowledge_contract(
+        assembled.final_answer,
+        provenance_types=provenance_types,
+        confidence_decision=state.confidence_decision,
+    )
 
     alignment_decision = evaluate_alignment_decision(
         user_input=state.user_input,
@@ -2512,6 +2558,8 @@ def answer_validate(
         "has_required_memory_citation": has_required_memory_citation(assembled.draft_answer),
         "answer_contract_valid": validate_answer_contract(assembled.draft_answer),
         "general_knowledge_contract_valid": general_knowledge_contract_valid,
+        "general_knowledge_contract_applicability": general_knowledge_contract_applicability,
+        "contract_exempt_reason": contract_exempt_reason,
         "has_general_knowledge_marker": has_general_knowledge_marker(assembled.final_answer),
         "general_knowledge_confidence_gate_passed": passes_general_knowledge_confidence_gate(state.confidence_decision),
         "answer_mode": answer_mode,
@@ -3079,6 +3127,37 @@ def validate_general_knowledge_contract(
     return has_general_knowledge_marker(text) and passes_general_knowledge_confidence_gate(confidence_decision)
 
 
+def assess_general_knowledge_contract(
+    text: str,
+    *,
+    provenance_types: list[ProvenanceType],
+    confidence_decision: dict[str, object],
+) -> tuple[bool, str, str]:
+    if is_clarification_answer(text):
+        return True, "not_applicable", "clarification_response"
+    if text in {
+        ASSIST_ALTERNATIVES_ANSWER,
+        NON_KNOWLEDGE_UNCERTAINTY_ANSWER,
+        FALLBACK_ANSWER,
+        BACKGROUND_INGESTION_PROGRESS_ANSWER,
+        DENY_ANSWER,
+    } or _is_capabilities_help_answer(text):
+        return True, "not_applicable", "exempt_response_type"
+    if not response_contains_claims(text):
+        return True, "not_applicable", "no_claims"
+    if ProvenanceType.GENERAL_KNOWLEDGE not in provenance_types:
+        return True, "not_applicable", "no_general_knowledge_provenance"
+    return (
+        validate_general_knowledge_contract(
+            text,
+            provenance_types=provenance_types,
+            confidence_decision=confidence_decision,
+        ),
+        "applicable",
+        "none",
+    )
+
+
 def is_unsafe_user_request(text: str) -> bool:
     lowered = (text or "").lower()
     return bool(re.search(r"\b(bypass|exploit|weapon|harm|poison|malware)\b", lowered))
@@ -3110,10 +3189,12 @@ def evaluate_alignment_decision(
         normalized_margin = _clamp01(observed_margin / required_margin) if required_margin > 0.0 else 1.0
         return observed_margin, required_margin, normalized_margin
 
-    contract_exempt_response = is_clarification_answer(final_answer) or final_answer in {
-        ASSIST_ALTERNATIVES_ANSWER,
-        NON_KNOWLEDGE_UNCERTAINTY_ANSWER,
-    } or _is_capabilities_help_answer(final_answer)
+    _, general_knowledge_contract_applicability, contract_exempt_reason = assess_general_knowledge_contract(
+        final_answer,
+        provenance_types=provenance_types,
+        confidence_decision=confidence_decision,
+    )
+    contract_exempt_response = contract_exempt_reason in {"clarification_response", "exempt_response_type"}
     has_claims = response_contains_claims(draft_answer)
     raw_claim_text_detected = raw_claim_like_text_detected(draft_answer)
     has_citation = has_required_memory_citation(draft_answer)
@@ -3193,6 +3274,8 @@ def evaluate_alignment_decision(
                 "has_required_memory_citation": has_citation,
                 "citation_required_for_mode": citation_required_for_mode,
                 "citation_check_applicable": citation_check_applicable,
+                "general_knowledge_contract_applicability": general_knowledge_contract_applicability,
+                "contract_exempt_reason": contract_exempt_reason,
                 "context_confident": context_confident,
                 "unsafe_request": unsafe_request,
                 "confidence_margin_observed": round(observed_margin, 4),

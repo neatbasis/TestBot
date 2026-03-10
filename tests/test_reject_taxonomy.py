@@ -6,7 +6,7 @@ from testbot.pipeline_state import PipelineState
 from testbot.sat_chatbot_memory_v2 import _build_debug_turn_payload
 
 
-def _policy_for(*, intent: str, answer_mode: str, fallback_action: str, context_confident: bool, ambiguity: bool, hit_count: int = 0, answer_contract_valid: bool = True, general_knowledge_contract_valid: bool = True) -> dict[str, object]:
+def _policy_for(*, intent: str, answer_mode: str, fallback_action: str, context_confident: bool, ambiguity: bool, hit_count: int = 0, answer_contract_valid: bool = True, general_knowledge_contract_valid: bool = True, general_knowledge_contract_applicability: str = "applicable") -> dict[str, object]:
     state = PipelineState(
         user_input="u",
         rewritten_query="u",
@@ -24,6 +24,7 @@ def _policy_for(*, intent: str, answer_mode: str, fallback_action: str, context_
             "fallback_action": fallback_action,
             "answer_contract_valid": answer_contract_valid,
             "general_knowledge_contract_valid": general_knowledge_contract_valid,
+            "general_knowledge_contract_applicability": general_knowledge_contract_applicability,
         },
     )
     hits = [] if hit_count == 0 else [Document(page_content="x", metadata={"doc_id": "d"})] * hit_count
@@ -80,3 +81,18 @@ def test_reject_taxonomy_backward_compatible_blocker_reason_field() -> None:
     assert policy["reject_code"] == "ANSWER_CONTRACT_GROUNDING_FAIL"
     assert policy["reason"] == "answer-contract rejection: draft did not satisfy grounding/citation requirements"
     assert policy["blocker_reason"] == policy["reason"]
+
+
+
+def test_reject_taxonomy_does_not_emit_gk_contract_failure_when_not_applicable() -> None:
+    policy = _policy_for(
+        intent="knowledge_question",
+        answer_mode="assist",
+        fallback_action="ANSWER_GENERAL_KNOWLEDGE",
+        context_confident=False,
+        ambiguity=False,
+        general_knowledge_contract_valid=False,
+        general_knowledge_contract_applicability="not_applicable",
+    )
+
+    assert policy["reject_code"] != "GK_CONTRACT_MARKER_FAIL"

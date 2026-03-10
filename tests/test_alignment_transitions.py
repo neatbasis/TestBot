@@ -440,7 +440,7 @@ def test_run_answer_stage_flow_non_memory_invalid_gk_contract_routes_to_safe_fal
         clock=None,
     )
 
-    assert answer_state.invariant_decisions["general_knowledge_contract_valid"] is False
+    assert answer_state.invariant_decisions["general_knowledge_contract_applicability"] == "not_applicable"
     assert answer_state.final_answer == NON_KNOWLEDGE_UNCERTAINTY_ANSWER
     assert answer_state.invariant_decisions["answer_mode"] == "dont-know"
 
@@ -471,7 +471,7 @@ def test_run_answer_stage_flow_social_statement_with_invalid_gk_contract_degrade
         clock=None,
     )
 
-    assert answer_state.invariant_decisions["general_knowledge_contract_valid"] is False
+    assert answer_state.invariant_decisions["general_knowledge_contract_applicability"] == "not_applicable"
     assert answer_state.final_answer == NON_KNOWLEDGE_UNCERTAINTY_ANSWER
     assert answer_state.invariant_decisions["answer_mode"] == "dont-know"
     assert validate_answer_commit_post(answer_state).passed is True
@@ -568,6 +568,24 @@ def test_evaluate_alignment_decision_no_claims_fallback_does_not_inflate_citatio
     assert decision["dimensions"]["provenance_transparency"] == 0.3333
     assert decision["final_alignment_decision"] == "allow"
 
+
+
+
+def test_evaluate_alignment_decision_uncertainty_response_marks_contract_not_applicable() -> None:
+    decision = evaluate_alignment_decision(
+        user_input="what did i say yesterday",
+        draft_answer="",
+        final_answer=NON_KNOWLEDGE_UNCERTAINTY_ANSWER,
+        confidence_decision={"context_confident": False},
+        claims=[],
+        provenance_types=[ProvenanceType.UNKNOWN],
+        basis_statement="",
+    )
+
+    raw = decision["dimension_inputs"]["raw"]
+    assert raw["general_knowledge_contract_applicability"] == "not_applicable"
+    assert raw["contract_exempt_reason"] in {"exempt_response_type", "no_claims"}
+    assert decision["final_alignment_decision"] == "allow"
 
 def test_evaluate_alignment_decision_with_required_citation_allows_when_other_signals_are_strong() -> None:
     decision = evaluate_alignment_decision(
