@@ -17,9 +17,9 @@ This document answers four operational questions in one place:
 
 Evidence timestamp reference (artifact freshness):
 
-- `artifacts/feature-status-summary.json` → `generated_at_utc`: `2026-03-10T20:06:56Z`
-- `docs/qa/feature-status-report.md` reports the same generation moment (`Generated at (UTC): 2026-03-10T20:06:56Z`), so capability counts below are tied to that artifact run.
-- `artifacts/all-green-gate-summary.json` is the gate execution artifact used for gate status and failed-check assertions below (`snapshot_utc`: `2026-03-10T20:32:23Z`).
+- `artifacts/feature-status-summary.json` → `generated_at_utc`: `2026-03-10T21:16:54Z`.
+- `docs/qa/feature-status-report.md` reports the same generation moment (`Generated at (UTC): 2026-03-10T21:16:54Z`), so capability counts below are tied to that artifact run.
+- `artifacts/all-green-gate-summary.json` is the gate execution artifact used for gate status and failed-check assertions below (current artifact mtime UTC from the latest feature summary metadata: `2026-03-10T21:16:13Z`).
 
 Source-of-truth refresh discipline (use this order on each update):
 
@@ -31,7 +31,7 @@ From the latest generated status artifacts:
 
 - Capability summary line (`docs/qa/feature-status-report.md`): **Implemented: 0 | Partial: 9 | Missing: 0**.
 - Gate status (`artifacts/all-green-gate-summary.json` → top-level `status`): **failed**.
-- Current failing and warning-mode checks/signals in the same gate artifact (snapshot `2026-03-10T20:32:23Z`):
+- Current failing and warning-mode checks/signals in the same gate artifact:
   - Failing checks: `product_behave`, `qa_pytest_not_live_smoke`, `qa_validate_invariant_sync`.
   - Warning-mode check: `qa_validate_kpi_guardrails` returned `warning` (non-zero exit code tracked as a warning by the gate runner).
   - First failing command by stage:
@@ -52,14 +52,6 @@ From the latest generated status artifacts:
   - `foundation` slice: **Canonical turn pipeline foundation (observe/encode/stabilize)** is partial.
   - `decisioning` slice: **Canonical turn pipeline decisioning (context/intent/retrieve/policy)** is partial.
   - `commit and auditability` slice: **Canonical turn pipeline commit and auditability (assemble/validate/render/commit)** is partial.
-
-### Historical blockers (resolved in prior runs; retained for context only)
-
-The following are historical notes from prior runs. They are separate from current blockers above and do not imply that the current failing checks are resolved:
-
-- Missing `behave` in environment (resolved by installing dev dependencies and re-running gate).
-- `product_eval_recall_topk4` import failure (`ModuleNotFoundError: No module named 'testbot'`) resolved in validated environment.
-- `qa_validate_issue_links` base-ref failure for `origin/main` resolved via canonical fallback behavior (`HEAD~1` per policy order `origin/main` → `HEAD~1` → `HEAD`).
 
 ### Risk interpretation
 
