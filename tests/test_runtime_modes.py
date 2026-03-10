@@ -655,72 +655,42 @@ def test_background_source_ingestion_start_and_poll_completion(monkeypatch) -> N
     assert logs[-1][1]["ingestion_request_id"] == "turn-abc"
 
 
-def test_read_runtime_env_sync_retry_wait_budget_defaults(monkeypatch) -> None:
-    monkeypatch.delenv("SOURCE_INGEST_SYNC_RETRY_WAIT_BUDGET_SECONDS", raising=False)
-    runtime_env = runtime._read_runtime_env()
-    assert runtime_env["source_ingest_sync_retry_wait_budget_seconds"] == 0.15
-
-
-def test_run_retrieval_with_optional_sync_retry_only_when_async_continuation_off(monkeypatch) -> None:
+def test_run_retrieval_with_optional_sync_retry_is_disabled_for_compatibility() -> None:
     call_counter = {"count": 0}
 
     def _retrieve_once():
         call_counter["count"] += 1
         return object(), []
-
-    monkeypatch.setattr(runtime, "_bounded_wait_for_sync_retrieval_retry", lambda **_kwargs: 0.01)
 
     _state, docs, retry = runtime._run_retrieval_with_optional_sync_retry(
         retrieve_once=_retrieve_once,
         source_ingest_async_continuation=False,
-        wait_budget_seconds=0.05,
-    )
-
-    assert docs == []
-    assert call_counter["count"] == 2
-    assert retry["attempted"] is True
-    assert retry["reason"] == "sync_retry_completed"
-
-
-def test_run_retrieval_with_optional_sync_retry_skips_second_pass_when_async_continuation_on(monkeypatch) -> None:
-    call_counter = {"count": 0}
-
-    def _retrieve_once():
-        call_counter["count"] += 1
-        return object(), []
-
-    monkeypatch.setattr(runtime, "_bounded_wait_for_sync_retrieval_retry", lambda **_kwargs: 0.5)
-
-    _state, docs, retry = runtime._run_retrieval_with_optional_sync_retry(
-        retrieve_once=_retrieve_once,
-        source_ingest_async_continuation=True,
-        wait_budget_seconds=0.05,
+        wait_budget_seconds=9.99,
     )
 
     assert docs == []
     assert call_counter["count"] == 1
-    assert retry["attempted"] is False
-    assert retry["reason"] == "async_continuation_enabled"
+    assert retry == {
+        "attempted": False,
+        "waited_seconds": 0.0,
+        "reason": "sync_retry_disabled_deprecated",
+    }
 
 
-def test_run_retrieval_with_optional_sync_retry_uses_second_pass_results_deterministically(monkeypatch) -> None:
-    sequence = [[], [(object(), 0.91)]]
+def test_run_retrieval_with_optional_sync_retry_returns_first_pass_results() -> None:
+    payload = [(object(), 0.91)]
 
     def _retrieve_once():
-        docs = sequence.pop(0)
-        return object(), docs
-
-    monkeypatch.setattr(runtime, "_bounded_wait_for_sync_retrieval_retry", lambda **_kwargs: 0.02)
+        return object(), payload
 
     _state, docs, retry = runtime._run_retrieval_with_optional_sync_retry(
         retrieve_once=_retrieve_once,
-        source_ingest_async_continuation=False,
-        wait_budget_seconds=0.05,
+        source_ingest_async_continuation=True,
+        wait_budget_seconds=0.0,
     )
 
-    assert len(docs) == 1
-    assert retry["attempted"] is True
-    assert retry["reason"] == "sync_retry_completed"
+    assert docs == payload
+    assert retry["reason"] == "sync_retry_disabled_deprecated"
 
 
 def test_cli_mode_proactively_emits_completion_without_extra_prompt(monkeypatch) -> None:
