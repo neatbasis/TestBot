@@ -12,6 +12,13 @@
 
 ## Cross-Reference
 
+## KPI guardrail mode decision (lifecycle/readiness)
+
+- **Selected mode:** warning mode (`--kpi-guardrail-mode optional`).
+- **Readiness criteria impact:** ISSUE-0014 remains `open/blocked pending evidence` until shared closure evidence is complete and canonical gate evidence is refreshed; KPI warnings remain blocker evidence for this red-tag blocker path unless linked warning debt (owner + due date) is current.
+- **Active KPI warning debt record:** `qa_validate_kpi_guardrails` from snapshot `2026-03-10T20:32:23Z` is owned by **platform-qa** with review/mitigation due **2026-03-17**, synchronized in ISSUE-0015 and `docs/issues/RED_TAG.md`.
+
+
 - Routing anchor: ISSUE-0013 (**blocker** in current execution order; identity-continuity behavioral gate for AC-0013-11).
 - Execution-order linkage: ISSUE-0008 (**blocker**) -> ISSUE-0011 (**blocker**) -> ISSUE-0012 (**parallel stream**) -> ISSUE-0014 (**blocker**) -> ISSUE-0015 (**dependent**).
 - Delivery/governance companion references: ISSUE-0012 (delivery-plan governance), ISSUE-0015 (quality/governance hardening review).

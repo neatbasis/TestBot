@@ -25,6 +25,12 @@ Dependent open-issue routing is sequenced through ISSUE-0013 using the following
 4. **ISSUE-0014 — blocker (identity-continuity behavioral gate):** AC-0013-11 remains open/blocked pending evidence until ISSUE-0014 Phase 1 meets the shared closure condition (identity semantic preservation, retrieval activation on immediate self-reference recall, and confirmed identity fact promotion at commit) with deterministic tests, reproducible CLI traces, and canonical gate evidence.
 5. **ISSUE-0015 — dependent (governance close-order gate):** ISSUE-0015 remains open/blocked pending evidence while blockers remain open and governance close-order sequencing is incomplete.
 
+## KPI guardrail mode decision (lifecycle/readiness)
+
+- **Selected mode:** warning mode (`--kpi-guardrail-mode optional`, current default policy in `docs/testing.md`).
+- **Readiness interpretation for this dependency chain:** canonical readiness remains `open/blocked pending evidence` while any blocking gate checks fail; KPI warnings are tracked as explicit warning debt and must remain issue-linked with owner + due date until cleared.
+- **Current warning debt linkage (snapshot `2026-03-10T20:32:23Z`):** `qa_validate_kpi_guardrails` warning remains linked to ISSUE-0014/ISSUE-0015 dependency sequencing under **Owner: platform-qa**, **Due: 2026-03-17** (next triage review) with lifecycle synchronization responsibility under **Owner: release-governance**, **Due: 2026-03-17**.
+
 ## Evidence
 
 - `docs/architecture/canonical-turn-pipeline.md` defines the canonical sequence: `observe.turn -> encode.candidates -> stabilize.pre_route -> context.resolve -> intent.resolve -> retrieve.evidence -> policy.decide -> answer.assemble -> answer.validate -> answer.render -> answer.commit` and forbids early lossy `U -> I` projection.
