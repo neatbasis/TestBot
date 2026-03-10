@@ -406,7 +406,13 @@ def validate_observe_turn_post(state: PipelineState) -> TransitionCheckResult:
         stage="observe.turn",
         boundary="post",
         invariant_refs=("PINV-002",),
-        checks=[("user_input_preserved", lambda s: bool((s.user_input or "").strip()))],
+        checks=[
+            ("user_input_preserved", lambda s: bool((s.user_input or "").strip())),
+            (
+                "last_user_message_ts_recorded",
+                lambda s: bool((s.last_user_message_ts or "").strip()),
+            ),
+        ],
         state=state,
     )
 
