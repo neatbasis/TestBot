@@ -17,8 +17,8 @@ This document answers four operational questions in one place:
 
 Evidence timestamp reference (artifact freshness):
 
-- `artifacts/feature-status-summary.json` → `generated_at_utc`: `2026-03-07T16:19:34Z`
-- `docs/qa/feature-status-report.md` reports the same generation moment (`Generated at (UTC): 2026-03-07T16:19:34Z`), so capability counts below are tied to that artifact run.
+- `artifacts/feature-status-summary.json` → `generated_at_utc`: `2026-03-10T20:06:56Z`
+- `docs/qa/feature-status-report.md` reports the same generation moment (`Generated at (UTC): 2026-03-10T20:06:56Z`), so capability counts below are tied to that artifact run.
 - `artifacts/all-green-gate-summary.json` is the gate execution artifact used for gate status and failed-check assertions below.
 
 Source-of-truth refresh discipline (use this order on each update):
@@ -29,26 +29,26 @@ Source-of-truth refresh discipline (use this order on each update):
 
 From the latest generated status artifacts:
 
-- Capability summary line (`docs/qa/feature-status-report.md`): **Implemented: 2 | Partial: 4 | Missing: 3**.
+- Capability summary line (`docs/qa/feature-status-report.md`): **Implemented: 0 | Partial: 9 | Missing: 0**.
 - Gate status (`artifacts/all-green-gate-summary.json` → top-level `status`): **failed**.
-- Failed checks in the same gate artifact:
-  - `product_behave`
-  - `safety_behave_answer_contract_and_memory`
+- Current failing and warning-mode checks/signals in the same gate artifact:
+  - Failing checks: `product_behave`, `qa_pytest_not_live_smoke`, `qa_validate_invariant_sync`.
+  - Warning-mode check: `qa_validate_kpi_guardrails` returned `warning` (non-zero exit code tracked as a warning by the gate runner).
 
 ### What is working
 
-- Most deterministic pytest layers in the gate artifact are passing (including non-live smoke and eval/runtime parity checks).
+- `product_eval_recall_topk4`, safety validators, governance validators, markdown-path validation, and turn analytics aggregation are passing in the gate artifact.
 - Time-aware memory retrieval/reranking and canonical merge-gate/governance capabilities remain tracked as **implemented** in the feature status report.
-- Governance validators (`qa_validate_issue_links`, `qa_validate_issues`) are passing in the current gate artifact run.
+- Governance validators (`qa_validate_issue_links`, `qa_validate_issues`) and markdown path validation (`qa_validate_markdown_paths`) are passing in the current gate artifact run.
 
 ### Current blockers (active)
 
-- Canonical gate evidence is currently **failed** due to `product_behave` and `safety_behave_answer_contract_and_memory`; treat behavior as not merge-ready until these checks are green in a newer artifact run.
-- Feature status output includes a staleness warning that gate evidence may be older than some source inputs; refresh gate artifacts before making final merge-readiness calls.
-- Canonical pipeline capability slices are explicitly incomplete in the latest status report and are tracked as **missing** blockers:
-  - `foundation` slice: **Canonical turn pipeline foundation (observe/encode/stabilize)** is missing.
-  - `decisioning` slice: **Canonical turn pipeline decisioning (context/intent/retrieve/policy)** is missing.
-  - `commit and auditability` slice: **Canonical turn pipeline commit and auditability (assemble/validate/render/commit)** is missing.
+- Canonical gate evidence is currently **failed** due to `product_behave`, `qa_pytest_not_live_smoke`, and `qa_validate_invariant_sync`; treat behavior as not merge-ready until these checks are green in a newer artifact run.
+- KPI guardrail validation remains in explicit **warning mode** (`qa_validate_kpi_guardrails`), so guardrail threshold violations are active quality signals alongside failing checks.
+- All canonical pipeline capability slices remain **partial** in the latest status report and should still be treated as delivery blockers for full readiness:
+  - `foundation` slice: **Canonical turn pipeline foundation (observe/encode/stabilize)** is partial.
+  - `decisioning` slice: **Canonical turn pipeline decisioning (context/intent/retrieve/policy)** is partial.
+  - `commit and auditability` slice: **Canonical turn pipeline commit and auditability (assemble/validate/render/commit)** is partial.
 
 ### Historical blockers (resolved in prior runs; retained for context only)
 
@@ -60,8 +60,8 @@ The following are historical notes from prior runs. They are separate from curre
 
 ### Risk interpretation
 
-- **Knowing-mode risk:** primarily capability-completeness risk (several features still intentionally tracked as partial), not immediate gate-execution risk.
-- **Unknowing-mode risk:** behavior remains only partially complete per feature contract, and current executable gate evidence is not yet green (failed checks are still present).
+- **Knowing-mode risk:** high immediate execution risk (active behavior and deterministic-test failures) plus capability-completeness risk and KPI warning-mode guardrail risk.
+- **Unknowing-mode risk:** behavior remains partially complete per feature contract and is currently not merge-ready due to active gate failures.
 
 ---
 
@@ -99,7 +99,7 @@ Pipeline adoption focus for this priority set:
 - **Foundation** is advanced primarily by P1 and P2.
 - **Decisioning** is advanced primarily by P2 and P3.
 - **Commit and auditability** is advanced primarily by P4 and P5.
-- Until all three slices are no longer reported as missing in `docs/qa/feature-status-report.md`, treat these priorities as merge-readiness blockers, not optional improvements.
+- Until all three slices are no longer reported as partial in `docs/qa/feature-status-report.md`, treat these priorities as merge-readiness blockers, not optional improvements.
 
 ### P1 — Source connector interface + ingestion pipeline
 
