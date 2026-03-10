@@ -8,7 +8,7 @@ from testbot.candidate_encoding import encode_turn_candidates
 from testbot.canonical_turn_orchestrator import CanonicalStage, CanonicalTurnContext, CanonicalTurnOrchestrator
 from testbot.pipeline_state import PipelineState
 from testbot.policy_decision import DecisionClass, DecisionObject
-from testbot.sat_chatbot_memory_v2 import _answer_routing_from_decision_object
+from testbot.sat_chatbot_memory_v2 import _resolve_answer_routing_from_decision_object
 from testbot.turn_observation import observe_turn
 
 
@@ -168,7 +168,7 @@ def test_canonical_answer_from_memory_decision_maps_to_memory_grounded_route() -
         reasoning={"evidence_posture": "scored_non_empty"},
     )
 
-    routing = _answer_routing_from_decision_object(decision, capability_status="ask_unavailable")
+    routing = _resolve_answer_routing_from_decision_object(decision, capability_status="ask_unavailable")
 
     assert routing.fallback_action == "ANSWER_FROM_MEMORY"
     assert routing.canonical_response_token == "LLM_DRAFT"

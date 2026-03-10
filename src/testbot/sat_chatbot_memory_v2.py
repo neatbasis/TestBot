@@ -8,6 +8,7 @@ import re
 import sys
 import time
 import uuid
+import warnings
 from concurrent.futures import Future, ThreadPoolExecutor
 from threading import Lock
 from urllib.error import URLError
@@ -2410,27 +2411,40 @@ def _answer_routing_from_decision_object(
     *,
     capability_status: CapabilityStatus,
 ) -> AnswerRoutingDecision:
-    match decision.decision_class:
-        case DecisionClass.ANSWER_FROM_MEMORY:
-            fallback_action = "ANSWER_FROM_MEMORY"
-            token = "LLM_DRAFT"
-            clarification_allowed = False
-        case DecisionClass.ASK_FOR_CLARIFICATION:
-            fallback_action = "ASK_CLARIFYING_QUESTION"
-            token = "PARTIAL_MEMORY_CLARIFIER"
-            clarification_allowed = True
-        case DecisionClass.CONTINUE_REPAIR_RECONSTRUCTION:
-            fallback_action = "ASK_CLARIFYING_QUESTION"
-            token = "PARTIAL_MEMORY_CLARIFIER"
-            clarification_allowed = True
-        case DecisionClass.PENDING_LOOKUP_BACKGROUND_INGESTION:
-            fallback_action = "ANSWER_UNKNOWN"
-            token = "NON_KNOWLEDGE_UNCERTAINTY_ANSWER"
-            clarification_allowed = False
-        case DecisionClass.ANSWER_GENERAL_KNOWLEDGE_LABELED:
-            fallback_action = "ANSWER_GENERAL_KNOWLEDGE"
-            token = "LLM_DRAFT"
-            clarification_allowed = False
+    """Deprecated bridge: use _resolve_answer_routing_from_decision_object instead."""
+    warnings.warn(
+        "_answer_routing_from_decision_object is deprecated; use _resolve_answer_routing_from_decision_object.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return _resolve_answer_routing_from_decision_object(
+        decision,
+        capability_status=capability_status,
+    )
+
+
+def _resolve_answer_routing_from_decision_object(
+    decision: DecisionObject,
+    *,
+    capability_status: CapabilityStatus,
+) -> AnswerRoutingDecision:
+    decision_routing_map: dict[DecisionClass, tuple[str, str, bool]] = {
+        DecisionClass.ANSWER_FROM_MEMORY: ("ANSWER_FROM_MEMORY", "LLM_DRAFT", False),
+        DecisionClass.ASK_FOR_CLARIFICATION: ("ASK_CLARIFYING_QUESTION", "PARTIAL_MEMORY_CLARIFIER", True),
+        DecisionClass.CONTINUE_REPAIR_RECONSTRUCTION: ("ASK_CLARIFYING_QUESTION", "PARTIAL_MEMORY_CLARIFIER", True),
+        DecisionClass.PENDING_LOOKUP_BACKGROUND_INGESTION: (
+            "ANSWER_UNKNOWN",
+            "NON_KNOWLEDGE_UNCERTAINTY_ANSWER",
+            False,
+        ),
+        DecisionClass.ANSWER_GENERAL_KNOWLEDGE_LABELED: ("ANSWER_GENERAL_KNOWLEDGE", "LLM_DRAFT", False),
+    }
+
+    routing_tuple = decision_routing_map.get(decision.decision_class)
+    if routing_tuple is None:
+        raise ValueError(f"Unsupported DecisionClass for answer routing bridge: {decision.decision_class!r}")
+
+    fallback_action, token, clarification_allowed = routing_tuple
 
     return AnswerRoutingDecision(
         fallback_action=fallback_action,
@@ -2466,7 +2480,7 @@ def _resolve_answer_routing_for_stage(
         state = replace(state, resolved_intent=resolved_intent.value)
 
     if selected_decision is not None:
-        answer_routing = _answer_routing_from_decision_object(
+        answer_routing = _resolve_answer_routing_from_decision_object(
             selected_decision,
             capability_status=capability_status,
         )
