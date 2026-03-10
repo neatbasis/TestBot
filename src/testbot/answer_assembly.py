@@ -31,6 +31,8 @@ def assemble_answer_contract(
     decision: DecisionObject,
     evidence_bundle: EvidenceBundle,
     pending_ingestion_request_id: str = "",
+    offer_bearing: bool = False,
+    offer_type: str = "",
 ) -> AnswerCandidate:
     evidence_counts = {
         "structured_facts": len(evidence_bundle.structured_facts),
@@ -65,8 +67,13 @@ def assemble_answer_contract(
         evidence_counts=evidence_counts,
         pending_repair_state={
             "repair_required_by_policy": repair_required_by_policy,
-            "repair_offered_to_user": False,
-            "reason": "repair_required_by_policy" if repair_required_by_policy else "none",
+            "repair_offered_to_user": repair_required_by_policy or offer_bearing,
+            "offer_type": offer_type if offer_bearing else "",
+            "reason": (
+                "repair_required_by_policy" if repair_required_by_policy
+                else "offer_bearing_answer" if offer_bearing
+                else "none"
+            ),
         },
         pending_ingestion_request_id=(pending_ingestion_request_id if repair_required_by_policy else ""),
         resolved_obligations=resolved_obligations,

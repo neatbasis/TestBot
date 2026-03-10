@@ -323,3 +323,19 @@ Issue validation passed.
   - Gate evidence: canonical gate reports **pass** with optional KPI guardrail warnings in warning mode (`qa_validate_kpi_guardrails`).
   - Dependency-state language: ISSUE-0014 remains **open/blocked pending evidence** for AC-0013-11 sequencing; lifecycle wording stays synchronized across ISSUE-0013/0014/0015/RED_TAG with blocker/dependent/parallel stream labels and the shared closure condition.
   - Evidence artifacts: `docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md`, `docs/issues/evidence/2026-03-09-issue-0014-0013-behave.log`, `docs/issues/evidence/2026-03-09-issue-0014-0013-focused-pytests.log`, `docs/issues/evidence/2026-03-09-issue-0014-0013-all-green-gate.log`, `artifacts/all-green-gate-summary.json`.
+
+- 2026-03-10: Repair-offer followup continuity chain implementation progressed in canonical runtime path (linked change set references ISSUE-0014).
+  - Implemented scope:
+    - `src/testbot/answer_assembly.py`: added `offer_bearing`/`offer_type` inputs and repair-offer propagation into `pending_repair_state`.
+    - `src/testbot/answer_rendering.py`: preserved repair-offer signal for offer-bearing answers with non-empty rendered text while keeping policy-required repair branch intact.
+    - `src/testbot/sat_chatbot_memory_v2.py`: added `_detect_capability_offer(...)` and wired canonical `_answer_assemble` to pass `offer_bearing` and `offer_type` to `assemble_answer_contract`.
+    - `src/testbot/intent_router.py`: added repair-offer followup utterance family routing to `CAPABILITIES_HELP`.
+    - `src/testbot/intent_resolution.py`: added repair-anchor continuity promotion from `KNOWLEDGE_QUESTION` to `CAPABILITIES_HELP`.
+  - Deterministic regression coverage added:
+    - `tests/test_answer_rendering_offer_bearing.py`
+    - `tests/test_intent_router.py::test_classify_intent_capabilities_help_repair_offer_followup_family`
+    - `tests/test_decisioning_stages.py::test_knowledge_followup_with_repair_offer_anchor_promotes_to_capabilities_help`
+  - Evidence artifact: `docs/issues/evidence/2026-03-10-issue-0014-repair-offer-followup-chain.md`.
+  - Verification command:
+    - `PYTHONPATH=src python -m pytest tests/test_answer_rendering_offer_bearing.py tests/test_intent_router.py tests/test_decisioning_stages.py tests/test_answer_commit_identity_promotion.py -q`
+    - expected/observed: `53 passed`.

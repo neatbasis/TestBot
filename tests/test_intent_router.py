@@ -171,6 +171,17 @@ def test_classify_intent_capabilities_help_start_satellite_conversation() -> Non
     assert classify_intent("start satellite conversation") is IntentType.CAPABILITIES_HELP
 
 
+def test_classify_intent_capabilities_help_repair_offer_followup_family() -> None:
+    for utterance in (
+        "please look up the definition",
+        "go ahead",
+        "please do",
+        "look it up",
+        "find the definition",
+    ):
+        assert classify_intent(utterance) is IntentType.CAPABILITIES_HELP
+
+
 def test_extract_intent_facets_for_temporal_memory_mixed_utterance() -> None:
     facets = extract_intent_facets("how many minutes ago did we talk before?")
 

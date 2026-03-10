@@ -21,16 +21,33 @@ def render_answer(*, assembly: AnswerCandidate, validation: ValidatedAnswer, pre
         text = preferred_text
     elif validation.final_answer.strip():
         text = validation.final_answer
-    elif assembly.pending_repair_state.get("repair_required_by_policy"):
-        text = (
+    else:
+        text = ""
+
+    offer_bearing = (
+        bool(assembly.pending_repair_state.get("repair_offered_to_user"))
+        and not assembly.pending_repair_state.get("repair_required_by_policy")
+    )
+
+    if assembly.pending_repair_state.get("repair_required_by_policy"):
+        canned = (
             "I don't have enough reliable memory to answer directly. "
             "I can help continue repair reconstruction from the details we already confirmed."
         )
         return RenderedAnswer(
-            rendered_text=text,
+            rendered_text=canned,
             repair_offer_rendered=True,
             repair_followup_route="repair_offer_followup",
         )
-    else:
-        text = "I can answer from the currently validated decision and evidence bundle."
-    return RenderedAnswer(rendered_text=text)
+
+    if offer_bearing and text.strip():
+        return RenderedAnswer(
+            rendered_text=text,
+            repair_offer_rendered=True,
+            repair_followup_route=str(assembly.pending_repair_state.get("offer_type") or "repair_offer_followup"),
+        )
+
+    if text.strip():
+        return RenderedAnswer(rendered_text=text)
+
+    return RenderedAnswer(rendered_text="I can answer from the currently validated decision and evidence bundle.")

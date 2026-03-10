@@ -132,3 +132,35 @@ def test_turn_two_who_am_i_with_continuity_prefers_memory_aware_intent() -> None
     assert turn_two.classified_intent is IntentType.MEMORY_RECALL
     assert turn_two.resolved_intent is IntentType.MEMORY_RECALL
     assert decision.retrieval_branch == "memory_retrieval"
+
+
+def test_knowledge_followup_with_repair_offer_anchor_promotes_to_capabilities_help() -> None:
+    prior_state = PipelineState(
+        user_input="What is life?",
+        final_answer="I can look that up if you want.",
+        resolved_intent=IntentType.KNOWLEDGE_QUESTION.value,
+        prior_unresolved_intent=IntentType.KNOWLEDGE_QUESTION.value,
+        commit_receipt={
+            "committed": True,
+            "commit_id": "commit-1",
+            "pending_repair_state": {
+                "repair_required_by_policy": False,
+                "repair_offered_to_user": True,
+                "reason": "offer_bearing_answer",
+                "offer_type": "capability_offer",
+            },
+        },
+    )
+
+    context = resolve_context(utterance="define the term", prior_pipeline_state=prior_state)
+    resolved = resolve_intent(
+        resolution_input=IntentResolutionInput(
+            stabilized_turn_state=_stabilized("define the term"),
+            context=context,
+            fallback_utterance="define the term",
+        )
+    )
+
+    assert "commit.pending_repair_state:repair_offered_to_user" in context.history_anchors
+    assert resolved.classified_intent is IntentType.KNOWLEDGE_QUESTION
+    assert resolved.resolved_intent is IntentType.CAPABILITIES_HELP

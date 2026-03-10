@@ -49,6 +49,10 @@ def _is_self_referential_memory_followup(utterance: str) -> bool:
     return any(pattern.search(normalized) for pattern in _SELF_REFERENTIAL_MEMORY_PATTERNS)
 
 
+def _has_repair_offer_continuity(context: ResolvedContext) -> bool:
+    return "commit.pending_repair_state:repair_offered_to_user" in context.history_anchors
+
+
 def resolve(*, resolution_input: IntentResolutionInput) -> ResolvedIntent:
     context = resolution_input.context
     stabilized_utterance = _stabilized_utterance_hint(resolution_input.stabilized_turn_state)
@@ -71,6 +75,16 @@ def resolve(*, resolution_input: IntentResolutionInput) -> ResolvedIntent:
             classified_intent=IntentType.MEMORY_RECALL,
             resolved_intent=IntentType.MEMORY_RECALL,
             rationale="self-referential follow-up promoted to memory recall using committed continuity artifacts",
+        )
+
+    if (
+        classified_intent is IntentType.KNOWLEDGE_QUESTION
+        and _has_repair_offer_continuity(context)
+    ):
+        return ResolvedIntent(
+            classified_intent=classified_intent,
+            resolved_intent=IntentType.CAPABILITIES_HELP,
+            rationale="repair-offer followup promoted to capabilities_help via committed repair anchor",
         )
 
     return ResolvedIntent(
