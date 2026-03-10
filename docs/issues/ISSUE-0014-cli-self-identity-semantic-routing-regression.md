@@ -223,20 +223,20 @@ Deterministic suite evidence is attached and reproducible CLI identity-continuit
 
 Status: **open/blocked pending evidence for dependency sequencing** — ISSUE-0014 remains a blocker until the shared AC-0013-11 / Phase 1 closure condition is confirmed with deterministic tests, reproducible CLI traces, and canonical gate evidence.
 
-## Phase 1 Behavioral Exit Evidence (2026-03-09)
+## Phase 1 Behavioral Exit Evidence (snapshot refresh: 2026-03-10T20:32:23Z)
 
 - Evidence bundle: [`docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md`](evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md)
 - BDD result (**pass**): [`2026-03-09-issue-0014-0013-behave.log`](evidence/2026-03-09-issue-0014-0013-behave.log)
 - Focused pytest result (**pass**): [`2026-03-09-issue-0014-0013-focused-pytests.log`](evidence/2026-03-09-issue-0014-0013-focused-pytests.log)
-- Canonical all-green gate result (**pass with warning-mode KPI guardrails**): [`2026-03-09-issue-0014-0013-all-green-gate.log`](evidence/2026-03-09-issue-0014-0013-all-green-gate.log), [`artifacts/all-green-gate-summary.json`](../../artifacts/all-green-gate-summary.json)
+- Canonical all-green gate result (**failed with warning-mode KPI guardrails**) at snapshot `2026-03-10T20:32:23Z`: [`artifacts/all-green-gate-summary.json`](../../artifacts/all-green-gate-summary.json).
 
 Phase 1 status: **open/blocked pending evidence for dependency sequencing**. AC-0013-11 and ISSUE-0014 Phase 1 use one closure condition: deterministic evidence for identity semantic preservation, retrieval activation on immediate self-reference recall, and confirmed identity fact promotion at commit, plus reproducible CLI traces and canonical gate evidence.
 
 ### Missing evidence checklist (AC-0013-11 dependency)
 
 - [x] **Owner: runtime-pipeline** — Resolved failure attribution mismatch from the prior bundle (`product_behave`) to the actual optional KPI warning path and documented dependency-gate evidence state update. **Done: 2026-03-09**. Artifact: `docs/issues/evidence/2026-03-09-runtime-pipeline-dependency-gate-progress.md`.
-- [x] **Owner: platform-qa** — Re-ran `python scripts/all_green_gate.py --json-output artifacts/all-green-gate-summary.json` and attached refreshed log + JSON summary showing passing gate status. **Done: 2026-03-09**. Artifact: `docs/issues/evidence/2026-03-09-platform-qa-dependency-gate-progress.md`.
-- [x] **Owner: release-governance** — Refreshed ISSUE-0013/ISSUE-0015/RED_TAG lifecycle language after the new gate artifact confirmed deterministic dependency closure posture. **Done: 2026-03-09**. Artifact: `docs/issues/evidence/2026-03-09-release-governance-dependency-gate-progress.md`.
+- [x] **Owner: platform-qa** — Re-ran `python scripts/all_green_gate.py --continue-on-failure --json-output artifacts/all-green-gate-summary.json` and refreshed gate snapshot (`status=failed`) with explicit failing/warning checks and stage-level first-failing-command capture. **Done: 2026-03-10**. Artifact: `artifacts/all-green-gate-summary.json`.
+- [x] **Owner: release-governance** — Refreshed ISSUE-0013/ISSUE-0015/RED_TAG lifecycle language to the same failed-gate posture snapshot (`2026-03-10T20:32:23Z`) and synchronized dependency wording. **Done: 2026-03-10**. Artifact: `artifacts/all-green-gate-summary.json`.
 
 Governance validator rerun (2026-03-09):
 - `python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main` -> **pass** (base-ref fallback `origin/main` -> `HEAD~1`).
@@ -262,7 +262,7 @@ Issue validation passed.
 - Last reviewed: 2026-03-09
 - Next review due: 2026-03-16
 - KPI evidence: docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md
-- Decision notes: Phase 1 deterministic suites and required CLI closure-proof traces are attached with AC mapping complete, and refreshed canonical gate evidence now passes (KPI guardrails remain warning-mode). Per `docs/testing.md#kpi-guardrail-mode-policy-authoritative`, persistent warning-mode KPI results remain linked governance debt and require owner/due-date linkage in this issue, ISSUE-0015, and RED_TAG.
+- Decision notes: Phase 1 deterministic suites and required CLI closure-proof traces remain attached with AC mapping complete, but the refreshed canonical gate snapshot at `2026-03-10T20:32:23Z` is failed (`product_behave`, `qa_pytest_not_live_smoke`, `qa_validate_invariant_sync`) with KPI warning-mode debt (`qa_validate_kpi_guardrails`). Per `docs/testing.md#kpi-guardrail-mode-policy-authoritative`, persistent warning-mode KPI results remain linked governance debt and require owner/due-date linkage in this issue, ISSUE-0015, and RED_TAG.
 
 - 2026-03-08: Opened from production-style CLI session evidence showing stabilization progress with persistent semantic routing and fact-promotion defects in identity continuity turns.
 
@@ -318,9 +318,9 @@ Issue validation passed.
     - `python -m pytest tests/test_intent_router.py::test_resolve_turn_intent_requires_diagnostic_only_mode`
     - `python -m pytest tests/test_pipeline_semantic_contracts.py::test_resolve_turn_intent_matches_canonical_intent_resolution_for_identity_followup`
 
-- 2026-03-09: Phase 1 deterministic verification set for ISSUE-0014/0013 re-executed and evidence-linked with refreshed outcomes.
+- 2026-03-10: Phase 1 deterministic verification snapshot for ISSUE-0014/0013 refreshed from canonical gate artifact.
   - Pass evidence: `python -m behave features/memory_recall.feature features/intent_grounding.feature` and focused regression suites (`tests/test_pipeline_semantic_contracts.py`, `tests/test_canonical_turn_orchestrator.py`, `tests/test_intent_router.py`).
-  - Gate evidence: canonical gate reports **pass** with optional KPI guardrail warnings in warning mode (`qa_validate_kpi_guardrails`).
+  - Gate evidence (`2026-03-10T20:32:23Z`): canonical gate reports **failed** with failing checks `product_behave`, `qa_pytest_not_live_smoke`, `qa_validate_invariant_sync`, and optional KPI guardrail warning `qa_validate_kpi_guardrails`; first-failing commands are `product -> /root/.pyenv/versions/3.11.14/bin/python -m behave` and `qa -> /root/.pyenv/versions/3.11.14/bin/python -m pytest -m 'not live_smoke'`.
   - Dependency-state language: ISSUE-0014 remains **open/blocked pending evidence** for AC-0013-11 sequencing; lifecycle wording stays synchronized across ISSUE-0013/0014/0015/RED_TAG with blocker/dependent/parallel stream labels and the shared closure condition.
   - Evidence artifacts: `docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md`, `docs/issues/evidence/2026-03-09-issue-0014-0013-behave.log`, `docs/issues/evidence/2026-03-09-issue-0014-0013-focused-pytests.log`, `docs/issues/evidence/2026-03-09-issue-0014-0013-all-green-gate.log`, `artifacts/all-green-gate-summary.json`.
 

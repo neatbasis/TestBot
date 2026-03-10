@@ -19,7 +19,7 @@ Evidence timestamp reference (artifact freshness):
 
 - `artifacts/feature-status-summary.json` → `generated_at_utc`: `2026-03-10T20:06:56Z`
 - `docs/qa/feature-status-report.md` reports the same generation moment (`Generated at (UTC): 2026-03-10T20:06:56Z`), so capability counts below are tied to that artifact run.
-- `artifacts/all-green-gate-summary.json` is the gate execution artifact used for gate status and failed-check assertions below.
+- `artifacts/all-green-gate-summary.json` is the gate execution artifact used for gate status and failed-check assertions below (`snapshot_utc`: `2026-03-10T20:32:23Z`).
 
 Source-of-truth refresh discipline (use this order on each update):
 
@@ -31,9 +31,12 @@ From the latest generated status artifacts:
 
 - Capability summary line (`docs/qa/feature-status-report.md`): **Implemented: 0 | Partial: 9 | Missing: 0**.
 - Gate status (`artifacts/all-green-gate-summary.json` → top-level `status`): **failed**.
-- Current failing and warning-mode checks/signals in the same gate artifact:
+- Current failing and warning-mode checks/signals in the same gate artifact (snapshot `2026-03-10T20:32:23Z`):
   - Failing checks: `product_behave`, `qa_pytest_not_live_smoke`, `qa_validate_invariant_sync`.
   - Warning-mode check: `qa_validate_kpi_guardrails` returned `warning` (non-zero exit code tracked as a warning by the gate runner).
+  - First failing command by stage:
+    - `product`: `/root/.pyenv/versions/3.11.14/bin/python -m behave`
+    - `qa`: `/root/.pyenv/versions/3.11.14/bin/python -m pytest -m 'not live_smoke'`
 
 ### What is working
 
