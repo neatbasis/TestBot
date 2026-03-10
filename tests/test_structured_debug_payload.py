@@ -501,3 +501,21 @@ def test_structured_debug_payload_non_applicable_gk_contract_does_not_emit_false
     assert payload["debug.contract"]["general_knowledge_contract_gate"]["passed"] is True
     assert payload["debug.contract"]["general_knowledge_contract_applicability"] == "not_applicable"
     assert payload["debug.contract"]["general_knowledge_contract_failed_when_applicable"] is False
+
+
+def test_structured_debug_payload_intent_metrics_are_null_when_not_persisted() -> None:
+    state = PipelineState(
+        user_input="hello",
+        rewritten_query="hello",
+        classified_intent="knowledge_question",
+        resolved_intent="knowledge_question",
+        confidence_decision={"context_confident": False, "ambiguity_detected": False},
+        invariant_decisions={"answer_mode": "assist", "fallback_action": "ANSWER_UNKNOWN"},
+    )
+
+    payload = _build_debug_turn_payload(state=state, intent_label="knowledge_question", hits=[])
+
+    assert payload["debug.intent"]["confidence"] is None
+    assert payload["debug.intent"]["threshold"] is None
+    assert payload["debug.intent"]["model"] is None
+    assert payload["debug.intent"]["version"] is None

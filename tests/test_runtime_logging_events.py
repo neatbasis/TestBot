@@ -686,6 +686,7 @@ def test_chat_loop_debug_trace_logs_structured_payload_for_queryable_policy_fiel
                 state,
                 reranked_hits=[],
                 confidence_decision={
+                    **state.confidence_decision,
                     "context_confident": False,
                     "ambiguity_detected": False,
                     "retrieval_branch": "memory_retrieval",
@@ -755,6 +756,14 @@ def test_chat_loop_debug_trace_logs_structured_payload_for_queryable_policy_fiel
     assert "trace" in debug_event
     assert isinstance(debug_event["trace"], str)
     assert "payload" in debug_event
+
+    debug_intent = debug_event["payload"]["debug.intent"]
+    assert debug_intent["classified"] == "memory_recall"
+    assert debug_intent["predicted"] == "memory_recall"
+    assert debug_intent["confidence"] is not None
+    assert debug_intent["threshold"] is not None
+    assert debug_intent["confidence"] > 0.0
+    assert debug_intent["threshold"] > 0.0
 
     policy = debug_event["payload"]["debug.policy"]
     assert policy["reject_code"] == "NO_CITABLE_MEMORY_EVIDENCE"
