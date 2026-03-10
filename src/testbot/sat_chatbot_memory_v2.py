@@ -6,7 +6,6 @@ import logging
 import os
 import re
 import sys
-import time
 import uuid
 import warnings
 from concurrent.futures import Future, ThreadPoolExecutor
@@ -613,29 +612,11 @@ def _read_runtime_env() -> dict[str, object]:
         "source_wikipedia_language": os.getenv("SOURCE_WIKIPEDIA_LANGUAGE", "en"),
         "source_arxiv_query": os.getenv("SOURCE_ARXIV_QUERY", ""),
         "source_ingest_async_continuation": os.getenv("SOURCE_INGEST_ASYNC_CONTINUATION", "0") == "1",
-        "source_ingest_sync_retry_wait_budget_seconds": max(
-            0.0,
-            _parse_env_float("SOURCE_INGEST_SYNC_RETRY_WAIT_BUDGET_SECONDS", 0.15),
-        ),
         "source_ingest_background_future": None,
         "source_ingest_background_in_progress": False,
         "source_ingest_background_request_id": "",
         "debug_verbose": debug_verbose,
     }
-
-
-def _bounded_wait_for_sync_retrieval_retry(*, wait_budget_seconds: float, poll_interval_seconds: float = 0.05) -> float:
-    budget = max(0.0, float(wait_budget_seconds))
-    if budget <= 0.0:
-        return 0.0
-
-    interval = max(0.001, float(poll_interval_seconds))
-    waited = 0.0
-    while waited < budget:
-        sleep_for = min(interval, budget - waited)
-        time.sleep(sleep_for)
-        waited += sleep_for
-    return waited
 
 
 def _run_retrieval_with_optional_sync_retry(
@@ -644,22 +625,9 @@ def _run_retrieval_with_optional_sync_retry(
     source_ingest_async_continuation: bool,
     wait_budget_seconds: float,
 ):
+    del source_ingest_async_continuation, wait_budget_seconds
     state, docs_and_scores = retrieve_once()
-    retry = {"attempted": False, "waited_seconds": 0.0, "reason": "not_needed"}
-    if docs_and_scores:
-        return state, docs_and_scores, retry
-
-    if source_ingest_async_continuation:
-        retry["reason"] = "async_continuation_enabled"
-        return state, docs_and_scores, retry
-
-    retry["attempted"] = True
-    retry["waited_seconds"] = round(
-        _bounded_wait_for_sync_retrieval_retry(wait_budget_seconds=wait_budget_seconds),
-        4,
-    )
-    retry["reason"] = "sync_retry_completed"
-    state, docs_and_scores = retrieve_once()
+    retry = {"attempted": False, "waited_seconds": 0.0, "reason": "sync_retry_disabled_deprecated"}
     return state, docs_and_scores, retry
 
 
@@ -3346,11 +3314,12 @@ def _run_canonical_turn_pipeline(
                     segment_types=retrieval_segment_types,
                 )
 
-            ctx.state, docs_and_scores, retrieval_retry = _run_retrieval_with_optional_sync_retry(
-                retrieve_once=_retrieve_once,
-                source_ingest_async_continuation=bool(runtime.get("source_ingest_async_continuation", False)),
-                wait_budget_seconds=float(runtime.get("source_ingest_sync_retry_wait_budget_seconds", 0.15) or 0.0),
-            )
+            ctx.state, docs_and_scores = _retrieve_once()
+            retrieval_retry = {
+                "attempted": False,
+                "waited_seconds": 0.0,
+                "reason": "sync_retry_disabled_deprecated",
+            }
             _validate_and_log_transition(validate_retrieve_evidence_post(ctx.state))
             if not docs_and_scores and bool(runtime.get("source_ingest_async_continuation", False)):
                 start_result = _start_background_source_ingestion(
