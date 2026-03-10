@@ -1,9 +1,10 @@
 from testbot.context_resolution import ContinuityPosture, resolve as resolve_context
+from testbot.evidence_retrieval import EvidenceBundle, retrieval_result
 from testbot.intent_resolution import IntentResolutionInput, resolve as resolve_intent
 from testbot.intent_router import IntentType
 from testbot.candidate_encoding import FactCandidate
 from testbot.pipeline_state import PipelineState
-from testbot.policy_decision import EvidencePosture, decide
+from testbot.policy_decision import DecisionClass, EvidencePosture, decide, decide_from_evidence
 from testbot.sat_chatbot_memory_v2 import ROUTE_TO_ASK_ANSWER
 from testbot.stabilization import StabilizedTurnState
 
@@ -164,3 +165,17 @@ def test_knowledge_followup_with_repair_offer_anchor_promotes_to_capabilities_he
     assert "commit.pending_repair_state:repair_offered_to_user" in context.history_anchors
     assert resolved.classified_intent is IntentType.KNOWLEDGE_QUESTION
     assert resolved.resolved_intent is IntentType.CAPABILITIES_HELP
+
+
+def test_capabilities_help_followup_policy_decision_does_not_map_to_general_knowledge_action() -> None:
+    decision = decide_from_evidence(
+        intent=IntentType.CAPABILITIES_HELP,
+        retrieval=retrieval_result(
+            evidence_bundle=EvidenceBundle(),
+            retrieval_candidates_considered=0,
+            hit_count=0,
+        ),
+        repair_required=False,
+    )
+
+    assert decision.decision_class is DecisionClass.ASK_FOR_CLARIFICATION

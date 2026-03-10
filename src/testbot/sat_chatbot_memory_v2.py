@@ -2357,7 +2357,7 @@ def answer_assemble(
         return AnswerAssembleResult(
             draft_answer="",
             final_answer=final_answer,
-            fallback_action="ANSWER_GENERAL_KNOWLEDGE",
+            fallback_action="OFFER_CAPABILITY_ALTERNATIVES",
             intent_class=intent_class,
             social_or_non_knowledge_intent=social_or_non_knowledge_intent,
             answer_policy_rationale={"capability_help_short_circuit": True},
@@ -2507,7 +2507,7 @@ def answer_validate(
                 "has_general_knowledge_marker": False,
                 "general_knowledge_confidence_gate_passed": True,
                 "answer_mode": "assist",
-                "fallback_action": "ANSWER_GENERAL_KNOWLEDGE",
+                "fallback_action": "OFFER_CAPABILITY_ALTERNATIVES",
                 "provenance_recorded": True,
             },
             alignment_decision=alignment_decision,
