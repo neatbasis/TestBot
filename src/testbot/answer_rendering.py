@@ -30,6 +30,10 @@ def render_answer(*, assembly: AnswerCandidate, validation: ValidatedAnswer, pre
     )
 
     if assembly.pending_repair_state.get("repair_required_by_policy"):
+        if assembly.decision_class == "pending_lookup_background_ingestion":
+            if text.strip():
+                return RenderedAnswer(rendered_text=text)
+            return RenderedAnswer(rendered_text="I'm ingesting external sources in the background now…")
         canned = (
             "I don't have enough reliable memory to answer directly. "
             "I can help continue repair reconstruction from the details we already confirmed."

@@ -1535,7 +1535,7 @@ def _derive_response_blocker_reason(
     ambiguity_detected: bool,
     answer_contract_valid: bool,
     general_knowledge_contract_valid: bool,
-    general_knowledge_contract_applicability: str,
+    general_knowledge_contract_applicability: str = "applicable",
 ) -> str:
     signal = derive_reject_signal(
         intent_label="non_memory",
@@ -2486,8 +2486,6 @@ def answer_validate(
         else bool(state.confidence_decision.get("background_ingestion_in_progress", False))
     )
     pending_lookup = pending_lookup or decision_class == DecisionClass.PENDING_LOOKUP_BACKGROUND_INGESTION.value
-    if pending_lookup and assembled.final_answer != BACKGROUND_INGESTION_PROGRESS_ANSWER:
-        assembled = replace(assembled, final_answer=BACKGROUND_INGESTION_PROGRESS_ANSWER)
 
     packed_history = pack_chat_history(list(chat_history))
     provenance_types, claims, basis_statement, used_memory_refs, used_source_evidence_refs, source_evidence_attribution = build_provenance_metadata(
@@ -2542,9 +2540,13 @@ def answer_validate(
         confidence_decision=state.confidence_decision,
     )
     if assembled.final_answer != FALLBACK_ANSWER and not pre_enforcement_general_knowledge_contract_valid and not (
-        assembled.social_or_non_knowledge_intent
-        and bool(assembled.draft_answer)
-        and assembled.final_answer == assembled.draft_answer
+        assembled.intent_class == "time_query"
+        or assembled.fallback_action == "ANSWER_TIME"
+        or (
+            assembled.social_or_non_knowledge_intent
+            and bool(assembled.draft_answer)
+            and assembled.final_answer == assembled.draft_answer
+        )
     ):
         safe_final = NON_KNOWLEDGE_UNCERTAINTY_ANSWER
         provenance_types, claims, basis_statement, used_memory_refs, used_source_evidence_refs, source_evidence_attribution = build_provenance_metadata(
@@ -2612,7 +2614,7 @@ def answer_validate(
             )
             answer_mode = answer_mode_decision.answer_mode
             invariant_degrade_reason = (
-                "non_memory_clarify_pending_lookup_degraded"
+                None
                 if pending_lookup
                 else "non_memory_clarify_no_clarify_mode_degraded"
             )
@@ -2755,7 +2757,7 @@ def _decision_object_from_assembled(assembled: AnswerAssembleResult) -> Decision
     decision_lookup = {
         "ANSWER_FROM_MEMORY": DecisionClass.ANSWER_FROM_MEMORY,
         "ASK_CLARIFYING_QUESTION": DecisionClass.ASK_FOR_CLARIFICATION,
-        "ANSWER_UNKNOWN": DecisionClass.PENDING_LOOKUP_BACKGROUND_INGESTION,
+        "ANSWER_UNKNOWN": DecisionClass.ANSWER_GENERAL_KNOWLEDGE_LABELED,
         "ANSWER_GENERAL_KNOWLEDGE": DecisionClass.ANSWER_GENERAL_KNOWLEDGE_LABELED,
     }
     decision_class = decision_lookup.get(fallback_action, DecisionClass.ANSWER_GENERAL_KNOWLEDGE_LABELED)
@@ -3820,7 +3822,11 @@ def _run_canonical_turn_pipeline(
         ctx.artifacts["assembled_answer"] = assembled
         decision_object = ctx.artifacts["decision_object"]
         retrieval_result_obj = ctx.artifacts["retrieval_result"]
-        offer_type = _detect_capability_offer(assembled.final_answer)
+        offer_type = (
+            _detect_capability_offer(assembled.final_answer)
+            if decision_object.decision_class is DecisionClass.ANSWER_GENERAL_KNOWLEDGE_LABELED
+            else ""
+        )
         ctx.artifacts["answer_assembly_contract"] = assemble_answer_contract(
             decision=decision_object,
             evidence_bundle=retrieval_result_obj.evidence_bundle,
