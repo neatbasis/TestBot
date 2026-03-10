@@ -1190,7 +1190,10 @@ All markdown local file/path references look valid.
     "grounded_answer_precision=0.0000 below minimum 0.7500"
   ]
 }
-[WARN] Base ref 'origin/main' is unavailable; using fallback 'HEAD~1' for governance validators.
+[WARN] Base ref 'origin/main' is unavailable; falling back to 'HEAD~1'.
+       This is expected in Codex task containers or shallow CI clones.
+       Governance diff checks are running against a reduced baseline.
+       For authoritative results, run locally with 'git fetch origin main' first. (Unless you are ChatGPT/Codex!)
 [INFO] Base-ref fallback is active by canonical policy: origin/main -> HEAD~1 -> HEAD (using 'HEAD~1').
 Stage summary:
 - product: duration_s=3.574, exit_code=0, first_failing_command=-, artifact_path=-
