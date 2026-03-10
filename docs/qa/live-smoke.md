@@ -49,6 +49,34 @@ The default `scripts/smoke/checks.example.json` is designed to validate these st
 - `ollama-api-ready` → **Ollama model runtime readiness**: proves model-serving infrastructure is reachable for response generation.
 - `ollama-embedding-ready` → **Ollama embedding runtime readiness**: proves retrieval/grounding embedding infrastructure is online.
 
+### Readiness checks vs execution checks
+
+Live smoke now separates two classes of Ollama validation:
+
+- **Readiness checks** (fast):
+  - `GET ${OLLAMA_BASE_URL}/api/tags` probes (`ollama-api-ready`, `ollama-embedding-ready`)
+  - Goal: determine endpoint/service reachability quickly.
+  - Failure category in artifact rows: `endpoint_unreachable`.
+- **Execution checks** (explicit runtime calls):
+  - `ChatOllama.invoke(...)` and `OllamaEmbeddings.embed_query(...)` in `ollama-runtime-execution`
+  - Goal: prove model + embedding execution works, not just endpoint readiness.
+  - Failure categories in artifact rows:
+    - `model_missing`
+    - `inference_execution_failure`
+    - `embedding_execution_failure`
+
+Enable execution checks for live environments with:
+
+```bash
+SMOKE_INCLUDE_OLLAMA_EXECUTION_CHECKS=1 scripts/smoke/run_live_smoke.sh
+```
+
+Or directly:
+
+```bash
+python scripts/smoke/run_live_smoke.py --include-ollama-execution-checks
+```
+
 ## Optional TestBot app health endpoint
 
 If your deployment also exposes an app-level health route, create a supplemental checks file (or replace the default checks file) and add a check such as:
@@ -97,6 +125,7 @@ To override metadata fields:
 ```bash
 SMOKE_ENVIRONMENT=staging \
 SMOKE_ACTOR="$(whoami)" \
+SMOKE_INCLUDE_OLLAMA_EXECUTION_CHECKS=1 \
 SMOKE_WRITE_MARKDOWN=1 \
 scripts/smoke/run_live_smoke.sh
 ```

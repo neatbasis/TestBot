@@ -121,6 +121,8 @@ def test_live_smoke_runner_writes_contract_artifacts(tmp_path: Path) -> None:
     assert detail["severity_if_broken"] == "critical"
     assert isinstance(detail["latency_ms"], int)
     assert detail["error_snippet"]
+    assert detail["check_type"] == "readiness"
+    assert detail["failure_category"] == "endpoint_unreachable"
 
 
 def test_live_smoke_report_lists_validated_capabilities(tmp_path: Path) -> None:
@@ -215,3 +217,65 @@ def test_live_smoke_runner_fails_with_clear_env_error(tmp_path: Path) -> None:
     )
     assert completed.returncode == 2
     assert "Missing required environment variables in process environment" in completed.stdout
+
+
+def test_live_smoke_runner_includes_ollama_execution_probe_when_enabled(tmp_path: Path) -> None:
+    with _local_ok_server() as target:
+        checks_file = tmp_path / "checks.json"
+        checks_file.write_text(
+            json.dumps(
+                {
+                    "checks": [
+                        {
+                            "name": "ollama-readiness",
+                            "target": target,
+                            "expected_status": 200,
+                            "capability_id": "cap-ollama-model-runtime-ready",
+                            "capability_name": "Ollama model runtime readiness",
+                            "business_impact": "Knowing-mode responses cannot be generated when model serving is unavailable.",
+                            "severity_if_broken": "critical",
+                        }
+                    ]
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        output_dir = tmp_path / "out"
+        command = [
+            sys.executable,
+            "scripts/smoke/run_live_smoke.py",
+            "--checks-file",
+            str(checks_file),
+            "--output-dir",
+            str(output_dir),
+            "--include-ollama-execution-checks",
+        ]
+
+        completed = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            env={**_smoke_env(), "PATH": os.environ.get("PATH", "")},
+        )
+
+    assert completed.returncode == 1
+
+    details_rows = [
+        json.loads(line)
+        for line in (output_dir / "smoke-details.jsonl").read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+
+    readiness_row = next(row for row in details_rows if row["check_name"] == "ollama-readiness")
+    assert readiness_row["check_type"] == "readiness"
+
+    execution_row = next(row for row in details_rows if row["check_name"] == "ollama-runtime-execution")
+    assert execution_row["check_type"] == "execution"
+    assert execution_row["passed"] is False
+    assert execution_row["failure_category"] in {
+        "inference_execution_failure",
+        "embedding_execution_failure",
+        "model_missing",
+    }
+    assert execution_row["error_snippet"]
