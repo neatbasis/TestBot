@@ -369,3 +369,9 @@ Dependency labels (machine-auditable ordered chain):
   - Governance validators rerun and passing: `python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main` and `python scripts/validate_issues.py --all-issue-files --base-ref origin/main` (both with documented `origin/main` -> `HEAD~1` fallback behavior).
   - Governance outcome: AC-0013-11 remains open/blocked pending evidence in dependency sequencing; closure condition is identical to ISSUE-0014 Phase 1 (identity semantic preservation, retrieval activation on immediate self-reference recall, and confirmed identity fact promotion at commit) with deterministic tests, reproducible CLI traces, and canonical gate evidence.
   - Evidence links: `docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md`, `docs/issues/evidence/2026-03-09-issue-0014-0013-behave.log`, `docs/issues/evidence/2026-03-09-issue-0014-0013-focused-pytests.log`, `docs/issues/evidence/2026-03-09-issue-0014-0013-all-green-gate.log`, `artifacts/all-green-gate-summary.json`.
+
+- 2026-03-10: ISSUE-0014-linked repair-offer followup continuity chain work landed in canonical runtime path and added deterministic coverage for offer-bearing commit continuity -> context anchor -> intent promotion.
+  - Linked evidence: `docs/issues/evidence/2026-03-10-issue-0014-repair-offer-followup-chain.md`.
+  - Coverage commands include:
+    - `PYTHONPATH=src python -m pytest tests/test_answer_rendering_offer_bearing.py tests/test_intent_router.py tests/test_decisioning_stages.py tests/test_answer_commit_identity_promotion.py -q`
+  - Observed outcome in this pass: `53 passed`.

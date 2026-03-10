@@ -88,6 +88,13 @@ _CAPABILITIES_HELP_PATTERNS = (
     r"\bhelp options\b",
 )
 
+_REPAIR_OFFER_FOLLOWUP_PATTERNS = (
+    r"^\s*(please\s+)?(look\s+up|look\s+it\s+up)\b",
+    r"^\s*(please\s+)?look\s+up\s+the\b",
+    r"^\s*(yes\s+please|please\s+do|go\s+ahead|do\s+it)\s*[.!?]*\s*$",
+    r"^\s*(please\s+)?(find|fetch|search\s+for)\s+the\b",
+)
+
 _SATELLITE_ACTION_PATTERNS = (
     r"\bask (?:something\s+)?(?:via|through) satellite\b",
     r"\buse satellite\b",
@@ -156,6 +163,8 @@ def classify_intent(user_input: str | None) -> IntentType:
         return IntentType.META_CONVERSATION
     if _matches_any(normalized, _MEMORY_RECALL_PATTERNS):
         return IntentType.MEMORY_RECALL
+    if _matches_any(normalized, _REPAIR_OFFER_FOLLOWUP_PATTERNS):
+        return IntentType.CAPABILITIES_HELP
     if _matches_any(normalized, _PROFILE_UPDATE_PATTERNS):
         return IntentType.META_CONVERSATION
     if _matches_any(normalized, _SOCIAL_CHAT_PATTERNS):

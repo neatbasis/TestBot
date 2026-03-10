@@ -1390,6 +1390,19 @@ def _is_capabilities_help_answer(text: str) -> bool:
     return normalized.startswith("runtime mode:") and "memory recall:" in normalized and "home assistant" in normalized
 
 
+_CAPABILITY_OFFER_PATTERN = re.compile(
+    r"\b(i can look up|i can find|i can search|i can help you find|"
+    r"would you like me to|i can define|i can look that up)\b",
+    re.IGNORECASE,
+)
+
+
+def _detect_capability_offer(text: str) -> str:
+    if _CAPABILITY_OFFER_PATTERN.search(text or ""):
+        return "capability_offer"
+    return ""
+
+
 def _intent_label(intent: IntentType) -> str:
     return intent.value
 
@@ -3760,7 +3773,7 @@ def _run_canonical_turn_pipeline(
             capability_status=capability_status,
             selected_decision=ctx.artifacts["decision_object"],
         )
-        ctx.artifacts["assembled_answer"] = answer_assemble(
+        assembled = answer_assemble(
             llm,
             ctx.state,
             chat_history=chat_history,
@@ -3770,12 +3783,16 @@ def _run_canonical_turn_pipeline(
             runtime_capability_status=capability_snapshot.runtime_capability_status,
             clock=clock,
         )
+        ctx.artifacts["assembled_answer"] = assembled
         decision_object = ctx.artifacts["decision_object"]
         retrieval_result_obj = ctx.artifacts["retrieval_result"]
+        offer_type = _detect_capability_offer(assembled.final_answer)
         ctx.artifacts["answer_assembly_contract"] = assemble_answer_contract(
             decision=decision_object,
             evidence_bundle=retrieval_result_obj.evidence_bundle,
             pending_ingestion_request_id=str(ctx.artifacts.get("pending_ingestion_request_id") or ""),
+            offer_bearing=bool(offer_type),
+            offer_type=offer_type,
         )
         append_pipeline_snapshot("answer.assemble", ctx.state)
         return ctx
