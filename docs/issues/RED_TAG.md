@@ -52,6 +52,7 @@ KPI evidence updates are mandatory for red-tag triage. If any KPI guardrail fail
   - Decision notes: ISSUE-0014 remains a blocker in the active chain; lifecycle wording is open/blocked pending evidence until AC-0013-11 and ISSUE-0014 Phase 1 meet the identical closure condition and dependent governance sequencing completes.
 
 Dependency evidence pointer (2026-03-09): `docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md` with linked behave/pytest logs, reproducible CLI traces, and canonical gate artifacts used for open/blocked pending evidence tracking.
+Governance validator fallback audit (2026-03-10): `docs/issues/evidence/2026-03-10-governance-validator-base-ref-fallback-audit.md` documents `origin/main` unavailability, automatic `HEAD~1` fallback, and explicit `HEAD~1` reruns for auditable readiness evidence.
 
 ## Missing evidence checklist (dependency gate)
 
