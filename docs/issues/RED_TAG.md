@@ -27,6 +27,15 @@ Use this note under each red-tag issue entry whenever status changes or during s
 KPI evidence updates are mandatory for red-tag triage. If any KPI guardrail fails, include owner + due date and escalation/rollback intent in both the evidence note and decision notes.
 
 
+KPI warning-mode governance policy is defined in `docs/testing.md` under [KPI guardrail mode policy (authoritative)](../testing.md#kpi-guardrail-mode-policy-authoritative). Use that policy as the canonical source for allowed modes, default rationale, promotion criteria, and persistent-warning issue-linkage requirements.
+
+
+## KPI warning debt vs blocker interpretation
+
+- For `Severity: red` issues and blocker/dependent closure paths, persistent KPI guardrail warnings are treated as **blocker evidence** until mitigation is issue-linked with owner + due date.
+- For non-red (`amber`/`green`) issues, KPI warnings in optional mode can be tracked as **accepted debt** only when the warning is linked to an active issue record with owner, due date, and mitigation plan.
+- Do not mark issues `resolved`/`closed` while unresolved KPI warnings remain unlinked.
+
 ## Active dependency gate (consistency contract)
 
 - Dependency order/state terminology must match ISSUE-0013 current execution order: ISSUE-0008 (**blocker**) -> ISSUE-0011 (**blocker**) -> ISSUE-0012 (**parallel stream**) -> ISSUE-0014 (**blocker**) -> ISSUE-0015 (**dependent**).

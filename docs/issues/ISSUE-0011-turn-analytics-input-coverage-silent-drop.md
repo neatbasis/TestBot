@@ -115,7 +115,7 @@
 - Command: `python scripts/all_green_gate.py --continue-on-failure --json-output artifacts/all-green-gate-summary.json`
   - Exit code: `0`
   - Exact gate status: `"status": "passed"`
-  - Notable optional warning: `qa_validate_kpi_guardrails` reported warning-level failures under optional rollout mode (`--kpi-guardrail-mode optional` default).
+  - Notable optional warning: `qa_validate_kpi_guardrails` reported warning-level failures under optional rollout mode (`--kpi-guardrail-mode optional` default); linkage/ownership requirements follow `docs/testing.md#kpi-guardrail-mode-policy-authoritative`.
   - Artifact: `artifacts/all-green-gate-summary.json`
 
 ## Closure Notes

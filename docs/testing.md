@@ -130,6 +130,31 @@ These diagnostics are intended to make semantic coverage explicit, especially fo
 
 The canonical gate (`scripts/all_green_gate.py`) supports KPI rollout controls via `--kpi-guardrail-mode {off,optional,blocking}` (default: `optional`). In `optional`, `scripts/aggregate_turn_analytics.py` and `scripts/validate_kpi_guardrails.py` run as non-blocking warnings; in `blocking`, the same failures block gate success; in `off`, both checks are skipped.
 
+#### KPI guardrail mode policy (authoritative)
+
+Allowed values for `--kpi-guardrail-mode` are fixed to:
+
+- `off`: skip turn analytics aggregation and KPI guardrail validation checks.
+- `optional` (default): run KPI checks as warning-only signals that do not fail the canonical gate.
+- `blocking`: run KPI checks as required checks that fail the canonical gate on guardrail violations.
+
+Default mode rationale (`optional`): KPI guardrails are still being operationalized as release-governance telemetry, so the repository keeps them visible in every canonical gate run without allowing KPI threshold drift to silently disappear. This preserves deterministic warning visibility while the team accumulates sufficient sprint evidence to justify promotion.
+
+Promotion criteria from `optional` to `blocking` (all required):
+
+1. Two consecutive sprint KPI evidence reviews (`docs/issues/evidence/sprint-<NN>-kpi-review.md`) show zero guardrail violations against `config/kpi_guardrails.json`.
+2. The same two-sprint window has no unresolved KPI warning entries in `artifacts/all-green-gate-summary.json` for `qa_validate_kpi_guardrails`.
+3. `docs/issues/RED_TAG.md` triage updates confirm no open blocker/dependent issue is carrying forward unresolved KPI warning debt.
+4. Promotion is documented in issue governance metadata (linked issue record + decision note) before changing automation defaults.
+
+Severity/state interpretation for warning-mode KPI results:
+
+- **Accepted debt**: non-red issues (`Severity: amber`/`green`) may carry KPI warnings while status remains `in_progress`/`open`, but each warning cycle must include explicit issue linkage (issue ID, owner, due date, mitigation note).
+- **Blocker**: red-severity issues (`Severity: red`) or any issue in a declared blocker/dependent closure path must treat persistent KPI warnings as blocker evidence until linked mitigation and closure dates are recorded.
+- **Not allowed**: marking an issue `resolved`/`closed` while unresolved KPI warnings persist without linked mitigation issue evidence.
+
+When KPI warnings persist in `optional` mode, repository policy requires issue linkage in all three locations for each review cycle: the canonical issue record decision note, `docs/issues/RED_TAG.md` triage note (when red-tagged), and the sprint KPI evidence note.
+
 | Test layer | Canonical command | Runtime dependency | CI gate level | Expected runtime | Pass criteria |
 | --- | --- | --- | --- | --- | --- |
 | Single merge/readiness gate (fast profile) | `python scripts/all_green_gate.py` | Python dev extras (`behave`, `pytest`) plus local docs/issues/fixtures and git metadata | **Required (canonical gate)** | ~30-150s depending on test volume | Exit code `0`; category-level blocking checks pass (BDD, deterministic pytest, recall eval, governance + invariant mirror/path/schema + pipeline-stage conformance validators) without redundant targeted overlap commands. **Interpret feature-status evidence as behavior confidence only when this gate includes a successful BDD run.** |

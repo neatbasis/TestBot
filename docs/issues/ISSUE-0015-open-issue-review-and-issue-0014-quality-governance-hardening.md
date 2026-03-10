@@ -204,7 +204,7 @@ ISSUE-0015 remains `Status: open` and `Severity: red` until all dependency condi
   - AC6: open/blocked pending evidence; governance linkage stays synchronized to blocker/dependent sequencing.
   - AC7: open/blocked pending evidence; deterministic coverage and reproducible CLI traces remain required for closure condition verification.
   - AC9: open/blocked pending evidence; dependency gate remains tied to shared AC-0013-11 / ISSUE-0014 Phase 1 closure criteria.
-- Result: ISSUE-0015 stays `Status: open`, `Severity: red`, and `open/blocked pending evidence` for governance close-order sequencing until blockers clear.
+- Result: ISSUE-0015 stays `Status: open`, `Severity: red`, and `open/blocked pending evidence` for governance close-order sequencing until blockers clear. Under `docs/testing.md#kpi-guardrail-mode-policy-authoritative`, optional-mode KPI warnings are blocker evidence for this red-tag dependency chain until linked mitigation ownership and due dates are maintained.
 
 
 ### Missing evidence checklist (owner + due date)
