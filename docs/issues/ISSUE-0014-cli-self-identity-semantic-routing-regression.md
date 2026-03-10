@@ -262,7 +262,7 @@ Issue validation passed.
 - Last reviewed: 2026-03-09
 - Next review due: 2026-03-16
 - KPI evidence: docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md
-- Decision notes: Phase 1 deterministic suites and required CLI closure-proof traces are attached with AC mapping complete, and refreshed canonical gate evidence now passes (KPI guardrails remain warning-mode). Missing-evidence checklist actions are complete with reproducible artifact links in this issue, ISSUE-0015, and RED_TAG.
+- Decision notes: Phase 1 deterministic suites and required CLI closure-proof traces are attached with AC mapping complete, and refreshed canonical gate evidence now passes (KPI guardrails remain warning-mode). Per `docs/testing.md#kpi-guardrail-mode-policy-authoritative`, persistent warning-mode KPI results remain linked governance debt and require owner/due-date linkage in this issue, ISSUE-0015, and RED_TAG.
 
 - 2026-03-08: Opened from production-style CLI session evidence showing stabilization progress with persistent semantic routing and fact-promotion defects in identity continuity turns.
 

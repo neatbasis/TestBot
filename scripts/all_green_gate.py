@@ -87,7 +87,10 @@ def parse_args() -> argparse.Namespace:
         "--kpi-guardrail-mode",
         choices=("off", "optional", "blocking"),
         default="optional",
-        help="Rollout mode for turn analytics + KPI guardrail checks (default: optional).",
+        help=(
+            "Rollout mode for turn analytics + KPI guardrail checks (default: optional). "
+            "Policy and promotion criteria: docs/testing.md#kpi-guardrail-mode-policy-authoritative."
+        ),
     )
     return parser.parse_args()
 
@@ -452,7 +455,7 @@ def main() -> int:
     if args.kpi_guardrail_mode == "optional":
         print(
             "\nTurn analytics and KPI guardrail checks are running in optional mode. "
-            "Promote with --kpi-guardrail-mode blocking once rollout criteria are met."
+            "Promote with --kpi-guardrail-mode blocking once the criteria in docs/testing.md#kpi-guardrail-mode-policy-authoritative are met."
         )
 
     if args.json_output:
