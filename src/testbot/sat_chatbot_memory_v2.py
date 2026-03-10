@@ -713,18 +713,6 @@ def _read_runtime_env() -> dict[str, object]:
     }
 
 
-def _run_retrieval_with_optional_sync_retry(
-    *,
-    retrieve_once,
-    source_ingest_async_continuation: bool,
-    wait_budget_seconds: float,
-):
-    del source_ingest_async_continuation, wait_budget_seconds
-    state, docs_and_scores = retrieve_once()
-    retry = {"attempted": False, "waited_seconds": 0.0, "reason": "sync_retry_disabled_deprecated"}
-    return state, docs_and_scores, retry
-
-
 def _ha_connection_error(api_url: str, token: str, entity_id: str) -> str | None:
     if not token:
         return "Missing HA_API_SECRET"
@@ -1405,6 +1393,20 @@ def _is_capabilities_help_answer(text: str) -> bool:
 def _intent_label(intent: IntentType) -> str:
     return intent.value
 
+
+def _is_definitional_query_form(normalized_utterance: str) -> bool:
+    text = (normalized_utterance or "").strip()
+    if not text:
+        return False
+    definitional_prefixes = (
+        "what is ",
+        "what are ",
+        "who is ",
+        "who are ",
+        "define ",
+        "definition of ",
+    )
+    return text.startswith(definitional_prefixes)
 
 
 
@@ -3604,11 +3606,6 @@ def _run_canonical_turn_pipeline(
                 )
 
             ctx.state, docs_and_scores = _retrieve_once()
-            retrieval_retry = {
-                "attempted": False,
-                "waited_seconds": 0.0,
-                "reason": "sync_retry_disabled_deprecated",
-            }
             _validate_and_log_transition(validate_retrieve_evidence_post(ctx.state))
             if not docs_and_scores and bool(runtime.get("source_ingest_async_continuation", False)):
                 start_result = _start_background_source_ingestion(
@@ -3630,7 +3627,6 @@ def _run_canonical_turn_pipeline(
             if background_in_progress:
                 ctx.artifacts["continuation_required"] = True
 
-            ctx.artifacts["retrieval_retry"] = dict(retrieval_retry)
             ctx.artifacts["docs_and_scores"] = docs_and_scores
             considered = int(ctx.state.confidence_decision.get("retrieval_candidates_considered", len(docs_and_scores)) or 0)
             prerank_bundle = build_evidence_bundle_from_docs_and_scores(docs_and_scores)
@@ -3658,11 +3654,9 @@ def _run_canonical_turn_pipeline(
                         "segment_ids": sorted(retrieval_segment_ids),
                         "segment_types": sorted(retrieval_segment_types),
                     },
-                    "retry": dict(ctx.artifacts.get("retrieval_retry", {})),
                 },
             )
         else:
-            ctx.artifacts["retrieval_retry"] = {"attempted": False, "waited_seconds": 0.0, "reason": "retrieval_not_required"}
             ctx.artifacts["pre_rerank_evidence_bundle"] = EvidenceBundle()
             ctx.artifacts["retrieval_result"] = retrieval_result(
                 evidence_bundle=EvidenceBundle(),

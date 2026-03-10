@@ -52,6 +52,7 @@ Current event contracts are validated by `scripts/validate_log_schema.py`, with 
 - `pipeline_state_snapshot`: `stage` (`str`), `state` (`dict`)
 - `stage_transition_validation`: `stage` (`str`), `boundary` (`str`),
   `invariant_refs` (`list`, `PINV-*` IDs for pipeline-stage checks), `passed` (`bool`), `failures` (`list`)
+- `retrieval_candidates`: includes retrieval query/candidate metadata; `retry` is optional and should only appear when a real retry was attempted.
 
 Use fixture artifacts in `tests/fixtures/log_schema/` to keep both current and previous schema
 versions valid over time.
