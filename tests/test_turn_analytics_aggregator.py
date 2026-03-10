@@ -60,6 +60,59 @@ def test_compute_kpis_is_deterministic() -> None:
     }
 
 
+
+
+def test_compute_alignment_dimension_summary_excludes_not_applicable_from_averages() -> None:
+    rows = [
+        {
+            "event": "alignment_decision_evaluated",
+            "alignment_dimensions": {
+                "factual_grounding_reliability": 0.8,
+                "response_utility": 0.9,
+            },
+        },
+        {
+            "event": "alignment_decision_evaluated",
+            "alignment_dimensions": {
+                "factual_grounding_reliability": "not_applicable",
+                "response_utility": 0.6,
+            },
+        },
+        {
+            "event": "alignment_decision_evaluated",
+            "alignment_dimensions": {
+                "factual_grounding_reliability": 1.0,
+                "response_utility": 1.0,
+            },
+        },
+    ]
+
+    summary = aggregator.compute_alignment_dimension_summary(rows)
+
+    assert summary["alignment_dimension_averages"] == {
+        "factual_grounding_reliability": 0.9,
+        "response_utility": 0.8333,
+    }
+    assert summary["alignment_dimension_applicable_counts"] == {
+        "factual_grounding_reliability": 2,
+        "response_utility": 3,
+    }
+    assert summary["alignment_dimension_not_applicable_counts"] == {
+        "factual_grounding_reliability": 1,
+    }
+
+
+
+def test_compute_alignment_dimension_summary_from_grounded_and_fallback_fixture_is_dashboard_safe() -> None:
+    fixture = Path(__file__).parent / "fixtures" / "alignment_dimension_events_fixture.jsonl"
+    rows = [json.loads(line) for line in fixture.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+    summary = aggregator.compute_alignment_dimension_summary(rows)
+
+    assert summary["alignment_dimension_averages"]["factual_grounding_reliability"] == 0.95
+    assert summary["alignment_dimension_applicable_counts"]["factual_grounding_reliability"] == 1
+    assert summary["alignment_dimension_not_applicable_counts"]["factual_grounding_reliability"] == 1
+
 def test_normalize_and_validate_rows_accepts_v1_v2_v3_analytics_events() -> None:
     rows = [
         {"event": "user_utterance_ingest", "utterance": "legacy row"},

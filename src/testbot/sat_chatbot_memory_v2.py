@@ -243,7 +243,7 @@ def _poll_pending_ingestion_obligations(*, runtime: dict[str, object]) -> None:
 GENERAL_KNOWLEDGE_MARKER_PREFIX = "General definition (not from your memory):"
 GENERAL_KNOWLEDGE_CONFIDENCE_MIN = 0.85
 GENERAL_KNOWLEDGE_SUPPORT_MIN = 2
-ALIGNMENT_OBJECTIVE_VERSION = "2026-03-05.v3"
+ALIGNMENT_OBJECTIVE_VERSION = "2026-03-10.v4"
 SESSION_LOG_SCHEMA_VERSION = 2
 _LOGGER = logging.getLogger(__name__)
 
@@ -3204,13 +3204,26 @@ def evaluate_alignment_decision(
 
     citation_required_for_mode = raw_claim_text_detected and not contract_exempt_response
     citation_check_applicable = citation_required_for_mode
-    if citation_required_for_mode:
-        citation_validity = 1.0 if has_citation else 0.0
-    elif raw_claim_text_detected:
-        citation_validity = 0.5
+    grounding_dimension_applicability = "applicable"
+    if contract_exempt_response and not citation_required_for_mode:
+        grounding_dimension_applicability = "not_applicable"
+
+    citation_validity: float | str
+    confidence_margin_component: float | str
+    factual_grounding_reliability: float | str
+    if grounding_dimension_applicability == "not_applicable":
+        citation_validity = "not_applicable"
+        confidence_margin_component = "not_applicable"
+        factual_grounding_reliability = "not_applicable"
     else:
-        citation_validity = 0.0
-    factual_grounding_reliability = _clamp01((0.65 * citation_validity) + (0.35 * confidence_margin_normalized))
+        if citation_required_for_mode:
+            citation_validity = 1.0 if has_citation else 0.0
+        elif raw_claim_text_detected:
+            citation_validity = 0.5
+        else:
+            citation_validity = 0.0
+        confidence_margin_component = confidence_margin_normalized
+        factual_grounding_reliability = _clamp01((0.65 * citation_validity) + (0.35 * confidence_margin_component))
     safety_compliance_strictness = 0.0 if (unsafe_request and final_answer != DENY_ANSWER) else 1.0
 
     fallback_mode_score = 1.0
@@ -3247,7 +3260,7 @@ def evaluate_alignment_decision(
         final_alignment_decision = "deny"
     elif contract_exempt_response:
         final_alignment_decision = "allow"
-    elif factual_grounding_reliability < 0.6:
+    elif isinstance(factual_grounding_reliability, float) and factual_grounding_reliability < 0.6:
         final_alignment_decision = "fallback"
     elif response_utility < 0.5:
         final_alignment_decision = "fallback"
@@ -3274,6 +3287,7 @@ def evaluate_alignment_decision(
                 "has_required_memory_citation": has_citation,
                 "citation_required_for_mode": citation_required_for_mode,
                 "citation_check_applicable": citation_check_applicable,
+                "grounding_dimension_applicability": grounding_dimension_applicability,
                 "general_knowledge_contract_applicability": general_knowledge_contract_applicability,
                 "contract_exempt_reason": contract_exempt_reason,
                 "context_confident": context_confident,
@@ -3289,7 +3303,7 @@ def evaluate_alignment_decision(
             },
             "normalized": {
                 "citation_validity": citation_validity,
-                "confidence_margin_normalized": confidence_margin_normalized,
+                "confidence_margin_normalized": confidence_margin_component,
                 "fallback_mode_score": fallback_mode_score,
                 "intent_fulfillment_proxy": intent_fulfillment_proxy,
                 "latency_score": latency_score,
