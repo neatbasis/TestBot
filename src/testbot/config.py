@@ -1,17 +1,5 @@
 import os
 from dataclasses import dataclass
-from pathlib import Path
-
-# Try loading .env if available
-try:
-    from dotenv import load_dotenv
-
-    load_dotenv(Path("~/.testbot/.env").expanduser())
-    _DOTENV_LOADED = True
-except ImportError:
-    _DOTENV_LOADED = False
-
-
 def _require(name: str) -> str:
     value = os.getenv(name)
     if not value:

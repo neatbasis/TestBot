@@ -36,30 +36,20 @@ def _local_ok_server() -> str:
         thread.join(timeout=2)
 
 
-def _write_env_file(home: Path) -> Path:
-    env_path = home / ".testbot" / ".env"
-    env_path.parent.mkdir(parents=True, exist_ok=True)
-    env_path.write_text(
-        "\n".join(
-            [
-                "HA_API_URL=http://127.0.0.1:8123",
-                "HA_API_SECRET=ha-test-supersecret-token",
-                "HA_SATELLITE_ENTITY_ID=assist_satellite.test",
-                "OLLAMA_BASE_URL=http://127.0.0.1:11434",
-                "OLLAMA_MODEL=llama3.1:latest",
-                "OLLAMA_EMBEDDING_MODEL=nomic-embed-text",
-                "SMOKE_CONNECT_TIMEOUT_S=2",
-                "SMOKE_REQUEST_TIMEOUT_S=3",
-            ]
-        )
-        + "\n",
-        encoding="utf-8",
-    )
-    return env_path
+def _smoke_env() -> dict[str, str]:
+    return {
+        "HA_API_URL": "http://127.0.0.1:8123",
+        "HA_API_SECRET": "ha-test-supersecret-token",
+        "HA_SATELLITE_ENTITY_ID": "assist_satellite.test",
+        "OLLAMA_BASE_URL": "http://127.0.0.1:11434",
+        "OLLAMA_MODEL": "llama3.1:latest",
+        "OLLAMA_EMBEDDING_MODEL": "nomic-embed-text",
+        "SMOKE_CONNECT_TIMEOUT_S": "2",
+        "SMOKE_REQUEST_TIMEOUT_S": "3",
+    }
 
 
 def test_live_smoke_runner_writes_contract_artifacts(tmp_path: Path) -> None:
-    _write_env_file(tmp_path)
     checks_file = tmp_path / "checks.json"
     checks_file.write_text(
         json.dumps(
@@ -101,7 +91,7 @@ def test_live_smoke_runner_writes_contract_artifacts(tmp_path: Path) -> None:
         command,
         capture_output=True,
         text=True,
-        env={"HOME": str(tmp_path), "PATH": os.environ.get("PATH", "")},
+        env={**_smoke_env(), "PATH": os.environ.get("PATH", "")},
     )
     assert completed.returncode == 1
 
@@ -134,7 +124,6 @@ def test_live_smoke_runner_writes_contract_artifacts(tmp_path: Path) -> None:
 
 
 def test_live_smoke_report_lists_validated_capabilities(tmp_path: Path) -> None:
-    _write_env_file(tmp_path)
     with _local_ok_server() as target:
         checks_file = tmp_path / "checks.json"
         checks_file.write_text(
@@ -171,7 +160,7 @@ def test_live_smoke_report_lists_validated_capabilities(tmp_path: Path) -> None:
             command,
             capture_output=True,
             text=True,
-            env={"HOME": str(tmp_path), "PATH": os.environ.get("PATH", "")},
+            env={**_smoke_env(), "PATH": os.environ.get("PATH", "")},
         )
         assert completed.returncode == 0
 
@@ -222,7 +211,7 @@ def test_live_smoke_runner_fails_with_clear_env_error(tmp_path: Path) -> None:
         command,
         capture_output=True,
         text=True,
-        env={"HOME": str(tmp_path), "PATH": os.environ.get("PATH", "")},
+        env={"PATH": os.environ.get("PATH", "")},
     )
     assert completed.returncode == 2
-    assert "Missing required environment file" in completed.stdout
+    assert "Missing required environment variables in process environment" in completed.stdout

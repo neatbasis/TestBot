@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import importlib.util
 import json
 from contextlib import redirect_stdout
 from io import StringIO
+from pathlib import Path
 from types import SimpleNamespace
 from urllib.error import HTTPError
 
@@ -38,6 +40,47 @@ def test_parse_args_debug_verbose_opt_out() -> None:
     args = _parse_args(["--no-debug-verbose"])
     assert args.debug_verbose is False
 
+
+
+
+def _load_live_smoke_module():
+    module_path = Path(__file__).resolve().parents[1] / "scripts" / "smoke" / "run_live_smoke.py"
+    spec = importlib.util.spec_from_file_location("testbot_live_smoke_module", module_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_runtime_env_loads_ollama_values_from_process_env(monkeypatch) -> None:
+    monkeypatch.setenv("OLLAMA_BASE_URL", "http://127.0.0.1:21143")
+    monkeypatch.setenv("OLLAMA_MODEL", "llama3.2:latest")
+    monkeypatch.setenv("OLLAMA_EMBEDDING_MODEL", "nomic-embed-text:v1")
+
+    runtime_env = runtime._read_runtime_env()
+
+    assert runtime_env["ollama_base_url"] == "http://127.0.0.1:21143"
+    assert runtime_env["ollama_model"] == "llama3.2:latest"
+    assert runtime_env["ollama_embedding_model"] == "nomic-embed-text:v1"
+
+
+def test_runtime_and_live_smoke_resolve_ollama_env_from_same_process_env(monkeypatch) -> None:
+    monkeypatch.setenv("HA_API_URL", "http://127.0.0.1:8123")
+    monkeypatch.setenv("HA_API_SECRET", "ha-test-supersecret-token")
+    monkeypatch.setenv("HA_SATELLITE_ENTITY_ID", "assist_satellite.test")
+    monkeypatch.setenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434")
+    monkeypatch.setenv("OLLAMA_MODEL", "llama3.1:latest")
+    monkeypatch.setenv("OLLAMA_EMBEDDING_MODEL", "nomic-embed-text")
+    monkeypatch.setenv("SMOKE_CONNECT_TIMEOUT_S", "2")
+    monkeypatch.setenv("SMOKE_REQUEST_TIMEOUT_S", "3")
+
+    smoke_module = _load_live_smoke_module()
+    smoke_env = smoke_module._load_required_env()
+    runtime_env = runtime._read_runtime_env()
+
+    assert runtime_env["ollama_base_url"] == smoke_env["OLLAMA_BASE_URL"]
+    assert runtime_env["ollama_model"] == smoke_env["OLLAMA_MODEL"]
+    assert runtime_env["ollama_embedding_model"] == smoke_env["OLLAMA_EMBEDDING_MODEL"]
 
 def test_read_runtime_env_debug_verbose_defaults_false(monkeypatch) -> None:
     monkeypatch.delenv("TESTBOT_DEBUG_VERBOSE", raising=False)
