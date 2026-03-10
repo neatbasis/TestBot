@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-03-09T05:02:36Z",
+  "generated_at_utc": "2026-03-10T00:18:56Z",
   "inputs": {
     "contract_path": "docs/qa/feature-status.yaml",
     "gate_summary_path": "artifacts/all-green-gate-summary.json",
@@ -11,138 +11,156 @@
     "contract": {
       "path": "docs/qa/feature-status.yaml",
       "size_bytes": 8191,
-      "mtime_utc": "2026-03-09T05:01:26Z",
+      "mtime_utc": "2026-03-09T22:39:39Z",
       "sha256": "3d6d081eb09c8e69bdc45a71c64e7c54099767c27a645a89db4dbe51c35c3039"
     },
     "gate_summary": {
       "path": "artifacts/all-green-gate-summary.json",
-      "size_bytes": 4078,
-      "mtime_utc": "2026-03-09T05:02:32Z",
-      "sha256": "1b78357f9e2f4076b99f94a62e98ef04f0c788e81f0a2643778a4d8c5fe291c7"
+      "size_bytes": 4079,
+      "mtime_utc": "2026-03-10T00:17:43Z",
+      "sha256": "3825401f37a1b80a8151485aff7f671339871af58a400e93e23ecf0f120f4ae4"
     },
     "open_issues": [
       {
         "path": "docs/issues/ISSUE-0008-intent-grounding-gate-failures-block-merge.md",
         "size_bytes": 3717,
-        "mtime_utc": "2026-03-09T04:58:37Z",
+        "mtime_utc": "2026-03-09T22:39:38Z",
         "sha256": "fb9bd028f62b8366bdd3ad23a1b2f0423838592c3f71164206a56e2edbaf96f3"
       },
       {
         "path": "docs/issues/ISSUE-0009-knowing-grounded-answers-partial-provenance-gap.md",
         "size_bytes": 7997,
-        "mtime_utc": "2026-03-09T05:01:14Z",
+        "mtime_utc": "2026-03-09T22:39:38Z",
         "sha256": "89bb1bfad9ff4e9b4bec3cc286e30c9934cc1b7cf328ba519ef675b890544e18"
       },
       {
         "path": "docs/issues/ISSUE-0010-unknowing-safe-fallback-partial-contract-gap.md",
-        "size_bytes": 7782,
-        "mtime_utc": "2026-03-09T05:01:14Z",
-        "sha256": "c436a18082e709140dc4ca19a17e9638ce58124e3bd897518bce79d5d8443510"
+        "size_bytes": 8136,
+        "mtime_utc": "2026-03-09T22:39:38Z",
+        "sha256": "620a4d070d3c120d8aacaa3be7d7cb4c58e2b36ca1a8e05440b93cde54a87ee3"
       },
       {
         "path": "docs/issues/ISSUE-0011-turn-analytics-input-coverage-silent-drop.md",
         "size_bytes": 7102,
-        "mtime_utc": "2026-03-09T04:58:37Z",
+        "mtime_utc": "2026-03-09T22:39:38Z",
         "sha256": "de4a43f84d6aa325cda1ff7d4466745c0af38f44885f6c90e87529daceca208b"
       },
       {
         "path": "docs/issues/ISSUE-0012-canonical-turn-pipeline-delivery-plan.md",
         "size_bytes": 4759,
-        "mtime_utc": "2026-03-09T04:58:37Z",
+        "mtime_utc": "2026-03-09T22:39:38Z",
         "sha256": "fdcfa357adc237814329cb799e4b6adaa3696cd6f554942746f31d6660c85683"
       },
       {
         "path": "docs/issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md",
-        "size_bytes": 40994,
-        "mtime_utc": "2026-03-09T04:58:37Z",
-        "sha256": "2afd6a08736f21ac3c5807eadeee84d0339fb045012d6b1735aff2f3488a4a72"
+        "size_bytes": 41967,
+        "mtime_utc": "2026-03-10T00:17:43Z",
+        "sha256": "75acf8e3157d60cde1324b60ee8f0653c3a201e2b8e565f2c2b0ff2f7f0e7919"
       },
       {
         "path": "docs/issues/ISSUE-0014-cli-self-identity-semantic-routing-regression.md",
-        "size_bytes": 26102,
-        "mtime_utc": "2026-03-09T04:58:37Z",
-        "sha256": "ad17f84f86f5fb64a4808b3557e039c68dd51c2058e21bfa36c7f7bcde31f0cf"
+        "size_bytes": 26696,
+        "mtime_utc": "2026-03-10T00:17:43Z",
+        "sha256": "7e85a96f37ef9e6f45ac63ad23de66ed271e0618e97bfce0a0616f1fdb4e4b0e"
       },
       {
         "path": "docs/issues/ISSUE-0015-open-issue-review-and-issue-0014-quality-governance-hardening.md",
-        "size_bytes": 16954,
-        "mtime_utc": "2026-03-09T04:58:37Z",
-        "sha256": "d7fe09a8f4a5f8503633a9f7b6ee3e4c39c767aab2cbe8ebd394e2b0447cf00b"
+        "size_bytes": 18456,
+        "mtime_utc": "2026-03-10T00:17:43Z",
+        "sha256": "4b52b8df2a424075058c4f16aa5853516154d2dd9d3b1ee11af4940abd839d6d"
+      },
+      {
+        "path": "docs/issues/ISSUE-0017-invariant-boundary-ambiguity-answer-commit-regression.md",
+        "size_bytes": 6884,
+        "mtime_utc": "2026-03-09T22:39:38Z",
+        "sha256": "1aef6b909f065fe59f736c373f779d7d5d25d75ccf142169d3ea3afdd56ecc11"
+      },
+      {
+        "path": "docs/issues/ISSUE-0018-dual-trigger-event-loop-for-proactive-ingestion-lifecycle.md",
+        "size_bytes": 7071,
+        "mtime_utc": "2026-03-10T00:17:43Z",
+        "sha256": "925768c3c65f203347cfceefd41f6d2a25a2eb393e024bbd7ce0403ccc98ef5f"
+      },
+      {
+        "path": "docs/issues/ISSUE-0019-channel-agnostic-conversation-engine-and-shared-history.md",
+        "size_bytes": 5698,
+        "mtime_utc": "2026-03-10T00:17:43Z",
+        "sha256": "1812d6f48233c05aec89e41f02bd6933553de781db65f9a5157151df6277e01a"
       }
     ],
     "roadmap_files": [
       {
         "path": "docs/roadmap/alignment-drift-technical-debt-2026-03-05.md",
         "size_bytes": 5622,
-        "mtime_utc": "2026-03-09T03:41:18Z",
+        "mtime_utc": "2026-03-09T22:39:39Z",
         "sha256": "02618bdff7d1b35cdbe05736f9e42202981edf2d1204d7d7ef3232899575c530"
       },
       {
         "path": "docs/roadmap/current-status-and-next-5-priorities.md",
         "size_bytes": 8470,
-        "mtime_utc": "2026-03-09T03:41:18Z",
+        "mtime_utc": "2026-03-09T22:39:39Z",
         "sha256": "d8aa997d61c9db9c731ea7c24ceb4d41c7e8f078dd2e502c5f648b12ec645311"
       },
       {
         "path": "docs/roadmap/next-4-sprints-grounded-knowing.md",
         "size_bytes": 13756,
-        "mtime_utc": "2026-03-09T03:41:18Z",
+        "mtime_utc": "2026-03-09T22:39:39Z",
         "sha256": "a725406dcffd4aa1da3a269fe78806032b8360ae64e64c7f879eb277712d4a3c"
       },
       {
         "path": "docs/roadmap/reflective-milestone-10-sprints.md",
         "size_bytes": 9579,
-        "mtime_utc": "2026-03-09T03:41:18Z",
+        "mtime_utc": "2026-03-09T22:39:39Z",
         "sha256": "f8b41b80b9e06c2144db690373aee3bfcd1910999904b5ad086fe63576252da0"
       }
     ],
     "feature_files": [
       {
         "path": "features/answer_contract.feature",
-        "size_bytes": 7880,
-        "mtime_utc": "2026-03-09T05:00:06Z",
-        "sha256": "48d8ae8c8dc97c71329f65eb590a04a41195b3719feaedef8374858a266e4438"
+        "size_bytes": 8319,
+        "mtime_utc": "2026-03-09T22:39:39Z",
+        "sha256": "2226367d32ba3fa2329717619902786f986ffde904d7f4ee84f5e6430235d230"
       },
       {
         "path": "features/capabilities.feature",
         "size_bytes": 2458,
-        "mtime_utc": "2026-03-09T03:41:18Z",
+        "mtime_utc": "2026-03-09T22:39:39Z",
         "sha256": "6608161e934565904ae180017080c8334d200147d54368dff39375ea1dd19333"
       },
       {
         "path": "features/intent_grounding.feature",
-        "size_bytes": 18537,
-        "mtime_utc": "2026-03-09T03:41:18Z",
-        "sha256": "ea10cc2d2db853bf2a7979eaddd4c60df44a980c5c65f56849dcda46a26cfd23"
+        "size_bytes": 18941,
+        "mtime_utc": "2026-03-09T22:39:39Z",
+        "sha256": "18ffd3878f1f389c42fdadd0c5ab43a3d0a2b4a7621f918bd75d0be413396752"
       },
       {
         "path": "features/memory_recall.feature",
-        "size_bytes": 6347,
-        "mtime_utc": "2026-03-09T03:41:18Z",
-        "sha256": "a40528fc73d4c9a4e6488db5c41ebbbdeccbe19e4955baa255de5f835b0971d5"
+        "size_bytes": 6683,
+        "mtime_utc": "2026-03-10T00:18:51Z",
+        "sha256": "823f16f1ab8ad58cfd69855ee4b25f28455fa3c9d8e97b3f548f7779c29ff001"
       },
       {
         "path": "features/source_ingestion.feature",
-        "size_bytes": 1830,
-        "mtime_utc": "2026-03-09T03:41:18Z",
-        "sha256": "4da3d44c73fef0afb26f8dce9c4fd1c0e2646ee8080bb8533d8a3dcbd4df4003"
+        "size_bytes": 2845,
+        "mtime_utc": "2026-03-09T22:39:39Z",
+        "sha256": "b577b0f355190f87aab2317c7d8fed2836288d7a5d8dd39ea2b47ec30eb6b3f2"
       },
       {
         "path": "features/startup_status.feature",
         "size_bytes": 1024,
-        "mtime_utc": "2026-03-09T03:41:18Z",
+        "mtime_utc": "2026-03-09T22:39:39Z",
         "sha256": "0853a90425e87ba6bee2763ff6816b55b40e46f595489b4fc57912db39196165"
       },
       {
         "path": "features/time_awareness.feature",
         "size_bytes": 774,
-        "mtime_utc": "2026-03-09T03:41:18Z",
+        "mtime_utc": "2026-03-09T22:39:39Z",
         "sha256": "6631272d9f1869d2c8f0a28756f2e2cedfc7232e4798fd244a605f12c1c953c2"
       }
     ]
   },
   "warnings": [
-    "One or more acceptance-test scenarios are missing scenario-level traceability tags (@ISSUE-xxxx and/or @AC-xxxx-yy)."
+    "Gate summary appears older than one or more source files (contract, open issue records, or roadmap files); regenerate gate evidence for freshest status. Hint: run `python scripts/all_green_gate.py --continue-on-failure --json-output artifacts/all-green-gate-summary.json` to refresh `artifacts/all-green-gate-summary.json`."
   ],
   "summary": {
     "implemented": 2,
@@ -197,92 +215,7 @@
         "unknown": 0
       },
       "unresolved_criteria": [],
-      "unmapped_scenarios": [
-        {
-          "capability_id": "knowing_grounded_answers",
-          "capability_name": "Knowing-mode grounded answer with provenance",
-          "feature_path": "features/memory_recall.feature",
-          "scenario_name": "cited memory-grounded answer path",
-          "missing_tags": "ISSUE, AC"
-        },
-        {
-          "capability_id": "knowing_grounded_answers",
-          "capability_name": "Knowing-mode grounded answer with provenance",
-          "feature_path": "features/memory_recall.feature",
-          "scenario_name": "progressive assist fallback path",
-          "missing_tags": "ISSUE, AC"
-        },
-        {
-          "capability_id": "knowing_grounded_answers",
-          "capability_name": "Knowing-mode grounded answer with provenance",
-          "feature_path": "features/memory_recall.feature",
-          "scenario_name": "equivalent candidates remain ambiguous after tie-break",
-          "missing_tags": "ISSUE, AC"
-        },
-        {
-          "capability_id": "knowing_grounded_answers",
-          "capability_name": "Knowing-mode grounded answer with provenance",
-          "feature_path": "features/memory_recall.feature",
-          "scenario_name": "empty and scored-empty typed states keep distinct downstream fallback contracts",
-          "missing_tags": "ISSUE, AC"
-        },
-        {
-          "capability_id": "knowing_grounded_answers",
-          "capability_name": "Knowing-mode grounded answer with provenance",
-          "feature_path": "features/memory_recall.feature",
-          "scenario_name": "pronoun temporal follow-up resolves anchor before routing",
-          "missing_tags": "ISSUE, AC"
-        },
-        {
-          "capability_id": "knowing_grounded_answers",
-          "capability_name": "Knowing-mode grounded answer with provenance",
-          "feature_path": "features/memory_recall.feature",
-          "scenario_name": "observe and stabilize happen before route authority",
-          "missing_tags": "ISSUE, AC"
-        },
-        {
-          "capability_id": "knowing_grounded_answers",
-          "capability_name": "Knowing-mode grounded answer with provenance",
-          "feature_path": "features/memory_recall.feature",
-          "scenario_name": "observe.turn stores user claims only as observation artifacts in-turn",
-          "missing_tags": "ISSUE, AC"
-        },
-        {
-          "capability_id": "knowing_grounded_answers",
-          "capability_name": "Knowing-mode grounded answer with provenance",
-          "feature_path": "features/memory_recall.feature",
-          "scenario_name": "committed claims become retrievable memory only in a later turn",
-          "missing_tags": "ISSUE, AC"
-        },
-        {
-          "capability_id": "knowing_grounded_answers",
-          "capability_name": "Knowing-mode grounded answer with provenance",
-          "feature_path": "features/memory_recall.feature",
-          "scenario_name": "same-turn retrieval that returns a just-observed claim is rejected",
-          "missing_tags": "ISSUE, AC"
-        },
-        {
-          "capability_id": "knowing_grounded_answers",
-          "capability_name": "Knowing-mode grounded answer with provenance",
-          "feature_path": "features/memory_recall.feature",
-          "scenario_name": "multi-antecedent pronoun follow-up requires disambiguation before committed-context reuse",
-          "missing_tags": "ISSUE, AC"
-        },
-        {
-          "capability_id": "knowing_grounded_answers",
-          "capability_name": "Knowing-mode grounded answer with provenance",
-          "feature_path": "features/memory_recall.feature",
-          "scenario_name": "segment-aware continuity groups multi-turn self-profile memory",
-          "missing_tags": "ISSUE, AC"
-        },
-        {
-          "capability_id": "knowing_grounded_answers",
-          "capability_name": "Knowing-mode grounded answer with provenance",
-          "feature_path": "features/memory_recall.feature",
-          "scenario_name": "strata-aware retrieval prefers semantic memory over episodic utterance",
-          "missing_tags": "ISSUE, AC"
-        }
-      ]
+      "unmapped_scenarios": []
     },
     {
       "capability_id": "unknowing_safe_fallback",
@@ -415,7 +348,13 @@
       "effective_status": "partial",
       "declared_status": "partial",
       "failed_gate_checks": [],
-      "relevant_open_issues": [],
+      "relevant_open_issues": [
+        {
+          "id": "ISSUE-0018",
+          "title": "Dual-trigger event loop for proactive ingestion lifecycle (user + system initiated processing)",
+          "path": "docs/issues/ISSUE-0018-dual-trigger-event-loop-for-proactive-ingestion-lifecycle.md"
+        }
+      ],
       "roadmap_priority_refs": [
         "P1",
         "P2"
@@ -545,92 +484,7 @@
         "AC-0013-06",
         "AC-0013-07"
       ],
-      "unmapped_scenarios": [
-        {
-          "capability_id": "canonical_turn_pipeline_foundation",
-          "capability_name": "Canonical turn pipeline foundation (observe/encode/stabilize)",
-          "feature_path": "features/memory_recall.feature",
-          "scenario_name": "cited memory-grounded answer path",
-          "missing_tags": "ISSUE, AC"
-        },
-        {
-          "capability_id": "canonical_turn_pipeline_foundation",
-          "capability_name": "Canonical turn pipeline foundation (observe/encode/stabilize)",
-          "feature_path": "features/memory_recall.feature",
-          "scenario_name": "progressive assist fallback path",
-          "missing_tags": "ISSUE, AC"
-        },
-        {
-          "capability_id": "canonical_turn_pipeline_foundation",
-          "capability_name": "Canonical turn pipeline foundation (observe/encode/stabilize)",
-          "feature_path": "features/memory_recall.feature",
-          "scenario_name": "equivalent candidates remain ambiguous after tie-break",
-          "missing_tags": "ISSUE, AC"
-        },
-        {
-          "capability_id": "canonical_turn_pipeline_foundation",
-          "capability_name": "Canonical turn pipeline foundation (observe/encode/stabilize)",
-          "feature_path": "features/memory_recall.feature",
-          "scenario_name": "empty and scored-empty typed states keep distinct downstream fallback contracts",
-          "missing_tags": "ISSUE, AC"
-        },
-        {
-          "capability_id": "canonical_turn_pipeline_foundation",
-          "capability_name": "Canonical turn pipeline foundation (observe/encode/stabilize)",
-          "feature_path": "features/memory_recall.feature",
-          "scenario_name": "pronoun temporal follow-up resolves anchor before routing",
-          "missing_tags": "ISSUE, AC"
-        },
-        {
-          "capability_id": "canonical_turn_pipeline_foundation",
-          "capability_name": "Canonical turn pipeline foundation (observe/encode/stabilize)",
-          "feature_path": "features/memory_recall.feature",
-          "scenario_name": "observe and stabilize happen before route authority",
-          "missing_tags": "ISSUE, AC"
-        },
-        {
-          "capability_id": "canonical_turn_pipeline_foundation",
-          "capability_name": "Canonical turn pipeline foundation (observe/encode/stabilize)",
-          "feature_path": "features/memory_recall.feature",
-          "scenario_name": "observe.turn stores user claims only as observation artifacts in-turn",
-          "missing_tags": "ISSUE, AC"
-        },
-        {
-          "capability_id": "canonical_turn_pipeline_foundation",
-          "capability_name": "Canonical turn pipeline foundation (observe/encode/stabilize)",
-          "feature_path": "features/memory_recall.feature",
-          "scenario_name": "committed claims become retrievable memory only in a later turn",
-          "missing_tags": "ISSUE, AC"
-        },
-        {
-          "capability_id": "canonical_turn_pipeline_foundation",
-          "capability_name": "Canonical turn pipeline foundation (observe/encode/stabilize)",
-          "feature_path": "features/memory_recall.feature",
-          "scenario_name": "same-turn retrieval that returns a just-observed claim is rejected",
-          "missing_tags": "ISSUE, AC"
-        },
-        {
-          "capability_id": "canonical_turn_pipeline_foundation",
-          "capability_name": "Canonical turn pipeline foundation (observe/encode/stabilize)",
-          "feature_path": "features/memory_recall.feature",
-          "scenario_name": "multi-antecedent pronoun follow-up requires disambiguation before committed-context reuse",
-          "missing_tags": "ISSUE, AC"
-        },
-        {
-          "capability_id": "canonical_turn_pipeline_foundation",
-          "capability_name": "Canonical turn pipeline foundation (observe/encode/stabilize)",
-          "feature_path": "features/memory_recall.feature",
-          "scenario_name": "segment-aware continuity groups multi-turn self-profile memory",
-          "missing_tags": "ISSUE, AC"
-        },
-        {
-          "capability_id": "canonical_turn_pipeline_foundation",
-          "capability_name": "Canonical turn pipeline foundation (observe/encode/stabilize)",
-          "feature_path": "features/memory_recall.feature",
-          "scenario_name": "strata-aware retrieval prefers semantic memory over episodic utterance",
-          "missing_tags": "ISSUE, AC"
-        }
-      ]
+      "unmapped_scenarios": []
     },
     {
       "capability_id": "canonical_turn_pipeline_decisioning",
@@ -828,176 +682,7 @@
       "unmapped_scenarios": []
     }
   ],
-  "open_issue_count": 8,
+  "open_issue_count": 11,
   "gate_checks_seen": 11,
-  "unmapped_scenarios": [
-    {
-      "capability_id": "knowing_grounded_answers",
-      "capability_name": "Knowing-mode grounded answer with provenance",
-      "feature_path": "features/memory_recall.feature",
-      "scenario_name": "cited memory-grounded answer path",
-      "missing_tags": "ISSUE, AC"
-    },
-    {
-      "capability_id": "knowing_grounded_answers",
-      "capability_name": "Knowing-mode grounded answer with provenance",
-      "feature_path": "features/memory_recall.feature",
-      "scenario_name": "progressive assist fallback path",
-      "missing_tags": "ISSUE, AC"
-    },
-    {
-      "capability_id": "knowing_grounded_answers",
-      "capability_name": "Knowing-mode grounded answer with provenance",
-      "feature_path": "features/memory_recall.feature",
-      "scenario_name": "equivalent candidates remain ambiguous after tie-break",
-      "missing_tags": "ISSUE, AC"
-    },
-    {
-      "capability_id": "knowing_grounded_answers",
-      "capability_name": "Knowing-mode grounded answer with provenance",
-      "feature_path": "features/memory_recall.feature",
-      "scenario_name": "empty and scored-empty typed states keep distinct downstream fallback contracts",
-      "missing_tags": "ISSUE, AC"
-    },
-    {
-      "capability_id": "knowing_grounded_answers",
-      "capability_name": "Knowing-mode grounded answer with provenance",
-      "feature_path": "features/memory_recall.feature",
-      "scenario_name": "pronoun temporal follow-up resolves anchor before routing",
-      "missing_tags": "ISSUE, AC"
-    },
-    {
-      "capability_id": "knowing_grounded_answers",
-      "capability_name": "Knowing-mode grounded answer with provenance",
-      "feature_path": "features/memory_recall.feature",
-      "scenario_name": "observe and stabilize happen before route authority",
-      "missing_tags": "ISSUE, AC"
-    },
-    {
-      "capability_id": "knowing_grounded_answers",
-      "capability_name": "Knowing-mode grounded answer with provenance",
-      "feature_path": "features/memory_recall.feature",
-      "scenario_name": "observe.turn stores user claims only as observation artifacts in-turn",
-      "missing_tags": "ISSUE, AC"
-    },
-    {
-      "capability_id": "knowing_grounded_answers",
-      "capability_name": "Knowing-mode grounded answer with provenance",
-      "feature_path": "features/memory_recall.feature",
-      "scenario_name": "committed claims become retrievable memory only in a later turn",
-      "missing_tags": "ISSUE, AC"
-    },
-    {
-      "capability_id": "knowing_grounded_answers",
-      "capability_name": "Knowing-mode grounded answer with provenance",
-      "feature_path": "features/memory_recall.feature",
-      "scenario_name": "same-turn retrieval that returns a just-observed claim is rejected",
-      "missing_tags": "ISSUE, AC"
-    },
-    {
-      "capability_id": "knowing_grounded_answers",
-      "capability_name": "Knowing-mode grounded answer with provenance",
-      "feature_path": "features/memory_recall.feature",
-      "scenario_name": "multi-antecedent pronoun follow-up requires disambiguation before committed-context reuse",
-      "missing_tags": "ISSUE, AC"
-    },
-    {
-      "capability_id": "knowing_grounded_answers",
-      "capability_name": "Knowing-mode grounded answer with provenance",
-      "feature_path": "features/memory_recall.feature",
-      "scenario_name": "segment-aware continuity groups multi-turn self-profile memory",
-      "missing_tags": "ISSUE, AC"
-    },
-    {
-      "capability_id": "knowing_grounded_answers",
-      "capability_name": "Knowing-mode grounded answer with provenance",
-      "feature_path": "features/memory_recall.feature",
-      "scenario_name": "strata-aware retrieval prefers semantic memory over episodic utterance",
-      "missing_tags": "ISSUE, AC"
-    },
-    {
-      "capability_id": "canonical_turn_pipeline_foundation",
-      "capability_name": "Canonical turn pipeline foundation (observe/encode/stabilize)",
-      "feature_path": "features/memory_recall.feature",
-      "scenario_name": "cited memory-grounded answer path",
-      "missing_tags": "ISSUE, AC"
-    },
-    {
-      "capability_id": "canonical_turn_pipeline_foundation",
-      "capability_name": "Canonical turn pipeline foundation (observe/encode/stabilize)",
-      "feature_path": "features/memory_recall.feature",
-      "scenario_name": "progressive assist fallback path",
-      "missing_tags": "ISSUE, AC"
-    },
-    {
-      "capability_id": "canonical_turn_pipeline_foundation",
-      "capability_name": "Canonical turn pipeline foundation (observe/encode/stabilize)",
-      "feature_path": "features/memory_recall.feature",
-      "scenario_name": "equivalent candidates remain ambiguous after tie-break",
-      "missing_tags": "ISSUE, AC"
-    },
-    {
-      "capability_id": "canonical_turn_pipeline_foundation",
-      "capability_name": "Canonical turn pipeline foundation (observe/encode/stabilize)",
-      "feature_path": "features/memory_recall.feature",
-      "scenario_name": "empty and scored-empty typed states keep distinct downstream fallback contracts",
-      "missing_tags": "ISSUE, AC"
-    },
-    {
-      "capability_id": "canonical_turn_pipeline_foundation",
-      "capability_name": "Canonical turn pipeline foundation (observe/encode/stabilize)",
-      "feature_path": "features/memory_recall.feature",
-      "scenario_name": "pronoun temporal follow-up resolves anchor before routing",
-      "missing_tags": "ISSUE, AC"
-    },
-    {
-      "capability_id": "canonical_turn_pipeline_foundation",
-      "capability_name": "Canonical turn pipeline foundation (observe/encode/stabilize)",
-      "feature_path": "features/memory_recall.feature",
-      "scenario_name": "observe and stabilize happen before route authority",
-      "missing_tags": "ISSUE, AC"
-    },
-    {
-      "capability_id": "canonical_turn_pipeline_foundation",
-      "capability_name": "Canonical turn pipeline foundation (observe/encode/stabilize)",
-      "feature_path": "features/memory_recall.feature",
-      "scenario_name": "observe.turn stores user claims only as observation artifacts in-turn",
-      "missing_tags": "ISSUE, AC"
-    },
-    {
-      "capability_id": "canonical_turn_pipeline_foundation",
-      "capability_name": "Canonical turn pipeline foundation (observe/encode/stabilize)",
-      "feature_path": "features/memory_recall.feature",
-      "scenario_name": "committed claims become retrievable memory only in a later turn",
-      "missing_tags": "ISSUE, AC"
-    },
-    {
-      "capability_id": "canonical_turn_pipeline_foundation",
-      "capability_name": "Canonical turn pipeline foundation (observe/encode/stabilize)",
-      "feature_path": "features/memory_recall.feature",
-      "scenario_name": "same-turn retrieval that returns a just-observed claim is rejected",
-      "missing_tags": "ISSUE, AC"
-    },
-    {
-      "capability_id": "canonical_turn_pipeline_foundation",
-      "capability_name": "Canonical turn pipeline foundation (observe/encode/stabilize)",
-      "feature_path": "features/memory_recall.feature",
-      "scenario_name": "multi-antecedent pronoun follow-up requires disambiguation before committed-context reuse",
-      "missing_tags": "ISSUE, AC"
-    },
-    {
-      "capability_id": "canonical_turn_pipeline_foundation",
-      "capability_name": "Canonical turn pipeline foundation (observe/encode/stabilize)",
-      "feature_path": "features/memory_recall.feature",
-      "scenario_name": "segment-aware continuity groups multi-turn self-profile memory",
-      "missing_tags": "ISSUE, AC"
-    },
-    {
-      "capability_id": "canonical_turn_pipeline_foundation",
-      "capability_name": "Canonical turn pipeline foundation (observe/encode/stabilize)",
-      "feature_path": "features/memory_recall.feature",
-      "scenario_name": "strata-aware retrieval prefers semantic memory over episodic utterance",
-      "missing_tags": "ISSUE, AC"
-    }
-  ]
+  "unmapped_scenarios": []
 }
