@@ -7,7 +7,7 @@ from testbot.pipeline_state import PipelineState, ProvenanceType
 from testbot.sat_chatbot_memory_v2 import (
     ASSIST_ALTERNATIVES_ANSWER,
     evaluate_alignment_decision,
-    stage_answer,
+    run_answer_stage_flow,
 )
 from testbot.stage_transitions import (
     BACKGROUND_INGESTION_PROGRESS_ANSWER,
@@ -418,7 +418,7 @@ class _UnlabeledGeneralKnowledgeLLM:
         return self._Response()
 
 
-def test_stage_answer_non_memory_invalid_gk_contract_routes_to_safe_fallback_and_passes_post_validation() -> None:
+def test_run_answer_stage_flow_non_memory_invalid_gk_contract_routes_to_safe_fallback_and_passes_post_validation() -> None:
     state = PipelineState(
         user_input="What is life?",
         rewritten_query="what is life",
@@ -431,7 +431,7 @@ def test_stage_answer_non_memory_invalid_gk_contract_routes_to_safe_fallback_and
         resolved_intent="knowledge_question",
     )
 
-    answer_state = stage_answer(
+    answer_state = run_answer_stage_flow(
         _UnlabeledGeneralKnowledgeLLM(),
         state,
         chat_history=deque(),
@@ -449,7 +449,7 @@ def test_stage_answer_non_memory_invalid_gk_contract_routes_to_safe_fallback_and
     assert result.passed is True
 
 
-def test_stage_answer_social_statement_with_invalid_gk_contract_degrades_to_uncertainty_fallback() -> None:
+def test_run_answer_stage_flow_social_statement_with_invalid_gk_contract_degrades_to_uncertainty_fallback() -> None:
     state = PipelineState(
         user_input="My name is Sebastian",
         rewritten_query="my name is sebastian",
@@ -462,7 +462,7 @@ def test_stage_answer_social_statement_with_invalid_gk_contract_degrades_to_unce
         resolved_intent="knowledge_question",
     )
 
-    answer_state = stage_answer(
+    answer_state = run_answer_stage_flow(
         _UnlabeledGeneralKnowledgeLLM(),
         state,
         chat_history=deque(),
@@ -495,7 +495,7 @@ def test_validate_answer_commit_post_rejects_non_fallback_factual_answer_when_gk
     assert "inv_003_general_knowledge_contract_enforced" in result.failures
 
 
-def test_stage_answer_memory_hit_without_ambiguity_uses_contract_safe_recovery_answer() -> None:
+def test_run_answer_stage_flow_memory_hit_without_ambiguity_uses_contract_safe_recovery_answer() -> None:
     state = PipelineState(
         user_input="what did i say yesterday",
         confidence_decision={"context_confident": True, "ambiguity_detected": False},
@@ -507,7 +507,7 @@ def test_stage_answer_memory_hit_without_ambiguity_uses_contract_safe_recovery_a
         )
     ]
 
-    answered = stage_answer(
+    answered = run_answer_stage_flow(
         _InvalidContractLLM(),
         state,
         chat_history=deque(),

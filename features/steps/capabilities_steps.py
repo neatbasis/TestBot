@@ -7,7 +7,7 @@ from langchain_core.documents import Document
 
 from testbot.intent_router import IntentType, classify_intent
 from testbot.pipeline_state import PipelineState
-from testbot.sat_chatbot_memory_v2 import RuntimeCapabilityStatus, stage_answer
+from testbot.sat_chatbot_memory_v2 import RuntimeCapabilityStatus, run_answer_stage_flow
 
 
 class _FailIfInvokedLLM:
@@ -29,7 +29,7 @@ def step_when_ha_unavailable_cli(context) -> None:
         resolved_intent=IntentType.CAPABILITIES_HELP.value,
         confidence_decision={"context_confident": False, "ambiguity_detected": False},
     )
-    context.answer_state = stage_answer(
+    context.answer_state = run_answer_stage_flow(
         _FailIfInvokedLLM(),
         state,
         chat_history=deque(),
@@ -61,7 +61,7 @@ def step_when_ha_available_satellite(context) -> None:
         resolved_intent=IntentType.CAPABILITIES_HELP.value,
         confidence_decision={"context_confident": False, "ambiguity_detected": False},
     )
-    context.answer_state = stage_answer(
+    context.answer_state = run_answer_stage_flow(
         _FailIfInvokedLLM(),
         state,
         chat_history=deque(),

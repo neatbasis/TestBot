@@ -969,10 +969,20 @@ def stage_rewrite_query(llm: ChatOllama, state: PipelineState) -> PipelineState:
 
 
 def observe_stage(state: PipelineState) -> PipelineState:
+    warnings.warn(
+        "observe_stage is deprecated; use _run_canonical_turn_pipeline/_observe_turn instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     return state
 
 
 def encode_stage(llm: ChatOllama, state: PipelineState) -> PipelineState:
+    warnings.warn(
+        "encode_stage is deprecated; use _run_canonical_turn_pipeline/_encode_candidates instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     return stage_rewrite_query(llm, state)
 
 
@@ -2519,7 +2529,7 @@ def _decision_object_from_assembled(assembled: AnswerAssembleResult) -> Decision
     )
 
 
-def stage_answer(
+def run_answer_stage_flow(
     llm: ChatOllama,
     state: PipelineState,
     *,
@@ -3135,14 +3145,13 @@ def _run_canonical_turn_pipeline(
             channel=io_channel,
         )
         ctx.artifacts["turn_observation"] = observation
-        ctx.state = observe_stage(ctx.state)
         _validate_and_log_transition(validate_observe_turn_post(ctx.state))
         append_pipeline_snapshot("observe", ctx.state)
         return ctx
 
     def _encode_candidates(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
         _validate_and_log_transition(validate_encode_candidates_pre(ctx.state))
-        rewritten_state = encode_stage(llm, ctx.state)
+        rewritten_state = stage_rewrite_query(llm, ctx.state)
         _validate_and_log_transition(validate_encode_candidates_post(rewritten_state))
         rewritten_query = rewritten_state.rewritten_query
         append_session_log("query_rewrite_output", {"utterance": utterance, "query": rewritten_query})

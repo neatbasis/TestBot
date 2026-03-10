@@ -7,7 +7,7 @@ from behave import given, then, when
 
 from testbot.intent_router import IntentType, classify_intent
 from testbot.pipeline_state import PipelineState
-from testbot.sat_chatbot_memory_v2 import stage_answer
+from testbot.sat_chatbot_memory_v2 import run_answer_stage_flow
 
 
 @dataclass(frozen=True)
@@ -38,7 +38,7 @@ def step_when_minutes_ago(context) -> None:
     utterance = "how many minutes ago did I ask?"
     assert classify_intent(utterance) is IntentType.TIME_QUERY
     state = PipelineState(user_input=utterance, last_user_message_ts="2026-03-10T22:00:00+00:00")
-    context.result_state = stage_answer(
+    context.result_state = run_answer_stage_flow(
         DummyLLM(),
         state,
         chat_history=[],
@@ -54,7 +54,7 @@ def step_when_tomorrow(context) -> None:
     utterance = "what is tomorrow?"
     assert classify_intent(utterance) is IntentType.TIME_QUERY
     state = PipelineState(user_input=utterance, last_user_message_ts="2026-03-10T22:00:00+00:00")
-    context.result_state = stage_answer(
+    context.result_state = run_answer_stage_flow(
         DummyLLM(),
         state,
         chat_history=[],

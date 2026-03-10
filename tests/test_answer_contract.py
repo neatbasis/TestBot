@@ -18,7 +18,7 @@ from testbot.sat_chatbot_memory_v2 import (
     raw_claim_like_text_detected,
     render_context,
     response_contains_claims,
-    stage_answer,
+    run_answer_stage_flow,
     validate_answer_contract,
 )
 
@@ -59,7 +59,7 @@ def test_non_memory_general_knowledge_contract_failure_degrades_to_knowledge_saf
         resolved_intent="knowledge_question",
     )
 
-    answer_state = stage_answer(
+    answer_state = run_answer_stage_flow(
         _UnlabeledGeneralKnowledgeLLM(),
         state,
         chat_history=deque(),
@@ -92,7 +92,7 @@ def test_memory_recall_confident_contract_failure_uses_deterministic_recovery_hi
         )
     ]
 
-    answer_state = stage_answer(
+    answer_state = run_answer_stage_flow(
         _UnlabeledGeneralKnowledgeLLM(),
         state,
         chat_history=deque(),
@@ -240,7 +240,7 @@ def test_non_memory_low_source_confidence_uses_unknown_fallback_without_source_c
         resolved_intent="knowledge_question",
     )
 
-    answer_state = stage_answer(
+    answer_state = run_answer_stage_flow(
         _UnlabeledGeneralKnowledgeLLM(),
         state,
         chat_history=deque(),
@@ -292,7 +292,7 @@ def test_memory_recall_no_hit_routes_to_assist_alternatives_token() -> None:
     assert decision.canonical_response_token == "ASSIST_ALTERNATIVES_ANSWER"
 
 
-def test_stage_answer_invariant_records_policy_rationale_for_low_confidence_non_memory() -> None:
+def test_run_answer_stage_flow_invariant_records_policy_rationale_for_low_confidence_non_memory() -> None:
     state = PipelineState(
         user_input="what happened in my source records?",
         confidence_decision={
@@ -303,7 +303,7 @@ def test_stage_answer_invariant_records_policy_rationale_for_low_confidence_non_
         resolved_intent="knowledge_question",
     )
 
-    answer_state = stage_answer(
+    answer_state = run_answer_stage_flow(
         _UnlabeledGeneralKnowledgeLLM(),
         state,
         chat_history=deque(),
@@ -335,7 +335,7 @@ def test_noisy_heuristic_history_does_not_force_constraints_into_final_answer() 
         {"role": "user", "content": "Battery levels for Kitchen and Hallway?"},
     ])
 
-    answer_state = stage_answer(
+    answer_state = run_answer_stage_flow(
         _UnlabeledGeneralKnowledgeLLM(),
         state,
         chat_history=noisy_history,
