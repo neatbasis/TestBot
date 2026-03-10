@@ -1217,6 +1217,20 @@ def _is_clarification_or_capability_confirmation_answer(text: str) -> bool:
     return is_clarification_answer(normalized) or _is_capabilities_help_answer(normalized)
 
 
+# ---------------------------------------------------------------------------
+# Diagnostics-only helpers (non-authoritative; never use for production routing)
+# ---------------------------------------------------------------------------
+
+
+def _enforce_diagnostics_only_guard(*, diagnostic_only: bool, helper_name: str) -> None:
+    if diagnostic_only:
+        return
+    raise RuntimeError(
+        f"{helper_name} is diagnostic-only and non-authoritative; "
+        "production routing must use canonical orchestrator artifacts"
+    )
+
+
 def resolve_turn_intent(
     *,
     utterance: str,
@@ -1228,11 +1242,7 @@ def resolve_turn_intent(
     This helper intentionally runs outside the canonical turn pipeline and must
     not be used for authoritative production routing decisions.
     """
-    if not diagnostic_only:
-        raise RuntimeError(
-            "resolve_turn_intent is diagnostic-only and non-authoritative; "
-            "production routing must use canonical orchestrator artifacts"
-        )
+    _enforce_diagnostics_only_guard(diagnostic_only=diagnostic_only, helper_name="resolve_turn_intent")
 
     _LOGGER.warning(
         "resolve_turn_intent invoked in diagnostic-only mode; output is non-authoritative",
@@ -1614,15 +1624,59 @@ def _build_policy_alternatives(
     return alternatives
 
 
+
+
+_DEBUG_TOP_LEVEL_FIELDS = {
+    "debug.intent",
+    "debug.rewrite",
+    "debug.retrieval",
+    "debug.rerank",
+    "debug.confidence",
+    "debug.observation",
+    "debug.contract",
+    "debug.policy",
+}
+
+
+def _validate_debug_turn_payload_schema(payload: dict[str, object]) -> None:
+    actual_top_level = set(payload.keys())
+    if actual_top_level != _DEBUG_TOP_LEVEL_FIELDS:
+        missing = sorted(_DEBUG_TOP_LEVEL_FIELDS - actual_top_level)
+        extra = sorted(actual_top_level - _DEBUG_TOP_LEVEL_FIELDS)
+        raise ValueError(f"debug payload schema drift: missing={missing}, extra={extra}")
+
+    gate_sections = {
+        "debug.rerank": ["top_final_score_gate", "margin_gate", "ambiguity_gate"],
+        "debug.confidence": ["context_confident_gate"],
+        "debug.contract": ["answer_contract_gate", "general_knowledge_contract_gate"],
+    }
+    required_gate_fields = {"passed", "score", "threshold", "margin"}
+
+    for section_key, gate_keys in gate_sections.items():
+        section = payload.get(section_key)
+        if not isinstance(section, dict):
+            raise ValueError(f"debug payload schema drift: {section_key} must be an object")
+        for gate_key in gate_keys:
+            gate = section.get(gate_key)
+            if not isinstance(gate, dict):
+                raise ValueError(f"debug payload schema drift: {section_key}.{gate_key} must be an object")
+            if set(gate.keys()) != required_gate_fields:
+                raise ValueError(
+                    f"debug payload schema drift: {section_key}.{gate_key} fields changed; "
+                    f"expected={sorted(required_gate_fields)}, actual={sorted(gate.keys())}"
+                )
+
 def _build_debug_turn_payload(*, state: PipelineState, intent_label: str, hits: list[Document]) -> dict[str, object]:
-    fallback_action = str(state.invariant_decisions.get("fallback_action", "NONE"))
-    retrieval_branch = str(state.confidence_decision.get("retrieval_branch", "memory_retrieval"))
-    answer_mode = str(state.invariant_decisions.get("answer_mode", "dont-know"))
-    context_confident = bool(state.confidence_decision.get("context_confident", False))
-    ambiguity_detected = bool(state.confidence_decision.get("ambiguity_detected", False))
-    answer_contract_valid = bool(state.invariant_decisions.get("answer_contract_valid", True))
-    general_knowledge_contract_valid = bool(state.invariant_decisions.get("general_knowledge_contract_valid", True))
-    scored_candidates = state.confidence_decision.get("scored_candidates", [])
+    confidence_payload = state.confidence_decision.to_dict()
+    invariant_payload = state.invariant_decisions.to_dict()
+    fallback_action = str(invariant_payload.get("fallback_action", "NONE"))
+    retrieval_branch = str(confidence_payload.get("retrieval_branch", "memory_retrieval"))
+    answer_mode = str(invariant_payload.get("answer_mode", "dont-know"))
+    context_confident = bool(confidence_payload.get("context_confident", False))
+    ambiguity_detected = bool(confidence_payload.get("ambiguity_detected", False))
+    answer_contract_valid = bool(invariant_payload.get("answer_contract_valid", True))
+    general_knowledge_contract_valid = bool(invariant_payload.get("general_knowledge_contract_valid", True))
+    scored_candidates = confidence_payload.get("scored_candidates", [])
     top_score = 0.0
     second_score = 0.0
     if isinstance(scored_candidates, list) and scored_candidates:
@@ -1631,8 +1685,8 @@ def _build_debug_turn_payload(*, state: PipelineState, intent_label: str, hits: 
         if len(scored_candidates) > 1 and isinstance(scored_candidates[1], dict):
             second_score = float(scored_candidates[1].get("final_score", 0.0) or 0.0)
     observed_margin = max(0.0, top_score - second_score)
-    top_threshold = float(state.confidence_decision.get("top_final_score_min", 0.0) or 0.0)
-    margin_threshold = float(state.confidence_decision.get("min_margin_to_second", 0.0) or 0.0)
+    top_threshold = float(confidence_payload.get("top_final_score_min", 0.0) or 0.0)
+    margin_threshold = float(confidence_payload.get("min_margin_to_second", 0.0) or 0.0)
     ambiguity_threshold = 0.5
     context_score = min(
         top_score / top_threshold if top_threshold > 0 else 1.0,
@@ -1660,8 +1714,8 @@ def _build_debug_turn_payload(*, state: PipelineState, intent_label: str, hits: 
                 "doc_id": str(doc.id or metadata.get("doc_id") or ""),
                 "card_type": str(metadata.get("card_type") or metadata.get("type") or ""),
                 "ts": str(metadata.get("ts") or ""),
-                "window_start": str(metadata.get("window_start") or state.confidence_decision.get("window_start") or ""),
-                "window_end": str(metadata.get("window_end") or state.confidence_decision.get("window_end") or ""),
+                "window_start": str(metadata.get("window_start") or confidence_payload.get("window_start") or ""),
+                "window_end": str(metadata.get("window_end") or confidence_payload.get("window_end") or ""),
                 "source": str(metadata.get("source") or ""),
             }
         )
@@ -1696,12 +1750,12 @@ def _build_debug_turn_payload(*, state: PipelineState, intent_label: str, hits: 
         "ambiguity_threshold": round(ambiguity_threshold, 4),
         "context_score_target": 1.0,
     }
-    policy_rationale = state.invariant_decisions.get("answer_policy_rationale", {})
+    policy_rationale = invariant_payload.get("answer_policy_rationale", {})
     policy_fallback_reason = ""
     if isinstance(policy_rationale, dict):
         policy_fallback_reason = str(policy_rationale.get("fallback_reason") or "")
     if not policy_fallback_reason or policy_fallback_reason == "decision_object_mapping":
-        source_confidence = state.confidence_decision.get("source_confidence")
+        source_confidence = confidence_payload.get("source_confidence")
         policy_fallback_reason = derive_fallback_reason(
             intent=intent_label if intent_label in {"memory_recall", "time_query", "non_memory"} else "non_memory",
             fallback_action=fallback_action if fallback_action in {
@@ -1771,7 +1825,7 @@ def _build_debug_turn_payload(*, state: PipelineState, intent_label: str, hits: 
             ("contract", "answer_contract_gate", answer_contract_gate),
             ("contract", "general_knowledge_contract_gate", general_knowledge_contract_gate),
         )
-        if intent_label == "time_query" or bool(state.confidence_decision.get("anaphora_detected", False)):
+        if intent_label == "time_query" or bool(confidence_payload.get("anaphora_detected", False)):
             gate_families += (("temporal", "temporal_reference_gate", _gate_metrics(
                 passed=reject_signal.reject_code != "TEMPORAL_REFERENCE_UNRESOLVED",
                 score=reject_signal.score if reject_signal.partition == "temporal" else 1.0,
@@ -1823,13 +1877,13 @@ def _build_debug_turn_payload(*, state: PipelineState, intent_label: str, hits: 
         general_knowledge_contract_valid=general_knowledge_contract_valid,
     )
 
-    return {
+    payload = {
         "debug.intent": {
             "resolved": intent_label,
             "classified": state.classified_intent,
-            "predicted": str(state.confidence_decision.get("intent_predicted") or state.classified_intent),
-            "confidence": float(state.confidence_decision.get("intent_classifier_confidence", 0.0) or 0.0),
-            "threshold": float(state.confidence_decision.get("intent_classifier_threshold", 0.0) or 0.0),
+            "predicted": str(confidence_payload.get("intent_predicted") or state.classified_intent),
+            "confidence": float(confidence_payload.get("intent_classifier_confidence", 0.0) or 0.0),
+            "threshold": float(confidence_payload.get("intent_classifier_threshold", 0.0) or 0.0),
             "prior_unresolved": state.prior_unresolved_intent,
         },
         "debug.rewrite": {
@@ -1841,14 +1895,14 @@ def _build_debug_turn_payload(*, state: PipelineState, intent_label: str, hits: 
             "branch": retrieval_branch,
             "hit_count": len(hits),
             "retrieved_doc_ids": doc_ids,
-            "candidates_considered": float(state.confidence_decision.get("retrieval_candidates_considered", 0.0) or 0.0),
-            "returned_top_k": float(state.confidence_decision.get("retrieval_returned_top_k", 0.0) or 0.0),
-            "threshold": float(state.confidence_decision.get("retrieval_threshold", 0.0) or 0.0),
+            "candidates_considered": float(confidence_payload.get("retrieval_candidates_considered", 0.0) or 0.0),
+            "returned_top_k": float(confidence_payload.get("retrieval_returned_top_k", 0.0) or 0.0),
+            "threshold": float(confidence_payload.get("retrieval_threshold", 0.0) or 0.0),
             "hygiene": {
-                "exclude_doc_ids": state.confidence_decision.get("retrieval_exclude_doc_ids", []),
-                "exclude_source_ids": state.confidence_decision.get("retrieval_exclude_source_ids", []),
-                "exclude_turn_scoped_ids": state.confidence_decision.get("retrieval_exclude_turn_scoped_ids", []),
-                "exclusion_invariant": str(state.confidence_decision.get("retrieval_exclusion_invariant") or ""),
+                "exclude_doc_ids": confidence_payload.get("retrieval_exclude_doc_ids", []),
+                "exclude_source_ids": confidence_payload.get("retrieval_exclude_source_ids", []),
+                "exclude_turn_scoped_ids": confidence_payload.get("retrieval_exclude_turn_scoped_ids", []),
+                "exclusion_invariant": str(confidence_payload.get("retrieval_exclusion_invariant") or ""),
                 "rerank_defense_in_depth": True,
             },
         },
@@ -1876,20 +1930,20 @@ def _build_debug_turn_payload(*, state: PipelineState, intent_label: str, hits: 
                     "candidate_score_decomposition": score_decomposition,
                 },
                 "time_windows": {
-                    "query_time_window": str(state.confidence_decision.get("time_window") or ""),
-                    "window_start": str(state.confidence_decision.get("window_start") or ""),
-                    "window_end": str(state.confidence_decision.get("window_end") or ""),
+                    "query_time_window": str(confidence_payload.get("time_window") or ""),
+                    "window_start": str(confidence_payload.get("window_start") or ""),
+                    "window_end": str(confidence_payload.get("window_end") or ""),
                     "last_user_message_ts": state.last_user_message_ts,
                 },
                 "ambiguity_state": {
                     "ambiguity_detected": ambiguity_detected,
-                    "ambiguous_candidates": state.confidence_decision.get("ambiguous_candidates", []),
-                    "anaphora_detected": bool(state.confidence_decision.get("anaphora_detected", False)),
-                    "candidate_anchors": state.confidence_decision.get("anchor_candidates", []),
-                    "selected_anchor_doc_id": str(state.confidence_decision.get("selected_anchor_doc_id") or ""),
-                    "selected_anchor_ts": str(state.confidence_decision.get("selected_anchor_ts") or ""),
-                    "computed_delta_raw_seconds": state.confidence_decision.get("computed_delta_raw_seconds"),
-                    "computed_delta_humanized": str(state.confidence_decision.get("computed_delta_humanized") or ""),
+                    "ambiguous_candidates": confidence_payload.get("ambiguous_candidates", []),
+                    "anaphora_detected": bool(confidence_payload.get("anaphora_detected", False)),
+                    "candidate_anchors": confidence_payload.get("anchor_candidates", []),
+                    "selected_anchor_doc_id": str(confidence_payload.get("selected_anchor_doc_id") or ""),
+                    "selected_anchor_ts": str(confidence_payload.get("selected_anchor_ts") or ""),
+                    "computed_delta_raw_seconds": confidence_payload.get("computed_delta_raw_seconds"),
+                    "computed_delta_humanized": str(confidence_payload.get("computed_delta_humanized") or ""),
                 },
             }
         },
@@ -1936,8 +1990,12 @@ def _build_debug_turn_payload(*, state: PipelineState, intent_label: str, hits: 
         },
     }
 
+    _validate_debug_turn_payload_schema(payload)
+    return payload
+
 
 def _format_debug_turn_trace_payload(*, payload: dict[str, object], verbose: bool = False) -> str:
+    _validate_debug_turn_payload_schema(payload)
 
     if verbose:
         return "[debug] " + json.dumps(payload, ensure_ascii=False, sort_keys=True)
