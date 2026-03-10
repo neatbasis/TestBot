@@ -651,6 +651,8 @@ def test_background_source_ingestion_start_generates_namespaced_request_id(monke
 
 
 def test_chat_loop_registers_pending_ingestion_context_by_request_id(monkeypatch) -> None:
+    events: list[tuple[str, dict[str, object]]] = []
+    monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: events.append((event, payload)))
     monkeypatch.setattr(runtime, "store_doc", lambda *args, **kwargs: None)
     monkeypatch.setattr(runtime, "generate_reflection_yaml", lambda *args, **kwargs: "claims: []")
     monkeypatch.setattr(runtime, "persist_promoted_context", lambda *args, **kwargs: [])
@@ -727,6 +729,108 @@ def test_chat_loop_registers_pending_ingestion_context_by_request_id(monkeypatch
     assert pending["utterance"] == "What changed?"
     assert pending["source_context"]["utterance_doc_id"] == "turn-doc-123"
     assert pending["source_context"]["same_turn_exclusion_doc_ids"] == ["turn-doc-123", "reflection-doc-123"]
+    assert pending["status"] == "pending"
+    assert pending["attempt_count"] >= 0
+    assert pending["created_at"]
+    assert pending["last_polled_at"]
+    assert pending["deadline_at"]
+
+    created_events = [payload for name, payload in events if name == "source_ingest_obligation_transition" and payload.get("status") == "created"]
+    assert created_events
+    assert created_events[-1]["ingestion_request_id"] == "ingest-req-123"
+
+
+def test_poll_pending_ingestion_obligations_times_out_and_dead_letters(monkeypatch) -> None:
+    events: list[tuple[str, dict[str, object]]] = []
+    monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: events.append((event, payload)))
+
+    rt: dict[str, object] = {
+        "pending_ingestion_registry": {
+            "ingest-1": {
+                "ingestion_request_id": "ingest-1",
+                "utterance": "What changed?",
+                "created_at": "2026-03-10T10:00:00+00:00",
+                "last_polled_at": "2026-03-10T10:00:00+00:00",
+                "attempt_count": 2,
+                "deadline_at": "2026-03-10T10:30:00+00:00",
+                "status": "pending",
+            }
+        },
+        "dead_letter_ingestion_registry": {},
+    }
+
+    monkeypatch.setattr(runtime.arrow, "utcnow", lambda: runtime.arrow.get("2026-03-10T11:00:00+00:00"))
+
+    runtime._poll_pending_ingestion_obligations(runtime=rt)
+
+    assert rt["pending_ingestion_registry"] == {}
+    assert "ingest-1" in rt["dead_letter_ingestion_registry"]
+    dead = rt["dead_letter_ingestion_registry"]["ingest-1"]
+    assert dead["status"] == "timed_out"
+    assert dead["attempt_count"] == 3
+    assert events[-1][0] == "source_ingest_obligation_transition"
+    assert events[-1][1]["ingestion_request_id"] == "ingest-1"
+    assert events[-1][1]["status"] == "timed_out"
+
+
+def test_chat_loop_polls_pending_ingestion_obligation_each_turn(monkeypatch) -> None:
+    events: list[tuple[str, dict[str, object]]] = []
+    monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: events.append((event, payload)))
+    monkeypatch.setattr(runtime, "_process_background_ingestion_completion", lambda **kwargs: ("", None, False))
+
+    runtime._run_chat_loop(
+        runtime={
+            "pending_ingestion_registry": {
+                "ingest-2": {
+                    "ingestion_request_id": "ingest-2",
+                    "utterance": "pending",
+                    "created_at": "2026-03-10T10:00:00+00:00",
+                    "last_polled_at": "2026-03-10T10:00:00+00:00",
+                    "attempt_count": 0,
+                    "deadline_at": "2099-03-10T12:00:00+00:00",
+                    "status": "pending",
+                }
+            }
+        },
+        llm=object(),
+        store=object(),
+        chat_history=runtime.deque(),
+        near_tie_delta=0.05,
+        io_channel="cli",
+        capability_status="ask_unavailable",
+        capability_snapshot=runtime.CapabilitySnapshot(
+            runtime={},
+            requested_mode="cli",
+            daemon_mode=False,
+            effective_mode="cli",
+            fallback_reason=None,
+            exit_reason=None,
+            ha_error=None,
+            ollama_error=None,
+            runtime_capability_status=runtime.RuntimeCapabilityStatus(
+                ollama_available=True,
+                ha_available=False,
+                effective_mode="cli",
+                requested_mode="cli",
+                daemon_mode=False,
+                fallback_reason=None,
+                memory_backend="inmemory",
+                debug_enabled=False,
+                debug_verbose=False,
+                text_clarification_available=True,
+                satellite_ask_available=False,
+            ),
+        ),
+        read_user_utterance=lambda: "stop",
+        send_assistant_text=lambda _text: None,
+        clock=type("_Clock", (), {"now": staticmethod(lambda: __import__('arrow').get("2026-03-10T11:00:00+00:00"))})(),
+    )
+
+    polled_events = [
+        payload for name, payload in events if name == "source_ingest_obligation_transition" and payload.get("status") == "polled_pending"
+    ]
+    assert polled_events
+    assert polled_events[-1]["ingestion_request_id"] == "ingest-2"
 
 def test_background_source_ingestion_start_and_poll_completion(monkeypatch) -> None:
     logs: list[tuple[str, dict[str, object]]] = []

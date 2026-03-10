@@ -156,6 +156,90 @@ BACKGROUND_INGESTION_COMPLETION_MESSAGE_TEMPLATE = (
     "Background ingestion completed for request {correlation_id}. "
     "Here is the newly grounded answer:"
 )
+BACKGROUND_INGESTION_OBLIGATION_TIMEOUT_SECONDS = int(os.getenv("SOURCE_INGEST_OBLIGATION_TIMEOUT_SECONDS", "900"))
+
+
+def _utc_now_iso() -> str:
+    return arrow.utcnow().isoformat()
+
+
+def _emit_obligation_transition(
+    *,
+    ingestion_request_id: str,
+    status: str,
+    created_at: str,
+    last_polled_at: str,
+    attempt_count: int,
+    deadline_at: str,
+) -> None:
+    append_session_log(
+        "source_ingest_obligation_transition",
+        {
+            "ingestion_request_id": ingestion_request_id,
+            "status": status,
+            "created_at": created_at,
+            "last_polled_at": last_polled_at,
+            "attempt_count": attempt_count,
+            "deadline_at": deadline_at,
+        },
+    )
+
+
+def _poll_pending_ingestion_obligations(*, runtime: dict[str, object]) -> None:
+    pending_registry = runtime.get("pending_ingestion_registry")
+    if not isinstance(pending_registry, dict):
+        return
+
+    now = arrow.utcnow()
+    now_iso = now.isoformat()
+    for request_id, raw_record in list(pending_registry.items()):
+        if not isinstance(raw_record, dict):
+            continue
+
+        created_at = str(raw_record.get("created_at") or now_iso)
+        deadline_at = str(raw_record.get("deadline_at") or "")
+        attempt_count = int(raw_record.get("attempt_count") or 0) + 1
+        raw_record["created_at"] = created_at
+        raw_record["last_polled_at"] = now_iso
+        raw_record["attempt_count"] = attempt_count
+
+        if not deadline_at:
+            deadline_at = now.shift(seconds=BACKGROUND_INGESTION_OBLIGATION_TIMEOUT_SECONDS).isoformat()
+            raw_record["deadline_at"] = deadline_at
+
+        timed_out = False
+        try:
+            timed_out = now >= arrow.get(deadline_at)
+        except (arrow.parser.ParserError, ValueError):
+            deadline_at = now.shift(seconds=BACKGROUND_INGESTION_OBLIGATION_TIMEOUT_SECONDS).isoformat()
+            raw_record["deadline_at"] = deadline_at
+
+        if timed_out:
+            raw_record["status"] = "timed_out"
+            raw_record["last_polled_at"] = now_iso
+            dead_letter_registry = runtime.setdefault("dead_letter_ingestion_registry", {})
+            if isinstance(dead_letter_registry, dict):
+                dead_letter_registry[str(request_id)] = dict(raw_record)
+            _emit_obligation_transition(
+                ingestion_request_id=str(request_id),
+                status="timed_out",
+                created_at=created_at,
+                last_polled_at=now_iso,
+                attempt_count=attempt_count,
+                deadline_at=deadline_at,
+            )
+            pending_registry.pop(request_id, None)
+            continue
+
+        raw_record["status"] = "pending"
+        _emit_obligation_transition(
+            ingestion_request_id=str(request_id),
+            status="polled_pending",
+            created_at=created_at,
+            last_polled_at=now_iso,
+            attempt_count=attempt_count,
+            deadline_at=deadline_at,
+        )
 GENERAL_KNOWLEDGE_MARKER_PREFIX = "General definition (not from your memory):"
 GENERAL_KNOWLEDGE_CONFIDENCE_MIN = 0.85
 GENERAL_KNOWLEDGE_SUPPORT_MIN = 2
@@ -308,6 +392,16 @@ def _process_background_ingestion_completion(
     pending_context = pending_registry.pop(correlation_id, None)
     if not isinstance(pending_context, dict):
         return last_user_message_ts, prior_pipeline_state, False
+
+    _emit_obligation_transition(
+        ingestion_request_id=correlation_id,
+        status="resolved",
+        created_at=str(pending_context.get("created_at") or _utc_now_iso()),
+        last_polled_at=_utc_now_iso(),
+        attempt_count=int(pending_context.get("attempt_count") or 0),
+        deadline_at=str(pending_context.get("deadline_at") or ""),
+    )
+    pending_context["status"] = "resolved"
 
     original_utterance = str(pending_context.get("utterance") or "")
     original_prior_state = pending_context.get("prior_pipeline_state")
@@ -3708,9 +3802,11 @@ def _run_chat_loop(
     runtime.setdefault("source_ingest_background_in_progress", False)
     runtime.setdefault("source_ingest_background_request_id", "")
     runtime.setdefault("pending_ingestion_registry", {})
+    runtime.setdefault("dead_letter_ingestion_registry", {})
     last_user_message_ts = ""
     prior_pipeline_state: PipelineState | None = None
     while True:
+        _poll_pending_ingestion_obligations(runtime=runtime)
         last_user_message_ts, prior_pipeline_state, _ = _process_background_ingestion_completion(
             runtime=runtime,
             llm=llm,
@@ -3856,6 +3952,8 @@ def _run_chat_loop(
         if pending_request_id:
             pending_registry = runtime.setdefault("pending_ingestion_registry", {})
             if isinstance(pending_registry, dict):
+                now_iso = _utc_now_iso()
+                deadline_at = arrow.get(now_iso).shift(seconds=BACKGROUND_INGESTION_OBLIGATION_TIMEOUT_SECONDS).isoformat()
                 pending_registry[pending_request_id] = {
                     "ingestion_request_id": pending_request_id,
                     "utterance": utterance,
@@ -3865,7 +3963,20 @@ def _run_chat_loop(
                         "same_turn_exclusion_doc_ids": list(state.same_turn_exclusion.get("excluded_doc_ids", [])),
                     },
                     "prior_pipeline_state": prior_pipeline_state,
+                    "created_at": now_iso,
+                    "last_polled_at": now_iso,
+                    "attempt_count": 0,
+                    "deadline_at": deadline_at,
+                    "status": "pending",
                 }
+                _emit_obligation_transition(
+                    ingestion_request_id=pending_request_id,
+                    status="created",
+                    created_at=now_iso,
+                    last_polled_at=now_iso,
+                    attempt_count=0,
+                    deadline_at=deadline_at,
+                )
 
             # -----------------------
             # 4) Store assistant utterance card + reflection card
