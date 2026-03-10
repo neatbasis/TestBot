@@ -1225,7 +1225,7 @@ def test_chat_loop_two_turn_commit_continuity_is_consumed_by_context_and_retriev
         commit_receipt = prior_pipeline_state.commit_receipt
         prior_facts = list(commit_receipt.get("confirmed_user_facts", []))
         assert prior_facts == ["name=Sam"]
-        assert commit_receipt.get("pending_repair_state") == {"required": False, "reason": "none"}
+        assert commit_receipt.get("pending_repair_state") == {"repair_required_by_policy": False, "repair_offered_to_user": False, "reason": "none"}
         assert commit_receipt.get("resolved_obligations") == ["repair_state_not_required"]
         continuity_anchor = f"commit.confirmed_user_facts:{prior_facts[0]}"
         return ResolvedContext(
@@ -1298,7 +1298,7 @@ def test_chat_loop_two_turn_commit_continuity_is_consumed_by_context_and_retriev
     assert len(commit_rows) == 2
     for commit_row in commit_rows:
         assert commit_row["stage"] == "answer.commit"
-        assert commit_row["pending_repair_state"] == {"required": False, "reason": "none"}
+        assert commit_row["pending_repair_state"] == {"repair_required_by_policy": False, "repair_offered_to_user": False, "reason": "none"}
         assert commit_row["resolved_obligations"] == ["repair_state_not_required"]
         assert commit_row["confirmed_user_facts"] == ["name=Sam"]
 
@@ -1643,7 +1643,8 @@ def test_chat_loop_async_pending_lookup_commits_pending_answer_and_logs_semantic
     ingestion_request_id = started_row["ingestion_request_id"]
 
     commit_row = next(row for row in rows if row.get("event") == "commit_stage_recorded")
-    assert commit_row["pending_repair_state"]["required"] is True
+    assert commit_row["pending_repair_state"]["repair_required_by_policy"] is True
+    assert commit_row["pending_repair_state"]["repair_offered_to_user"] is False
     assert commit_row["pending_ingestion_request_id"] != ""
     assert commit_row["pending_ingestion_request_id"] == ingestion_request_id
 
@@ -1738,7 +1739,8 @@ def test_chat_loop_async_pending_lookup_contract_path_reaches_answer_commit_post
     assert symptom_hits == []
 
     commit_row = next(row for row in rows if row.get("event") == "commit_stage_recorded")
-    assert commit_row["pending_repair_state"]["required"] is True
+    assert commit_row["pending_repair_state"]["repair_required_by_policy"] is True
+    assert commit_row["pending_repair_state"]["repair_offered_to_user"] is False
     assert commit_row["pending_ingestion_request_id"] != ""
 
     mode_row = next(row for row in rows if row.get("event") == "final_answer_mode")
@@ -2035,7 +2037,7 @@ def test_resolve_context_consumes_commit_receipt_continuity_deterministically() 
         resolved_intent=IntentType.MEMORY_RECALL.value,
         commit_receipt={
             "commit_stage": "answer.commit",
-            "pending_repair_state": {"required": True, "reason": "decision_requires_repair"},
+            "pending_repair_state": {"repair_required_by_policy": True, "repair_offered_to_user": True, "reason": "repair_offer_rendered", "followup_route": "repair_offer_followup"},
             "remaining_obligations": ["continue_repair_reconstruction"],
             "pending_ingestion_request_id": "ingest-42",
             "confirmed_user_facts": ["name=Sam", "timezone=PST"],
@@ -2048,7 +2050,7 @@ def test_resolve_context_consumes_commit_receipt_continuity_deterministically() 
         "prior_intent:memory_recall",
         "commit.confirmed_user_facts:name=Sam",
         "commit.confirmed_user_facts:timezone=PST",
-        "commit.pending_repair_state:required",
+        "commit.pending_repair_state:repair_offered_to_user",
         "commit.pending_ingestion_request_id:ingest-42",
         "commit.remaining_obligations:continue_repair_reconstruction",
     )

@@ -19,7 +19,7 @@ def _base_assembly(*, confirmed_user_facts: list[str]) -> AnswerCandidate:
             "reflections_hypotheses": 0,
             "source_evidence": 0,
         },
-        pending_repair_state={"required": False, "reason": "none"},
+        pending_repair_state={"repair_required_by_policy": False, "repair_offered_to_user": False, "reason": "none"},
         pending_ingestion_request_id="",
         resolved_obligations=["repair_state_not_required"],
         remaining_obligations=[],
@@ -83,3 +83,65 @@ def test_promoted_identity_fact_is_available_as_next_turn_continuity_anchor() ->
     next_context = resolve_context(utterance="who am i?", prior_pipeline_state=committed_state)
 
     assert "commit.confirmed_user_facts:name=Sam" in next_context.history_anchors
+
+
+def test_uncertainty_fallback_without_explicit_offer_clears_pending_repair() -> None:
+    state = PipelineState(user_input="who am i")
+    committed_state, committed = commit_answer_stage(
+        state,
+        assembly=AnswerCandidate(
+            decision_class="pending_lookup_background_ingestion",
+            rendered_class="pending_lookup_background_ingestion",
+            retrieval_branch="memory_retrieval",
+            rationale="repair required by policy",
+            evidence_counts={"structured_facts": 0},
+            pending_repair_state={
+                "repair_required_by_policy": True,
+                "repair_offered_to_user": False,
+                "reason": "repair_required_by_policy",
+            },
+            pending_ingestion_request_id="ing-1",
+            resolved_obligations=[],
+            remaining_obligations=["pending_lookup_background_ingestion"],
+            confirmed_user_facts=[],
+        ),
+        validation=ValidatedAnswer(passed=True, failures=[]),
+        rendered=RenderedAnswer(rendered_text="I don't know from memory."),
+    )
+
+    assert committed_state.pending_repair.to_dict() == {}
+    assert committed.pending_repair_state["repair_required_by_policy"] is True
+    assert committed.pending_repair_state["repair_offered_to_user"] is False
+    assert committed.pending_repair_state["reason"] == "none"
+
+
+def test_explicit_repair_offer_sets_pending_repair_and_followup_route() -> None:
+    state = PipelineState(user_input="who am i")
+    committed_state, committed = commit_answer_stage(
+        state,
+        assembly=AnswerCandidate(
+            decision_class="continue_repair_reconstruction",
+            rendered_class="continue_repair_reconstruction",
+            retrieval_branch="memory_retrieval",
+            rationale="repair required by policy",
+            evidence_counts={"structured_facts": 0},
+            pending_repair_state={
+                "repair_required_by_policy": True,
+                "repair_offered_to_user": False,
+                "reason": "repair_required_by_policy",
+            },
+            pending_ingestion_request_id="",
+            resolved_obligations=[],
+            remaining_obligations=["continue_repair_reconstruction"],
+            confirmed_user_facts=[],
+        ),
+        validation=ValidatedAnswer(passed=True, failures=[]),
+        rendered=RenderedAnswer(
+            rendered_text="I can help continue repair reconstruction from what we confirmed.",
+            repair_offer_rendered=True,
+            repair_followup_route="repair_offer_followup",
+        ),
+    )
+
+    assert committed_state.pending_repair.to_dict()["repair_offered_to_user"] is True
+    assert committed.pending_repair_state["followup_route"] == "repair_offer_followup"

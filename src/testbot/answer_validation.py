@@ -66,8 +66,10 @@ def validate_answer_assembly_boundary(
     if not isinstance(pending_repair_state, dict):
         failures.append("pending_repair_state_not_dict")
     else:
-        if "required" not in pending_repair_state:
-            failures.append("pending_repair_state_missing_required")
+        if "repair_required_by_policy" not in pending_repair_state:
+            failures.append("pending_repair_state_missing_repair_required_by_policy")
+        if "repair_offered_to_user" not in pending_repair_state:
+            failures.append("pending_repair_state_missing_repair_offered_to_user")
 
     if not isinstance(as_mapping.get("resolved_obligations"), list):
         failures.append("resolved_obligations_not_list")
