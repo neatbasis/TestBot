@@ -1639,9 +1639,19 @@ def test_chat_loop_async_pending_lookup_commits_pending_answer_and_logs_semantic
     events = [row.get("event") for row in rows]
     assert "source_ingest_background_started" in events
 
+    started_row = next(row for row in rows if row.get("event") == "source_ingest_background_started")
+    ingestion_request_id = started_row["ingestion_request_id"]
+
     commit_row = next(row for row in rows if row.get("event") == "commit_stage_recorded")
     assert commit_row["pending_repair_state"]["required"] is True
     assert commit_row["pending_ingestion_request_id"] != ""
+    assert commit_row["pending_ingestion_request_id"] == ingestion_request_id
+
+    retrieval_row = next(row for row in rows if row.get("event") == "retrieval_candidates")
+    hygiene = retrieval_row.get("hygiene", {})
+    assert ingestion_request_id not in hygiene.get("exclude_doc_ids", [])
+    assert ingestion_request_id not in hygiene.get("exclude_source_ids", [])
+    assert ingestion_request_id not in hygiene.get("exclude_turn_scoped_ids", [])
 
     mode_row = next(row for row in rows if row.get("event") == "final_answer_mode")
     assert mode_row["mode"] == "assist"

@@ -235,7 +235,7 @@ def _start_background_source_ingestion(
             existing_request_id = str(runtime.get("source_ingest_background_request_id") or "")
             return {"started": False, "already_running": True, "ingestion_request_id": existing_request_id}
 
-        request_id = str(ingestion_request_id or runtime.get("active_ingestion_request_id") or uuid.uuid4())
+        request_id = str(ingestion_request_id or f"ingest-req-{uuid.uuid4()}")
         runtime["source_ingest_background_request_id"] = request_id
 
         future = _BACKGROUND_SOURCE_INGEST_EXECUTOR.submit(
@@ -3385,7 +3385,6 @@ def _run_canonical_turn_pipeline(
                 start_result = _start_background_source_ingestion(
                     runtime=runtime,
                     store=store,
-                    ingestion_request_id=str(ctx.artifacts.get("turn_id") or ""),
                 )
                 start_request_id = str(start_result.get("ingestion_request_id") or "")
                 if start_request_id:
@@ -3858,7 +3857,13 @@ def _run_chat_loop(
             pending_registry = runtime.setdefault("pending_ingestion_registry", {})
             if isinstance(pending_registry, dict):
                 pending_registry[pending_request_id] = {
+                    "ingestion_request_id": pending_request_id,
                     "utterance": utterance,
+                    "turn_id": turn_id,
+                    "source_context": {
+                        "utterance_doc_id": str(state.candidate_facts.get("turn_id") or ""),
+                        "same_turn_exclusion_doc_ids": list(state.same_turn_exclusion.get("excluded_doc_ids", [])),
+                    },
                     "prior_pipeline_state": prior_pipeline_state,
                 }
 

@@ -624,6 +624,110 @@ def test_execute_source_ingestion_returns_failed_payload(monkeypatch) -> None:
     assert result["payload"]["exception_class"] == "RuntimeError"
 
 
+
+def test_background_source_ingestion_start_generates_namespaced_request_id(monkeypatch) -> None:
+    logs: list[tuple[str, dict[str, object]]] = []
+
+    def _fake_execute(*, runtime: dict[str, object], store, background: bool = False, ingestion_request_id: str = ""):
+        del runtime, store
+        return {"ok": True, "status": "completed", "payload": {"background": background, "stored_count": 1, "ingestion_request_id": ingestion_request_id}}
+
+    monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: logs.append((event, payload)))
+    monkeypatch.setattr(runtime, "_execute_source_ingestion", _fake_execute)
+
+    rt = {
+        "source_ingest_background_future": None,
+        "source_ingest_background_in_progress": False,
+        "source_ingest_background_request_id": "",
+        "active_ingestion_request_id": "turn-doc-legacy",
+    }
+    started = runtime._start_background_source_ingestion(runtime=rt, store=object())
+
+    assert started["started"] is True
+    assert str(started["ingestion_request_id"]).startswith("ingest-req-")
+    assert started["ingestion_request_id"] != "turn-doc-legacy"
+    assert logs[0][0] == "source_ingest_background_started"
+    assert logs[0][1]["ingestion_request_id"] == started["ingestion_request_id"]
+
+
+def test_chat_loop_registers_pending_ingestion_context_by_request_id(monkeypatch) -> None:
+    monkeypatch.setattr(runtime, "store_doc", lambda *args, **kwargs: None)
+    monkeypatch.setattr(runtime, "generate_reflection_yaml", lambda *args, **kwargs: "claims: []")
+    monkeypatch.setattr(runtime, "persist_promoted_context", lambda *args, **kwargs: [])
+    monkeypatch.setattr(runtime, "answer_commit_persistence", lambda **kwargs: None)
+
+    def _pipeline(**kwargs):
+        state = kwargs["state"]
+        from dataclasses import replace
+
+        return (
+            replace(
+                state,
+                final_answer="Pending ingest answer.",
+                candidate_facts={"turn_id": "turn-doc-123"},
+                same_turn_exclusion={"excluded_doc_ids": ["turn-doc-123", "reflection-doc-123"]},
+                commit_receipt={"pending_ingestion_request_id": "ingest-req-123"},
+                invariant_decisions={"fallback_action": "NONE", "answer_mode": "knowing"},
+                confidence_decision={"stage_audit_trail": []},
+                provenance_types=[],
+                claims=[],
+                used_memory_refs=[],
+                used_source_evidence_refs=[],
+                source_evidence_attribution=[],
+                basis_statement="source evidence",
+            ),
+            [],
+        )
+
+    monkeypatch.setattr(runtime, "_run_canonical_turn_pipeline", _pipeline)
+
+    rt: dict[str, object] = {"seed": True}
+    prompts = iter(["What changed?", "stop"])
+    runtime._run_chat_loop(
+        runtime=rt,
+        llm=object(),
+        store=object(),
+        chat_history=runtime.deque(),
+        near_tie_delta=0.05,
+        io_channel="cli",
+        capability_status="ask_unavailable",
+        capability_snapshot=runtime.CapabilitySnapshot(
+            runtime={},
+            requested_mode="cli",
+            daemon_mode=False,
+            effective_mode="cli",
+            fallback_reason=None,
+            exit_reason=None,
+            ha_error=None,
+            ollama_error=None,
+            runtime_capability_status=runtime.RuntimeCapabilityStatus(
+                ollama_available=True,
+                ha_available=False,
+                effective_mode="cli",
+                requested_mode="cli",
+                daemon_mode=False,
+                fallback_reason=None,
+                memory_backend="inmemory",
+                debug_enabled=False,
+                debug_verbose=False,
+                text_clarification_available=True,
+                satellite_ask_available=False,
+            ),
+        ),
+        read_user_utterance=lambda: next(prompts, None),
+        send_assistant_text=lambda _text: None,
+        clock=type("_Clock", (), {"now": staticmethod(lambda: __import__('arrow').get("2026-03-10T11:00:00+00:00"))})(),
+    )
+
+    pending_registry = rt.get("pending_ingestion_registry")
+    assert isinstance(pending_registry, dict)
+    pending = pending_registry.get("ingest-req-123")
+    assert pending is not None
+    assert pending["ingestion_request_id"] == "ingest-req-123"
+    assert pending["utterance"] == "What changed?"
+    assert pending["source_context"]["utterance_doc_id"] == "turn-doc-123"
+    assert pending["source_context"]["same_turn_exclusion_doc_ids"] == ["turn-doc-123", "reflection-doc-123"]
+
 def test_background_source_ingestion_start_and_poll_completion(monkeypatch) -> None:
     logs: list[tuple[str, dict[str, object]]] = []
 
