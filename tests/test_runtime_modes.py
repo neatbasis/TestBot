@@ -102,6 +102,36 @@ def test_resolve_mode_falls_back_to_cli_when_ha_unavailable() -> None:
     assert _resolve_mode("cli", "auth failed") == "cli"
 
 
+
+
+def test_validate_ollama_base_url_rejects_missing_scheme() -> None:
+    err = runtime._validate_ollama_base_url("localhost:11434")
+    assert err == "Invalid OLLAMA_BASE_URL 'localhost:11434'; must be full http(s) URL"
+
+
+def test_validate_ollama_base_url_rejects_empty_string() -> None:
+    err = runtime._validate_ollama_base_url("")
+    assert err == "Invalid OLLAMA_BASE_URL ''; must be full http(s) URL"
+
+
+def test_validate_ollama_base_url_rejects_unsupported_scheme() -> None:
+    err = runtime._validate_ollama_base_url("ftp://localhost:11434")
+    assert err == "Invalid OLLAMA_BASE_URL 'ftp://localhost:11434'; must be full http(s) URL"
+
+
+def test_ollama_connection_error_returns_validation_error_before_urlopen(monkeypatch) -> None:
+    called = {"urlopen": False}
+
+    def _unexpected_urlopen(*_args, **_kwargs):
+        called["urlopen"] = True
+        raise AssertionError("urlopen should not be called for invalid base URL")
+
+    monkeypatch.setattr(runtime, "urlopen", _unexpected_urlopen)
+
+    err = runtime._ollama_connection_error("localhost:11434", "llama3.1:latest", "nomic-embed-text")
+
+    assert err == "Invalid OLLAMA_BASE_URL 'localhost:11434'; must be full http(s) URL"
+    assert called["urlopen"] is False
 def test_ollama_connection_error_accepts_implicit_latest_alias(monkeypatch) -> None:
     class _Resp:
         def __enter__(self):
