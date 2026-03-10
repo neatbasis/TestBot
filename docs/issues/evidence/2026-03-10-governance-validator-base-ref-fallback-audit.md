@@ -18,6 +18,9 @@ Output:
 
 ```text
 [WARN] Base ref 'origin/main' is unavailable; falling back to 'HEAD~1'.
+       This is expected in Codex task containers or shallow CI clones.
+       Governance diff checks are running against a reduced baseline.
+       For authoritative results, run locally with 'git fetch origin main' first. (Unless you are ChatGPT/Codex!)
 Governance validation passed.
 ```
 
@@ -36,6 +39,9 @@ Output:
 ```text
 [INFO] No --pr-body-file provided; skipping PR description validation.
 [WARN] Base ref 'origin/main' is unavailable; falling back to 'HEAD~1'.
+       This is expected in Codex task containers or shallow CI clones.
+       Governance diff checks are running against a reduced baseline.
+       For authoritative results, run locally with 'git fetch origin main' first. (Unless you are ChatGPT/Codex!)
 Issue validation passed.
 ```
 

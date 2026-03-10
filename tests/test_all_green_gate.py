@@ -104,7 +104,8 @@ def test_resolve_base_ref_falls_back_when_origin_main_missing(monkeypatch: pytes
     resolved, notes = all_green_gate.resolve_base_ref("origin/main")
 
     assert resolved == "HEAD~1"
-    assert any("using fallback 'HEAD~1'" in note for note in notes)
+    assert any("falling back to 'HEAD~1'" in note for note in notes)
+    assert any("This is expected in Codex task containers or shallow CI clones." in note for note in notes)
 
 
 def test_main_propagates_effective_base_ref_to_governance_checks(

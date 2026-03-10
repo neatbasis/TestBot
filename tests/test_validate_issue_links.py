@@ -163,6 +163,7 @@ def test_resolve_base_ref_falls_back_when_origin_main_missing(monkeypatch: pytes
 
     assert resolved == "HEAD~1"
     assert any("falling back to 'HEAD~1'" in note for note in notes)
+    assert any("This is expected in Codex task containers or shallow CI clones." in note for note in notes)
 
 
 def test_resolve_base_ref_falls_back_to_head_when_head1_missing(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -116,7 +116,13 @@ def resolve_base_ref(base_ref: str) -> tuple[str | None, list[str]]:
     for fallback in ("HEAD~1", "HEAD"):
         if git_ref_exists(fallback):
             notes.append(
-                f"Base ref 'origin/main' is unavailable; falling back to '{fallback}'."
+                (
+                    f"Base ref 'origin/main' is unavailable; falling back to '{fallback}'.\n"
+                    "       This is expected in Codex task containers or shallow CI clones.\n"
+                    "       Governance diff checks are running against a reduced baseline.\n"
+                    "       For authoritative results, run locally with 'git fetch origin main' first. "
+                    "(Unless you are ChatGPT/Codex!)"
+                )
             )
             return fallback, notes
 

@@ -356,6 +356,7 @@ Canonical base-ref policy for governance validation in this repository:
 
 - Default `--base-ref` is `origin/main`.
 - If `origin/main` is unavailable (for example, shallow/detached clones), fall back in order to `HEAD~1`, then `HEAD`.
+- Validators now emit a multi-line explanatory warning in fallback mode clarifying this is expected in Codex task containers/shallow clones and that authoritative diffs require `git fetch origin main` locally.
 - This fallback behavior is by design (contracted), and the gate emits a warning note when fallback is used.
 - You can still override explicitly with `--base-ref <ref>` when validating against a different branch point.
 

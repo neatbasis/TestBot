@@ -135,7 +135,8 @@ When running governance validators from shallow or detached environments, use th
 
 1. Run validators with default base ref (`origin/main`).
 2. If `origin/main` is unavailable, validators automatically fall back to `HEAD~1`, then `HEAD`.
-3. For explicit control, pass `--base-ref <ref>`.
+3. In fallback mode, warnings are intentionally explicit (Codex/shallow-clone expected behavior, reduced diff baseline, and `git fetch origin main` guidance) to avoid false-alarm triage.
+4. For explicit control, pass `--base-ref <ref>`.
 
 Canonical commands:
 
