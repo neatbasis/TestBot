@@ -9,6 +9,7 @@ from langchain_ollama import ChatOllama, OllamaEmbeddings
 from testbot.clock import SystemClock
 from testbot.sat_chatbot_memory_v2 import (
     _read_runtime_env,
+    _run_source_ingestion,
     _run_chat_loop,
     build_capability_snapshot,
 )
@@ -36,6 +37,15 @@ def _require_live_runtime_env() -> None:
         "HA_API_URL",
         "HA_API_SECRET",
         "HA_SATELLITE_ENTITY_ID",
+        "OLLAMA_BASE_URL",
+        "OLLAMA_MODEL",
+        "OLLAMA_EMBEDDING_MODEL",
+    ):
+        _require_env(env_name)
+
+
+def _require_live_ollama_env() -> None:
+    for env_name in (
         "OLLAMA_BASE_URL",
         "OLLAMA_MODEL",
         "OLLAMA_EMBEDDING_MODEL",
@@ -142,3 +152,96 @@ def test_live_smoke_runtime_e2e_turn_pipeline(monkeypatch: pytest.MonkeyPatch) -
 
     assert isinstance(final_answer_mode_payload["provenance_types"], list)
     assert final_answer_mode_payload["provenance_types"], "Expected non-empty provenance type list in payload"
+
+
+def test_live_smoke_runtime_e2e_wikipedia_source_ingest_one_cli_turn(monkeypatch: pytest.MonkeyPatch) -> None:
+    _require_live_ollama_env()
+
+    monkeypatch.setenv("SOURCE_INGEST_ENABLED", "1")
+    monkeypatch.setenv("SOURCE_CONNECTOR_TYPE", "wikipedia")
+    monkeypatch.setenv("SOURCE_WIKIPEDIA_TOPIC", "Hilbert space")
+
+    runtime = _read_runtime_env()
+    capability_snapshot = build_capability_snapshot(
+        requested_mode="cli",
+        daemon_mode=False,
+        runtime=runtime,
+    )
+
+    assert capability_snapshot.ollama_error is None, "Expected Ollama connectivity to be available"
+    assert capability_snapshot.effective_mode == "cli"
+
+    llm = ChatOllama(
+        model=str(runtime["ollama_model"]),
+        base_url=str(runtime["ollama_base_url"]),
+        temperature=0.0,
+    )
+    embeddings = OllamaEmbeddings(
+        model=str(runtime["ollama_embedding_model"]),
+        base_url=str(runtime["ollama_base_url"]),
+    )
+    store = build_memory_store(
+        embeddings=embeddings,
+        mode=str(runtime["memory_store_mode"]),
+        elasticsearch_url=str(runtime["elasticsearch_url"]),
+        elasticsearch_index=str(runtime["elasticsearch_index"]),
+    )
+
+    events: list[dict[str, object]] = []
+
+    def _capture_session_log(event: str, payload: dict, *, log_path=None) -> None:  # noqa: ARG001
+        events.append({"event": event, "payload": payload})
+
+    monkeypatch.setattr("testbot.sat_chatbot_memory_v2.append_session_log", _capture_session_log)
+
+    _run_source_ingestion(runtime=runtime, store=store)
+
+    prompts = iter(["Define Hilbert space in one paragraph.", "stop"])
+    replies: list[str] = []
+
+    _run_chat_loop(
+        runtime=runtime,
+        llm=llm,
+        store=store,
+        chat_history=deque(maxlen=10),
+        near_tie_delta=float(runtime["memory_near_tie_delta"]),
+        io_channel="cli",
+        capability_status="ask_unavailable",
+        capability_snapshot=capability_snapshot,
+        read_user_utterance=lambda: next(prompts, None),
+        send_assistant_text=lambda text: replies.append(text),
+        clock=SystemClock(),
+    )
+
+    ingest_payload = next(
+        (
+            item["payload"]
+            for item in events
+            if item["event"] == "source_ingest_completed" and isinstance(item.get("payload"), dict)
+        ),
+        None,
+    )
+    assert isinstance(ingest_payload, dict), "Expected source_ingest_completed event in session logs"
+    assert int(ingest_payload.get("stored_count", 0)) > 0
+
+    non_stop_replies = [text.strip() for text in replies if text.strip() and text.strip() != "Stopping. Bye."]
+    assert non_stop_replies, "Expected a non-empty assistant response"
+
+    final_answer_mode_payload = next(
+        (
+            item["payload"]
+            for item in events
+            if item["event"] == "final_answer_mode" and isinstance(item.get("payload"), dict)
+        ),
+        None,
+    )
+    assert isinstance(final_answer_mode_payload, dict), "Expected final_answer_mode payload in session logs"
+    for required_key in (
+        "provenance_types",
+        "claims",
+        "used_memory_refs",
+        "used_source_evidence_refs",
+        "source_evidence_attribution",
+        "basis_statement",
+    ):
+        assert required_key in final_answer_mode_payload
