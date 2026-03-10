@@ -365,11 +365,6 @@ def test_chat_loop_definitional_question_attempts_retrieval_and_does_not_mark_sk
     monkeypatch.setattr(runtime, "store_doc", lambda *args, **kwargs: None)
     monkeypatch.setattr(runtime, "generate_reflection_yaml", lambda *args, **kwargs: "claims: []")
     monkeypatch.setattr(runtime, "persist_promoted_context", lambda *args, **kwargs: [])
-    monkeypatch.setattr(
-        runtime,
-        "_run_retrieval_with_optional_sync_retry",
-        lambda **_kwargs: (_ for _ in ()).throw(AssertionError("sync retry helper should not be called")),
-    )
     monkeypatch.setattr(runtime, "stage_rewrite_query", lambda _llm, state: replace(state, rewritten_query="ontology definition"))
     monkeypatch.setattr(runtime, "stage_retrieve", lambda _store, state, **kwargs: (replace(state, retrieval_candidates=[]), []))
     monkeypatch.setattr(
@@ -434,6 +429,7 @@ def test_chat_loop_definitional_question_attempts_retrieval_and_does_not_mark_sk
 
     assert branch_payload["retrieval_branch"] == "memory_retrieval"
     assert retrieval_payload.get("skipped") is not True
+    assert "retry" not in retrieval_payload
 
 
 def test_chat_loop_conversational_prompt_skips_knowledge_retrieval_path(monkeypatch) -> None:
@@ -498,6 +494,7 @@ def test_chat_loop_conversational_prompt_skips_knowledge_retrieval_path(monkeypa
 
     assert branch_payload["retrieval_branch"] == "direct_answer"
     assert retrieval_payload.get("skipped") is True
+    assert "retry" not in retrieval_payload
 
 
 def test_run_answer_stage_flow_low_source_confidence_non_memory_uses_safe_unknowing_mode_legacy_assertions() -> None:
@@ -1580,11 +1577,6 @@ def test_chat_loop_async_pending_lookup_commits_pending_answer_and_logs_semantic
     monkeypatch.setattr(runtime, "store_doc", lambda *args, **kwargs: None)
     monkeypatch.setattr(runtime, "generate_reflection_yaml", lambda *args, **kwargs: "claims: []")
     monkeypatch.setattr(runtime, "persist_promoted_context", lambda *args, **kwargs: [])
-    monkeypatch.setattr(
-        runtime,
-        "_run_retrieval_with_optional_sync_retry",
-        lambda **_kwargs: (_ for _ in ()).throw(AssertionError("sync retry helper should not be called")),
-    )
 
     def _start_background_ingest(*, runtime: dict[str, object], store: object, ingestion_request_id: str = "") -> dict[str, object]:
         del store

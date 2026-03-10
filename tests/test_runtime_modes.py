@@ -863,44 +863,6 @@ def test_background_source_ingestion_start_and_poll_completion(monkeypatch) -> N
     assert logs[-1][1]["ingestion_request_id"] == "turn-abc"
 
 
-def test_run_retrieval_with_optional_sync_retry_is_disabled_for_compatibility() -> None:
-    call_counter = {"count": 0}
-
-    def _retrieve_once():
-        call_counter["count"] += 1
-        return object(), []
-
-    _state, docs, retry = runtime._run_retrieval_with_optional_sync_retry(
-        retrieve_once=_retrieve_once,
-        source_ingest_async_continuation=False,
-        wait_budget_seconds=9.99,
-    )
-
-    assert docs == []
-    assert call_counter["count"] == 1
-    assert retry == {
-        "attempted": False,
-        "waited_seconds": 0.0,
-        "reason": "sync_retry_disabled_deprecated",
-    }
-
-
-def test_run_retrieval_with_optional_sync_retry_returns_first_pass_results() -> None:
-    payload = [(object(), 0.91)]
-
-    def _retrieve_once():
-        return object(), payload
-
-    _state, docs, retry = runtime._run_retrieval_with_optional_sync_retry(
-        retrieve_once=_retrieve_once,
-        source_ingest_async_continuation=True,
-        wait_budget_seconds=0.0,
-    )
-
-    assert docs == payload
-    assert retry["reason"] == "sync_retry_disabled_deprecated"
-
-
 def test_cli_mode_proactively_emits_completion_without_extra_prompt(monkeypatch) -> None:
     monkeypatch.setattr(runtime, "store_doc", lambda *args, **kwargs: None)
     monkeypatch.setattr(runtime, "generate_reflection_yaml", lambda *args, **kwargs: "claims: []")
