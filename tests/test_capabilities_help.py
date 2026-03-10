@@ -52,6 +52,7 @@ def test_run_answer_stage_flow_capabilities_help_reflects_ha_unavailable_cli_fal
     assert "can continue in cli mode (CLI fallback is active)" in answer_state.final_answer
     assert "Debug visibility: disabled (set TESTBOT_DEBUG=1 to enable)" in answer_state.final_answer
     assert answer_state.draft_answer == ""
+    assert answer_state.invariant_decisions.get("fallback_action") == "OFFER_CAPABILITY_ALTERNATIVES"
 
 
 def test_run_answer_stage_flow_capabilities_help_reflects_ha_satellite_available() -> None:
@@ -84,6 +85,7 @@ def test_run_answer_stage_flow_capabilities_help_reflects_ha_satellite_available
     assert "Debug visibility: enabled (TESTBOT_DEBUG=1)" in answer_state.final_answer
     assert "Memory recall: available" in answer_state.final_answer
     assert answer_state.draft_answer == ""
+    assert answer_state.invariant_decisions.get("fallback_action") == "OFFER_CAPABILITY_ALTERNATIVES"
 
 
 def test_run_answer_stage_flow_capabilities_help_reports_unavailable_when_no_clarification_path() -> None:

@@ -2277,3 +2277,41 @@ def test_chat_loop_emits_completion_event_user_message_and_linked_answer(tmp_pat
     completion_answer = next(row for row in rows if row.get("event") == "source_ingest_completion_answer_emitted")
     assert completion_answer["linked_pending_ingestion_request_id"] == "turn-123"
     assert completion_answer["final_answer"] == "Grounded answer after ingestion."
+
+def test_capabilities_help_followup_debug_policy_never_reports_general_knowledge_action() -> None:
+    state = PipelineState(
+        user_input="define the term",
+        resolved_intent=IntentType.CAPABILITIES_HELP.value,
+        confidence_decision={"context_confident": False, "ambiguity_detected": False},
+    )
+
+    answered = run_answer_stage_flow(
+        _StaticLLM("unused"),
+        state,
+        chat_history=deque(),
+        hits=[],
+        capability_status="ask_unavailable",
+        runtime_capability_status=RuntimeCapabilityStatus(
+            ollama_available=True,
+            ha_available=False,
+            effective_mode="cli",
+            requested_mode="cli",
+            daemon_mode=False,
+            fallback_reason=None,
+            memory_backend="in_memory",
+            debug_enabled=True,
+            debug_verbose=False,
+            text_clarification_available=True,
+            satellite_ask_available=False,
+        ),
+        clock=_FIXED_CLOCK,
+    )
+
+    debug_payload = runtime._build_debug_turn_payload(
+        state=answered,
+        intent_label=answered.resolved_intent,
+        hits=[],
+    )
+
+    assert answered.invariant_decisions.get("fallback_action") != "ANSWER_GENERAL_KNOWLEDGE"
+    assert debug_payload["debug.policy"]["fallback_action"] != "ANSWER_GENERAL_KNOWLEDGE"
