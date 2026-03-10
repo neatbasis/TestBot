@@ -91,6 +91,7 @@ _CAPABILITIES_HELP_PATTERNS = (
 _REPAIR_OFFER_FOLLOWUP_PATTERNS = (
     r"^\s*(please\s+)?(look\s+up|look\s+it\s+up)\b",
     r"^\s*(please\s+)?look\s+up\s+the\b",
+    r"^\s*(yes\s+)?please\s+look\s+it\s+up\b",
     r"^\s*(yes\s+please|please\s+do|go\s+ahead|do\s+it)\s*[.!?]*\s*$",
     r"^\s*(please\s+)?(find|fetch|search\s+for)\s+the\b",
 )
