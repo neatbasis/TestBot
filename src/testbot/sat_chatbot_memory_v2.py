@@ -690,7 +690,7 @@ def _read_runtime_env() -> dict[str, object]:
         "ha_satellite_entity_id": os.getenv("HA_SATELLITE_ENTITY_ID", ""),
         "ollama_base_url": os.getenv("OLLAMA_BASE_URL") or os.getenv("OLLAMA_HOST") or "http://localhost:11434",
         "ollama_model": os.getenv("OLLAMA_MODEL", "llama3.1:latest"),
-        "ollama_embedding_model": os.getenv("OLLAMA_EMBEDDING_MODEL", "nomic-embed-text"),
+        "ollama_embedding_model": os.getenv("OLLAMA_EMBEDDING_MODEL", "nomic-embed-text:latest"),
         "memory_near_tie_delta": _parse_env_float("MEMORY_NEAR_TIE_DELTA", 0.02),
         "memory_store_mode": memory_store_mode,
         "memory_store_backend": normalize_memory_store_mode(memory_store_mode),
@@ -726,6 +726,17 @@ def _ha_connection_error(api_url: str, token: str, entity_id: str) -> str | None
 
 
 def _ollama_connection_error(base_url: str, chat_model: str, embedding_model: str) -> str | None:
+    def _model_aliases(model_name: str) -> set[str]:
+        trimmed = model_name.strip()
+        if not trimmed:
+            return set()
+        if ":" in trimmed:
+            base_name, _, tag = trimmed.rpartition(":")
+            if tag == "latest":
+                return {trimmed, base_name}
+            return {trimmed}
+        return {trimmed, f"{trimmed}:latest"}
+
     tags_url = urljoin(base_url.rstrip("/") + "/", "api/tags")
     try:
         with urlopen(tags_url, timeout=3.0) as resp:  # noqa: S310
@@ -741,12 +752,12 @@ def _ollama_connection_error(base_url: str, chat_model: str, embedding_model: st
         for item in models
         if isinstance(item, dict)
     }
-    if chat_model not in available:
+    if available.isdisjoint(_model_aliases(chat_model)):
         return (
             f"Configured chat model '{chat_model}' is not installed on Ollama. "
             f"Run: ollama pull {chat_model}"
         )
-    if embedding_model not in available:
+    if available.isdisjoint(_model_aliases(embedding_model)):
         return (
             f"Configured embedding model '{embedding_model}' is not installed on Ollama. "
             f"Run: ollama pull {embedding_model}"

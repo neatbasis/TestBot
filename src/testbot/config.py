@@ -48,6 +48,7 @@ def _int_from_env(name: str, default: int) -> int:
 class Config:
     OLLAMA_BASE_URL: str
     OLLAMA_MODEL: str
+    OLLAMA_EMBEDDING_MODEL: str
     HA_API_URL: str
     HA_API_SECRET: str
     HA_SATELLITE_ENTITY_ID: str
@@ -68,6 +69,7 @@ class Config:
         return cls(
             OLLAMA_BASE_URL=ollama_base_url,
             OLLAMA_MODEL=os.getenv("OLLAMA_MODEL", "llama3.1:latest"),
+            OLLAMA_EMBEDDING_MODEL=os.getenv("OLLAMA_EMBEDDING_MODEL", "nomic-embed-text:latest"),
             HA_API_URL=os.getenv("HA_API_URL", "http://localhost:8123"),
             HA_API_SECRET=_require("HA_API_SECRET"),
             HA_SATELLITE_ENTITY_ID=_require("HA_SATELLITE_ENTITY_ID"),

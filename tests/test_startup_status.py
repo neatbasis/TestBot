@@ -7,7 +7,7 @@ def _snapshot(*, effective_mode: str | None, ha_error: str | None, ollama_error:
     runtime = {
         "ollama_base_url": "http://localhost:11434",
         "ollama_model": "llama3.1:latest",
-        "ollama_embedding_model": "nomic-embed-text",
+        "ollama_embedding_model": "nomic-embed-text:latest",
         "ha_api_url": "http://localhost:8123",
         "ha_api_secret": "secret",
         "ha_satellite_entity_id": "assist_satellite.kitchen",
