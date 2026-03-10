@@ -1,0 +1,73 @@
+# Pre-commit hook configuration for TestBot.
+#
+# Fast, offline governance checks only — no gate runners, no live smoke.
+# The canonical all-systems-green gate (scripts/all_green_gate.py) remains
+# a separate local/CI step and is intentionally excluded here.
+#
+# Base-ref note: governance validators default to origin/main with automatic
+# fallback to HEAD~1 then HEAD when origin/main is unavailable (expected in
+# Codex task containers and shallow CI clones). This is documented behaviour
+# and does not indicate a misconfiguration.
+
+repos:
+  - repo: local
+    hooks:
+
+      # ── Documentation ────────────────────────────────────────────────────
+
+      - id: validate-markdown-paths
+        name: Validate markdown local path references
+        language: python
+        entry: python scripts/validate_markdown_paths.py
+        pass_filenames: false
+        types: [markdown]
+
+      # ── Invariant mirror sync ─────────────────────────────────────────────
+
+      - id: sync-invariants-mirror
+        name: Check invariant mirror is synchronized
+        language: python
+        entry: python scripts/sync_invariants_mirror.py --check
+        pass_filenames: false
+        files: ^docs/invariants/
+
+      # ── Pipeline stage conformance (AST + doc) ───────────────────────────
+
+      - id: validate-pipeline-stage-conformance
+        name: Validate canonical pipeline stage ordering and ontology separation
+        language: python
+        entry: python scripts/validate_pipeline_stage_conformance.py
+        pass_filenames: false
+        files: >-
+          (?x)^(
+            src/testbot/canonical_turn_orchestrator\.py|
+            docs/architecture\.md|
+            docs/architecture/canonical-turn-pipeline\.md|
+            docs/invariants/pipeline\.md|
+            docs/directives/traceability-matrix\.md
+          )$
+
+      # ── Log schema ────────────────────────────────────────────────────────
+
+      - id: validate-log-schema
+        name: Validate log schema fixtures
+        language: python
+        entry: python scripts/validate_log_schema.py
+        pass_filenames: false
+        files: ^tests/fixtures/log_schema/
+
+      # ── Issue governance ──────────────────────────────────────────────────
+
+      - id: validate-issue-links
+        name: Validate issue link references
+        language: python
+        entry: python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main
+        pass_filenames: false
+        files: ^docs/issues/
+
+      - id: validate-issues
+        name: Validate issue file schema and governance rules
+        language: python
+        entry: python scripts/validate_issues.py --all-issue-files --base-ref origin/main
+        pass_filenames: false
+        files: ^docs/issues/
