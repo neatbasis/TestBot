@@ -440,11 +440,6 @@ class AnswerValidateResult:
     alignment_decision: dict[str, object]
 
 
-@dataclass(frozen=True)
-class AnswerRenderResult:
-    final_answer: str
-
-
 def _format_capabilities_help_answer(*, status: RuntimeCapabilityStatus, capability_status: CapabilityStatus) -> str:
     ask_available = capability_status == "ask_available"
 
@@ -2408,30 +2403,6 @@ def answer_validate(
     )
 
 
-def answer_render(validated: AnswerValidateResult) -> AnswerRenderResult:
-    return AnswerRenderResult(final_answer=validated.final_answer)
-
-
-def answer_commit(
-    state: PipelineState,
-    *,
-    assembled: AnswerAssembleResult,
-    validated: AnswerValidateResult,
-    rendered: AnswerRenderResult,
-) -> PipelineState:
-    return replace(
-        state,
-        draft_answer=assembled.draft_answer,
-        final_answer=rendered.final_answer,
-        claims=validated.claims,
-        provenance_types=validated.provenance_types,
-        used_memory_refs=validated.used_memory_refs,
-        used_source_evidence_refs=validated.used_source_evidence_refs,
-        source_evidence_attribution=validated.source_evidence_attribution,
-        basis_statement=validated.basis_statement,
-        invariant_decisions=validated.invariant_decisions,
-        alignment_decision=validated.alignment_decision,
-    )
 
 
 def _answer_routing_from_decision_object(
@@ -2484,18 +2455,12 @@ def _answer_routing_from_decision_object(
     )
 
 
-def _answer_assemble_stage(
-    llm: ChatOllama,
+def _resolve_answer_routing_for_stage(
     state: PipelineState,
     *,
-    chat_history: deque[ChatMsg],
-    hits: list[Document],
     capability_status: CapabilityStatus,
-    selected_decision: DecisionObject | None = None,
-    runtime_capability_status: RuntimeCapabilityStatus | None = None,
-    clock: Clock | None = None,
-    timezone: str = "Europe/Helsinki",
-) -> AnswerAssembleResult:
+    selected_decision: DecisionObject | None,
+) -> tuple[PipelineState, AnswerRoutingDecision]:
     resolved_intent = IntentType(state.resolved_intent or classify_intent(state.user_input).value)
     if not state.resolved_intent:
         state = replace(state, resolved_intent=resolved_intent.value)
@@ -2519,52 +2484,24 @@ def _answer_assemble_stage(
             ),
             fallback_decider=decide_fallback_action,
         )
-    return answer_assemble(
-        llm,
-        state,
-        chat_history=chat_history,
-        hits=hits,
-        capability_status=capability_status,
-        answer_routing=answer_routing,
-        runtime_capability_status=runtime_capability_status,
-        clock=clock,
-        timezone=timezone,
-    )
+    return state, answer_routing
 
 
-def _answer_validate_stage(
-    state: PipelineState,
-    *,
-    assembled: AnswerAssembleResult,
-    hits: list[Document],
-    chat_history: deque[ChatMsg],
-    pending_lookup_override: bool | None = None,
-) -> AnswerValidateResult:
-    return answer_validate(
-        state,
-        assembled=assembled,
-        hits=hits,
-        chat_history=chat_history,
-        pending_lookup_override=pending_lookup_override,
-    )
 
 
-def _answer_render_stage(validated: AnswerValidateResult) -> AnswerRenderResult:
-    return answer_render(validated)
-
-
-def _answer_commit_stage(
-    state: PipelineState,
-    *,
-    assembled: AnswerAssembleResult,
-    validated: AnswerValidateResult,
-    rendered: AnswerRenderResult,
-) -> PipelineState:
-    return answer_commit(
-        state,
-        assembled=assembled,
-        validated=validated,
-        rendered=rendered,
+def _decision_object_from_assembled(assembled: AnswerAssembleResult) -> DecisionObject:
+    fallback_action = str(assembled.fallback_action or "").strip().upper()
+    decision_lookup = {
+        "ANSWER_FROM_MEMORY": DecisionClass.ANSWER_FROM_MEMORY,
+        "ASK_CLARIFYING_QUESTION": DecisionClass.ASK_FOR_CLARIFICATION,
+        "ANSWER_UNKNOWN": DecisionClass.PENDING_LOOKUP_BACKGROUND_INGESTION,
+        "ANSWER_GENERAL_KNOWLEDGE": DecisionClass.ANSWER_GENERAL_KNOWLEDGE_LABELED,
+    }
+    decision_class = decision_lookup.get(fallback_action, DecisionClass.ANSWER_GENERAL_KNOWLEDGE_LABELED)
+    return DecisionObject(
+        decision_class=decision_class,
+        retrieval_branch="legacy_stage_answer",
+        rationale="derived_from_answer_policy_rationale",
     )
 
 
@@ -2580,31 +2517,55 @@ def stage_answer(
     clock: Clock | None = None,
     timezone: str = "Europe/Helsinki",
 ) -> PipelineState:
-    assembled = _answer_assemble_stage(
+    state, answer_routing = _resolve_answer_routing_for_stage(
+        state,
+        capability_status=capability_status,
+        selected_decision=selected_decision,
+    )
+    assembled = answer_assemble(
         llm,
         state,
         chat_history=chat_history,
         hits=hits,
         capability_status=capability_status,
-        selected_decision=selected_decision,
+        answer_routing=answer_routing,
         runtime_capability_status=runtime_capability_status,
         clock=clock,
         timezone=timezone,
     )
-    validated = _answer_validate_stage(
+    validated = answer_validate(
         state,
         assembled=assembled,
         hits=hits,
         chat_history=chat_history,
     )
-    rendered = _answer_render_stage(validated)
-    return _answer_commit_stage(
-        state,
-        assembled=assembled,
-        validated=validated,
-        rendered=rendered,
+    decision_object = selected_decision or _decision_object_from_assembled(assembled)
+    assembly_contract = assemble_answer_contract(decision=decision_object, evidence_bundle=EvidenceBundle())
+    validation_contract = validate_answer_assembly_boundary(
+        assembly_contract,
+        final_answer=validated.final_answer,
+        claims=validated.claims,
+        provenance_types=validated.provenance_types,
+        used_memory_refs=validated.used_memory_refs,
+        used_source_evidence_refs=validated.used_source_evidence_refs,
+        source_evidence_attribution=validated.source_evidence_attribution,
+        basis_statement=validated.basis_statement,
+        invariant_decisions=validated.invariant_decisions,
+        alignment_decision=validated.alignment_decision,
     )
-
+    rendered_contract = render_answer(
+        assembly=assembly_contract,
+        validation=validation_contract,
+        preferred_text=validated.final_answer,
+    )
+    state, _ = commit_answer_stage(
+        state,
+        assembly=assembly_contract,
+        validation=validation_contract,
+        rendered=rendered_contract,
+        commit_stage_id="answer.commit",
+    )
+    return replace(state, draft_answer=assembled.draft_answer)
 
 
 
@@ -3520,13 +3481,18 @@ def _run_canonical_turn_pipeline(
 
     def _answer_assemble(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
         _validate_and_log_transition(validate_answer_assemble_pre(ctx.state))
-        ctx.artifacts["assembled_answer"] = _answer_assemble_stage(
+        ctx.state, answer_routing = _resolve_answer_routing_for_stage(
+            ctx.state,
+            capability_status=capability_status,
+            selected_decision=ctx.artifacts["decision_object"],
+        )
+        ctx.artifacts["assembled_answer"] = answer_assemble(
             llm,
             ctx.state,
             chat_history=chat_history,
             hits=ctx.artifacts["hits"],
             capability_status=capability_status,
-            selected_decision=ctx.artifacts["decision_object"],
+            answer_routing=answer_routing,
             runtime_capability_status=capability_snapshot.runtime_capability_status,
             clock=clock,
         )
@@ -3551,15 +3517,25 @@ def _run_canonical_turn_pipeline(
                     "background_ingestion_in_progress": True,
                 },
             )
-        ctx.artifacts["validated_answer"] = _answer_validate_stage(
+        validated_answer = answer_validate(
             ctx.state,
             assembled=ctx.artifacts["assembled_answer"],
             hits=ctx.artifacts["hits"],
             chat_history=chat_history,
             pending_lookup_override=background_ingestion_in_progress,
         )
+        ctx.artifacts["validated_answer"] = validated_answer
         ctx.artifacts["answer_validation_contract"] = validate_answer_assembly_boundary(
-            ctx.artifacts["answer_assembly_contract"]
+            ctx.artifacts["answer_assembly_contract"],
+            final_answer=validated_answer.final_answer,
+            claims=validated_answer.claims,
+            provenance_types=validated_answer.provenance_types,
+            used_memory_refs=validated_answer.used_memory_refs,
+            used_source_evidence_refs=validated_answer.used_source_evidence_refs,
+            source_evidence_attribution=validated_answer.source_evidence_attribution,
+            basis_statement=validated_answer.basis_statement,
+            invariant_decisions=validated_answer.invariant_decisions,
+            alignment_decision=validated_answer.alignment_decision,
         )
         if not ctx.artifacts["answer_validation_contract"].passed:
             raise RuntimeError("answer assembly contract validation failed before render/commit")
@@ -3569,11 +3545,10 @@ def _run_canonical_turn_pipeline(
 
     def _answer_render(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
         _validate_and_log_transition(validate_answer_render_pre(ctx.state, ctx.artifacts))
-        ctx.artifacts["rendered_answer"] = _answer_render_stage(ctx.artifacts["validated_answer"])
         ctx.artifacts["answer_render_contract"] = render_answer(
             assembly=ctx.artifacts["answer_assembly_contract"],
             validation=ctx.artifacts["answer_validation_contract"],
-            preferred_text=ctx.artifacts["rendered_answer"].final_answer,
+            preferred_text=ctx.artifacts["answer_validation_contract"].final_answer,
         )
         _validate_and_log_transition(validate_answer_render_post(ctx.state, ctx.artifacts))
         append_pipeline_snapshot("answer.render", ctx.state)
@@ -3581,13 +3556,6 @@ def _run_canonical_turn_pipeline(
 
     def _answer_commit(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
         _validate_and_log_transition(validate_answer_commit_pre(ctx.state, ctx.artifacts))
-        ctx.state = _answer_commit_stage(
-            ctx.state,
-            assembled=ctx.artifacts["assembled_answer"],
-            validated=ctx.artifacts["validated_answer"],
-            rendered=ctx.artifacts["rendered_answer"],
-        )
-        _validate_and_log_transition(validate_answer_commit_post(ctx.state))
         ctx.state, ctx.artifacts["committed_turn_state"] = commit_answer_stage(
             ctx.state,
             assembly=ctx.artifacts["answer_assembly_contract"],
@@ -3595,6 +3563,8 @@ def _run_canonical_turn_pipeline(
             rendered=ctx.artifacts["answer_render_contract"],
             commit_stage_id="answer.commit",
         )
+        ctx.state = replace(ctx.state, draft_answer=ctx.artifacts["assembled_answer"].draft_answer)
+        _validate_and_log_transition(validate_answer_commit_post(ctx.state))
         append_pipeline_snapshot("answer", ctx.state)
         ambiguity_score = _ambiguity_score(ctx.state.confidence_decision)
         ctx.artifacts["ambiguity_score"] = ambiguity_score
