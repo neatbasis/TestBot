@@ -63,6 +63,7 @@ def _base_state() -> PipelineState:
             },
             "final_alignment_decision": "allow",
         },
+        last_user_message_ts="2026-03-09T00:00:00Z",
     )
 
 
@@ -73,6 +74,26 @@ def test_stage_transition_validators_emit_pipeline_invariant_namespace() -> None
     assert observe_result.invariant_refs == ("PINV-002",)
     assert answer_result.invariant_refs == ("PINV-001", "PINV-002", "PINV-003")
 
+
+def test_observe_turn_post_requires_observation_artifact() -> None:
+    untouched_state = PipelineState(user_input="What did I say yesterday?")
+
+    untouched_result = validate_observe_turn_post(untouched_state)
+
+    assert not untouched_result.passed
+    assert "last_user_message_ts_recorded" in untouched_result.failures
+
+
+def test_observe_turn_post_passes_when_last_user_message_ts_is_recorded() -> None:
+    observed_state = PipelineState(
+        user_input="What did I say yesterday?",
+        last_user_message_ts="2026-03-09T00:00:00Z",
+    )
+
+    result = validate_observe_turn_post(observed_state)
+
+    assert result.passed
+    assert result.failures == ()
 
 def test_migration_map_normalizes_legacy_transition_invariant_refs() -> None:
     assert LEGACY_TO_PIPELINE_INVARIANT_REF_MAP == {

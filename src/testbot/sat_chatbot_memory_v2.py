@@ -3163,14 +3163,16 @@ def _run_canonical_turn_pipeline(
 
     def _observe_turn(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
         _validate_and_log_transition(validate_observe_turn_pre(ctx.state))
+        observed_at = clock.now().isoformat()
         observation = observe_turn(
             ctx.state,
             turn_id=ctx.artifacts["turn_id"],
-            observed_at=clock.now().isoformat(),
+            observed_at=observed_at,
             speaker="user",
             channel=io_channel,
         )
         ctx.artifacts["turn_observation"] = observation
+        ctx.state = replace(ctx.state, last_user_message_ts=observed_at)
         _validate_and_log_transition(validate_observe_turn_post(ctx.state))
         append_pipeline_snapshot("observe", ctx.state)
         return ctx
