@@ -59,6 +59,38 @@ def test_resolve_mode_falls_back_to_cli_when_ha_unavailable() -> None:
     assert _resolve_mode("cli", "auth failed") == "cli"
 
 
+def test_ollama_connection_error_accepts_implicit_latest_alias(monkeypatch) -> None:
+    class _Resp:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def read(self):
+            return b'{"models":[{"model":"llama3.1:latest"},{"model":"nomic-embed-text:latest"}]}'
+
+    monkeypatch.setattr(runtime, "urlopen", lambda *_args, **_kwargs: _Resp())
+    err = runtime._ollama_connection_error("http://localhost:11434", "llama3.1:latest", "nomic-embed-text")
+    assert err is None
+
+
+def test_ollama_connection_error_accepts_explicit_latest_alias(monkeypatch) -> None:
+    class _Resp:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def read(self):
+            return b'{"models":[{"model":"llama3.1:latest"},{"model":"nomic-embed-text"}]}'
+
+    monkeypatch.setattr(runtime, "urlopen", lambda *_args, **_kwargs: _Resp())
+    err = runtime._ollama_connection_error("http://localhost:11434", "llama3.1:latest", "nomic-embed-text:latest")
+    assert err is None
+
+
 def test_ollama_connection_error_detects_missing_embedding_model(monkeypatch) -> None:
     class _Resp:
         def __enter__(self):
@@ -91,7 +123,7 @@ def _patch_main_dependencies(
         "ha_satellite_entity_id": "assist_satellite.kitchen",
         "ollama_base_url": "http://localhost:11434",
         "ollama_model": "llama3.1:latest",
-        "ollama_embedding_model": "nomic-embed-text",
+        "ollama_embedding_model": "nomic-embed-text:latest",
         "memory_near_tie_delta": 0.02,
         "memory_store_mode": "inmemory",
         "elasticsearch_url": "http://localhost:9200",

@@ -22,7 +22,7 @@ def _base_runtime() -> dict[str, object]:
         "ha_satellite_entity_id": "assist_satellite.kitchen",
         "ollama_base_url": "http://localhost:11434",
         "ollama_model": "llama3.1:latest",
-        "ollama_embedding_model": "nomic-embed-text",
+        "ollama_embedding_model": "nomic-embed-text:latest",
         "memory_store_backend": "in_memory",
     }
 
