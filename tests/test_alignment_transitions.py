@@ -59,6 +59,16 @@ def test_validate_answer_commit_post_rejects_missing_alignment_dimension() -> No
     assert "alignment_dimensions_present" in result.failures
 
 
+
+
+def test_validate_answer_commit_post_allows_not_applicable_factual_grounding_dimension() -> None:
+    state = _base_state()
+    state.alignment_decision["dimensions"]["factual_grounding_reliability"] = "not_applicable"
+
+    result = validate_answer_commit_post(state)
+
+    assert result.passed
+
 def test_validate_answer_commit_post_response_policy_contract_group_reports_contract_failure() -> None:
     state = replace(
         _base_state(),
@@ -564,7 +574,9 @@ def test_evaluate_alignment_decision_no_claims_fallback_does_not_inflate_citatio
     normalized = decision["dimension_inputs"]["normalized"]
     assert raw["citation_required_for_mode"] is False
     assert raw["citation_check_applicable"] is False
-    assert normalized["citation_validity"] == 0.0
+    assert normalized["citation_validity"] == "not_applicable"
+    assert normalized["confidence_margin_normalized"] == "not_applicable"
+    assert decision["dimensions"]["factual_grounding_reliability"] == "not_applicable"
     assert decision["dimensions"]["provenance_transparency"] == 0.3333
     assert decision["final_alignment_decision"] == "allow"
 
@@ -583,7 +595,10 @@ def test_evaluate_alignment_decision_uncertainty_response_marks_contract_not_app
     )
 
     raw = decision["dimension_inputs"]["raw"]
+    normalized = decision["dimension_inputs"]["normalized"]
     assert raw["general_knowledge_contract_applicability"] == "not_applicable"
+    assert raw["grounding_dimension_applicability"] == "not_applicable"
+    assert normalized["citation_validity"] == "not_applicable"
     assert raw["contract_exempt_reason"] in {"exempt_response_type", "no_claims"}
     assert decision["final_alignment_decision"] == "allow"
 
@@ -631,7 +646,8 @@ def test_evaluate_alignment_decision_normalizes_dimension_inputs_to_unit_interva
     dimensions = decision["dimensions"]
     assert all(0.0 <= float(v) <= 1.0 for v in dimensions.values())
     normalized = decision["dimension_inputs"]["normalized"]
-    assert all(0.0 <= float(v) <= 1.0 for v in normalized.values())
+    numeric_normalized = [v for v in normalized.values() if isinstance(v, (int, float))]
+    assert all(0.0 <= float(v) <= 1.0 for v in numeric_normalized)
 
 
 def test_evaluate_alignment_decision_flips_to_fallback_for_low_factual_grounding() -> None:

@@ -288,7 +288,14 @@ def _alignment_shape_and_decision_checks() -> list[tuple[str, Callable[[Pipeline
         (
             "alignment_dimensions_present",
             lambda s: all(
-                isinstance(s.alignment_decision.get("dimensions", {}).get(dim), float)
+                (
+                    isinstance(s.alignment_decision.get("dimensions", {}).get(dim), float)
+                    if dim != "factual_grounding_reliability"
+                    else (
+                        isinstance(s.alignment_decision.get("dimensions", {}).get(dim), float)
+                        or s.alignment_decision.get("dimensions", {}).get(dim) == "not_applicable"
+                    )
+                )
                 for dim in REQUIRED_ALIGNMENT_DIMENSIONS
             ),
         ),

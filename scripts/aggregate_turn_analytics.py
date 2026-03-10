@@ -262,6 +262,38 @@ def compute_kpis(dataset: list[TurnAnalytics]) -> dict[str, float]:
     }
 
 
+
+
+def compute_alignment_dimension_summary(rows: Iterable[dict[str, Any]]) -> dict[str, Any]:
+    sums: dict[str, float] = {}
+    applicable_counts: dict[str, int] = {}
+    not_applicable_counts: dict[str, int] = {}
+
+    for row in rows:
+        if row.get("event") != "alignment_decision_evaluated":
+            continue
+        dimensions = row.get("alignment_dimensions")
+        if not isinstance(dimensions, dict):
+            continue
+
+        for name, value in dimensions.items():
+            if isinstance(value, (int, float)):
+                sums[name] = sums.get(name, 0.0) + float(value)
+                applicable_counts[name] = applicable_counts.get(name, 0) + 1
+            elif isinstance(value, str) and value == "not_applicable":
+                not_applicable_counts[name] = not_applicable_counts.get(name, 0) + 1
+
+    averages = {
+        name: round(sums[name] / applicable_counts[name], 4)
+        for name in sorted(sums)
+        if applicable_counts.get(name, 0) > 0
+    }
+    return {
+        "alignment_dimension_averages": averages,
+        "alignment_dimension_applicable_counts": dict(sorted(applicable_counts.items())),
+        "alignment_dimension_not_applicable_counts": dict(sorted(not_applicable_counts.items())),
+    }
+
 def _write_jsonl(path: Path, rows: Iterable[dict[str, Any]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as handle:
@@ -285,8 +317,10 @@ def main() -> int:
     coverage = build_coverage_diagnostics(normalized_rows)
     dataset = aggregate_turn_dataset(normalized_rows)
     kpis = compute_kpis(dataset)
+    alignment_dimension_summary = compute_alignment_dimension_summary(normalized_rows)
     summary_payload = {
         **kpis,
+        **alignment_dimension_summary,
         "invalid_rows": validation_summary.invalid_rows,
         "skipped_rows": validation_summary.skipped_rows,
         "per_event_validation_failures": validation_summary.per_event_validation_failures,

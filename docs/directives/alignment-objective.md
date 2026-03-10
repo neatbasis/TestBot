@@ -1,14 +1,14 @@
 # Alignment Objective Specification
 
 - **Spec ID:** ALIGN-OBJECTIVE
-- **Version:** `2026-03-05.v3`
+- **Version:** `2026-03-10.v4`
 - **Scope:** per-turn answer emission in `sat_chatbot_memory_v2`.
 
 Program linkage: [`ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md`](../issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md) is the project's **primary bug-elimination program** in the current state; contributors should triage canonical pipeline defects and follow-on work against ISSUE-0013 first, with ISSUE-0012 treated as linked delivery planning context in [`ISSUE-0012-canonical-turn-pipeline-delivery-plan.md`](../issues/ISSUE-0012-canonical-turn-pipeline-delivery-plan.md).
 
 ## Objective Dimensions
 
-Each turn must produce all five dimension scores in `[0.0, 1.0]` and a final decision.
+Each turn must produce all five dimension values and a final decision (numeric scores remain in `[0.0, 1.0]` when applicable).
 
 1. **factual-grounding reliability**
    - Raw inputs:
@@ -16,10 +16,12 @@ Each turn must produce all five dimension scores in `[0.0, 1.0]` and a final dec
      - `has_required_memory_citation ∈ {0,1}`
      - confidence margin (`top_final_score - second_final_score`) and `min_margin_to_second`
    - Normalization:
-     - `citation_validity = 1.0` when response is contract-exempt, no raw claim-like text is detected, or required citation is present; else `0.0`.
-     - `confidence_margin_normalized = clamp01(confidence_margin / min_margin_to_second)`.
+     - For grounded answer classes (where citations are expected), `citation_validity = 1.0` when required citation is present, else `0.0`.
+     - `confidence_margin_normalized = clamp01(confidence_margin / min_margin_to_second)` for grounded answer classes.
+     - For uncertainty/fallback classes where citation checks are contract-exempt, set both normalized components to `"not_applicable"`.
    - Score:
-     - `factual_grounding_reliability = clamp01(0.65 * citation_validity + 0.35 * confidence_margin_normalized)`.
+     - grounded answer classes: `factual_grounding_reliability = clamp01(0.65 * citation_validity + 0.35 * confidence_margin_normalized)`.
+     - uncertainty/fallback classes (contract-exempt): `factual_grounding_reliability = "not_applicable"`.
 
 2. **safety/compliance strictness**
    - `1.0` when request is safe, or unsafe request is denied.
@@ -58,7 +60,7 @@ Each turn must produce all five dimension scores in `[0.0, 1.0]` and a final dec
 
 - **deny** when `safety/compliance strictness < 1.0`.
 - **fallback** when any of:
-  - `factual_grounding_reliability < 0.6`
+  - `factual_grounding_reliability < 0.6` (only when this dimension is applicable and numeric)
   - `response_utility < 0.5`
   - `provenance_transparency < 0.75`
   - `cost_latency_budget < 0.35`
@@ -69,7 +71,7 @@ Each turn must produce all five dimension scores in `[0.0, 1.0]` and a final dec
 `PipelineState.alignment_decision` stores:
 
 - `objective_version`
-- `dimensions` object with all five required keys in `[0.0, 1.0]`
+- `dimensions` object with all five required keys; four are numeric in `[0.0, 1.0]`, and `factual_grounding_reliability` may be `"not_applicable"` for contract-exempt uncertainty/fallback responses.
 - `dimension_inputs.raw` (raw per-dimension inputs)
 - `dimension_inputs.normalized` (normalized component values)
 - `final_alignment_decision` in `{allow, fallback, deny}`

@@ -1,0 +1,2 @@
+{"event":"alignment_decision_evaluated","alignment_dimensions":{"factual_grounding_reliability":0.95,"response_utility":0.9,"cost_latency_budget":0.88}}
+{"event":"alignment_decision_evaluated","alignment_dimensions":{"factual_grounding_reliability":"not_applicable","response_utility":0.65,"cost_latency_budget":0.9}}
