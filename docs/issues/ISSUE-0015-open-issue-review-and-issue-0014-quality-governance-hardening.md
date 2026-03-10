@@ -228,3 +228,9 @@ Governance validation passed.
 [WARN] Base ref 'origin/main' is unavailable; falling back to 'HEAD~1'.
 Issue validation passed.
 ```
+
+## 2026-03-10 Governance validator evidence refresh
+
+- Evidence note: `docs/issues/evidence/2026-03-10-governance-validator-base-ref-fallback-audit.md`
+- Scope: reran canonical governance validators with `origin/main`, recorded automatic fallback warning, then reran both commands with explicit `HEAD~1` per `docs/issues.md` fallback guidance.
+- Outcome: all validator runs passed; governance readiness remains auditable with explicit base-ref fallback traceability.
