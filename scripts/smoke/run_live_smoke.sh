@@ -9,5 +9,6 @@ python scripts/smoke/run_live_smoke.py \
   --environment "${SMOKE_ENVIRONMENT:-local}" \
   --actor "${SMOKE_ACTOR:-${GITHUB_ACTOR:-local}}" \
   --checks-file "${SMOKE_CHECKS_FILE:-scripts/smoke/checks.example.json}" \
+  ${SMOKE_INCLUDE_OLLAMA_EXECUTION_CHECKS:+--include-ollama-execution-checks} \
   ${SMOKE_TIMESTAMP:+--timestamp "$SMOKE_TIMESTAMP"} \
   ${SMOKE_WRITE_MARKDOWN:+--report-md}

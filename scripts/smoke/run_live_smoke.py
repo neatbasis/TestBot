@@ -103,6 +103,14 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Write smoke-report.md in addition to JSON artifacts.",
     )
+    parser.add_argument(
+        "--include-ollama-execution-checks",
+        action="store_true",
+        help=(
+            "Run explicit Ollama execution probes (ChatOllama.invoke + "
+            "OllamaEmbeddings.embed_query) in addition to HTTP readiness checks."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -172,6 +180,7 @@ def _run_check(check: dict[str, Any]) -> dict[str, Any]:
     started = time.perf_counter()
     status_code: int | None = None
     error_snippet = ""
+    failure_category = ""
     passed = False
 
     try:
@@ -182,12 +191,17 @@ def _run_check(check: dict[str, Any]) -> dict[str, Any]:
         status_code = int(exc.code)
         body = exc.read(512)
         error_snippet = body.decode("utf-8", errors="replace").strip().replace("\n", " ")[:200]
+        failure_category = "endpoint_unreachable"
     except Exception as exc:  # noqa: BLE001
         error_snippet = str(exc).strip().replace("\n", " ")[:200]
+        failure_category = "endpoint_unreachable"
 
     latency_ms = int((time.perf_counter() - started) * 1000)
     if status_code is not None and status_code == check["expected_status"]:
         passed = True
+        failure_category = ""
+    elif not failure_category:
+        failure_category = "endpoint_unreachable"
 
     return {
         "check_name": check["name"],
@@ -197,12 +211,93 @@ def _run_check(check: dict[str, Any]) -> dict[str, Any]:
         "expected_status": check["expected_status"],
         "latency_ms": latency_ms,
         "passed": passed,
+        "check_type": "readiness",
+        "failure_category": failure_category,
         "error_snippet": error_snippet,
         "capability_id": check["capability_id"],
         "capability_name": check["capability_name"],
         "business_impact": check["business_impact"],
         "severity_if_broken": check["severity_if_broken"],
     }
+
+
+def _run_ollama_execution_probe(env_values: dict[str, str]) -> dict[str, Any]:
+    started = time.perf_counter()
+    try:
+        from langchain_ollama import ChatOllama, OllamaEmbeddings
+    except Exception as exc:  # noqa: BLE001
+        latency_ms = int((time.perf_counter() - started) * 1000)
+        return {
+            "check_name": "ollama-runtime-execution",
+            "request_target": env_values["OLLAMA_BASE_URL"],
+            "http_method": "N/A",
+            "status_code": None,
+            "expected_status": None,
+            "latency_ms": latency_ms,
+            "passed": False,
+            "check_type": "execution",
+            "failure_category": "inference_execution_failure",
+            "error_snippet": (
+                "langchain_ollama import failed; install dev/runtime dependencies "
+                f"to run execution probes ({type(exc).__name__}: {exc})"
+            )[:200],
+            "capability_id": "cap-ollama-runtime-execution",
+            "capability_name": "Ollama runtime execution",
+            "business_impact": "Model and embedding calls may still fail even when readiness endpoints are reachable.",
+            "severity_if_broken": "critical",
+        }
+
+    check = {
+        "check_name": "ollama-runtime-execution",
+        "request_target": env_values["OLLAMA_BASE_URL"],
+        "http_method": "N/A",
+        "status_code": None,
+        "expected_status": None,
+        "capability_id": "cap-ollama-runtime-execution",
+        "capability_name": "Ollama runtime execution",
+        "business_impact": "Model and embedding calls may still fail even when readiness endpoints are reachable.",
+        "severity_if_broken": "critical",
+        "check_type": "execution",
+    }
+
+    try:
+        llm = ChatOllama(
+            model=env_values["OLLAMA_MODEL"],
+            base_url=env_values["OLLAMA_BASE_URL"],
+            temperature=0.0,
+        )
+        response = llm.invoke("Reply with exactly: ok")
+        text = getattr(response, "content", str(response)).strip()
+        if not text:
+            raise RuntimeError("ChatOllama.invoke returned an empty response.")
+
+        embeddings = OllamaEmbeddings(
+            model=env_values["OLLAMA_EMBEDDING_MODEL"],
+            base_url=env_values["OLLAMA_BASE_URL"],
+        )
+        vector = embeddings.embed_query("smoke test")
+        if not vector or not any(float(value) != 0.0 for value in vector):
+            raise RuntimeError("embed_query returned an empty or zero-only vector.")
+
+        check["passed"] = True
+        check["failure_category"] = ""
+        check["error_snippet"] = ""
+    except Exception as exc:  # noqa: BLE001
+        message = str(exc).strip().replace("\n", " ")
+        lowered = message.lower()
+        if "not found" in lowered or "pull" in lowered or "model" in lowered:
+            failure_category = "model_missing"
+        elif "embed" in lowered:
+            failure_category = "embedding_execution_failure"
+        else:
+            failure_category = "inference_execution_failure"
+
+        check["passed"] = False
+        check["failure_category"] = failure_category
+        check["error_snippet"] = message[:200]
+
+    check["latency_ms"] = int((time.perf_counter() - started) * 1000)
+    return check
 
 
 def _validated_capabilities(details: list[dict[str, Any]]) -> list[dict[str, str]]:
@@ -282,6 +377,8 @@ def main() -> int:
     }
 
     details = [_run_check(check) for check in checks]
+    if args.include_ollama_execution_checks:
+        details.append(_run_ollama_execution_probe(env_values))
     passed_count = sum(1 for detail in details if detail["passed"])
     failed_count = len(details) - passed_count
 

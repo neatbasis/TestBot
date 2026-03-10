@@ -19,6 +19,7 @@ Environment variables:
 - `SMOKE_CHECKS_FILE` (default `scripts/smoke/checks.example.json`)
 - `SMOKE_TIMESTAMP` (optional explicit ISO-8601 UTC timestamp for deterministic reruns)
 - `SMOKE_WRITE_MARKDOWN=1` to also write `smoke-report.md`
+- `SMOKE_INCLUDE_OLLAMA_EXECUTION_CHECKS=1` to add explicit Ollama execution probes (`ChatOllama.invoke` + `embed_query`)
 
 ## Capability catalog
 
@@ -90,6 +91,8 @@ One JSON object per check, sorted by `check_name`.
   "expected_status": 200,
   "latency_ms": 11,
   "passed": true,
+  "check_type": "readiness",
+  "failure_category": "",
   "error_snippet": "",
   "capability_id": "cap-auth-service-availability",
   "capability_name": "Authentication service availability",
@@ -97,6 +100,13 @@ One JSON object per check, sorted by `check_name`.
   "severity_if_broken": "critical"
 }
 ```
+
+`failure_category` semantics:
+
+- `endpoint_unreachable`: readiness endpoint cannot be reached or returns unexpected status.
+- `model_missing`: execution probe reached Ollama but model is unavailable/not pulled.
+- `inference_execution_failure`: chat generation invocation failed.
+- `embedding_execution_failure`: embedding invocation failed.
 
 ### Optional `smoke-report.md`
 
