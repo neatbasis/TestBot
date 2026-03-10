@@ -31,25 +31,27 @@ KPI evidence updates are mandatory for red-tag triage. If any KPI guardrail fail
 
 - Dependency order/state terminology must match ISSUE-0013 current execution order: ISSUE-0008 (**blocker**) -> ISSUE-0011 (**blocker**) -> ISSUE-0012 (**parallel stream**) -> ISSUE-0014 (**blocker**) -> ISSUE-0015 (**dependent**).
 - ISSUE-0013 is the routing anchor for this chain; all linked issue files and RED_TAG entries must use the same blocker/dependent/parallel-stream labels.
-- Closure of ISSUE-0015 remains blocked until blocker conditions are evidence-satisfied (including ISSUE-0013 AC-0013-11 and ISSUE-0014 Phase 1 behavioral criteria with deterministic evidence + reproducible CLI traces).
+- Closure of ISSUE-0015 remains open/blocked pending evidence until blocker conditions are met (ISSUE-0013 AC-0013-11 and ISSUE-0014 Phase 1 share one closure condition: deterministic evidence for identity semantic preservation, retrieval activation on immediate self-reference recall, and confirmed identity fact promotion at commit, plus reproducible CLI traces and canonical gate evidence).
 - If any blocker is unresolved, keep ISSUE-0015 in the Active red-tag list and avoid resolved-language in related issue files.
-- 2026-03-09 lifecycle sync note: refreshed ISSUE-0014/0013 deterministic evidence plus reproducible CLI identity-continuity closure-proof traces and canonical all-green gate artifacts are attached; dependency evidence is satisfied for AC-0013-11, and lifecycle language across ISSUE-0013/0014/0015/RED_TAG is synchronized to open/red close-order sequencing posture.
+- 2026-03-09 lifecycle sync note: refreshed ISSUE-0014/0013 deterministic evidence plus reproducible CLI identity-continuity traces and canonical all-green gate artifacts are attached; lifecycle language across ISSUE-0013/0014/0015/RED_TAG is synchronized to blocker/dependent/parallel stream and open/blocked pending evidence posture.
 - ISSUE-0017 (amber) tracks pending-lookup fallback normalization for answer-commit invariants and must stay text-consistent with ISSUE-0010/INV-002 wording; this does not alter the active red-tag blocker/dependent chain unless ISSUE-0013 dependency evidence changes.
 
 ## Active
+
+- Lifecycle sync completed on 2026-03-09 (vocabulary normalized to blocker/dependent/parallel stream/open/blocked pending evidence).
 
 - ISSUE-0015 — **Open-issue review identifies ISSUE-0014 quality/governance gaps that could permit partial-fix closure**: Open red-tag governance hardening issue. Lifecycle interpretation: remains open/red until dependency exit conditions are met in ISSUE-0013 AC-0013-11 and ISSUE-0014 Phase 1 (identity semantic preservation, retrieval activation on self-reference recall, and confirmed identity fact promotion at commit).
   - Last reviewed: 2026-03-09
   - Next review due: 2026-03-16
   - KPI evidence: docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md
-  - Decision notes: Deterministic phase-1 suites and required reproducible CLI traces are attached, and refreshed canonical all-green gate artifacts confirm dependency evidence satisfaction for AC-0013-11; issue remains open/red for governance close-order sequencing. Checklist artifacts are tracked below.
+  - Decision notes: Dependency chain vocabulary synchronized to blocker/dependent/parallel stream; ISSUE-0015 remains open/blocked pending evidence while closure-condition evidence is tracked against AC-0013-11 and ISSUE-0014 Phase 1 using identical criteria.
 - ISSUE-0014 — **CLI self-identity turns are stabilized structurally but semantically misrouted before memory retrieval and durable fact promotion**: Open red-tag regression; evidence indicates rewrite-stage semantic inversion and self-reference misrouting prevent retrieval activation and confirmed-user-fact promotion. This is a blocking dependency for ISSUE-0013 AC-0013-11 and ISSUE-0015 closure gates.
   - Last reviewed: 2026-03-09
   - Next review due: 2026-03-16
   - KPI evidence: docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md
-  - Decision notes: Behavioral deterministic checks and required reproducible CLI identity-continuity closure-proof traces are attached, and canonical all-green gate evidence is refreshed/passing with KPI warning-mode behavior; issue remains active red-tag for sequencing until dependent governance closure is completed.
+  - Decision notes: ISSUE-0014 remains a blocker in the active chain; lifecycle wording is open/blocked pending evidence until AC-0013-11 and ISSUE-0014 Phase 1 meet the identical closure condition and dependent governance sequencing completes.
 
-Dependency evidence pointer (2026-03-09): `docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md` with linked behave/pytest pass logs and canonical all-green gate **fail** log (`product_behave`).
+Dependency evidence pointer (2026-03-09): `docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md` with linked behave/pytest logs, reproducible CLI traces, and canonical gate artifacts used for open/blocked pending evidence tracking.
 
 ## Missing evidence checklist (dependency gate)
 
