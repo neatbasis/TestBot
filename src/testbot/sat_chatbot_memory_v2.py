@@ -1419,6 +1419,24 @@ def _intent_classifier_confidence(*, utterance: str, predicted_intent: IntentTyp
     return 0.95
 
 
+def _optional_float(value: object) -> float | None:
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _optional_string(value: object) -> str | None:
+    if value is None:
+        return None
+    as_string = str(value).strip()
+    if not as_string:
+        return None
+    return as_string
+
+
 def _minimal_confidence_decision_for_direct_answer(*, branch: str, base_confidence_decision: dict[str, object]) -> dict[str, object]:
     return {
         **base_confidence_decision,
@@ -2009,8 +2027,10 @@ def _build_debug_turn_payload(*, state: PipelineState, intent_label: str, hits: 
             "resolved": intent_label,
             "classified": state.classified_intent,
             "predicted": str(confidence_payload.get("intent_predicted") or state.classified_intent),
-            "confidence": float(confidence_payload.get("intent_classifier_confidence", 0.0) or 0.0),
-            "threshold": float(confidence_payload.get("intent_classifier_threshold", 0.0) or 0.0),
+            "confidence": _optional_float(confidence_payload.get("intent_classifier_confidence")),
+            "threshold": _optional_float(confidence_payload.get("intent_classifier_threshold")),
+            "model": _optional_string(confidence_payload.get("intent_classifier_model")),
+            "version": _optional_string(confidence_payload.get("intent_classifier_version")),
             "prior_unresolved": state.prior_unresolved_intent,
         },
         "debug.rewrite": {
@@ -3471,6 +3491,17 @@ def _run_canonical_turn_pipeline(
                 fallback_utterance=utterance,
             )
         )
+        classifier_confidence = _intent_classifier_confidence(
+            utterance=stabilized_utterance or utterance,
+            predicted_intent=intent_resolution.classified_intent,
+        )
+        intent_classifier_metadata: dict[str, object] = {}
+        classifier_model = _optional_string(runtime.get("intent_classifier_model"))
+        classifier_version = _optional_string(runtime.get("intent_classifier_version"))
+        if classifier_model is not None:
+            intent_classifier_metadata["intent_classifier_model"] = classifier_model
+        if classifier_version is not None:
+            intent_classifier_metadata["intent_classifier_version"] = classifier_version
         recall_query = stabilized_utterance or utterance
         continuity_evidence = tuple(ctx.artifacts.get("retrieval_continuity_evidence", ()))
         context_history_anchors = tuple(getattr(context_resolution, "history_anchors", ()))
@@ -3495,6 +3526,13 @@ def _run_canonical_turn_pipeline(
             ctx.state,
             classified_intent=intent_resolution.classified_intent.value,
             resolved_intent=intent_resolution.resolved_intent.value,
+            confidence_decision={
+                **ctx.state.confidence_decision,
+                "intent_predicted": intent_resolution.classified_intent.value,
+                "intent_classifier_confidence": classifier_confidence,
+                "intent_classifier_threshold": INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD,
+                **intent_classifier_metadata,
+            },
             policy_decision={
                 "policy": "intent_retrieval_requirement",
                 "decision": "retrieval_requirement_only",
