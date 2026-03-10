@@ -1490,6 +1490,44 @@ def test_stage_answer_selected_decision_non_memory_clarify_pending_lookup_degrad
     assert answered.invariant_decisions.get("invariant_degrade_reason") is None
 
 
+
+
+def test_stage_answer_canonical_commit_is_authoritative_for_answer_provenance_and_commit_receipt() -> None:
+    state = PipelineState(
+        user_input="what did i note about release prep?",
+        resolved_intent=IntentType.MEMORY_RECALL.value,
+        confidence_decision={
+            "context_confident": True,
+            "ambiguity_detected": False,
+        },
+    )
+
+    answered = stage_answer(
+        _StaticLLM("From memory, I found: release prep includes checklist review. doc_id: mem-7, ts: 2026-03-01T12:00:00Z"),
+        state,
+        chat_history=deque(),
+        hits=[
+            Document(
+                page_content="release prep includes checklist review",
+                metadata={"doc_id": "mem-7", "ts": "2026-03-01T12:00:00Z"},
+            )
+        ],
+        capability_status="ask_unavailable",
+        selected_decision=DecisionObject(
+            decision_class=DecisionClass.ANSWER_FROM_MEMORY,
+            retrieval_branch="memory_retrieval",
+            rationale="confident evidence bundle supports memory-grounded answer",
+            reasoning={"evidence_posture": "scored_non_empty"},
+        ),
+        clock=_FIXED_CLOCK,
+    )
+
+    assert answered.final_answer.startswith("From memory, I found:")
+    assert answered.used_memory_refs == ["mem-7@2026-03-01T12:00:00Z"]
+    assert answered.invariant_decisions.get("fallback_action") == "ANSWER_FROM_MEMORY"
+    assert answered.commit_receipt.get("commit_stage") == "answer.commit"
+    assert answered.commit_receipt.get("committed") is True
+
 def test_stage_answer_selected_decision_non_memory_clarify_no_clarify_mode_degrades_to_assist() -> None:
     state = PipelineState(
         user_input="tell me a joke",

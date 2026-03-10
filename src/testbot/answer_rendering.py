@@ -17,6 +17,8 @@ def render_answer(*, assembly: AnswerCandidate, validation: ValidatedAnswer, pre
 
     if preferred_text.strip():
         text = preferred_text
+    elif validation.final_answer.strip():
+        text = validation.final_answer
     elif assembly.pending_repair_state.get("required"):
         text = (
             "I don't have enough reliable memory to answer directly. "

@@ -3,12 +3,22 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from testbot.answer_assembly import AnswerCandidate
+from testbot.pipeline_state import ProvenanceType
 
 
 @dataclass(frozen=True)
 class ValidatedAnswer:
     passed: bool
     failures: list[str]
+    final_answer: str = ""
+    claims: list[str] | None = None
+    provenance_types: list[ProvenanceType] | None = None
+    used_memory_refs: list[str] | None = None
+    used_source_evidence_refs: list[str] | None = None
+    source_evidence_attribution: list[dict[str, str]] | None = None
+    basis_statement: str = ""
+    invariant_decisions: dict[str, object] | None = None
+    alignment_decision: dict[str, object] | None = None
 
 
 REQUIRED_ASSEMBLY_KEYS = (
@@ -33,7 +43,19 @@ DECISION_TO_RENDERED_CLASS = {
 }
 
 
-def validate_answer_assembly_boundary(assembly: AnswerCandidate) -> ValidatedAnswer:
+def validate_answer_assembly_boundary(
+    assembly: AnswerCandidate,
+    *,
+    final_answer: str = "",
+    claims: list[str] | None = None,
+    provenance_types: list[ProvenanceType] | None = None,
+    used_memory_refs: list[str] | None = None,
+    used_source_evidence_refs: list[str] | None = None,
+    source_evidence_attribution: list[dict[str, str]] | None = None,
+    basis_statement: str = "",
+    invariant_decisions: dict[str, object] | None = None,
+    alignment_decision: dict[str, object] | None = None,
+) -> ValidatedAnswer:
     failures: list[str] = []
     as_mapping = assembly.__dict__
     for key in REQUIRED_ASSEMBLY_KEYS:
@@ -66,7 +88,19 @@ def validate_answer_assembly_boundary(assembly: AnswerCandidate) -> ValidatedAns
     elif rendered_class != expected_rendered_class:
         failures.append("decision_rendered_class_conflict")
 
-    return ValidatedAnswer(passed=not failures, failures=failures)
+    return ValidatedAnswer(
+        passed=not failures,
+        failures=failures,
+        final_answer=final_answer,
+        claims=list(claims or []),
+        provenance_types=list(provenance_types or []),
+        used_memory_refs=list(used_memory_refs or []),
+        used_source_evidence_refs=list(used_source_evidence_refs or []),
+        source_evidence_attribution=list(source_evidence_attribution or []),
+        basis_statement=basis_statement,
+        invariant_decisions=dict(invariant_decisions or {}),
+        alignment_decision=dict(alignment_decision or {}),
+    )
 
 
 # Backward-compatible aliases while canonical naming converges.
