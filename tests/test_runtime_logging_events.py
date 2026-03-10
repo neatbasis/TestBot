@@ -13,7 +13,7 @@ from testbot.pipeline_state import AlignmentDecision
 from testbot.pipeline_state import CandidateHit
 from testbot import sat_chatbot_memory_v2 as runtime
 from testbot.context_resolution import ContinuityPosture, ResolvedContext
-from testbot.intent_router import IntentType
+from testbot.intent_router import IntentType, classify_intent
 from testbot.policy_decision import DecisionClass, DecisionObject, EvidencePosture, decide
 from testbot.sat_chatbot_memory_v2 import (
     ASSIST_ALTERNATIVES_ANSWER,
@@ -2277,6 +2277,44 @@ def test_chat_loop_emits_completion_event_user_message_and_linked_answer(tmp_pat
     completion_answer = next(row for row in rows if row.get("event") == "source_ingest_completion_answer_emitted")
     assert completion_answer["linked_pending_ingestion_request_id"] == "turn-123"
     assert completion_answer["final_answer"] == "Grounded answer after ingestion."
+
+
+
+def test_capabilities_help_followup_yes_please_look_it_up_matches_existing_decision_branch() -> None:
+    expected_intent = classify_intent("please look up the definition")
+    actual_intent = classify_intent("yes please look it up")
+
+    assert expected_intent is IntentType.CAPABILITIES_HELP
+    assert actual_intent is expected_intent
+
+    baseline = run_answer_stage_flow(
+        _StaticLLM("unused"),
+        PipelineState(
+            user_input="please look up the definition",
+            resolved_intent=expected_intent.value,
+            confidence_decision={"context_confident": False, "ambiguity_detected": False},
+        ),
+        chat_history=deque(),
+        hits=[],
+        capability_status="ask_unavailable",
+        clock=_FIXED_CLOCK,
+    )
+
+    edge_case = run_answer_stage_flow(
+        _StaticLLM("unused"),
+        PipelineState(
+            user_input="yes please look it up",
+            resolved_intent=actual_intent.value,
+            confidence_decision={"context_confident": False, "ambiguity_detected": False},
+        ),
+        chat_history=deque(),
+        hits=[],
+        capability_status="ask_unavailable",
+        clock=_FIXED_CLOCK,
+    )
+
+    assert edge_case.invariant_decisions.get("fallback_action") == baseline.invariant_decisions.get("fallback_action")
+    assert edge_case.invariant_decisions.get("answer_mode") == baseline.invariant_decisions.get("answer_mode")
 
 def test_capabilities_help_followup_debug_policy_never_reports_general_knowledge_action() -> None:
     state = PipelineState(

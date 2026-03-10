@@ -178,6 +178,7 @@ def test_classify_intent_capabilities_help_repair_offer_followup_family() -> Non
         "please do",
         "look it up",
         "find the definition",
+        "yes please look it up",
     ):
         assert classify_intent(utterance) is IntentType.CAPABILITIES_HELP
 
