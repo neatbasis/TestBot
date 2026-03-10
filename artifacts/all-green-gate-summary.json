@@ -1,28 +1,28 @@
 {
-  "status": "failed",
-  "exit_code": 1,
+  "status": "passed",
+  "exit_code": 0,
   "continue_on_failure": true,
   "warning_count": 1,
   "stages": [
     {
       "stage": "product",
-      "duration_s": 9.35,
-      "exit_code": 1,
-      "first_failing_command": "/root/.pyenv/versions/3.11.14/bin/python -m behave",
+      "duration_s": 3.795,
+      "exit_code": 0,
+      "first_failing_command": null,
       "artifact_path": null
     },
     {
       "stage": "safety",
-      "duration_s": 0.19,
+      "duration_s": 0.185,
       "exit_code": 0,
       "first_failing_command": null,
       "artifact_path": null
     },
     {
       "stage": "qa",
-      "duration_s": 13.137,
+      "duration_s": 12.499,
       "exit_code": 1,
-      "first_failing_command": "/root/.pyenv/versions/3.11.14/bin/python -m pytest -m 'not live_smoke'",
+      "first_failing_command": "/root/.pyenv/versions/3.11.14/bin/python scripts/validate_kpi_guardrails.py --summary logs/turn_analytics_summary.json --config config/kpi_guardrails.json",
       "artifact_path": "logs/turn_analytics.jsonl"
     }
   ],
@@ -31,9 +31,9 @@
       "name": "product_behave",
       "stage": "product",
       "command": "/root/.pyenv/versions/3.11.14/bin/python -m behave",
-      "status": "failed",
-      "exit_code": 1,
-      "duration_s": 8.142,
+      "status": "passed",
+      "exit_code": 0,
+      "duration_s": 2.601,
       "artifact_path": null
     },
     {
@@ -42,7 +42,7 @@
       "command": "/root/.pyenv/versions/3.11.14/bin/python scripts/eval_recall.py --top-k 4",
       "status": "passed",
       "exit_code": 0,
-      "duration_s": 1.208,
+      "duration_s": 1.194,
       "artifact_path": null
     },
     {
@@ -51,7 +51,7 @@
       "command": "/root/.pyenv/versions/3.11.14/bin/python scripts/validate_log_schema.py",
       "status": "passed",
       "exit_code": 0,
-      "duration_s": 0.087,
+      "duration_s": 0.075,
       "artifact_path": null
     },
     {
@@ -60,16 +60,16 @@
       "command": "/root/.pyenv/versions/3.11.14/bin/python scripts/validate_pipeline_stage_conformance.py",
       "status": "passed",
       "exit_code": 0,
-      "duration_s": 0.103,
+      "duration_s": 0.11,
       "artifact_path": null
     },
     {
       "name": "qa_pytest_not_live_smoke",
       "stage": "qa",
       "command": "/root/.pyenv/versions/3.11.14/bin/python -m pytest -m 'not live_smoke'",
-      "status": "failed",
-      "exit_code": 1,
-      "duration_s": 12.498,
+      "status": "passed",
+      "exit_code": 0,
+      "duration_s": 11.815,
       "artifact_path": null
     },
     {
@@ -78,7 +78,7 @@
       "command": "/root/.pyenv/versions/3.11.14/bin/python scripts/validate_issue_links.py --all-issue-files --base-ref 'HEAD~1'",
       "status": "passed",
       "exit_code": 0,
-      "duration_s": 0.154,
+      "duration_s": 0.17,
       "artifact_path": null
     },
     {
@@ -87,16 +87,16 @@
       "command": "/root/.pyenv/versions/3.11.14/bin/python scripts/validate_issues.py --all-issue-files --base-ref 'HEAD~1'",
       "status": "passed",
       "exit_code": 0,
-      "duration_s": 0.116,
+      "duration_s": 0.12,
       "artifact_path": null
     },
     {
       "name": "qa_validate_invariant_sync",
       "stage": "qa",
       "command": "/root/.pyenv/versions/3.11.14/bin/python scripts/sync_invariants_mirror.py --check",
-      "status": "failed",
-      "exit_code": 1,
-      "duration_s": 0.074,
+      "status": "passed",
+      "exit_code": 0,
+      "duration_s": 0.079,
       "artifact_path": null
     },
     {
@@ -105,7 +105,7 @@
       "command": "/root/.pyenv/versions/3.11.14/bin/python scripts/validate_markdown_paths.py",
       "status": "passed",
       "exit_code": 0,
-      "duration_s": 0.078,
+      "duration_s": 0.082,
       "artifact_path": null
     },
     {
@@ -114,7 +114,7 @@
       "command": "/root/.pyenv/versions/3.11.14/bin/python scripts/aggregate_turn_analytics.py --input logs/session.jsonl --output logs/turn_analytics.jsonl --summary-output logs/turn_analytics_summary.json",
       "status": "passed",
       "exit_code": 0,
-      "duration_s": 0.133,
+      "duration_s": 0.14,
       "artifact_path": "logs/turn_analytics.jsonl"
     },
     {
@@ -123,7 +123,7 @@
       "command": "/root/.pyenv/versions/3.11.14/bin/python scripts/validate_kpi_guardrails.py --summary logs/turn_analytics_summary.json --config config/kpi_guardrails.json",
       "status": "warning",
       "exit_code": 1,
-      "duration_s": 0.084,
+      "duration_s": 0.093,
       "artifact_path": null
     }
   ]

@@ -29,7 +29,7 @@ Dependent open-issue routing is sequenced through ISSUE-0013 using the following
 
 - **Selected mode:** warning mode (`--kpi-guardrail-mode optional`, current default policy in `docs/testing.md`).
 - **Readiness interpretation for this dependency chain:** canonical readiness remains `open/blocked pending evidence` while any blocking gate checks fail; KPI warnings are tracked as explicit warning debt and must remain issue-linked with owner + due date until cleared.
-- **Current warning debt linkage (snapshot `2026-03-10T20:32:23Z`):** `qa_validate_kpi_guardrails` warning remains linked to ISSUE-0014/ISSUE-0015 dependency sequencing under **Owner: platform-qa**, **Due: 2026-03-17** (next triage review) with lifecycle synchronization responsibility under **Owner: release-governance**, **Due: 2026-03-17**.
+- **Current warning debt linkage (snapshot `2026-03-10T21:36:04Z`):** `qa_validate_kpi_guardrails` warning remains linked to ISSUE-0014/ISSUE-0015 dependency sequencing under **Owner: platform-qa**, **Due: 2026-03-17** (next triage review) with lifecycle synchronization responsibility under **Owner: release-governance**, **Due: 2026-03-17**.
 
 ## Evidence
 
@@ -184,13 +184,13 @@ Dependency labels (machine-auditable ordered chain):
   - exit condition EC-0013-11-C: ISSUE-0015 dependency gate is updated from open to satisfied, confirming closure-governance alignment across ISSUE-0013/0014/0015.
   - current-state evidence interpretation (authoritative as of artifact currently referenced in this issue):
     - EC-0013-11-A: **in_progress (partial behavioral evidence)** (targeted ISSUE-0014 Phase 1 suites and CLI closure-proof traces are attached; closure remains blocked until canonical gate and governance dependency evidence align).
-    - EC-0013-11-B: **unsatisfied (deterministic gate currently failing)** (`artifacts/all-green-gate-summary.json` currently reports `status=failed` with `product_behave` and `qa_pytest_not_live_smoke` failures; canonical gate pass evidence must be re-established before this exit condition can move to satisfied).
+    - EC-0013-11-B: **partially satisfied / still governance-blocked** (`artifacts/all-green-gate-summary.json` now reports `status=passed`, but the `qa` stage remains non-zero due to optional-mode KPI guardrail validation; closure still depends on full cross-issue dependency evidence and warning-debt governance linkage).
     - EC-0013-11-C: **in_progress (governance synchronization)** (ISSUE-0015 dependency gate remains open/blocked pending evidence and uses the same blocker/dependent/parallel stream labels).
     - linked evidence: `docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md`, `docs/issues/evidence/2026-03-09-issue-0014-0013-behave.log`, `docs/issues/evidence/2026-03-09-issue-0014-0013-focused-pytests.log`, `docs/issues/evidence/2026-03-09-issue-0014-0013-all-green-gate.log`, `artifacts/all-green-gate-summary.json`.
     - reconciliation note: linked dated logs include prior pass snapshots, but current-state acceptance tracking in this issue is anchored to the latest referenced canonical gate artifact.
     - dependency-note (ISSUE-0017 impact pointer): pending-lookup fallback semantics consumed by `answer.commit.post` are normalized under ISSUE-0017; AC-0013-11 closure evidence should include the policy-contract sync pointer in `docs/invariants/answer-policy.md` once ISSUE-0017 closure evidence is attached.
     - missing-evidence checklist:
-      - [ ] **Owner: runtime-pipeline** — resolve current canonical gate failures (`product_behave`, `qa_pytest_not_live_smoke`) in branch evidence. **Due: 2026-03-16**.
+      - [ ] **Owner: runtime-pipeline** — confirm optional-mode KPI warning debt handling and close remaining dependency evidence gaps after canonical gate status moved to passed (non-zero `qa` stage at `qa_validate_kpi_guardrails`) in branch evidence. **Due: 2026-03-16**.
       - [ ] **Owner: platform-qa** — rerun canonical all-green gate and attach refreshed passing artifacts after failures are resolved. **Due: 2026-03-16**.
       - [ ] **Owner: release-governance** — promote lifecycle language to evidence-satisfied only after refreshed passing gate evidence is attached across ISSUE-0013/0014/0015/RED_TAG. **Due: 2026-03-17**.
 
@@ -277,7 +277,7 @@ Dependency labels (machine-auditable ordered chain):
 ### Current state (authoritative interpretation)
 
 - Canonical gate posture for acceptance/dependency tracking in ISSUE-0013 is **open/blocked pending evidence**.
-- Authoritative gate source: `artifacts/all-green-gate-summary.json` currently reports `status=failed` with failures on `product_behave` and `qa_pytest_not_live_smoke` (plus additional QA check failures), so AC-0013-11 exit condition EC-0013-11-B remains unsatisfied.
+- Authoritative gate source: `artifacts/all-green-gate-summary.json` currently reports `status=passed` with a non-zero `qa` stage first failing command at KPI guardrail validation (`scripts/validate_kpi_guardrails.py`), so AC-0013-11 exit condition EC-0013-11-B remains governance-blocked pending warning-debt lifecycle evidence alignment.
 - Cross-issue posture alignment: blocker/dependent labels and closure posture remain synchronized with ISSUE-0014, ISSUE-0015, and `docs/issues/RED_TAG.md` (ISSUE-0014 blocker, ISSUE-0015 dependent, both open/blocked pending evidence).
 
 ### Historical evidence chronology (dated snapshots)
@@ -288,7 +288,7 @@ Dependency labels (machine-auditable ordered chain):
 - Last reviewed: 2026-03-09
 - Next review due: 2026-03-16
 - KPI evidence: docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md
-- Decision notes: Deterministic behave/pytest bundle and required CLI identity-continuity closure traces are attached, but AC-0013-11 dependency remains unresolved because the currently referenced canonical gate artifact reports failure (`product_behave` and `qa_pytest_not_live_smoke`), keeping dependency posture open/blocked pending evidence.
+- Decision notes: Deterministic behave/pytest bundle and required CLI identity-continuity closure traces are attached; AC-0013-11 dependency remains unresolved because, despite `status=passed`, the currently referenced canonical gate artifact still carries optional-mode KPI warning debt (`qa_validate_kpi_guardrails`) and open cross-issue closure sequencing requirements, keeping dependency posture open/blocked pending evidence.
 
 - 2026-03-07: Opened as the primary bug-elimination program to align runtime behavior with the canonical turn pipeline contract and eliminate raw-utterance-first routing as the dominant defect source.
 - 2026-03-07: Cross-system traceability note — ISSUE-0013 is the implementation and bug-elimination counterpart to `ISSUE-0012-canonical-turn-pipeline-delivery-plan.md` (delivery planning/governance anchor).
@@ -360,7 +360,7 @@ Dependency labels (machine-auditable ordered chain):
   - ISSUE-0015 remains open/red while the AC-0013-11 dependency gate is unresolved; ISSUE-0013 closure claims must explicitly cite matching ISSUE-0014 behavioral evidence.
 
 - 2026-03-08: AC-0013-12 evidence regenerated from current gate/report inputs without over-claiming implementation closure.
-  - AC-0013-12 proof (canonical gate evidence): `artifacts/all-green-gate-summary.json` refreshed via `python scripts/all_green_gate.py --continue-on-failure --json-output artifacts/all-green-gate-summary.json` at `2026-03-10T20:32:23Z` and records canonical gate `status=failed` with failing checks `product_behave`, `qa_pytest_not_live_smoke`, `qa_validate_invariant_sync` plus warning-mode KPI check `qa_validate_kpi_guardrails`.
+  - AC-0013-12 proof (canonical gate evidence): `artifacts/all-green-gate-summary.json` refreshed via `python scripts/all_green_gate.py --continue-on-failure --json-output artifacts/all-green-gate-summary.json` at `2026-03-10T21:36:04Z` and records canonical gate `status=passed` with warning-mode KPI check `qa_validate_kpi_guardrails`; the only non-zero stage is `qa` and its first failing command is `scripts/validate_kpi_guardrails.py`.
   - AC-0013-12 proof (status report + JSON summary): `docs/qa/feature-status-report.md` and `artifacts/feature-status-summary.json` regenerated via `python scripts/report_feature_status.py --output docs/qa/feature-status-report.md --json-output artifacts/feature-status-summary.json` and continue to classify canonical pipeline slices as `partial`.
 
 - 2026-03-09: Governance parity review against architecture-drift findings confirms the primary orchestration drifts remain open and should continue to route through ISSUE-0013.
@@ -380,7 +380,7 @@ Dependency labels (machine-auditable ordered chain):
 
 - 2026-03-09: AC-0013-11 dependency evidence refreshed with explicit pass/fail linkage for ISSUE-0014 Phase 1 behavioral exits.
   - Deterministic targeted suites pass: BDD (`python -m behave features/memory_recall.feature features/intent_grounding.feature`) and focused regression pytests (`tests/test_pipeline_semantic_contracts.py`, `tests/test_canonical_turn_orchestrator.py`, `tests/test_intent_router.py`).
-  - Current gate snapshot (`2026-03-10T20:32:23Z`) records `status=failed` with failing checks `product_behave`, `qa_pytest_not_live_smoke`, `qa_validate_invariant_sync`; warning-mode KPI guardrail check remains `qa_validate_kpi_guardrails`; first failing commands by stage: `product -> /root/.pyenv/versions/3.11.14/bin/python -m behave`, `qa -> /root/.pyenv/versions/3.11.14/bin/python -m pytest -m 'not live_smoke'`.
+  - Current gate snapshot (`2026-03-10T21:36:04Z`) records `status=passed` with warning-mode KPI guardrail check `qa_validate_kpi_guardrails`; only non-zero stage is `qa`; first failing command by stage: `qa -> /root/.pyenv/versions/3.11.14/bin/python scripts/validate_kpi_guardrails.py --summary logs/turn_analytics_summary.json --config config/kpi_guardrails.json`.
   - Governance validators rerun and passing: `python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main` and `python scripts/validate_issues.py --all-issue-files --base-ref origin/main` (both with documented `origin/main` -> `HEAD~1` fallback behavior).
   - Governance outcome: AC-0013-11 remains open/blocked pending evidence in dependency sequencing; closure condition is identical to ISSUE-0014 Phase 1 (identity semantic preservation, retrieval activation on immediate self-reference recall, and confirmed identity fact promotion at commit) with deterministic tests, reproducible CLI traces, and canonical gate evidence.
   - Evidence links: `docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md`, `docs/issues/evidence/2026-03-09-issue-0014-0013-behave.log`, `docs/issues/evidence/2026-03-09-issue-0014-0013-focused-pytests.log`, `docs/issues/evidence/2026-03-09-issue-0014-0013-all-green-gate.log`, `artifacts/all-green-gate-summary.json`.
