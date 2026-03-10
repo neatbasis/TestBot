@@ -1789,6 +1789,11 @@ def test_background_ingestion_pending_lifecycle_event_order_and_payloads(monkeyp
             "turn-789": {
                 "utterance": "What is due next?",
                 "prior_pipeline_state": None,
+                "created_at": "2026-03-10T10:00:00+00:00",
+                "last_polled_at": "2026-03-10T10:01:00+00:00",
+                "attempt_count": 4,
+                "deadline_at": "2026-03-10T12:00:00+00:00",
+                "status": "pending",
             }
         },
     }
@@ -1878,6 +1883,11 @@ def test_background_ingestion_pending_lifecycle_event_order_and_payloads(monkeyp
     assert completion_user_notice["ingestion_request_id"] == "turn-789"
     assert completion_user_notice["linked_pending_ingestion_request_id"] == "turn-789"
     assert assistant_messages[0] == completion_user_notice["message_text"]
+
+    obligation_events = [payload for name, payload in events if name == "source_ingest_obligation_transition"]
+    assert obligation_events
+    assert obligation_events[-1]["ingestion_request_id"] == "turn-789"
+    assert obligation_events[-1]["status"] == "resolved"
 
 def test_chat_loop_does_not_use_pre_pipeline_intent_classifier_route_authority(monkeypatch) -> None:
     events: list[tuple[str, dict[str, object]]] = []
