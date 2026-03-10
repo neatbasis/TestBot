@@ -40,7 +40,7 @@ def assemble_answer_contract(
         "source_evidence": len(evidence_bundle.source_evidence),
     }
 
-    pending_repair_required = decision.decision_class in {
+    repair_required_by_policy = decision.decision_class in {
         DecisionClass.CONTINUE_REPAIR_RECONSTRUCTION,
         DecisionClass.PENDING_LOOKUP_BACKGROUND_INGESTION,
     }
@@ -48,7 +48,7 @@ def assemble_answer_contract(
 
     resolved_obligations: list[str] = []
     remaining_obligations: list[str] = []
-    if pending_repair_required:
+    if repair_required_by_policy:
         if decision.decision_class is DecisionClass.PENDING_LOOKUP_BACKGROUND_INGESTION:
             remaining_obligations.append("pending_lookup_background_ingestion")
         else:
@@ -64,10 +64,11 @@ def assemble_answer_contract(
         rationale=decision.rationale,
         evidence_counts=evidence_counts,
         pending_repair_state={
-            "required": pending_repair_required,
-            "reason": "decision_requires_repair" if pending_repair_required else "none",
+            "repair_required_by_policy": repair_required_by_policy,
+            "repair_offered_to_user": False,
+            "reason": "repair_required_by_policy" if repair_required_by_policy else "none",
         },
-        pending_ingestion_request_id=(pending_ingestion_request_id if pending_repair_required else ""),
+        pending_ingestion_request_id=(pending_ingestion_request_id if repair_required_by_policy else ""),
         resolved_obligations=resolved_obligations,
         remaining_obligations=remaining_obligations,
         confirmed_user_facts=confirmed_user_facts,

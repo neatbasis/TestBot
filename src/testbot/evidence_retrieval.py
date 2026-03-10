@@ -98,8 +98,8 @@ def continuity_evidence_from_prior_state(prior_pipeline_state: PipelineState | N
             anchors.append(f"commit.remaining_obligations:{normalized}")
 
     pending_repair_state = commit_receipt.get("pending_repair_state", {})
-    if isinstance(pending_repair_state, dict) and pending_repair_state.get("required"):
-        anchors.append("commit.pending_repair_state:required")
+    if isinstance(pending_repair_state, dict) and pending_repair_state.get("repair_offered_to_user"):
+        anchors.append("commit.pending_repair_state:repair_offered_to_user")
 
     return tuple(dict.fromkeys(anchors))
 

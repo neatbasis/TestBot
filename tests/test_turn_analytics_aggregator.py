@@ -189,7 +189,7 @@ def test_aggregate_turn_dataset_supports_repair_continuation_action_deterministi
             "event": "commit_stage_recorded",
             "schema_version": 3,
             "stage": "answer.commit",
-            "pending_repair_state": {"required": True},
+            "pending_repair_state": {"repair_required_by_policy": True, "repair_offered_to_user": True},
             "confirmed_user_facts": ["name=Sam"],
         },
     ]
@@ -212,7 +212,7 @@ def test_normalize_and_validate_rows_accepts_pipeline_snapshot_sidecars_without_
             "state": {
                 "commit_receipt": {
                     "commit_stage": "answer.commit",
-                    "pending_repair_state": {"required": False},
+                    "pending_repair_state": {"repair_required_by_policy": False, "repair_offered_to_user": False},
                     "resolved_obligations": ["repair_state_not_required"],
                     "remaining_obligations": [],
                     "confirmed_user_facts": ["name=Sam"],
@@ -273,7 +273,7 @@ def test_aggregate_turn_dataset_multi_turn_commit_continuity_fields_preserved() 
             "event": "commit_stage_recorded",
             "schema_version": 3,
             "stage": "answer.commit",
-            "pending_repair_state": {"required": False, "reason": "none"},
+            "pending_repair_state": {"repair_required_by_policy": False, "repair_offered_to_user": False, "reason": "none"},
             "resolved_obligations": ["repair_state_not_required"],
             "confirmed_user_facts": ["name=Sam"],
         },
@@ -304,7 +304,7 @@ def test_aggregate_turn_dataset_multi_turn_commit_continuity_fields_preserved() 
             "event": "commit_stage_recorded",
             "schema_version": 3,
             "stage": "answer.commit",
-            "pending_repair_state": {"required": False, "reason": "none"},
+            "pending_repair_state": {"repair_required_by_policy": False, "repair_offered_to_user": False, "reason": "none"},
             "resolved_obligations": ["repair_state_not_required"],
             "confirmed_user_facts": ["name=Sam"],
             "retrieval_continuity_evidence": ["commit.confirmed_user_facts:name=Sam"],
@@ -338,12 +338,12 @@ def test_normalize_and_validate_rows_preserves_commit_audit_payload_completeness
             "event": "commit_stage_recorded",
             "schema_version": 3,
             "stage": "answer.commit",
-            "pending_repair_state": {"required": True, "reason": "decision_requires_repair"},
+            "pending_repair_state": {"repair_required_by_policy": True, "repair_offered_to_user": True, "reason": "repair_offer_rendered", "followup_route": "repair_offer_followup"},
             "resolved_obligations": [],
             "remaining_obligations": ["continue_repair_reconstruction"],
             "confirmed_user_facts": ["name=Sam"],
             "retrieval_continuity_evidence": [
-                "commit.pending_repair_state:required",
+                "commit.pending_repair_state:repair_offered_to_user",
                 "commit.remaining_obligations:continue_repair_reconstruction",
             ],
         },
@@ -375,12 +375,12 @@ def test_normalize_and_validate_rows_preserves_commit_audit_payload_completeness
     commit_row = next(row for row in normalized_rows if row.get("event") == "commit_stage_recorded")
 
     assert summary.invalid_rows == 0
-    assert commit_row["pending_repair_state"] == {"required": True, "reason": "decision_requires_repair"}
+    assert commit_row["pending_repair_state"] == {"repair_required_by_policy": True, "repair_offered_to_user": True, "reason": "repair_offer_rendered", "followup_route": "repair_offer_followup"}
     assert commit_row["resolved_obligations"] == []
     assert commit_row["remaining_obligations"] == ["continue_repair_reconstruction"]
     assert commit_row["confirmed_user_facts"] == ["name=Sam"]
     assert commit_row["retrieval_continuity_evidence"] == [
-        "commit.pending_repair_state:required",
+        "commit.pending_repair_state:repair_offered_to_user",
         "commit.remaining_obligations:continue_repair_reconstruction",
     ]
 

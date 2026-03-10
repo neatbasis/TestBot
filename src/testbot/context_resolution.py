@@ -60,8 +60,8 @@ def _commit_continuity_anchors(prior_pipeline_state: PipelineState | None) -> tu
             anchors.append(f"commit.confirmed_user_facts:{normalized}")
 
     pending_repair_state = commit_receipt.get("pending_repair_state", {})
-    if isinstance(pending_repair_state, dict) and pending_repair_state.get("required"):
-        anchors.append("commit.pending_repair_state:required")
+    if isinstance(pending_repair_state, dict) and pending_repair_state.get("repair_offered_to_user"):
+        anchors.append("commit.pending_repair_state:repair_offered_to_user")
 
     pending_ingestion_request_id = str(commit_receipt.get("pending_ingestion_request_id") or "").strip()
     if pending_ingestion_request_id:

@@ -86,13 +86,25 @@ def commit_answer_stage(
 
     committed_facts = _merge_confirmed_user_facts(assembly=assembly, state=state)
 
+    repair_offer_rendered = bool(getattr(rendered, "repair_offer_rendered", False))
+    pending_repair_state = {
+        **dict(assembly.pending_repair_state),
+        "repair_offered_to_user": repair_offer_rendered,
+    }
+    if repair_offer_rendered:
+        pending_repair_state["reason"] = "repair_offer_rendered"
+        pending_repair_state["followup_route"] = str(getattr(rendered, "repair_followup_route", "") or "repair_offer_followup")
+    else:
+        pending_repair_state["reason"] = "none"
+        pending_repair_state.pop("followup_route", None)
+
     commit_receipt = CommitReceiptArtifact.from_mapping(
         {
             "committed": True,
             "commit_id": commit_stage_id,
             "commit_stage": commit_stage_id,
             "pipeline_state_snapshot": "recorded",
-            "pending_repair_state": assembly.pending_repair_state,
+            "pending_repair_state": pending_repair_state,
             "pending_ingestion_request_id": assembly.pending_ingestion_request_id,
             "resolved_obligations": list(assembly.resolved_obligations),
             "remaining_obligations": list(assembly.remaining_obligations),
@@ -104,7 +116,7 @@ def commit_answer_stage(
         turn_id=turn_id,
         commit_stage=commit_stage_id,
         rendered_text=rendered.rendered_text,
-        pending_repair_state=dict(assembly.pending_repair_state),
+        pending_repair_state=dict(pending_repair_state),
         pending_ingestion_request_id=assembly.pending_ingestion_request_id,
         resolved_obligations=list(assembly.resolved_obligations),
         remaining_obligations=list(assembly.remaining_obligations),
@@ -122,7 +134,7 @@ def commit_answer_stage(
             basis_statement=validation.basis_statement,
             invariant_decisions=dict(validation.invariant_decisions or {}),
             alignment_decision=dict(validation.alignment_decision or {}),
-            pending_repair=assembly.pending_repair_state,
+            pending_repair=(pending_repair_state if repair_offer_rendered else {}),
             commit_receipt=commit_receipt,
         ),
         committed_turn_state,

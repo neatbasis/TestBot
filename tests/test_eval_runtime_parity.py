@@ -321,7 +321,7 @@ def test_canonical_continuity_parity_consumes_prior_commit_artifacts_across_turn
         resolved_intent=IntentType.MEMORY_RECALL.value,
         commit_receipt={
             "commit_stage": "answer.commit",
-            "pending_repair_state": {"required": False, "reason": "none"},
+            "pending_repair_state": {"repair_required_by_policy": False, "repair_offered_to_user": False, "reason": "none"},
             "resolved_obligations": ["repair_state_not_required"],
             "pending_ingestion_request_id": "ingest-abc",
             "confirmed_user_facts": ["name=Sam"],
