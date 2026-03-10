@@ -12,7 +12,7 @@ from testbot.policy_decision import DecisionClass, DecisionObject
 from testbot.sat_chatbot_memory_v2 import (
     NON_KNOWLEDGE_UNCERTAINTY_ANSWER,
     RuntimeCapabilityStatus,
-    stage_answer,
+    run_answer_stage_flow,
     validate_answer_contract,
     validate_general_knowledge_contract,
 )
@@ -136,8 +136,8 @@ def step_given_unlabeled_general_knowledge_with_failed_gate(context) -> None:
 
 
 @when("stage answer enforces the general-knowledge contract")
-def step_when_stage_answer_enforces_contract(context) -> None:
-    context.stage_answer_state = stage_answer(
+def step_when_run_answer_stage_flow_enforces_contract(context) -> None:
+    context.run_answer_stage_flow_state = run_answer_stage_flow(
         _BDDUnlabeledGeneralKnowledgeLLM(),
         context.answer_state_input,
         chat_history=[],
@@ -158,11 +158,12 @@ def step_when_stage_answer_enforces_contract(context) -> None:
         ),
         clock=None,
     )
+    context.stage_answer_state = context.run_answer_stage_flow_state
 
 
 @then("the final answer should be knowledge-safe fallback")
 def step_then_final_answer_is_knowledge_safe_fallback(context) -> None:
-    lowered = context.stage_answer_state.final_answer.lower()
+    lowered = context.run_answer_stage_flow_state.final_answer.lower()
     assert "don't have enough reliable" in lowered
     assert "i can either" in lowered and " or " in lowered
 
@@ -171,27 +172,27 @@ def step_then_final_answer_is_knowledge_safe_fallback(context) -> None:
 
 @then("the final answer should include explicit uncertainty language")
 def step_then_final_answer_includes_explicit_uncertainty_language(context) -> None:
-    lowered = context.stage_answer_state.final_answer.lower()
+    lowered = context.run_answer_stage_flow_state.final_answer.lower()
     assert "don't have enough reliable" in lowered or "don't know" in lowered
 
 
 @then("the final answer should include a safe action path")
 def step_then_final_answer_includes_safe_action_path(context) -> None:
-    lowered = context.stage_answer_state.final_answer.lower()
+    lowered = context.run_answer_stage_flow_state.final_answer.lower()
     assert "i can either" in lowered
     assert " or " in lowered
 
 @then('the final answer should not ask "{message}"')
 def step_then_final_answer_does_not_ask_message(context, message: str) -> None:
-    assert message not in context.stage_answer_state.final_answer
+    assert message not in context.run_answer_stage_flow_state.final_answer
 
 
 @then("the response records knowledge-safe fallback provenance transparency")
 def step_then_response_records_general_knowledge_provenance_and_basis(context) -> None:
-    provenance_names = {p.name for p in context.stage_answer_state.provenance_types}
+    provenance_names = {p.name for p in context.run_answer_stage_flow_state.provenance_types}
     assert provenance_names == {"UNKNOWN"}
-    assert context.stage_answer_state.basis_statement.strip()
-    assert "no substantive claim" in context.stage_answer_state.basis_statement.lower()
+    assert context.run_answer_stage_flow_state.basis_statement.strip()
+    assert "no substantive claim" in context.run_answer_stage_flow_state.basis_statement.lower()
 
 
 @given('an answer policy input with intent "{intent}", context confidence {context_confident}, ambiguity {ambiguity}, and memory hit count {memory_hit_count:d}')
@@ -399,8 +400,8 @@ def step_given_canonical_decision_object(context, decision_class: str) -> None:
 
 
 @when("stage answer runs with canonical decision authority")
-def step_when_stage_answer_runs_with_canonical_decision(context) -> None:
-    context.stage_answer_state = stage_answer(
+def step_when_run_answer_stage_flow_runs_with_canonical_decision(context) -> None:
+    context.run_answer_stage_flow_state = run_answer_stage_flow(
         _BDDMemoryGroundedLLM(),
         context.memory_answer_state_input,
         chat_history=[],
@@ -408,18 +409,19 @@ def step_when_stage_answer_runs_with_canonical_decision(context) -> None:
         capability_status="ask_unavailable",
         selected_decision=context.selected_decision,
     )
+    context.stage_answer_state = context.run_answer_stage_flow_state
 
 
 @then("the final answer remains memory-grounded")
 def step_then_final_answer_remains_memory_grounded(context) -> None:
-    assert context.stage_answer_state.final_answer.startswith("From memory, I found:")
-    assert context.stage_answer_state.invariant_decisions.get("answer_mode") == "memory-grounded"
+    assert context.run_answer_stage_flow_state.final_answer.startswith("From memory, I found:")
+    assert context.run_answer_stage_flow_state.invariant_decisions.get("answer_mode") == "memory-grounded"
 
 
 @then("the fallback action remains memory-grounded for canonical routing")
 def step_then_fallback_action_remains_memory_grounded_for_canonical_routing(context) -> None:
-    assert context.stage_answer_state.invariant_decisions.get("fallback_action") == "ANSWER_FROM_MEMORY"
-    assert context.stage_answer_state.invariant_decisions.get("answer_policy_rationale", {}).get("authority") == "decision_object"
+    assert context.run_answer_stage_flow_state.invariant_decisions.get("fallback_action") == "ANSWER_FROM_MEMORY"
+    assert context.run_answer_stage_flow_state.invariant_decisions.get("answer_policy_rationale", {}).get("authority") == "decision_object"
 
 
 @then("stabilization artifacts are persisted before route authority assignment")
@@ -530,9 +532,9 @@ def step_given_memory_recall_pending_background_ingestion(context) -> None:
 
 @then("the fallback action should remain pending lookup")
 def step_then_fallback_action_pending_lookup(context) -> None:
-    assert context.stage_answer_state.invariant_decisions.get("fallback_action") == "ANSWER_UNKNOWN"
+    assert context.run_answer_stage_flow_state.invariant_decisions.get("fallback_action") == "ANSWER_UNKNOWN"
 
 
 @then("the answer mode should remain non-clarify while lookup is pending")
 def step_then_answer_mode_non_clarify_for_pending_lookup(context) -> None:
-    assert context.stage_answer_state.invariant_decisions.get("answer_mode") == "assist"
+    assert context.run_answer_stage_flow_state.invariant_decisions.get("answer_mode") == "assist"

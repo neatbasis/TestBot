@@ -20,7 +20,7 @@ from testbot.sat_chatbot_memory_v2 import (
     ROUTE_TO_ASK_ANSWER,
     build_provenance_metadata,
     resolve_turn_intent,
-    stage_answer,
+    run_answer_stage_flow,
     stage_rewrite_query,
     validate_general_knowledge_contract,
 )
@@ -1175,7 +1175,7 @@ def _resolve_contract_probe(utterance: str) -> dict[str, object]:
         hit_count=0,
     )
     decision_object = decide_from_evidence(intent=intent_resolution.resolved_intent, retrieval=retrieval)
-    answered = stage_answer(
+    answered = run_answer_stage_flow(
         _BDDMetaAckLLM(),
         PipelineState(
             user_input=utterance,

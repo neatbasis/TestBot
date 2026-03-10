@@ -5,7 +5,7 @@ from collections import deque
 from langchain_core.documents import Document
 
 from testbot.pipeline_state import PipelineState
-from testbot.sat_chatbot_memory_v2 import RuntimeCapabilityStatus, stage_answer
+from testbot.sat_chatbot_memory_v2 import RuntimeCapabilityStatus, run_answer_stage_flow
 
 
 class _FailIfInvokedLLM:
@@ -20,8 +20,8 @@ def _base_state() -> PipelineState:
     )
 
 
-def test_stage_answer_capabilities_help_reflects_ha_unavailable_cli_fallback() -> None:
-    answer_state = stage_answer(
+def test_run_answer_stage_flow_capabilities_help_reflects_ha_unavailable_cli_fallback() -> None:
+    answer_state = run_answer_stage_flow(
         _FailIfInvokedLLM(),
         _base_state(),
         chat_history=deque(),
@@ -54,8 +54,8 @@ def test_stage_answer_capabilities_help_reflects_ha_unavailable_cli_fallback() -
     assert answer_state.draft_answer == ""
 
 
-def test_stage_answer_capabilities_help_reflects_ha_satellite_available() -> None:
-    answer_state = stage_answer(
+def test_run_answer_stage_flow_capabilities_help_reflects_ha_satellite_available() -> None:
+    answer_state = run_answer_stage_flow(
         _FailIfInvokedLLM(),
         _base_state(),
         chat_history=deque(),
@@ -86,8 +86,8 @@ def test_stage_answer_capabilities_help_reflects_ha_satellite_available() -> Non
     assert answer_state.draft_answer == ""
 
 
-def test_stage_answer_capabilities_help_reports_unavailable_when_no_clarification_path() -> None:
-    answer_state = stage_answer(
+def test_run_answer_stage_flow_capabilities_help_reports_unavailable_when_no_clarification_path() -> None:
+    answer_state = run_answer_stage_flow(
         _FailIfInvokedLLM(),
         _base_state(),
         chat_history=deque(),
@@ -132,7 +132,7 @@ def test_debug_flag_does_not_change_non_capabilities_fallback_answer() -> None:
         )
     ]
 
-    disabled_answer = stage_answer(
+    disabled_answer = run_answer_stage_flow(
         _FailIfInvokedLLM(),
         state,
         chat_history=deque(),
@@ -154,7 +154,7 @@ def test_debug_flag_does_not_change_non_capabilities_fallback_answer() -> None:
         clock=None,
     )
 
-    enabled_answer = stage_answer(
+    enabled_answer = run_answer_stage_flow(
         _FailIfInvokedLLM(),
         state,
         chat_history=deque(),
@@ -188,7 +188,7 @@ class _GeneralKnowledgeLLM:
         return self._Response()
 
 
-def test_stage_answer_non_memory_without_ambiguity_does_not_force_clarifier() -> None:
+def test_run_answer_stage_flow_non_memory_without_ambiguity_does_not_force_clarifier() -> None:
     state = PipelineState(
         user_input="what is topology",
         confidence_decision={
@@ -199,7 +199,7 @@ def test_stage_answer_non_memory_without_ambiguity_does_not_force_clarifier() ->
         },
     )
 
-    answer_state = stage_answer(
+    answer_state = run_answer_stage_flow(
         _GeneralKnowledgeLLM(),
         state,
         chat_history=deque(),
@@ -225,13 +225,13 @@ def test_stage_answer_non_memory_without_ambiguity_does_not_force_clarifier() ->
     assert not answer_state.final_answer.startswith("I found related memory fragments (")
 
 
-def test_stage_answer_satellite_action_request_cli_returns_capability_structured_alternatives() -> None:
+def test_run_answer_stage_flow_satellite_action_request_cli_returns_capability_structured_alternatives() -> None:
     state = PipelineState(
         user_input="start satellite conversation",
         confidence_decision={"context_confident": False, "ambiguity_detected": True},
     )
 
-    answer_state = stage_answer(
+    answer_state = run_answer_stage_flow(
         _FailIfInvokedLLM(),
         state,
         chat_history=deque(),
@@ -260,13 +260,13 @@ def test_stage_answer_satellite_action_request_cli_returns_capability_structured
     assert answer_state.final_answer != "Can you clarify which memory and time window you mean?"
 
 
-def test_stage_answer_satellite_action_request_with_ha_available_suggests_satellite_mode_switch() -> None:
+def test_run_answer_stage_flow_satellite_action_request_with_ha_available_suggests_satellite_mode_switch() -> None:
     state = PipelineState(
         user_input="ask via satellite",
         confidence_decision={"context_confident": False, "ambiguity_detected": False},
     )
 
-    answer_state = stage_answer(
+    answer_state = run_answer_stage_flow(
         _FailIfInvokedLLM(),
         state,
         chat_history=deque(),

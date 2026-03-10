@@ -6,7 +6,7 @@ import arrow
 from langchain_core.documents import Document
 
 from testbot.pipeline_state import PipelineState
-from testbot.sat_chatbot_memory_v2 import stage_answer, stage_rerank
+from testbot.sat_chatbot_memory_v2 import run_answer_stage_flow, stage_rerank
 from testbot.time_parse import parse_target_time
 from testbot.time_reasoning import elapsed_since_last_user_message, resolve_relative_date
 
@@ -56,11 +56,11 @@ def test_stage_rerank_uses_injected_clock_now() -> None:
     assert updated.confidence_decision["now_ts"] == frozen_now.isoformat()
 
 
-def test_stage_answer_time_query_uses_fake_clock_and_helsinki() -> None:
+def test_run_answer_stage_flow_time_query_uses_fake_clock_and_helsinki() -> None:
     frozen_now = arrow.get("2026-03-10T22:30:00+00:00")
     state = PipelineState(user_input="what is tomorrow?", last_user_message_ts="2026-03-10T22:00:00+00:00")
 
-    updated = stage_answer(
+    updated = run_answer_stage_flow(
         DummyLLM(),
         state,
         chat_history=[],
