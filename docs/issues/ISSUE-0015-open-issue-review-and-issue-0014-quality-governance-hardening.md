@@ -16,7 +16,7 @@
 
 - **Selected mode:** warning mode (`--kpi-guardrail-mode optional`) with explicit debt tracking.
 - **Readiness criteria update for ISSUE-0015 closure:** while warning mode remains, unresolved KPI warnings are blocker evidence for this red-tag dependent stream and must remain linked to owner + due date in ISSUE-0015, ISSUE-0014, and `docs/issues/RED_TAG.md` for every review cycle.
-- **Current linked warning debt:** `qa_validate_kpi_guardrails` warning at snapshot `2026-03-10T20:32:23Z` -> **Owner: platform-qa**, **Due: 2026-03-17**; lifecycle-language synchronization follow-through -> **Owner: release-governance**, **Due: 2026-03-17**.
+- **Current linked warning debt:** `qa_validate_kpi_guardrails` warning at snapshot `2026-03-10T21:36:04Z` -> **Owner: platform-qa**, **Due: 2026-03-17**; lifecycle-language synchronization follow-through -> **Owner: release-governance**, **Due: 2026-03-17**.
 
 
 - Routing anchor: ISSUE-0013 (**dependent** in current execution order; governance close-order stream with open/blocked pending evidence state).
@@ -196,14 +196,15 @@ ISSUE-0015 remains `Status: open` and `Severity: red` until all dependency condi
 3. **Cross-artifact consistency exit condition met:** `docs/issues/RED_TAG.md` plus issue files (`ISSUE-0013`, `ISSUE-0014`, `ISSUE-0015`) reflect the same lifecycle interpretation (blocker/dependent/parallel stream with open/blocked pending evidence and governance close-order sequencing).
 4. **Fallback-semantics consistency condition met:** ISSUE-0010 language for unknowing fallback and ISSUE-0017 pending-lookup normalization remain non-contradictory (pending lookup stays non-clarify and does not downgrade red-tag dependency posture by itself).
 
-## Dependency Evaluation Update (snapshot refresh: 2026-03-10T20:32:23Z) (AC6/AC7/AC9)
+## Dependency Evaluation Update (snapshot refresh: 2026-03-10T21:36:04Z) (AC6/AC7/AC9)
 
 - Evidence bundle recorded: `docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md`.
 - Attached command logs:
+- Run-environment note: refreshed gate executed with interpreter `/root/.pyenv/versions/3.11.14/bin/python` (not repository `.venv` activation); this matches prior snapshot interpreter family and is recorded for safe snapshot-to-snapshot comparison.
   - `docs/issues/evidence/2026-03-09-issue-0014-0013-behave.log` (**pass**)
   - `docs/issues/evidence/2026-03-09-issue-0014-0013-focused-pytests.log` (**pass**)
-  - `artifacts/all-green-gate-summary.json` (**failed** summary at `2026-03-10T20:32:23Z`; failing checks: `product_behave`, `qa_pytest_not_live_smoke`, `qa_validate_invariant_sync`; warning check: `qa_validate_kpi_guardrails`)
-  - First failing command per failing stage: `product -> /root/.pyenv/versions/3.11.14/bin/python -m behave`; `qa -> /root/.pyenv/versions/3.11.14/bin/python -m pytest -m 'not live_smoke'`
+  - `artifacts/all-green-gate-summary.json` (**passed** summary at `2026-03-10T21:36:04Z`; non-zero stage: `qa` with first failing command `qa -> /root/.pyenv/versions/3.11.14/bin/python scripts/validate_kpi_guardrails.py --summary logs/turn_analytics_summary.json --config config/kpi_guardrails.json`; warning check: `qa_validate_kpi_guardrails`)
+  - First failing command per non-zero stage: `qa -> /root/.pyenv/versions/3.11.14/bin/python scripts/validate_kpi_guardrails.py --summary logs/turn_analytics_summary.json --config config/kpi_guardrails.json`
   - `docs/issues/evidence/2026-03-09-issue-0014-cli-identity-semantic-preservation-trace.md` (**pass**)
   - `docs/issues/evidence/2026-03-09-issue-0014-cli-self-reference-retrieval-activation-trace.md` (**pass**)
   - `docs/issues/evidence/2026-03-09-issue-0014-cli-confirmed-fact-promotion-trace.md` (**pass**)
@@ -217,8 +218,8 @@ ISSUE-0015 remains `Status: open` and `Severity: red` until all dependency condi
 ### Missing evidence checklist (owner + due date)
 
 - [x] **Owner: runtime-pipeline** — Resolved prior failure-attribution mismatch and documented corrective dependency evidence update in ISSUE-0014. **Done: 2026-03-09**. Artifact: `docs/issues/evidence/2026-03-09-runtime-pipeline-dependency-gate-progress.md`.
-- [x] **Owner: platform-qa** — Re-ran `python scripts/all_green_gate.py --continue-on-failure --json-output artifacts/all-green-gate-summary.json` and attached updated summary showing failed status at snapshot `2026-03-10T20:32:23Z`. **Done: 2026-03-10**. Artifact: `artifacts/all-green-gate-summary.json`.
-- [x] **Owner: release-governance** — Updated ISSUE-0013/0014/0015 and RED_TAG lifecycle text to the same failed-gate sequencing posture from snapshot `2026-03-10T20:32:23Z`. **Done: 2026-03-10**. Artifact: `artifacts/all-green-gate-summary.json`.
+- [x] **Owner: platform-qa** — Re-ran `python scripts/all_green_gate.py --continue-on-failure --json-output artifacts/all-green-gate-summary.json` and attached updated summary showing passed status at snapshot `2026-03-10T21:36:04Z` (with QA warning-mode KPI non-zero stage details preserved). **Done: 2026-03-10**. Artifact: `artifacts/all-green-gate-summary.json`.
+- [x] **Owner: release-governance** — Updated ISSUE-0013/0014/0015 and RED_TAG lifecycle text to the same refreshed-gate sequencing posture from snapshot `2026-03-10T21:36:04Z`. **Done: 2026-03-10**. Artifact: `artifacts/all-green-gate-summary.json`.
 
 
 ## 2026-03-09 Governance validator rerun
