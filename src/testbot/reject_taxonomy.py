@@ -40,6 +40,7 @@ def derive_reject_signal(
     ambiguity_detected: bool,
     answer_contract_valid: bool,
     general_knowledge_contract_valid: bool,
+    general_knowledge_contract_applicability: str = "applicable",
 ) -> RejectSignal:
     """Return deterministic machine-oriented reject signal with human-readable reason."""
 
@@ -122,7 +123,7 @@ def derive_reject_signal(
                 threshold=1.0,
                 reason="answer-contract rejection: draft did not satisfy grounding/citation requirements",
             )
-        if not general_knowledge_contract_valid:
+        if general_knowledge_contract_applicability == "applicable" and not general_knowledge_contract_valid:
             return _signal(
                 code="GK_CONTRACT_MARKER_FAIL",
                 partition="contract",

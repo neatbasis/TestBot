@@ -306,6 +306,8 @@ For rejected turns, inspect:
 
 - `rejected_turn`: deterministic reject flag.
 - `nearest_failure_gate`: gate name, current value, required value, and `margin_to_pass`.
+- `debug.contract.general_knowledge_contract_applicability`: `applicable` vs `not_applicable` contract status.
+- `debug.contract.general_knowledge_contract_failed_when_applicable`: alertable boolean (`true` only when applicability is `applicable` and validation failed).
 - `counterfactuals.top_candidate_pass_thresholds`: threshold values where the current top candidate would satisfy the score/margin gates.
 - `counterfactuals.alternate_routing_policy_checks`: whether alternate routes (for example clarify/route-to-ask) would pass policy checks for the same state.
 
