@@ -4,6 +4,7 @@ Feature: Memory recall behavior
   As a resident
   I want cited answers when memory is sufficient and progressive fallback when it is not
 
+  @ISSUE-0013 @AC-0013-10
   Scenario: cited memory-grounded answer path
     Given a deterministic in-memory recall harness
     And eval cases are loaded from "eval/cases.jsonl"
@@ -14,6 +15,7 @@ Feature: Memory recall behavior
     And the response includes a grounding basis statement
     And the response includes deterministic citation-context formatting
 
+  @ISSUE-0013 @AC-0013-10
   Scenario: progressive assist fallback path
     Given a deterministic in-memory recall harness
     And eval cases are loaded from "eval/cases.jsonl"
@@ -21,6 +23,7 @@ Feature: Memory recall behavior
     Then the assistant returns an assistive fallback response
 
   @Rule:AmbiguityHandling
+  @ISSUE-0013 @AC-0013-08
   Scenario: equivalent candidates remain ambiguous after tie-break
     Given a deterministic in-memory recall harness
     When equivalent top candidates remain after tie-break
@@ -28,6 +31,7 @@ Feature: Memory recall behavior
 
 
   @Rule:FallbackSemantics
+  @ISSUE-0013 @AC-0013-10
   Scenario: empty and scored-empty typed states keep distinct downstream fallback contracts
     Given a deterministic in-memory recall harness
     When typed memory fallback contracts are resolved for empty and scored-empty evidence
@@ -39,6 +43,7 @@ Feature: Memory recall behavior
     And the memory evidence-state mapping should include fallback strategy "OFFER_ASSIST_ALTERNATIVES" for "E.scored_empty_non_memory"
 
   @Rule:TemporalRouting
+  @ISSUE-0013 @AC-0013-10
   Scenario: pronoun temporal follow-up resolves anchor before routing
     Given a deterministic in-memory recall harness
     And recall candidates include a recent anchor and older distractor
@@ -46,12 +51,14 @@ Feature: Memory recall behavior
     Then the temporal anaphora bridge selects the anchor before rerank
     And the bridge emits elapsed delta and yesterday window details
 
+  @ISSUE-0013 @AC-0013-01 @AC-0013-03
   Scenario: observe and stabilize happen before route authority
     Given a canonical stage harness with a raw utterance "My name is Sebastian"
     When canonical stages execute stabilize then intent resolve then retrieve
     Then stabilization artifacts are persisted before route authority assignment
     And route authority cannot be finalized until stabilization outputs exist
 
+  @ISSUE-0013 @AC-0013-05
   Scenario: observe.turn stores user claims only as observation artifacts in-turn
     Given a canonical memory claim harness with claim "My favorite color is green"
     When observe.turn captures the claim for turn "turn-memory-1"
@@ -60,6 +67,7 @@ Feature: Memory recall behavior
     And committed memory ids should be empty
     And same-turn retrieval should not return committed memory id "mem-turn-memory-1-claim-1"
 
+  @ISSUE-0013 @AC-0013-02
   Scenario: committed claims become retrievable memory only in a later turn
     Given a canonical memory claim harness with claim "My favorite color is green"
     When observe.turn captures the claim for turn "turn-memory-1"
@@ -69,6 +77,7 @@ Feature: Memory recall behavior
     And committed memory ids should include "mem-turn-memory-1-claim-1"
     And later-turn retrieval should return committed memory id "mem-turn-memory-1-claim-1"
 
+  @ISSUE-0013 @AC-0013-05
   Scenario: same-turn retrieval that returns a just-observed claim is rejected
     Given a canonical memory claim harness with claim "My favorite color is green"
     When observe.turn captures the claim for turn "turn-memory-1"
@@ -76,6 +85,7 @@ Feature: Memory recall behavior
     Then same-turn retrieval should be rejected as invalid durable memory
 
   @Rule:AmbiguityHandling
+  @ISSUE-0013 @AC-0013-08
   Scenario: multi-antecedent pronoun follow-up requires disambiguation before committed-context reuse
     Given a canonical multi-antecedent commit-state harness
     When a pronoun follow-up "when did it start" is evaluated at the next turn boundary
@@ -83,10 +93,12 @@ Feature: Memory recall behavior
     And commit-state transitions should persist multi-antecedent facts and clear selected antecedent at the turn boundary
 
 
+  @ISSUE-0013 @AC-0013-07
   Scenario: segment-aware continuity groups multi-turn self-profile memory
     Given derived memory segments for follow-up self-profile turns
     Then the segment id remains stable across those turns
 
+  @ISSUE-0013 @AC-0013-06 @AC-0013-10
   Scenario: strata-aware retrieval prefers semantic memory over episodic utterance
     Given a segment with semantic and episodic memory candidates
     When evidence is bundled for policy consumption
