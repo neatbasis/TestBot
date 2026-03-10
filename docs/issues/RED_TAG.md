@@ -30,6 +30,12 @@ KPI evidence updates are mandatory for red-tag triage. If any KPI guardrail fail
 KPI warning-mode governance policy is defined in `docs/testing.md` under [KPI guardrail mode policy (authoritative)](../testing.md#kpi-guardrail-mode-policy-authoritative). Use that policy as the canonical source for allowed modes, default rationale, promotion criteria, and persistent-warning issue-linkage requirements.
 
 
+## KPI guardrail mode decision (authoritative triage posture)
+
+- **Selected mode:** warning mode (`--kpi-guardrail-mode optional`).
+- **Operational rule:** for active red-tag entries, warning-mode KPI results are blocker evidence until each warning has explicit issue linkage with owner + due date.
+- **Active warning debt linkage (snapshot `2026-03-10T20:32:23Z`):** `qa_validate_kpi_guardrails` -> **Owner: platform-qa**, **Due: 2026-03-17** (triage review + mitigation update), with lifecycle synchronization accountability **Owner: release-governance**, **Due: 2026-03-17** across ISSUE-0013/0014/0015/RED_TAG.
+
 ## KPI warning debt vs blocker interpretation
 
 - For `Severity: red` issues and blocker/dependent closure paths, persistent KPI guardrail warnings are treated as **blocker evidence** until mitigation is issue-linked with owner + due date.
@@ -53,12 +59,12 @@ KPI warning-mode governance policy is defined in `docs/testing.md` under [KPI gu
   - Last reviewed: 2026-03-10
   - Next review due: 2026-03-17
   - KPI evidence: artifacts/all-green-gate-summary.json
-  - Decision notes: Dependency chain vocabulary remains synchronized; ISSUE-0015 stays open/blocked pending evidence because gate snapshot `2026-03-10T20:32:23Z` is failed (failing checks: `product_behave`, `qa_pytest_not_live_smoke`, `qa_validate_invariant_sync`; warning: `qa_validate_kpi_guardrails`; first failing commands: `product -> /root/.pyenv/versions/3.11.14/bin/python -m behave`, `qa -> /root/.pyenv/versions/3.11.14/bin/python -m pytest -m 'not live_smoke'`).
+  - Decision notes: Dependency chain vocabulary remains synchronized; ISSUE-0015 stays open/blocked pending evidence because gate snapshot `2026-03-10T20:32:23Z` is failed (failing checks: `product_behave`, `qa_pytest_not_live_smoke`, `qa_validate_invariant_sync`; warning: `qa_validate_kpi_guardrails`; first failing commands: `product -> /root/.pyenv/versions/3.11.14/bin/python -m behave`, `qa -> /root/.pyenv/versions/3.11.14/bin/python -m pytest -m 'not live_smoke'`). KPI warning debt owner/due linkage: **Owner: platform-qa; Due: 2026-03-17** (with lifecycle wording sync follow-through by **release-governance; Due: 2026-03-17**).
 - ISSUE-0014 — **CLI self-identity turns are stabilized structurally but semantically misrouted before memory retrieval and durable fact promotion**: Open red-tag regression; evidence indicates rewrite-stage semantic inversion and self-reference misrouting prevent retrieval activation and confirmed-user-fact promotion. This is a blocking dependency for ISSUE-0013 AC-0013-11 and ISSUE-0015 closure gates.
   - Last reviewed: 2026-03-10
   - Next review due: 2026-03-17
   - KPI evidence: artifacts/all-green-gate-summary.json
-  - Decision notes: ISSUE-0014 remains a blocker in the active chain; lifecycle wording is open/blocked pending evidence and aligned to gate snapshot `2026-03-10T20:32:23Z` (`status=failed`, failing checks: `product_behave`, `qa_pytest_not_live_smoke`, `qa_validate_invariant_sync`, warning check: `qa_validate_kpi_guardrails`).
+  - Decision notes: ISSUE-0014 remains a blocker in the active chain; lifecycle wording is open/blocked pending evidence and aligned to gate snapshot `2026-03-10T20:32:23Z` (`status=failed`, failing checks: `product_behave`, `qa_pytest_not_live_smoke`, `qa_validate_invariant_sync`, warning check: `qa_validate_kpi_guardrails`). KPI warning debt owner/due linkage: **Owner: platform-qa; Due: 2026-03-17** (with lifecycle wording sync follow-through by **release-governance; Due: 2026-03-17**).
 
 Dependency evidence pointer (2026-03-09): `docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md` with linked behave/pytest logs, reproducible CLI traces, and canonical gate artifacts used for open/blocked pending evidence tracking.
 Governance validator fallback audit (2026-03-10): `docs/issues/evidence/2026-03-10-governance-validator-base-ref-fallback-audit.md` documents `origin/main` unavailability, automatic `HEAD~1` fallback, and explicit `HEAD~1` reruns for auditable readiness evidence.

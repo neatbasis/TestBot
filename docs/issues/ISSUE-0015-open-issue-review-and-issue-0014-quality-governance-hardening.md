@@ -12,6 +12,13 @@
 
 ## Canonical Cross-Reference
 
+## KPI guardrail mode decision (lifecycle/readiness)
+
+- **Selected mode:** warning mode (`--kpi-guardrail-mode optional`) with explicit debt tracking.
+- **Readiness criteria update for ISSUE-0015 closure:** while warning mode remains, unresolved KPI warnings are blocker evidence for this red-tag dependent stream and must remain linked to owner + due date in ISSUE-0015, ISSUE-0014, and `docs/issues/RED_TAG.md` for every review cycle.
+- **Current linked warning debt:** `qa_validate_kpi_guardrails` warning at snapshot `2026-03-10T20:32:23Z` -> **Owner: platform-qa**, **Due: 2026-03-17**; lifecycle-language synchronization follow-through -> **Owner: release-governance**, **Due: 2026-03-17**.
+
+
 - Routing anchor: ISSUE-0013 (**dependent** in current execution order; governance close-order stream with open/blocked pending evidence state).
 - Execution-order linkage: ISSUE-0008 (**blocker**) -> ISSUE-0011 (**blocker**) -> ISSUE-0012 (**parallel stream**) -> ISSUE-0014 (**blocker**) -> ISSUE-0015 (**dependent**).
 - Companion issue references: ISSUE-0014 (defect narrative under review), ISSUE-0012 (delivery-plan governance), ISSUE-0017 (pending-lookup fallback invariant normalization that must stay lifecycle-consistent with ISSUE-0010 policy text).
