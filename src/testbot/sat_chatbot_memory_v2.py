@@ -11,7 +11,7 @@ import warnings
 from concurrent.futures import Future, ThreadPoolExecutor
 from threading import Lock
 from urllib.error import URLError
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 from urllib.request import urlopen
 from argparse import ArgumentParser, BooleanOptionalAction, Namespace
 from collections import deque
@@ -725,6 +725,13 @@ def _ha_connection_error(api_url: str, token: str, entity_id: str) -> str | None
         return f"{type(exc).__name__}: {exc}"
 
 
+def _validate_ollama_base_url(base_url: str) -> str | None:
+    parsed = urlparse(base_url.strip())
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        return f"Invalid OLLAMA_BASE_URL '{base_url}'; must be full http(s) URL"
+    return None
+
+
 def _ollama_connection_error(base_url: str, chat_model: str, embedding_model: str) -> str | None:
     def _model_aliases(model_name: str) -> set[str]:
         trimmed = model_name.strip()
@@ -736,6 +743,10 @@ def _ollama_connection_error(base_url: str, chat_model: str, embedding_model: st
                 return {trimmed, base_name}
             return {trimmed}
         return {trimmed, f"{trimmed}:latest"}
+
+    base_url_error = _validate_ollama_base_url(base_url)
+    if base_url_error is not None:
+        return base_url_error
 
     tags_url = urljoin(base_url.rstrip("/") + "/", "api/tags")
     try:
