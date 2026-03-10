@@ -63,13 +63,9 @@ Use ISSUE-0012 only as linked historical delivery-planning context.
    ollama pull nomic-embed-text
    ```
 
-4. Configure environment variables.
+4. Configure environment variables in your shell/session (shared by runtime startup and live smoke checks).
 
-   ```bash
-   cp .env.example .env
-   ```
-
-   Minimum expected values:
+   Example:
 
    ```env
    HA_API_URL=http://homeassistant.local:8123
@@ -78,6 +74,7 @@ Use ISSUE-0012 only as linked historical delivery-planning context.
 
    OLLAMA_BASE_URL=http://localhost:11434
    OLLAMA_MODEL=llama3.1:latest
+   OLLAMA_EMBEDDING_MODEL=nomic-embed-text
    ```
 
 ## Run

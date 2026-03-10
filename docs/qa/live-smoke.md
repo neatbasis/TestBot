@@ -1,10 +1,6 @@
 # Live Smoke Runner Configuration
 
-The live smoke runner requires a local environment file at:
-
-- `~/.testbot/.env`
-
-`scripts/smoke/run_live_smoke.py` loads this file before executing checks and exits early with a clear config error if the file is missing or invalid.
+The live smoke runner and runtime startup (`testbot --mode ...`) read required HA/Ollama values directly from the process environment.
 
 ## Canonical bug-elimination sequencing (ISSUE-0013)
 
@@ -20,7 +16,7 @@ Checklist for each smoke execution:
 
 ## Required variables (TestBot production profile)
 
-Add these keys to `~/.testbot/.env`:
+Set these keys in the shell/session before running smoke checks:
 
 - `HA_API_URL` (full `http://` or `https://` URL)
 - `HA_API_SECRET` (non-empty Home Assistant bearer token)
@@ -74,9 +70,9 @@ Then point the runner to your profile via `--checks-file` (or `SMOKE_CHECKS_FILE
 
 ## Secure handling guidance
 
-- Never commit `~/.testbot/.env` or any secret-bearing copy of it to git.
+- Never commit secret-bearing environment exports, scripts, or shell history snippets to git.
 - Rotate secrets/tokens regularly and immediately after suspected exposure.
-- Restrict local permissions so only your user can read it (for example `chmod 600 ~/.testbot/.env`).
+- Use secure secret injection for your shell/session (for example, password managers, direnv with local-only files, or CI secret stores).
 - Prefer short-lived tokens where possible.
 
 ## Quick start

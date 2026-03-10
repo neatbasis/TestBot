@@ -6,21 +6,7 @@ import sys
 from pathlib import Path
 
 
-def test_config_loads_dotenv_from_testbot_home(tmp_path: Path) -> None:
-    env_file = tmp_path / ".testbot" / ".env"
-    env_file.parent.mkdir(parents=True, exist_ok=True)
-    env_file.write_text(
-        "\n".join(
-            [
-                "HA_API_SECRET=ha-test-supersecret-token",
-                "HA_SATELLITE_ENTITY_ID=assist_satellite.test",
-                "OLLAMA_MODEL=custom-model",
-            ]
-        )
-        + "\n",
-        encoding="utf-8",
-    )
-
+def test_config_loads_from_process_environment() -> None:
     command = [
         sys.executable,
         "-c",
@@ -38,7 +24,9 @@ def test_config_loads_dotenv_from_testbot_home(tmp_path: Path) -> None:
         capture_output=True,
         text=True,
         env={
-            "HOME": str(tmp_path),
+            "HA_API_SECRET": "ha-test-supersecret-token",
+            "HA_SATELLITE_ENTITY_ID": "assist_satellite.test",
+            "OLLAMA_MODEL": "custom-model",
             "PYTHONPATH": str(Path.cwd() / "src"),
             "PATH": os.environ.get("PATH", ""),
         },
