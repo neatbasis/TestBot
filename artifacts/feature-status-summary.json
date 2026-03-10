@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-03-10T00:18:56Z",
+  "generated_at_utc": "2026-03-10T20:06:56Z",
   "inputs": {
     "contract_path": "docs/qa/feature-status.yaml",
     "gate_summary_path": "artifacts/all-green-gate-summary.json",
@@ -11,106 +11,112 @@
     "contract": {
       "path": "docs/qa/feature-status.yaml",
       "size_bytes": 8191,
-      "mtime_utc": "2026-03-09T22:39:39Z",
+      "mtime_utc": "2026-03-10T19:10:18Z",
       "sha256": "3d6d081eb09c8e69bdc45a71c64e7c54099767c27a645a89db4dbe51c35c3039"
     },
     "gate_summary": {
       "path": "artifacts/all-green-gate-summary.json",
-      "size_bytes": 4079,
-      "mtime_utc": "2026-03-10T00:17:43Z",
-      "sha256": "3825401f37a1b80a8151485aff7f671339871af58a400e93e23ecf0f120f4ae4"
+      "size_bytes": 4044,
+      "mtime_utc": "2026-03-10T20:06:50Z",
+      "sha256": "a05d99a20cc50abd4b64863585a21d145114faa46cc6e243868ab8311288116a"
     },
     "open_issues": [
       {
         "path": "docs/issues/ISSUE-0008-intent-grounding-gate-failures-block-merge.md",
         "size_bytes": 3717,
-        "mtime_utc": "2026-03-09T22:39:38Z",
+        "mtime_utc": "2026-03-10T19:10:18Z",
         "sha256": "fb9bd028f62b8366bdd3ad23a1b2f0423838592c3f71164206a56e2edbaf96f3"
       },
       {
         "path": "docs/issues/ISSUE-0009-knowing-grounded-answers-partial-provenance-gap.md",
         "size_bytes": 7997,
-        "mtime_utc": "2026-03-09T22:39:38Z",
+        "mtime_utc": "2026-03-10T19:10:18Z",
         "sha256": "89bb1bfad9ff4e9b4bec3cc286e30c9934cc1b7cf328ba519ef675b890544e18"
       },
       {
         "path": "docs/issues/ISSUE-0010-unknowing-safe-fallback-partial-contract-gap.md",
         "size_bytes": 8136,
-        "mtime_utc": "2026-03-09T22:39:38Z",
+        "mtime_utc": "2026-03-10T19:10:18Z",
         "sha256": "620a4d070d3c120d8aacaa3be7d7cb4c58e2b36ca1a8e05440b93cde54a87ee3"
       },
       {
         "path": "docs/issues/ISSUE-0011-turn-analytics-input-coverage-silent-drop.md",
         "size_bytes": 7102,
-        "mtime_utc": "2026-03-09T22:39:38Z",
+        "mtime_utc": "2026-03-10T19:10:18Z",
         "sha256": "de4a43f84d6aa325cda1ff7d4466745c0af38f44885f6c90e87529daceca208b"
       },
       {
         "path": "docs/issues/ISSUE-0012-canonical-turn-pipeline-delivery-plan.md",
         "size_bytes": 4759,
-        "mtime_utc": "2026-03-09T22:39:38Z",
+        "mtime_utc": "2026-03-10T19:10:18Z",
         "sha256": "fdcfa357adc237814329cb799e4b6adaa3696cd6f554942746f31d6660c85683"
       },
       {
         "path": "docs/issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md",
-        "size_bytes": 41967,
-        "mtime_utc": "2026-03-10T00:17:43Z",
-        "sha256": "75acf8e3157d60cde1324b60ee8f0653c3a201e2b8e565f2c2b0ff2f7f0e7919"
+        "size_bytes": 42558,
+        "mtime_utc": "2026-03-10T19:10:18Z",
+        "sha256": "d09316be0cae862d7d202cec44497941836c248b21c4f832603e21190346711a"
       },
       {
         "path": "docs/issues/ISSUE-0014-cli-self-identity-semantic-routing-regression.md",
-        "size_bytes": 26696,
-        "mtime_utc": "2026-03-10T00:17:43Z",
-        "sha256": "7e85a96f37ef9e6f45ac63ad23de66ed271e0618e97bfce0a0616f1fdb4e4b0e"
+        "size_bytes": 28313,
+        "mtime_utc": "2026-03-10T19:10:18Z",
+        "sha256": "24d64250e26ed0cc07b604d745f0eecd6038b115f5f60f838b771f0535d42eaa"
       },
       {
         "path": "docs/issues/ISSUE-0015-open-issue-review-and-issue-0014-quality-governance-hardening.md",
         "size_bytes": 18456,
-        "mtime_utc": "2026-03-10T00:17:43Z",
+        "mtime_utc": "2026-03-10T19:10:18Z",
         "sha256": "4b52b8df2a424075058c4f16aa5853516154d2dd9d3b1ee11af4940abd839d6d"
       },
       {
         "path": "docs/issues/ISSUE-0017-invariant-boundary-ambiguity-answer-commit-regression.md",
         "size_bytes": 6884,
-        "mtime_utc": "2026-03-09T22:39:38Z",
+        "mtime_utc": "2026-03-10T19:10:18Z",
         "sha256": "1aef6b909f065fe59f736c373f779d7d5d25d75ccf142169d3ea3afdd56ecc11"
       },
       {
         "path": "docs/issues/ISSUE-0018-dual-trigger-event-loop-for-proactive-ingestion-lifecycle.md",
         "size_bytes": 7071,
-        "mtime_utc": "2026-03-10T00:17:43Z",
+        "mtime_utc": "2026-03-10T19:10:18Z",
         "sha256": "925768c3c65f203347cfceefd41f6d2a25a2eb393e024bbd7ce0403ccc98ef5f"
       },
       {
         "path": "docs/issues/ISSUE-0019-channel-agnostic-conversation-engine-and-shared-history.md",
         "size_bytes": 5698,
-        "mtime_utc": "2026-03-10T00:17:43Z",
+        "mtime_utc": "2026-03-10T19:10:18Z",
         "sha256": "1812d6f48233c05aec89e41f02bd6933553de781db65f9a5157151df6277e01a"
+      },
+      {
+        "path": "docs/issues/ISSUE-0020-source-ingestion-quickstart-env-toggle-deprecation-proposal.md",
+        "size_bytes": 3979,
+        "mtime_utc": "2026-03-10T20:05:12Z",
+        "sha256": "1519672ab7426a750897fb253319cc83844c9480c18c059296e59e9e150f8e5b"
       }
     ],
     "roadmap_files": [
       {
         "path": "docs/roadmap/alignment-drift-technical-debt-2026-03-05.md",
         "size_bytes": 5622,
-        "mtime_utc": "2026-03-09T22:39:39Z",
+        "mtime_utc": "2026-03-10T19:10:18Z",
         "sha256": "02618bdff7d1b35cdbe05736f9e42202981edf2d1204d7d7ef3232899575c530"
       },
       {
         "path": "docs/roadmap/current-status-and-next-5-priorities.md",
-        "size_bytes": 8470,
-        "mtime_utc": "2026-03-09T22:39:39Z",
-        "sha256": "d8aa997d61c9db9c731ea7c24ceb4d41c7e8f078dd2e502c5f648b12ec645311"
+        "size_bytes": 9001,
+        "mtime_utc": "2026-03-10T20:06:23Z",
+        "sha256": "523db9f3e6987a9774493e173ab14c94fd3d5df18b09432435130b869a17dd9b"
       },
       {
         "path": "docs/roadmap/next-4-sprints-grounded-knowing.md",
         "size_bytes": 13756,
-        "mtime_utc": "2026-03-09T22:39:39Z",
+        "mtime_utc": "2026-03-10T19:10:18Z",
         "sha256": "a725406dcffd4aa1da3a269fe78806032b8360ae64e64c7f879eb277712d4a3c"
       },
       {
         "path": "docs/roadmap/reflective-milestone-10-sprints.md",
         "size_bytes": 9579,
-        "mtime_utc": "2026-03-09T22:39:39Z",
+        "mtime_utc": "2026-03-10T19:10:18Z",
         "sha256": "f8b41b80b9e06c2144db690373aee3bfcd1910999904b5ad086fe63576252da0"
       }
     ],
@@ -118,53 +124,51 @@
       {
         "path": "features/answer_contract.feature",
         "size_bytes": 8319,
-        "mtime_utc": "2026-03-09T22:39:39Z",
+        "mtime_utc": "2026-03-10T19:10:18Z",
         "sha256": "2226367d32ba3fa2329717619902786f986ffde904d7f4ee84f5e6430235d230"
       },
       {
         "path": "features/capabilities.feature",
         "size_bytes": 2458,
-        "mtime_utc": "2026-03-09T22:39:39Z",
+        "mtime_utc": "2026-03-10T19:10:18Z",
         "sha256": "6608161e934565904ae180017080c8334d200147d54368dff39375ea1dd19333"
       },
       {
         "path": "features/intent_grounding.feature",
         "size_bytes": 18941,
-        "mtime_utc": "2026-03-09T22:39:39Z",
+        "mtime_utc": "2026-03-10T19:10:18Z",
         "sha256": "18ffd3878f1f389c42fdadd0c5ab43a3d0a2b4a7621f918bd75d0be413396752"
       },
       {
         "path": "features/memory_recall.feature",
         "size_bytes": 6683,
-        "mtime_utc": "2026-03-10T00:18:51Z",
+        "mtime_utc": "2026-03-10T19:10:18Z",
         "sha256": "823f16f1ab8ad58cfd69855ee4b25f28455fa3c9d8e97b3f548f7779c29ff001"
       },
       {
         "path": "features/source_ingestion.feature",
         "size_bytes": 2845,
-        "mtime_utc": "2026-03-09T22:39:39Z",
+        "mtime_utc": "2026-03-10T19:10:18Z",
         "sha256": "b577b0f355190f87aab2317c7d8fed2836288d7a5d8dd39ea2b47ec30eb6b3f2"
       },
       {
         "path": "features/startup_status.feature",
         "size_bytes": 1024,
-        "mtime_utc": "2026-03-09T22:39:39Z",
+        "mtime_utc": "2026-03-10T19:10:18Z",
         "sha256": "0853a90425e87ba6bee2763ff6816b55b40e46f595489b4fc57912db39196165"
       },
       {
         "path": "features/time_awareness.feature",
         "size_bytes": 774,
-        "mtime_utc": "2026-03-09T22:39:39Z",
+        "mtime_utc": "2026-03-10T19:10:18Z",
         "sha256": "6631272d9f1869d2c8f0a28756f2e2cedfc7232e4798fd244a605f12c1c953c2"
       }
     ]
   },
-  "warnings": [
-    "Gate summary appears older than one or more source files (contract, open issue records, or roadmap files); regenerate gate evidence for freshest status. Hint: run `python scripts/all_green_gate.py --continue-on-failure --json-output artifacts/all-green-gate-summary.json` to refresh `artifacts/all-green-gate-summary.json`."
-  ],
+  "warnings": [],
   "summary": {
-    "implemented": 2,
-    "partial": 7,
+    "implemented": 0,
+    "partial": 9,
     "missing": 0
   },
   "capabilities": [
@@ -174,7 +178,9 @@
       "owner_module": "src/testbot/canonical_turn_orchestrator.py",
       "effective_status": "partial",
       "declared_status": "implemented",
-      "failed_gate_checks": [],
+      "failed_gate_checks": [
+        "product_behave"
+      ],
       "relevant_open_issues": [
         {
           "id": "ISSUE-0009",
@@ -223,7 +229,9 @@
       "owner_module": "src/testbot/reflection_policy.py",
       "effective_status": "partial",
       "declared_status": "implemented",
-      "failed_gate_checks": [],
+      "failed_gate_checks": [
+        "product_behave"
+      ],
       "relevant_open_issues": [
         {
           "id": "ISSUE-0010",
@@ -264,7 +272,10 @@
       "owner_module": "src/testbot/sat_chatbot_memory_v2.py::context.resolve|intent.resolve|retrieve.evidence|policy.decide",
       "effective_status": "partial",
       "declared_status": "partial",
-      "failed_gate_checks": [],
+      "failed_gate_checks": [
+        "product_behave",
+        "qa_pytest_not_live_smoke"
+      ],
       "relevant_open_issues": [
         {
           "id": "ISSUE-0008",
@@ -303,9 +314,11 @@
       "capability_id": "time_aware_memory_ranking",
       "capability_name": "Time-aware memory retrieval and reranking",
       "owner_module": "src/testbot/rerank.py",
-      "effective_status": "implemented",
+      "effective_status": "partial",
       "declared_status": "implemented",
-      "failed_gate_checks": [],
+      "failed_gate_checks": [
+        "qa_pytest_not_live_smoke"
+      ],
       "relevant_open_issues": [],
       "roadmap_priority_refs": [
         "P2",
@@ -347,12 +360,19 @@
       "owner_module": "src/testbot/source_connectors.py",
       "effective_status": "partial",
       "declared_status": "partial",
-      "failed_gate_checks": [],
+      "failed_gate_checks": [
+        "qa_pytest_not_live_smoke"
+      ],
       "relevant_open_issues": [
         {
           "id": "ISSUE-0018",
           "title": "Dual-trigger event loop for proactive ingestion lifecycle (user + system initiated processing)",
           "path": "docs/issues/ISSUE-0018-dual-trigger-event-loop-for-proactive-ingestion-lifecycle.md"
+        },
+        {
+          "id": "ISSUE-0020",
+          "title": "Deprecate `SOURCE_INGEST_ENABLED` toggle requirement in quickstart source-ingestion flow",
+          "path": "docs/issues/ISSUE-0020-source-ingestion-quickstart-env-toggle-deprecation-proposal.md"
         }
       ],
       "roadmap_priority_refs": [
@@ -400,7 +420,10 @@
       "owner_module": "src/testbot/turn_observation.py|src/testbot/candidate_encoding.py|src/testbot/stabilization.py",
       "effective_status": "partial",
       "declared_status": "partial",
-      "failed_gate_checks": [],
+      "failed_gate_checks": [
+        "product_behave",
+        "qa_pytest_not_live_smoke"
+      ],
       "relevant_open_issues": [
         {
           "id": "ISSUE-0013",
@@ -492,7 +515,10 @@
       "owner_module": "src/testbot/context_resolution.py|src/testbot/intent_resolution.py|src/testbot/evidence_retrieval.py|src/testbot/policy_decision.py",
       "effective_status": "partial",
       "declared_status": "partial",
-      "failed_gate_checks": [],
+      "failed_gate_checks": [
+        "product_behave",
+        "qa_pytest_not_live_smoke"
+      ],
       "relevant_open_issues": [
         {
           "id": "ISSUE-0013",
@@ -583,7 +609,10 @@
       "owner_module": "src/testbot/answer_assembly.py|src/testbot/answer_validation.py|src/testbot/answer_rendering.py|src/testbot/answer_commit.py",
       "effective_status": "partial",
       "declared_status": "partial",
-      "failed_gate_checks": [],
+      "failed_gate_checks": [
+        "product_behave",
+        "qa_pytest_not_live_smoke"
+      ],
       "relevant_open_issues": [
         {
           "id": "ISSUE-0013",
@@ -650,9 +679,11 @@
       "capability_id": "governance_readiness_gate",
       "capability_name": "Canonical all-green merge gate and issue governance checks",
       "owner_module": "scripts/all_green_gate.py",
-      "effective_status": "implemented",
+      "effective_status": "partial",
       "declared_status": "implemented",
-      "failed_gate_checks": [],
+      "failed_gate_checks": [
+        "qa_validate_invariant_sync"
+      ],
       "relevant_open_issues": [],
       "roadmap_priority_refs": [
         "P5"
@@ -682,7 +713,7 @@
       "unmapped_scenarios": []
     }
   ],
-  "open_issue_count": 11,
+  "open_issue_count": 12,
   "gate_checks_seen": 11,
   "unmapped_scenarios": []
 }
