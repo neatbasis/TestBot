@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from testbot.pipeline_state import PipelineState
-from testbot.sat_chatbot_memory_v2 import _build_debug_turn_payload, _format_debug_turn_trace
+from testbot.sat_chatbot_memory_v2 import _build_debug_turn_payload, _format_debug_turn_trace, _format_debug_turn_trace_payload
 
 
 REQUIRED_DEBUG_KEYS = {
@@ -433,3 +433,42 @@ def test_structured_debug_payload_policy_chosen_action_matches_fallback_action_a
 
     assert payload["debug.policy"]["fallback_action"] == "ANSWER_GENERAL_KNOWLEDGE"
     assert payload["debug.policy"]["chosen_action"] == payload["debug.policy"]["fallback_action"]
+
+
+def test_debug_turn_payload_schema_drift_fails_loudly_in_formatter() -> None:
+    state = PipelineState(
+        user_input="what is ontology",
+        rewritten_query="what is ontology",
+        classified_intent="knowledge_question",
+        resolved_intent="knowledge_question",
+        confidence_decision={"context_confident": True, "ambiguity_detected": False},
+        invariant_decisions={"answer_mode": "assist", "fallback_action": "ANSWER_GENERAL_KNOWLEDGE"},
+    )
+
+    payload = _build_debug_turn_payload(state=state, intent_label="knowledge_question", hits=[])
+    payload.pop("debug.policy")
+
+    try:
+        _format_debug_turn_trace_payload(payload=payload, verbose=False)
+    except ValueError as exc:
+        assert "schema drift" in str(exc)
+    else:
+        raise AssertionError("expected ValueError for debug payload schema drift")
+
+
+def test_debug_payload_generation_is_observational_only_for_pipeline_state() -> None:
+    state = PipelineState(
+        user_input="what did I say",
+        rewritten_query="what did I say",
+        classified_intent="memory_recall",
+        resolved_intent="memory_recall",
+        confidence_decision={"context_confident": False, "ambiguity_detected": True},
+        invariant_decisions={"answer_mode": "clarify", "fallback_action": "ASK_CLARIFYING_QUESTION"},
+    )
+    before_confidence = state.confidence_decision.to_dict()
+    before_invariant = state.invariant_decisions.to_dict()
+
+    _build_debug_turn_payload(state=state, intent_label="memory_recall", hits=[])
+
+    assert state.confidence_decision.to_dict() == before_confidence
+    assert state.invariant_decisions.to_dict() == before_invariant
