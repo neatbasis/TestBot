@@ -2315,3 +2315,87 @@ def test_capabilities_help_followup_debug_policy_never_reports_general_knowledge
 
     assert answered.invariant_decisions.get("fallback_action") != "ANSWER_GENERAL_KNOWLEDGE"
     assert debug_payload["debug.policy"]["fallback_action"] != "ANSWER_GENERAL_KNOWLEDGE"
+
+
+@pytest.mark.non_contract
+def test_chat_loop_prescribed_four_turn_replay_sets_commit_stage_recorded_only_on_turn_three(tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(runtime, "_validate_and_log_transition", lambda _result: None)
+    monkeypatch.setattr(runtime, "store_doc", lambda *args, **kwargs: None)
+    monkeypatch.setattr(runtime, "generate_reflection_yaml", lambda *args, **kwargs: "claims: []")
+    monkeypatch.setattr(runtime, "persist_promoted_context", lambda *args, **kwargs: [])
+
+    canned_answers = {
+        "turn 1": "Acknowledged.",
+        "turn 2": "I can share a grounded summary.",
+        "turn 3": (
+            "I can either help you reconstruct the timeline from what you remember, "
+            "or suggest where to check next for the missing detail."
+        ),
+        "turn 4": "Okay, continuing.",
+    }
+
+    def _stub_answer_assemble(llm, state, **kwargs):
+        del llm, kwargs
+        return runtime.AnswerAssembleResult(
+            draft_answer="",
+            final_answer=canned_answers[state.user_input],
+            fallback_action="NONE",
+            intent_class="non_memory",
+            social_or_non_knowledge_intent=False,
+            answer_policy_rationale={},
+            capability_help_short_circuit=False,
+        )
+
+    monkeypatch.setattr(runtime, "answer_assemble", _stub_answer_assemble)
+
+    class _EmptyStore:
+        def similarity_search_with_score(self, query: str, k: int = 4, **kwargs):
+            del query, k, kwargs
+            return []
+
+    prompts = iter(["turn 1", "turn 2", "turn 3", "turn 4", "stop"])
+    _run_chat_loop(
+        llm=_StaticLLM("ignored"),
+        store=_EmptyStore(),
+        chat_history=deque(),
+        near_tie_delta=0.05,
+        io_channel="cli",
+        capability_status="ask_unavailable",
+        capability_snapshot=CapabilitySnapshot(
+            runtime={},
+            requested_mode="cli",
+            daemon_mode=False,
+            effective_mode="cli",
+            fallback_reason=None,
+            exit_reason=None,
+            ha_error=None,
+            ollama_error=None,
+            runtime_capability_status=RuntimeCapabilityStatus(
+                ollama_available=True,
+                ha_available=False,
+                effective_mode="cli",
+                requested_mode="cli",
+                daemon_mode=False,
+                fallback_reason=None,
+                memory_backend="inmemory",
+                debug_enabled=False,
+                debug_verbose=False,
+                text_clarification_available=True,
+                satellite_ask_available=False,
+            ),
+        ),
+        read_user_utterance=lambda: next(prompts, None),
+        send_assistant_text=lambda _text: None,
+        clock=_FIXED_CLOCK,
+    )
+
+    rows = [json.loads(line) for line in (tmp_path / "logs" / "session.jsonl").read_text(encoding="utf-8").splitlines() if line.strip()]
+    commit_rows = [row for row in rows if row.get("event") == "commit_stage_recorded"]
+
+    assert len(commit_rows) == 4
+    commit_stage_recorded = [
+        bool(row["pending_repair_state"].get("repair_offered_to_user"))
+        for row in commit_rows
+    ]
+    assert commit_stage_recorded == [False, False, True, False]

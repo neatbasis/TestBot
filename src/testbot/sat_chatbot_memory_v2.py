@@ -1402,8 +1402,20 @@ def _is_capabilities_help_answer(text: str) -> bool:
 
 
 _CAPABILITY_OFFER_PATTERN = re.compile(
-    r"\b(i can look up|i can find|i can search|i can help you find|"
-    r"would you like me to|i can define|i can look that up)\b",
+    r"\b("
+    r"i can look up|"
+    r"i can find|"
+    r"i can search|"
+    r"i can help you find|"
+    r"would you like me to|"
+    r"i can define|"
+    r"i can look that up|"
+    r"i can either\b[^.?!]*\bor\b|"
+    r"suggest where to check next|"
+    r"suggest a quick way to verify|"
+    r"offer a best-effort response|"
+    r"help you reconstruct the timeline"
+    r")\b",
     re.IGNORECASE,
 )
 

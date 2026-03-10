@@ -145,3 +145,41 @@ def test_explicit_repair_offer_sets_pending_repair_and_followup_route() -> None:
 
     assert committed_state.pending_repair.to_dict()["repair_offered_to_user"] is True
     assert committed.pending_repair_state["followup_route"] == "repair_offer_followup"
+
+
+
+def test_runtime_offer_phrase_keeps_commit_repair_offer_propagation_intact() -> None:
+    state = PipelineState(user_input="what is ontology?")
+    committed_state, committed = commit_answer_stage(
+        state,
+        assembly=AnswerCandidate(
+            decision_class="answer_general_knowledge_labeled",
+            rendered_class="answer_general_knowledge_labeled",
+            retrieval_branch="direct_answer",
+            rationale="offer-bearing answer",
+            evidence_counts={"structured_facts": 0},
+            pending_repair_state={
+                "repair_required_by_policy": False,
+                "repair_offered_to_user": True,
+                "offer_type": "capability_offer",
+                "reason": "offer_bearing_answer",
+            },
+            pending_ingestion_request_id="",
+            resolved_obligations=["repair_state_not_required"],
+            remaining_obligations=[],
+            confirmed_user_facts=[],
+        ),
+        validation=ValidatedAnswer(passed=True, failures=[]),
+        rendered=RenderedAnswer(
+            rendered_text=(
+                "I can either help you reconstruct the timeline from what you remember, "
+                "or suggest where to check next for the missing detail."
+            ),
+            repair_offer_rendered=True,
+            repair_followup_route="capability_offer",
+        ),
+    )
+
+    assert committed.pending_repair_state["repair_offered_to_user"] is True
+    assert committed.pending_repair_state["followup_route"] == "capability_offer"
+    assert committed_state.commit_receipt["pending_repair_state"]["repair_offered_to_user"] is True
