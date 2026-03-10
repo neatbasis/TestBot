@@ -1657,6 +1657,7 @@ def test_chat_loop_async_pending_lookup_commits_pending_answer_and_logs_semantic
     mode_row = next(row for row in rows if row.get("event") == "final_answer_mode")
     assert mode_row["mode"] == "assist"
     assert mode_row["query"] == "ignored"
+    assert mode_row["stage_audit_trail"] == list(runtime.CanonicalTurnOrchestrator.STAGE_ORDER)
 
 
 def test_chat_loop_async_pending_lookup_contract_path_reaches_answer_commit_post(tmp_path, monkeypatch) -> None:
@@ -1747,6 +1748,74 @@ def test_chat_loop_async_pending_lookup_contract_path_reaches_answer_commit_post
     assert mode_row["mode"] == "assist"
     assert mode_row["query"] == "ignored"
 
+
+
+def test_final_answer_mode_stage_audit_trail_includes_answer_commit(tmp_path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(runtime, "store_doc", lambda *args, **kwargs: None)
+    monkeypatch.setattr(runtime, "generate_reflection_yaml", lambda *args, **kwargs: "claims: []")
+    monkeypatch.setattr(runtime, "persist_promoted_context", lambda *args, **kwargs: [])
+
+    def _start_background_ingest(*, runtime: dict[str, object], store: object, ingestion_request_id: str = "") -> dict[str, object]:
+        del store
+        runtime["source_ingest_background_in_progress"] = True
+        runtime["source_ingest_background_future"] = None
+        runtime["source_ingest_background_stub"] = True
+        request_id = ingestion_request_id or "stub-ingest-1"
+        runtime["source_ingest_background_request_id"] = request_id
+        from testbot import sat_chatbot_memory_v2 as runtime_module
+
+        runtime_module.append_session_log("source_ingest_background_started", {"background": True, "ingestion_request_id": request_id})
+        return {"started": True, "already_running": False, "ingestion_request_id": request_id}
+
+    monkeypatch.setattr(runtime, "_start_background_source_ingestion", _start_background_ingest)
+
+    class _EmptyStore:
+        def similarity_search_with_score(self, query: str, k: int = 4, **kwargs):
+            del query, k, kwargs
+            return []
+
+    prompts = iter(["what did i say?", "stop"])
+    _run_chat_loop(
+        runtime={"source_ingest_async_continuation": True},
+        llm=_StaticLLM("ignored"),
+        store=_EmptyStore(),
+        chat_history=deque(),
+        near_tie_delta=0.05,
+        io_channel="cli",
+        capability_status="ask_unavailable",
+        capability_snapshot=CapabilitySnapshot(
+            runtime={"source_ingest_async_continuation": True},
+            requested_mode="cli",
+            daemon_mode=False,
+            effective_mode="cli",
+            fallback_reason=None,
+            exit_reason=None,
+            ha_error=None,
+            ollama_error=None,
+            runtime_capability_status=RuntimeCapabilityStatus(
+                ollama_available=True,
+                ha_available=False,
+                effective_mode="cli",
+                requested_mode="cli",
+                daemon_mode=False,
+                fallback_reason=None,
+                memory_backend="inmemory",
+                debug_enabled=False,
+                debug_verbose=False,
+                text_clarification_available=True,
+                satellite_ask_available=False,
+            ),
+        ),
+        read_user_utterance=lambda: next(prompts, None),
+        send_assistant_text=lambda _text: None,
+        clock=_FIXED_CLOCK,
+    )
+
+    rows = [json.loads(line) for line in (tmp_path / "logs" / "session.jsonl").read_text(encoding="utf-8").splitlines() if line.strip()]
+    mode_row = next(row for row in rows if row.get("event") == "final_answer_mode")
+
+    assert mode_row["stage_audit_trail"] == list(runtime.CanonicalTurnOrchestrator.STAGE_ORDER)
 
 
 def test_background_ingestion_pending_lifecycle_event_order_and_payloads(monkeypatch) -> None:

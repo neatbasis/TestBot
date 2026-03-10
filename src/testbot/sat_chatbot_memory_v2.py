@@ -3835,6 +3835,9 @@ def _run_canonical_turn_pipeline(
                 "retrieval_continuity_evidence": list(ctx.artifacts.get("retrieval_continuity_evidence", ())),
             },
         )
+        stage_audit_trail = list(ctx.stage_audit_trail)
+        if not stage_audit_trail or stage_audit_trail[-1] != "answer.commit":
+            stage_audit_trail.append("answer.commit")
         append_session_log(
             "final_answer_mode",
             {
@@ -3848,7 +3851,7 @@ def _run_canonical_turn_pipeline(
                 "used_source_evidence_refs": ctx.state.used_source_evidence_refs,
                 "source_evidence_attribution": ctx.state.source_evidence_attribution,
                 "basis_statement": ctx.state.basis_statement,
-                "stage_audit_trail": list(ctx.stage_audit_trail),
+                "stage_audit_trail": stage_audit_trail,
                 "commit_stage": ctx.state.commit_receipt.get("commit_stage", "answer.commit"),
             },
         )
