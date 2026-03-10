@@ -268,6 +268,11 @@ Dependency labels (machine-auditable ordered chain):
   - `docs/qa/feature-status-report.md` and `artifacts/feature-status-summary.json` regenerated at `2026-03-09T04:33:08Z` via `python scripts/report_feature_status.py --output docs/qa/feature-status-report.md --json-output artifacts/feature-status-summary.json`.
   - Verification note: regenerated report no longer shows gate-summary staleness warning and remains aligned to partial canonical pipeline slice states.
 
+- 2026-03-10: Duplicate-prevention triage recorded after feature-status refresh (`python scripts/report_feature_status.py --output docs/qa/feature-status-report.md --json-output artifacts/feature-status-summary.json`).
+  - Reviewed open-issue mappings and unresolved criteria in `docs/qa/feature-status-report.md` and `artifacts/feature-status-summary.json`.
+  - Canonical pipeline capability gaps remain explicitly mapped to ISSUE-0013 unresolved criteria (`AC-0013-01`, `AC-0013-02`, `AC-0013-03`, `AC-0013-04`, `AC-0013-05`, `AC-0013-06`, `AC-0013-07`, `AC-0013-08`, `AC-0013-09`, `AC-0013-10`, `AC-0013-11`); knowing/unknowing and ingestion gaps remain mapped to ISSUE-0009, ISSUE-0010, and ISSUE-0018.
+  - Decision: **no new issue created**; planned implementation work continues under existing ISSUE-0013-routed streams (with cross-linked dependent issues) because current open issues already cover the same root causes.
+
 ## Red-tag triage note (dependency gate)
 
 - Last reviewed: 2026-03-09
