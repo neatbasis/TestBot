@@ -97,6 +97,7 @@ def commit_answer_stage(
     else:
         pending_repair_state["reason"] = "none"
         pending_repair_state.pop("followup_route", None)
+        pending_repair_state.pop("offer_type", None)
 
     commit_receipt = CommitReceiptArtifact.from_mapping(
         {
