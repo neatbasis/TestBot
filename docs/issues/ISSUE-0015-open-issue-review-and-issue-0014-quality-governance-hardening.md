@@ -12,8 +12,8 @@
 
 ## Canonical Cross-Reference
 
-- Routing anchor: ISSUE-0013 (**dependent** in current execution order; governance close-order stream).
-- Execution-order linkage: ISSUE-0008 -> ISSUE-0011 -> ISSUE-0012 (parallel stream) -> ISSUE-0014 -> ISSUE-0015.
+- Routing anchor: ISSUE-0013 (**dependent** in current execution order; governance close-order stream with open/blocked pending evidence state).
+- Execution-order linkage: ISSUE-0008 (**blocker**) -> ISSUE-0011 (**blocker**) -> ISSUE-0012 (**parallel stream**) -> ISSUE-0014 (**blocker**) -> ISSUE-0015 (**dependent**).
 - Companion issue references: ISSUE-0014 (defect narrative under review), ISSUE-0012 (delivery-plan governance), ISSUE-0017 (pending-lookup fallback invariant normalization that must stay lifecycle-consistent with ISSUE-0010 policy text).
 
 ## Problem Statement
@@ -115,7 +115,9 @@ Review scope was limited to open issues (`open` or `in_progress`) and issue-gove
 
 ## Closure Notes
 
-- 2026-03-09: Closure posture remains open by dependency gate; see synchronized red-tag triage note below for current blocker state.
+- Lifecycle sync completed on 2026-03-09. Vocabulary synchronized to blocker/dependent/parallel stream/open/blocked pending evidence and AC-0013-11 closure conditions aligned with ISSUE-0014 Phase 1.
+
+- 2026-03-09: Lifecycle posture remains open/blocked pending evidence by dependency gate; see synchronized red-tag triage note below for current blocker state.
 - 2026-03-09: Governance readiness snapshot evidence added for discoverability and dependency-state audit trail: `docs/issues/evidence/2026-03-09-governance-readiness-snapshot.md`.
 
 ## Red-tag triage note (dependency gate)
@@ -123,7 +125,7 @@ Review scope was limited to open issues (`open` or `in_progress`) and issue-gove
 - Last reviewed: 2026-03-09
 - Next review due: 2026-03-16
 - KPI evidence: docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md
-- Decision notes: AC6/AC7 evidence obligations are satisfied (including required CLI identity-continuity traces), and dependency language is synchronized across ISSUE-0013/0014/0015/RED_TAG; ISSUE-0015 remains open/red only for governance close-order sequencing.
+- Decision notes: ISSUE-0015 remains dependent and open/blocked pending evidence while blockers are active; AC-0013-11 and ISSUE-0014 Phase 1 use the same closure condition (identity semantic preservation, retrieval activation on immediate self-reference recall, confirmed identity fact promotion at commit) with deterministic tests, reproducible CLI traces, and canonical gate evidence.
 
 - 2026-03-08: Opened from open-issue review focused on canonical pipeline streams, with ISSUE-0014 assessed as strong runtime narrative but incomplete quality/governance control artifact.
 
@@ -174,9 +176,9 @@ Review scope was limited to open issues (`open` or `in_progress`) and issue-gove
 
 ### Open blockers (red-tag)
 
-- **AC6:** **satisfied** — governance linkage remains active and synchronized lifecycle language now reflects refreshed evidence-satisfied dependency posture from the canonical gate artifact bundle.
-- **AC7:** **satisfied** — targeted deterministic regression coverage passes, canonical all-green reports pass under warning-mode KPI policy, and closure-proof CLI traces are attached for identity semantic preservation, retrieval activation on self-reference recall, and confirmed identity fact promotion at commit.
-- **AC9 (dependency gate):** **satisfied (evidence attached; close-order sequencing remains open)** — dependency evaluation confirms AC-0013-11 evidence is satisfied via refreshed canonical all-green gate artifacts and linked deterministic traces.
+- **AC6:** **open/blocked pending evidence** — governance linkage remains active and synchronized to blocker/dependent sequencing.
+- **AC7:** **open/blocked pending evidence** — deterministic regression coverage and CLI traces remain required evidence inputs for the shared closure condition.
+- **AC9 (dependency gate):** **open/blocked pending evidence** — dependency evaluation remains tied to AC-0013-11 / ISSUE-0014 Phase 1 shared closure condition and close-order sequencing.
 
 ### Exit conditions for ISSUE-0015 closure (dependency on ISSUE-0013 / ISSUE-0014)
 
@@ -184,7 +186,7 @@ ISSUE-0015 remains `Status: open` and `Severity: red` until all dependency condi
 
 1. **ISSUE-0014 behavioral exit condition met:** deterministic evidence confirms identity declaration semantic preservation, retrieval activation on immediate self-reference recall, and confirmed identity fact promotion at commit.
 2. **ISSUE-0013 governance exit condition met:** AC-0013-11 is marked complete with linked evidence proving ISSUE-0014 Phase 1 behavior is passing in deterministic tests plus reproducible CLI traces.
-3. **Cross-artifact consistency exit condition met:** `docs/issues/RED_TAG.md` plus issue files (`ISSUE-0013`, `ISSUE-0014`, `ISSUE-0015`) now reflect the same lifecycle interpretation (dependency evidence satisfied; open/red remains for governance close-order sequencing).
+3. **Cross-artifact consistency exit condition met:** `docs/issues/RED_TAG.md` plus issue files (`ISSUE-0013`, `ISSUE-0014`, `ISSUE-0015`) reflect the same lifecycle interpretation (blocker/dependent/parallel stream with open/blocked pending evidence and governance close-order sequencing).
 4. **Fallback-semantics consistency condition met:** ISSUE-0010 language for unknowing fallback and ISSUE-0017 pending-lookup normalization remain non-contradictory (pending lookup stays non-clarify and does not downgrade red-tag dependency posture by itself).
 
 ## 2026-03-09 Dependency Evaluation Update (AC6/AC7/AC9)
@@ -198,11 +200,11 @@ ISSUE-0015 remains `Status: open` and `Severity: red` until all dependency condi
   - `docs/issues/evidence/2026-03-09-issue-0014-cli-identity-semantic-preservation-trace.md` (**pass**)
   - `docs/issues/evidence/2026-03-09-issue-0014-cli-self-reference-retrieval-activation-trace.md` (**pass**)
   - `docs/issues/evidence/2026-03-09-issue-0014-cli-confirmed-fact-promotion-trace.md` (**pass**)
-- Closure interpretation:
-  - AC6: in progress; governance linkage remains synchronized to an open dependency posture because gate evidence is still failing.
-  - AC7: satisfied with deterministic coverage and all three required reproducible CLI identity-continuity traces attached.
-  - AC9: satisfied with refreshed deterministic evidence (canonical all-green gate pass artifact attached).
-- Result: ISSUE-0015 stays `Status: open`, `Severity: red` for governance close-order sequencing, with dependency-evidence checklist actions completed and reproducible artifacts linked.
+- Lifecycle interpretation:
+  - AC6: open/blocked pending evidence; governance linkage stays synchronized to blocker/dependent sequencing.
+  - AC7: open/blocked pending evidence; deterministic coverage and reproducible CLI traces remain required for closure condition verification.
+  - AC9: open/blocked pending evidence; dependency gate remains tied to shared AC-0013-11 / ISSUE-0014 Phase 1 closure criteria.
+- Result: ISSUE-0015 stays `Status: open`, `Severity: red`, and `open/blocked pending evidence` for governance close-order sequencing until blockers clear.
 
 
 ### Missing evidence checklist (owner + due date)

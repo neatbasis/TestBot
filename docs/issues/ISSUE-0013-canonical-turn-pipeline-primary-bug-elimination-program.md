@@ -22,8 +22,8 @@ Dependent open-issue routing is sequenced through ISSUE-0013 using the following
 1. **ISSUE-0008 — blocker (upstream quality gate):** intent-grounding confidence must remain deterministic to prevent early-route drift from re-entering the canonical turn path.
 2. **ISSUE-0011 — blocker (observability gate):** analytics input-coverage diagnostics must remain trustworthy so canonical-pipeline behavior changes are auditable.
 3. **ISSUE-0012 — parallel stream (delivery-plan governance):** staged implementation and checkpoint governance run in parallel while execution remains routed through ISSUE-0013.
-4. **ISSUE-0014 — blocker (identity-continuity behavioral gate):** AC-0013-11 cannot close until Phase 1 behavioral criteria and reproducible CLI traces are satisfied.
-5. **ISSUE-0015 — dependent (governance close-order gate):** ISSUE-0015 remains open/red until blockers above are evidence-satisfied and lifecycle closure sequencing is completed.
+4. **ISSUE-0014 — blocker (identity-continuity behavioral gate):** AC-0013-11 remains open/blocked pending evidence until ISSUE-0014 Phase 1 meets the shared closure condition (identity semantic preservation, retrieval activation on immediate self-reference recall, and confirmed identity fact promotion at commit) with deterministic tests, reproducible CLI traces, and canonical gate evidence.
+5. **ISSUE-0015 — dependent (governance close-order gate):** ISSUE-0015 remains open/blocked pending evidence while blockers remain open and governance close-order sequencing is incomplete.
 
 ## Evidence
 
@@ -259,7 +259,9 @@ Dependency labels (machine-auditable ordered chain):
 
 ## Closure Notes
 
-- 2026-03-09: Closure posture remains open by dependency gate; see synchronized red-tag triage note below for current blocker state.
+- Lifecycle sync completed on 2026-03-09. Vocabulary normalized to blocker/dependent/parallel stream/open/blocked pending evidence and AC-0013-11 closure conditions aligned with ISSUE-0014 Phase 1.
+
+- 2026-03-09: Lifecycle posture remains open/blocked pending evidence by dependency gate; see synchronized red-tag triage note below for current blocker state.
 
 - 2026-03-09: Governance-linked status artifacts regenerated after dependency-order synchronization.
   - `artifacts/all-green-gate-summary.json` regenerated via `python scripts/all_green_gate.py --json-output artifacts/all-green-gate-summary.json` (pass with warning-mode KPI guardrail policy).
@@ -365,5 +367,5 @@ Dependency labels (machine-auditable ordered chain):
   - Deterministic targeted suites pass: BDD (`python -m behave features/memory_recall.feature features/intent_grounding.feature`) and focused regression pytests (`tests/test_pipeline_semantic_contracts.py`, `tests/test_canonical_turn_orchestrator.py`, `tests/test_intent_router.py`).
   - Canonical readiness gate now reports `status=passed` with warning-mode KPI guardrail violations: `python scripts/all_green_gate.py --json-output artifacts/all-green-gate-summary.json` (non-blocking warning on `qa_validate_kpi_guardrails`).
   - Governance validators rerun and passing: `python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main` and `python scripts/validate_issues.py --all-issue-files --base-ref origin/main` (both with documented `origin/main` -> `HEAD~1` fallback behavior).
-  - Governance outcome: AC-0013-11 remains open (`[~]`) for governance close-order sequencing only; synchronized dependency language and reproducible closure-proof CLI traces are complete for identity semantic preservation, retrieval activation on self-reference recall, and confirmed identity fact promotion at commit.
+  - Governance outcome: AC-0013-11 remains open/blocked pending evidence in dependency sequencing; closure condition is identical to ISSUE-0014 Phase 1 (identity semantic preservation, retrieval activation on immediate self-reference recall, and confirmed identity fact promotion at commit) with deterministic tests, reproducible CLI traces, and canonical gate evidence.
   - Evidence links: `docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md`, `docs/issues/evidence/2026-03-09-issue-0014-0013-behave.log`, `docs/issues/evidence/2026-03-09-issue-0014-0013-focused-pytests.log`, `docs/issues/evidence/2026-03-09-issue-0014-0013-all-green-gate.log`, `artifacts/all-green-gate-summary.json`.
