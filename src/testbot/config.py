@@ -40,6 +40,7 @@ class Config:
     OLLAMA_BASE_URL: str
     OLLAMA_MODEL: str
     OLLAMA_EMBEDDING_MODEL: str
+    X_OLLAMA_KEY: str
     HA_API_URL: str
     HA_API_SECRET: str
     HA_SATELLITE_ENTITY_ID: str
@@ -61,6 +62,7 @@ class Config:
             OLLAMA_BASE_URL=ollama_base_url,
             OLLAMA_MODEL=os.getenv("OLLAMA_MODEL", "llama3.1:latest"),
             OLLAMA_EMBEDDING_MODEL=os.getenv("OLLAMA_EMBEDDING_MODEL", "nomic-embed-text:latest"),
+            X_OLLAMA_KEY=os.getenv("X_OLLAMA_KEY", ""),
             HA_API_URL=os.getenv("HA_API_URL", "http://localhost:8123"),
             HA_API_SECRET=os.getenv("HA_API_SECRET", ""),
             HA_SATELLITE_ENTITY_ID=os.getenv("HA_SATELLITE_ENTITY_ID", ""),

@@ -4,6 +4,8 @@ import os
 
 import pytest
 
+from testbot.config import Config
+
 langchain_ollama = pytest.importorskip(
     "langchain_ollama",
     reason="live_smoke requires langchain-ollama; install project dependencies first",
@@ -29,11 +31,18 @@ def _require_env(name: str) -> str:
     return value
 
 
-def test_live_smoke_chat_ollama_invoke_returns_non_empty_response() -> None:
-    base_url = _require_env("OLLAMA_BASE_URL")
-    model = _require_env("OLLAMA_MODEL")
+def _ollama_client_kwargs(config: Config) -> dict[str, object]:
+    if config.X_OLLAMA_KEY.strip():
+        return {"client_kwargs": {"headers": {"X-Ollama-Key": config.X_OLLAMA_KEY}}}
+    return {}
 
-    llm = ChatOllama(model=model, base_url=base_url, temperature=0.0)
+
+def test_live_smoke_chat_ollama_invoke_returns_non_empty_response() -> None:
+    _require_env("OLLAMA_BASE_URL")
+    _require_env("OLLAMA_MODEL")
+
+    config = Config.from_env()
+    llm = ChatOllama(model=config.OLLAMA_MODEL, base_url=config.OLLAMA_BASE_URL, **_ollama_client_kwargs(config), temperature=0.0)
     response = llm.invoke("Reply with exactly: ok")
 
     text = getattr(response, "content", str(response)).strip()
@@ -41,10 +50,11 @@ def test_live_smoke_chat_ollama_invoke_returns_non_empty_response() -> None:
 
 
 def test_live_smoke_ollama_embeddings_returns_non_empty_vector() -> None:
-    base_url = _require_env("OLLAMA_BASE_URL")
-    embedding_model = _require_env("OLLAMA_EMBEDDING_MODEL")
+    _require_env("OLLAMA_BASE_URL")
+    _require_env("OLLAMA_EMBEDDING_MODEL")
 
-    embeddings = OllamaEmbeddings(model=embedding_model, base_url=base_url)
+    config = Config.from_env()
+    embeddings = OllamaEmbeddings(model=config.OLLAMA_EMBEDDING_MODEL, base_url=config.OLLAMA_BASE_URL, **_ollama_client_kwargs(config))
     vector = embeddings.embed_query("smoke test")
 
     assert vector, "Expected non-empty embedding vector"

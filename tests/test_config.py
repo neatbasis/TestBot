@@ -15,7 +15,8 @@ def test_config_loads_from_process_environment() -> None:
             "config = Config.from_env(); "
             "print(config.HA_API_SECRET); "
             "print(config.HA_SATELLITE_ENTITY_ID); "
-            "print(config.OLLAMA_MODEL)"
+            "print(config.OLLAMA_MODEL); "
+            "print(config.X_OLLAMA_KEY)"
         ),
     ]
 
@@ -27,6 +28,7 @@ def test_config_loads_from_process_environment() -> None:
             "HA_API_SECRET": "ha-test-supersecret-token",
             "HA_SATELLITE_ENTITY_ID": "assist_satellite.test",
             "OLLAMA_MODEL": "custom-model",
+            "X_OLLAMA_KEY": "x-ollama-test-key",
             "PYTHONPATH": str(Path.cwd() / "src"),
             "PATH": os.environ.get("PATH", ""),
         },
@@ -38,4 +40,5 @@ def test_config_loads_from_process_environment() -> None:
         "ha-test-supersecret-token",
         "assist_satellite.test",
         "custom-model",
+        "x-ollama-test-key",
     ]

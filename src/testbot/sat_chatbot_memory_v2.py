@@ -693,6 +693,7 @@ def _read_runtime_env() -> dict[str, object]:
         "ollama_base_url": config.OLLAMA_BASE_URL,
         "ollama_model": config.OLLAMA_MODEL,
         "ollama_embedding_model": config.OLLAMA_EMBEDDING_MODEL,
+        "x_ollama_key": config.X_OLLAMA_KEY,
         "memory_near_tie_delta": config.MEMORY_NEAR_TIE_DELTA,
         "memory_store_mode": memory_store_mode,
         "memory_store_backend": normalize_memory_store_mode(memory_store_mode),
@@ -4373,8 +4374,21 @@ def main(argv: list[str] | None = None) -> None:
             print(f"Startup failed and {capability_snapshot.exit_reason}", file=sys.stderr)
         return
 
-    llm = ChatOllama(model=str(runtime["ollama_model"]), base_url=str(runtime["ollama_base_url"]), temperature=0.0)
-    embeddings = OllamaEmbeddings(model=str(runtime["ollama_embedding_model"]), base_url=str(runtime["ollama_base_url"]))
+    ollama_client_kwargs = {}
+    if str(runtime.get("x_ollama_key", "")).strip():
+        ollama_client_kwargs["client_kwargs"] = {"headers": {"X-Ollama-Key": str(runtime["x_ollama_key"])}}
+
+    llm = ChatOllama(
+        model=str(runtime["ollama_model"]),
+        base_url=str(runtime["ollama_base_url"]),
+        **ollama_client_kwargs,
+        temperature=0.0,
+    )
+    embeddings = OllamaEmbeddings(
+        model=str(runtime["ollama_embedding_model"]),
+        base_url=str(runtime["ollama_base_url"]),
+        **ollama_client_kwargs,
+    )
     store = build_memory_store(
         embeddings=embeddings,
         mode=str(runtime["memory_store_mode"]),
