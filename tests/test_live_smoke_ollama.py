@@ -4,7 +4,7 @@ import os
 
 import pytest
 
-from testbot.config import Config
+from testbot.sat_chatbot_memory_v2 import _read_runtime_env
 
 langchain_ollama = pytest.importorskip(
     "langchain_ollama",
@@ -31,18 +31,24 @@ def _require_env(name: str) -> str:
     return value
 
 
-def _ollama_client_kwargs(config: Config) -> dict[str, object]:
-    if config.X_OLLAMA_KEY.strip():
-        return {"client_kwargs": {"headers": {"X-Ollama-Key": config.X_OLLAMA_KEY}}}
+def _ollama_client_kwargs(runtime: dict[str, object]) -> dict[str, object]:
+    if str(runtime.get("x_ollama_key", "")).strip():
+        return {"client_kwargs": {"headers": {"X-Ollama-Key": str(runtime["x_ollama_key"])}}}
     return {}
 
 
 def test_live_smoke_chat_ollama_invoke_returns_non_empty_response() -> None:
     _require_env("OLLAMA_BASE_URL")
     _require_env("OLLAMA_MODEL")
+    _require_env("X_OLLAMA_KEY")
 
-    config = Config.from_env()
-    llm = ChatOllama(model=config.OLLAMA_MODEL, base_url=config.OLLAMA_BASE_URL, **_ollama_client_kwargs(config), temperature=0.0)
+    runtime = _read_runtime_env()
+    llm = ChatOllama(
+        model=str(runtime["ollama_model"]),
+        base_url=str(runtime["ollama_base_url"]),
+        **_ollama_client_kwargs(runtime),
+        temperature=0.0,
+    )
     response = llm.invoke("Reply with exactly: ok")
 
     text = getattr(response, "content", str(response)).strip()
@@ -52,9 +58,14 @@ def test_live_smoke_chat_ollama_invoke_returns_non_empty_response() -> None:
 def test_live_smoke_ollama_embeddings_returns_non_empty_vector() -> None:
     _require_env("OLLAMA_BASE_URL")
     _require_env("OLLAMA_EMBEDDING_MODEL")
+    _require_env("X_OLLAMA_KEY")
 
-    config = Config.from_env()
-    embeddings = OllamaEmbeddings(model=config.OLLAMA_EMBEDDING_MODEL, base_url=config.OLLAMA_BASE_URL, **_ollama_client_kwargs(config))
+    runtime = _read_runtime_env()
+    embeddings = OllamaEmbeddings(
+        model=str(runtime["ollama_embedding_model"]),
+        base_url=str(runtime["ollama_base_url"]),
+        **_ollama_client_kwargs(runtime),
+    )
     vector = embeddings.embed_query("smoke test")
 
     assert vector, "Expected non-empty embedding vector"
