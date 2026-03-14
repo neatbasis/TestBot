@@ -58,6 +58,23 @@ The canonical turn pipeline contract in `docs/architecture/canonical-turn-pipeli
 - Finalize runtime logging and analytics visibility needed for post-turn audits.
 - **Code review checkpoint:** release-readiness review confirms pipeline invariants, traceability artifacts, and gate evidence align before capability status moves from planned/partial to implemented.
 
+
+## Complexity-governance addendum (legacy/canonical transition)
+
+Linked investigation: `docs/issues/evidence/complexipy-hotspots-legacy-canonical-analysis-2026-03-14.md`.
+
+Delivery-plan tracking tasks (governance/reporting):
+
+- [ ] `TASK-CX-007` Refactor rule-heavy validator scripts to table-driven rules where feasible, preserving deterministic checks.
+- [ ] `TASK-CX-008` Add/refresh focused tests for refactored rule tables and validation edge cases.
+- [ ] Add a recurring checkpoint note in sprint reviews capturing: latest hotspot count, top 10 function scores, and delta vs previous snapshot.
+
+Checkpoint evidence requirements for complexity-focused slices:
+
+1. Complexipy snapshot command and outputs are linked from issue notes/evidence.
+2. `validate_issue_links.py`, `validate_issues.py`, and targeted pytest suites remain green.
+3. Canonical all-green gate status is recorded after any runtime-affecting decomposition work.
+
 ## Verification
 
 - Command: `python scripts/report_feature_status.py --output docs/qa/feature-status-report.md --json-output artifacts/feature-status-summary.json`

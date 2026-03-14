@@ -88,3 +88,33 @@ So yes: there is a credible connection between the complexipy failures and mixed
    - Convert repetitive conditional trees to declarative rule tables where feasible.
 
 These can reduce measured complexity without changing behavior contracts.
+
+## Recommended execution tasks (handoff-ready)
+
+Status legend: `[ ] pending`, `[~] in progress`, `[x] complete`.
+
+### Track A — Runtime legacy/canonical untangling (ISSUE-0013)
+
+- [ ] **TASK-CX-001:** Extract debug payload/schema shaping out of `sat_chatbot_memory_v2.py` into a dedicated module (`turn_debug_payload.py`) with parity tests for payload keys and values.
+- [ ] **TASK-CX-002:** Remove duplicate policy-alternative helper trees from `sat_chatbot_memory_v2.py`; route through `answer_policy.py` canonical primitives only.
+- [ ] **TASK-CX-003:** Introduce a single `legacy_bridge.py` adapter surface for decision-class/fallback-token compatibility mappings; keep canonical modules free of legacy branching.
+- [ ] **TASK-CX-004:** Add a regression complexity budget check that fails only on net-new regressions for touched runtime files (ratchet model, not big-bang threshold flip).
+
+### Track B — Orchestrator complexity partitioning (ISSUE-0013 with ISSUE-0012 governance)
+
+- [ ] **TASK-CX-005:** Split `CanonicalTurnOrchestrator.run` pre/post stage checks into stage-scoped validator callables while preserving stage order, semantic fingerprints, and invariant failure messages.
+- [ ] **TASK-CX-006:** Add characterization tests that assert unchanged stage transition semantics before/after decomposition (`tests/test_canonical_turn_orchestrator.py`, `tests/test_pipeline_semantic_contracts.py`).
+
+### Track C — Script hotspot hardening (governance follow-through)
+
+- [ ] **TASK-CX-007:** Convert repetitive condition blocks in `scripts/validate_issue_links.py` and `scripts/validate_pipeline_stage_conformance.py` into table-driven rules.
+- [ ] **TASK-CX-008:** Add focused tests around table rules to preserve deterministic behavior and keep policy enforcement auditable.
+
+## Progress logging guidance for next contributor
+
+When picking up this work, append a dated note here including:
+
+1. Complexipy command + threshold used.
+2. Before/after complexity for each touched hotspot function.
+3. Which `TASK-CX-*` items were advanced and which issue(s) were updated.
+4. Whether `python scripts/all_green_gate.py` stayed green after each slice.
