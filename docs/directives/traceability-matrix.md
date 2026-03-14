@@ -1,6 +1,26 @@
 # Traceability Matrix (Canonical Turn Pipeline)
 
+This document is the **sole canonical source** for behavior → stage → deterministic-test traceability in TestBot. No other document is canonical for this mapping; any quick-reference, source-map, or triage material must resolve back to this matrix.
+
 This matrix aligns runtime traceability to the canonical stage boundaries in `docs/architecture/canonical-turn-pipeline.md` and the ISSUE-0013 canonical-turn-pipeline program checkpoints, with ISSUE-0012 retained as superseded historical rollout context that feeds into ISSUE-0013 sequencing.
+
+## Quick Reference (Fast Triage)
+
+This section is the quick-reference triage map for jumping from BDD behavior to runtime anchors and deterministic tests.
+
+How to triage quickly:
+
+1. Locate the failing scenario title in `features/*.feature`.
+2. Search for the runtime anchor in `src/testbot/` (example: `rg "def stage_answer\(" src/testbot`).
+3. Run listed deterministic tests first, then run the canonical gate (`python scripts/all_green_gate.py`).
+
+| Feature + scenario(s) | Runtime modules + search anchors (`src/testbot/`) | Validating tests (`tests/`) |
+| --- | --- | --- |
+| `features/answer_contract.feature`<br>- rejection of uncited factual response from eval pattern<br>- disallowed unlabeled general-knowledge factual output<br>- allowed labeled general-knowledge output when confidence gate passes<br>- non-memory general-knowledge fallback stays knowledge-safe | `sat_chatbot_memory_v2.py` anchors:<br>- `def validate_answer_contract(`<br>- `def validate_general_knowledge_contract(`<br>- `def passes_general_knowledge_confidence_gate(`<br>- `def stage_answer(`<br>- `def has_required_memory_citation(` | `tests/test_answer_contract.py` anchors:<br>- `def test_non_memory_general_knowledge_contract_failure_degrades_to_knowledge_safe_response(`<br>- `def test_memory_recall_confident_contract_failure_uses_deterministic_recovery_hit(`<br>- `def test_response_contains_claims_matches_extracted_claim_artifacts_for_factual_text(`<br>BDD glue: `features/steps/answer_contract_steps.py` |
+| `features/memory_recall.feature`<br>- cited memory-grounded answer path<br>- progressive assist fallback path<br>- equivalent candidates remain ambiguous after tie-break | `sat_chatbot_memory_v2.py` anchors:<br>- `def stage_retrieve(`<br>- `def stage_rerank(`<br>- `def stage_answer(`<br>- `def build_partial_memory_clarifier(`<br>- `def build_provenance_metadata(`<br>`rerank.py` anchors:<br>- `def rerank_docs_with_time_and_type(`<br>- `def confidence_decision(` | `tests/test_eval_runtime_parity.py` anchors:<br>- `def test_eval_runtime_parity_fixture_families(`<br>- `def test_eval_runtime_parity_near_tie_fixture_case(`<br>`tests/test_runtime_logging_events.py` anchors:<br>- `def test_stage_answer_memory_recall_confident_hit_recovers_from_contract_failure(`<br>BDD glue: `features/steps/memory_steps.py` |
+| `features/intent_grounding.feature`<br>- knowledge/meta/relevance/source confidence scenarios<br>- follow-up continuity scenario<br>- retrieval branch logging scenarios<br>- ambiguous routing precedence scenarios<br>- non-knowledge social/control routing scenarios | `sat_chatbot_memory_v2.py` anchors:<br>- `def resolve_turn_intent(`<br>- `def _select_retrieval_branch(`<br>- `def _uses_memory_retrieval(`<br>- `def stage_answer(`<br>- `def _is_short_affirmation(`<br>`intent_router.py` anchors:<br>- `class IntentType`<br>- `def classify_intent(` | `tests/test_intent_router.py` anchors:<br>- `def test_resolve_turn_intent_affirmation_inherits_prior_clarification_intent(`<br>- `def test_classify_intent_control_takes_precedence(`<br>- `def test_classify_intent_capabilities_help_satellite_overrides_meta_phrase(`<br>- `def test_classify_intent_social_greeting_routes_non_knowledge(`<br>`tests/test_runtime_logging_events.py` anchors:<br>- `def test_select_retrieval_branch_routes_definitional_knowledge_question_to_memory_retrieval(`<br>- `def test_chat_loop_conversational_prompt_skips_knowledge_retrieval_path(`<br>BDD glue: `features/steps/intent_grounding_steps.py` |
+| `features/capabilities.feature`<br>- HA unavailable + CLI fallback capability summary<br>- HA available + satellite enabled capability summary<br>- direct satellite-action requests in CLI mode return alternatives | `sat_chatbot_memory_v2.py` anchors:<br>- `def _build_runtime_capability_status(`<br>- `def build_capability_snapshot(`<br>- `def stage_answer(`<br>- `def _is_capabilities_help_request(` | `tests/test_capabilities_help.py` anchors:<br>- `def test_stage_answer_capabilities_help_reflects_ha_unavailable_cli_fallback(`<br>- `def test_stage_answer_capabilities_help_reflects_ha_satellite_available(`<br>- `def test_stage_answer_satellite_action_request_cli_returns_capability_structured_alternatives(`<br>`tests/test_capabilities_runtime_status.py` anchors:<br>- `def test_shared_snapshot_keeps_cli_fallback_truth_consistent(`<br>BDD glue: `features/steps/capabilities_steps.py` |
+| `features/source_ingestion.feature`<br>- source-backed knowing answer includes evidence attribution<br>- low-trust source evidence triggers fallback | `source_ingest.py` anchors:<br>- `class SourceIngestor`<br>- `def ingest(`<br>`source_connectors.py` anchors:<br>- `class SourceItem`<br>- `class LocalMarkdownSourceConnector`<br>- `class WikipediaSummarySourceConnector`<br>- `class ArxivSourceConnector`<br>`sat_chatbot_memory_v2.py` anchors:<br>- `def _run_source_ingestion(`<br>- `def collect_used_source_evidence_refs(`<br>- `def build_provenance_metadata(` | `tests/test_source_ingest.py` anchors:<br>- `def test_source_ingestor_stores_memory_and_evidence_with_provenance(`<br>- `def test_source_ingestor_wikipedia_connector_integration(`<br>- `def test_source_ingestor_arxiv_connector_integration(`<br>`tests/test_source_fusion.py` anchors:<br>- `def test_build_provenance_metadata_includes_source_evidence_attribution(`<br>- `def test_build_provenance_metadata_omits_source_keys_when_no_source_refs_used(`<br>BDD glue: `features/steps/source_ingestion_steps.py` |
 
 | Canonical stage group | Canonical stage boundaries + ISSUE-0013 program checkpoint (ISSUE-0012 historical feed) | Runtime enforcement identifiers (`src/testbot/`) | BDD scenarios (`features/*.feature`) | Deterministic checks (`docs/testing.md`) | Emitted log evidence keys | Canonical stage postconditions + invariant linkage |
 |---|---|---|---|---|---|---|
@@ -53,3 +73,83 @@ Do not merge canonical pipeline changes when these three artifacts disagree.
 
 - **Canonical ontology split:** response-policy invariants are canonical in `docs/invariants/answer-policy.md`; pipeline semantics are canonical in `docs/invariants/pipeline.md`.
 - **Enforcement:** `python scripts/validate_pipeline_stage_conformance.py` rejects stage-semantic rows that omit `PINV-*` linkage or rely only on response-policy `INV-*` IDs.
+
+## Appendix A — Enforcement and Provenance Source Mapping
+
+This appendix captures enforcement/provenance mapping formerly maintained as a separate source-map document.
+
+Program linkage: [`ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md`](../issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md) is the project's **primary bug-elimination program** in the current state; contributors should triage canonical pipeline defects and follow-on work against ISSUE-0013 first, with ISSUE-0012 treated as linked delivery planning context in [`ISSUE-0012-canonical-turn-pipeline-delivery-plan.md`](../issues/ISSUE-0012-canonical-turn-pipeline-delivery-plan.md).
+
+Documentation naming note: when updating directive or architecture docs, follow the terminology policy in [docs/terminology.md](../terminology.md), including the rule to preserve real system identifiers verbatim.
+
+### A.1 Runtime-enforced directives (`src/testbot/sat_chatbot_memory_v2.py` guardrails, logging, fallback)
+
+- Answer must be memory-grounded and use only provided context + recent chat.
+  - Source location: `ANSWER_PROMPT` system instructions in `src/testbot/sat_chatbot_memory_v2.py`.
+  - Enforcement mechanism: prompt-level runtime instruction passed to the model on every response generation.
+  - Confidence level: **Advisory** (LLM-followed instruction, not a static type/runtime assert by itself).
+- Memory-insufficient turns use progressive fallback (bridging clarifier, assist alternatives, or explicit uncertainty) instead of direct memory fallback.
+  - Source location: `ANSWER_PROMPT` guidance + `decide_fallback_action(...)` + deterministic branches in `stage_answer(...)` (`build_partial_memory_clarifier`, `ASSIST_ALTERNATIVES_ANSWER`, `NON_KNOWLEDGE_UNCERTAINTY_ANSWER`).
+  - Enforcement mechanism: deterministic answer-stage routing applies policy-selected progressive fallback behavior when confidence/contract checks fail.
+  - Confidence level: **Enforced**.
+- Factual answers must include citation fields (`doc_id` and `ts`).
+  - Source location: `validate_answer_contract()`, `response_contains_claims()`, `has_required_memory_citation()`.
+  - Enforcement mechanism: regex-based post-generation contract check; non-compliant outputs are replaced with fallback.
+  - Confidence level: **Enforced**.
+- Session observability for ingest/retrieval/answer decisions.
+  - Source location: `append_session_log()` and call sites (`user_utterance_ingest`, `query_rewrite_output`, `retrieval_candidates`, `time_target_parse`, `final_answer_mode`).
+  - Enforcement mechanism: deterministic JSONL logging at key pipeline stages during runtime loop.
+  - Confidence level: **Enforced** (when loop runs and log path writable).
+- Temporal retrieval behavior should track parsed target time and adaptive sigma.
+  - Source location: `parse_target_time(...)`, `adaptive_sigma_fractional(...)`, and rerank call wiring.
+  - Enforcement mechanism: runtime rerank pipeline computes target/sigma and uses them in ranking; logged for auditability.
+  - Confidence level: **Enforced**.
+
+### A.2 Documentation directives (`README.md` v0 contract, testing policy, BDD requirement)
+
+- v0 scope: small, reliable memory loop for rapid iteration.
+  - Source location: project description text in `README.md` (`reliable v0 loop`, intentionally small).
+  - Enforcement mechanism: human-facing scope contract for contributors/reviewers.
+  - Confidence level: **Advisory**.
+- BDD-first policy for stakeholder-visible behavior.
+  - Source location: `README.md` section `## BDD-first policy`.
+  - Enforcement mechanism: process expectation that features begin as `.feature` scenarios before implementation.
+  - Confidence level: **Advisory** (policy-level; enforced socially/review-wise unless CI gates added).
+- Testing policy references deterministic checks + behavior contracts.
+  - Source location: `README.md` links to `docs/testing.md` and role guidance.
+  - Enforcement mechanism: documentation-driven workflow directing contributors to required testing approach.
+  - Confidence level: **Advisory**.
+
+### A.3 Tooling directives (`pyproject.toml` dependencies and dev testing stack)
+
+- Runtime dependency baseline for the chatbot stack.
+  - Source location: `[project].dependencies` in `pyproject.toml`.
+  - Enforcement mechanism: packaging/install resolution enforces required libs for runtime execution.
+  - Confidence level: **Enforced** (at install/runtime import boundaries).
+- Dev testing/lint/type-check stack (`behave`, `pytest`, `ruff`, `mypy`).
+  - Source location: `[project.optional-dependencies].dev` in `pyproject.toml`.
+  - Enforcement mechanism: optional dev extra declares expected local/CI tooling.
+  - Confidence level: **Advisory** (unless CI/scripts explicitly require all tools).
+- Entry point contract for launching the bot (`testbot` script).
+  - Source location: `[project.scripts]` in `pyproject.toml`.
+  - Enforcement mechanism: installer creates CLI entry point bound to `testbot.sat_chatbot_memory_v2:main`.
+  - Confidence level: **Enforced** (packaging-level).
+
+### A.4 Eval directives (`scripts/eval_recall.py`, `eval/cases.jsonl`)
+
+- Offline evaluation computes retrieval/ranking metrics (`hit_at_k`, rank, IDK decisions).
+  - Source location: `evaluate(...)` in `scripts/eval_recall.py`.
+  - Enforcement mechanism: deterministic scoring pipeline over fixed candidate sets.
+  - Confidence level: **Enforced** (within eval script execution).
+- Temporal interpretation heuristic for utterances (`last night`, `earlier this week`, duration phrases).
+  - Source location: `parse_target_time(...)` in `scripts/eval_recall.py`.
+  - Enforcement mechanism: rule-based parsing used directly by eval ranking flow.
+  - Confidence level: **Enforced** (inside eval).
+- IDK decision thresholding for weak top score.
+  - Source location: `--idk-threshold` arg and `top_score < idk_threshold` check in `scripts/eval_recall.py`.
+  - Enforcement mechanism: deterministic decision counter for “don’t know from memory” behavior in eval metrics.
+  - Confidence level: **Enforced** (inside eval).
+- Canonical evaluation fixtures define expected memory target behavior.
+  - Source location: `eval/cases.jsonl` records with `expected_intent`, `expected_doc_id`, and candidate sets.
+  - Enforcement mechanism: data contract consumed by eval script to benchmark ranking/IDK outcomes.
+  - Confidence level: **Enforced** for eval runs; **advisory** for production runtime unless mirrored by tests/CI.

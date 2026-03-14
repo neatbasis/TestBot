@@ -25,7 +25,7 @@ Behavior that stakeholders care about must be written first as `.feature` scenar
 
 ## Scenario traceability quick map
 
-For fast failure triage across behavior specs, runtime anchors, and deterministic tests, use [docs/feature-runtime-test-traceability.md](feature-runtime-test-traceability.md).
+For fast failure triage across behavior specs, runtime anchors, and deterministic tests, use [docs/directives/traceability-matrix.md](directives/traceability-matrix.md#quick-reference-fast-triage).
 
 ## Test layers
 
