@@ -7,7 +7,7 @@
 - **Owner:** runtime-pipeline
 - **Created:** 2026-03-09
 - **Target Sprint:** Sprint 8
-- **Canonical Cross-Reference:** ISSUE-0018 (dual-trigger proactive lifecycle scheduler), ISSUE-0017 (pending-ingestion lifecycle contract), ISSUE-0013 (canonical pipeline bug-elimination program), ISSUE-0012 (delivery-plan context)
+- **Canonical Cross-Reference:** ISSUE-0018 (dual-trigger proactive lifecycle scheduler that depends on this engine boundary), ISSUE-0020 (quickstart ingestion-toggle deprecation depends on unified orchestration contract), ISSUE-0017 (pending-ingestion lifecycle contract), ISSUE-0013 (canonical pipeline bug-elimination program), ISSUE-0012 (delivery-plan context)
 - **Principle Alignment:** contract-first, invariant-driven, traceable, deterministic, user-centric, interface-neutral
 
 ## Problem Statement
@@ -54,12 +54,17 @@ Stakeholder expectation is that CLI should behave like any channel transport and
 
 ## Work Plan
 
-- [ ] Define a minimal event envelope and engine-owned dispatcher (`user_utterance_received`, `poll_tick`, `background_ingestion_completed`, `assistant_message_ready`).
-- [ ] Refactor CLI and satellite into transport adapters that push/pull engine events without owning conversation progression.
-- [ ] Introduce shared conversation history store keyed by conversation ID with channel metadata fields.
-- [ ] Route pending-ingestion completion outputs via engine dispatch so delivery is not gated by adapter input blocking.
-- [ ] Add deterministic tests and BDD scenarios for channel handoff continuity and non-user-triggered completion delivery.
-- [ ] Sync architecture + issue cross-links + invariant/directive references.
+- [In Progress] Define a minimal event envelope and engine-owned dispatcher (`user_utterance_received`, `poll_tick`, `background_ingestion_completed`, `assistant_message_ready`).
+- [Not Started] Refactor CLI and satellite into transport adapters that push/pull engine events without owning conversation progression.
+- [Not Started] Introduce shared conversation history store keyed by conversation ID with channel metadata fields.
+- [Blocked] Route pending-ingestion completion outputs via engine dispatch so delivery is not gated by adapter input blocking (blocked by ISSUE-0018 poll cadence + trigger contract finalization).
+- [Not Started] Add deterministic tests and BDD scenarios for channel handoff continuity and non-user-triggered completion delivery.
+- [In Progress] Sync architecture + issue cross-links + invariant/directive references across ISSUE-0018 and ISSUE-0020.
+
+## Triage Notes
+
+- **2026-03-14:** **Phase:** in progress. **Immediate next owner action:** complete engine boundary RFC/implementation slice for adapter decoupling and shared-history ownership, then hand interface contract updates to ISSUE-0018 and ISSUE-0020 owners. **Target review date:** 2026-03-20.
+
 
 ## Verification
 
@@ -78,6 +83,10 @@ Expected pass signal:
 - shared conversation history is authoritative across adapters,
 - lifecycle linkage and telemetry invariants remain stable,
 - canonical gate is green in same change window.
+
+Governance-validation artifacts (current branch triage run):
+- `artifacts/issue-triage-2026-03-14/validate_issue_links.txt`
+- `artifacts/issue-triage-2026-03-14/validate_issues.txt`
 
 ## Closure Notes
 

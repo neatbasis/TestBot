@@ -51,11 +51,15 @@ This indicates an invariant-definition gap: response-policy constraints are not 
 
 ## Work Plan
 
-- [x] Capture minimal deterministic reproduction fixture for the pending-lookup CLI path in unit/integration tests (unit/integration coverage landed).
-- [x] Normalize fallback-policy predicate definitions so assist/dont-know pending-lookup behavior is unambiguous and non-conflicting.
-- [x] Decouple commit-post checks into concern-specific groups (policy, alignment/provenance integrity, pipeline-stage semantics) while preserving existing contracts.
-- [x] Sync invariant docs and directive mirror text to match executable policy.
-- [ ] Validate with targeted pytest + governance validators + canonical all-green gate (including the reopened CLI-path evidence set).
+- [Done] Capture minimal deterministic reproduction fixture for the pending-lookup CLI path in unit/integration tests (unit/integration coverage landed).
+- [Done] Normalize fallback-policy predicate definitions so assist/dont-know pending-lookup behavior is unambiguous and non-conflicting.
+- [Done] Decouple commit-post checks into concern-specific groups (policy, alignment/provenance integrity, pipeline-stage semantics) while preserving existing contracts.
+- [Done] Sync invariant docs and directive mirror text to match executable policy.
+- [In Progress] Validate with targeted pytest + governance validators + canonical all-green gate (including the reopened CLI-path evidence set).
+
+## Triage Notes
+
+- **2026-03-14:** **Phase:** in progress. **Immediate next owner action:** execute issue-governance validators and canonical gate against the current branch, then reconcile reopened CLI-path behavior evidence with ISSUE-0018 lifecycle semantics before closure decision. **Target review date:** 2026-03-18.
 
 ## Verification
 
@@ -68,6 +72,9 @@ This indicates an invariant-definition gap: response-policy constraints are not 
   - `python scripts/report_feature_status.py --output docs/qa/feature-status-report.md --json-output artifacts/feature-status-summary.json` (pass)
 - Reopen evidence (operator report, 2026-03-09): with `SOURCE_INGEST_ASYNC_CONTINUATION=1 TESTBOT_DEBUG=1 testbot --mode cli --debug-verbose`, first-turn `What is life?` entered `pending_lookup_background_ingestion` (`answer_mode=assist`, `fallback_action=ANSWER_UNKNOWN`) and produced uncertainty fallback text; issue remains open until the expected pending-lookup UX/policy outcome is explicitly validated and attached to deterministic acceptance evidence.
 - Canonical validation commands for this issue remain mandatory before closure (`pytest` targets + issue validators + `all_green_gate`).
+- 2026-03-14 governance-validation artifacts (current branch):
+  - `artifacts/issue-triage-2026-03-14/validate_issue_links.txt`
+  - `artifacts/issue-triage-2026-03-14/validate_issues.txt`
 
 ## Closure Notes
 
