@@ -427,16 +427,14 @@ python scripts/validate_issues.py --all-issue-files --base-ref origin/main | tee
 4. PR body contains evidence artifact paths and references the run generated after conflict resolution.
 
 
-## All-systems-green definition
-
-> **Migration note:** The stakeholder obligations matrix was migrated from `docs/directives/stakeholder-obligations.md` into this section of `docs/testing.md` to provide a single canonical readiness reference.
+## Readiness evidence (all-systems-green criteria)
 
 The canonical merge-readiness definition of **"all systems green"** is the stakeholder obligations matrix in this document.
 
 Use the matrix as the authoritative map from stakeholder obligations to required deterministic evidence.
 
 
-### Obligation-to-artifact mapping
+### Obligation-to-evidence matrix
 
 | Stakeholder domain | Obligation | Concrete artifacts | Deterministic checks (must pass) |
 | --- | --- | --- | --- |
@@ -444,6 +442,10 @@ Use the matrix as the authoritative map from stakeholder obligations to required
 | **Safety** | Deny/fallback constraints are enforced (uncited factual responses rejected, progressive fallback policy constraints are preserved (clarify/assist/explicit uncertainty), and fallback policy actions remain deterministic under ambiguity/capability states). | `features/answer_contract.feature`, `features/memory_recall.feature`, `src/testbot/reflection_policy.py`, `tests/test_reflection_policy.py`, `tests/test_runtime_logging_events.py`, `scripts/validate_log_schema.py`. | `python -m behave features/answer_contract.feature features/memory_recall.feature`; `python -m pytest tests/test_reflection_policy.py tests/test_runtime_logging_events.py`; `python scripts/validate_log_schema.py` |
 | **Ops** | Startup capability degradations are explicit and deterministic (auto-mode fallback to CLI when HA is unavailable, startup status reports degraded vs active capability). | `src/testbot/sat_chatbot_memory_v2.py` (`_resolve_mode`, `_print_startup_status`), `tests/test_runtime_modes.py`, `tests/test_startup_status.py`. | `python -m pytest tests/test_runtime_modes.py tests/test_startup_status.py` |
 | **QA** | Deterministic test gates and fixtures stay stable, synchronized, and traceable to canonical eval data. | `tests/test_eval_fixtures.py`, `tests/test_eval_runtime_parity.py`, `tests/fixtures/candidate_sets.jsonl`, `eval/cases.jsonl`, `scripts/validate_issue_links.py`, `scripts/validate_invariant_sync.py`, `scripts/validate_markdown_paths.py`. | `python -m pytest -m "not live_smoke"`; `python -m pytest tests/test_eval_fixtures.py tests/test_eval_runtime_parity.py`; `python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main`; `python scripts/validate_invariant_sync.py`; `python scripts/validate_markdown_paths.py` |
+
+### Uncovered obligations and added checks
+
+The Ops obligation previously lacked a deterministic assertion that degraded startup messaging explicitly documents CLI fallback behavior and continuity messaging. This is now covered by `test_startup_status_prints_degraded_cli_fallback_note_and_continuity_message` in `tests/test_startup_status.py`.
 
 ### Explicit "all systems green" criteria
 
