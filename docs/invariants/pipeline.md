@@ -12,6 +12,10 @@ Pipeline invariants use the dedicated `PINV-*` namespace to avoid ambiguity with
 | PINV-002 | **Artifact preconditions are mandatory at each stage boundary**: each stage executes only when its required upstream artifacts are present and non-empty according to its contract. | Artifact precondition and handoff integrity. |
 | PINV-003 | **Anti-projection safeguard**: intent resolution must not project raw utterance directly to interpreted intent (`U → I`) and instead must consume enriched stabilized artifacts (`turn_observation`, `encoded_candidates`, `stabilized_turn_state`). | Intent-resolution safety and projection control. |
 
+## Conformance enforcement
+
+Canonical stage-transition conformance for the 11-stage pipeline and artifact-precondition guards is validated by `scripts/validate_pipeline_stage_conformance.py`, aligned to `PINV-001` (fixed ordering), `PINV-002` (artifact preconditions), and `PINV-003` (anti-projection safeguard).
+
 ## Stage transition contracts
 
 | Stage | Preconditions | Postconditions | Invariant linkage |
