@@ -67,9 +67,12 @@ Checkpoint-note baseline governance source: [Canonical complexity baseline speci
 
 Delivery-plan tracking tasks (governance/reporting):
 
-- [ ] `TASK-CX-007` Refactor rule-heavy validator scripts to table-driven rules where feasible, preserving deterministic checks. **Owner: platform-qa; Due: 2026-03-21; Status note: Pending scoping; candidate validator rule clusters identified for table-driven migration.**
-- [ ] `TASK-CX-008` Add/refresh focused tests for refactored rule tables and validation edge cases. **Owner: platform-qa; Due: 2026-03-23; Status note: Pending; edge-case matrix draft depends on final rule-table boundaries from TASK-CX-007.**
-- [ ] Add a recurring checkpoint note in sprint reviews capturing: latest hotspot count, top 10 function scores, and delta vs previous snapshot.
+- [ ] `TASK-CX-007` Refactor rule-heavy validator scripts to table-driven rules where feasible, preserving deterministic checks. **Owner: platform-qa; Due: 2026-03-21; Status: Not started (2026-03-14). Evidence: Track C still marks TASK-CX-007 as pending in `docs/issues/evidence/complexipy-hotspots-legacy-canonical-analysis-2026-03-14.md`; no progress entry has advanced this task yet.**
+- [ ] `TASK-CX-008` Add/refresh focused tests for refactored rule tables and validation edge cases. **Owner: platform-qa; Due: 2026-03-23; Status: Blocked (2026-03-14). Evidence: Track C still marks TASK-CX-008 as pending in `docs/issues/evidence/complexipy-hotspots-legacy-canonical-analysis-2026-03-14.md`; blocker linkage: depends on `docs/issues/ISSUE-0012-canonical-turn-pipeline-delivery-plan.md` `TASK-CX-007` completion to finalize table boundaries before edge-case matrix/test expansion.**
+- [x] Add a recurring checkpoint note in sprint reviews capturing: latest hotspot count, top 10 function scores, and delta vs previous snapshot.
+  - **Checkpoint 2026-03-14 (latest available evidence snapshot):** 36 functions above threshold (`complexipy ... -mx 15`) per `docs/issues/evidence/complexipy-hotspots-legacy-canonical-analysis-2026-03-14.md`.
+  - **Top hotspot functions captured in evidence:** `CanonicalTurnOrchestrator.run` (85), `_run_canonical_turn_pipeline` (70), `_build_debug_turn_payload` (58), `answer_assemble` (43), `report_feature_status.build_report` (49), `derive_reject_signal` (28), `resolve_answer_routing` (18), `decide_from_evidence` (16), plus multiple `validate_issue_links.py::*` and `validate_pipeline_stage_conformance.py::*` hotspots.
+  - **Delta vs previous full snapshot:** N/A (no earlier full-count/top-10 checkpoint recorded in ISSUE-0012 before 2026-03-14); partial function-level deltas in the same evidence file show `_build_debug_turn_payload` 58 → 21 (-37), `answer_assemble` 43 → 41 (-2), and `CanonicalTurnOrchestrator.run` unchanged at 85.
 
 Checkpoint evidence requirements for complexity-focused slices:
 
