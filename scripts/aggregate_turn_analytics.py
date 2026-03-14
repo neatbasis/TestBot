@@ -294,6 +294,122 @@ def compute_alignment_dimension_summary(rows: Iterable[dict[str, Any]]) -> dict[
         "alignment_dimension_not_applicable_counts": dict(sorted(not_applicable_counts.items())),
     }
 
+
+def evaluate_categorical_falsifiability(rows: Iterable[dict[str, Any]]) -> dict[str, Any]:
+    """Evaluate minimal, log-witnessed falsifiability checks for categorical claims.
+
+    The checks intentionally stay operational: each law claim must have a concrete
+    witness in turn events and commit payloads.
+    """
+
+    turns: list[list[dict[str, Any]]] = []
+    current_turn: list[dict[str, Any]] = []
+
+    for row in rows:
+        event = str(row.get("event") or "")
+        if event == "user_utterance_ingest":
+            if current_turn:
+                turns.append(current_turn)
+            current_turn = [row]
+            continue
+        if current_turn:
+            current_turn.append(row)
+
+    if current_turn:
+        turns.append(current_turn)
+
+    violations: list[dict[str, Any]] = []
+
+    for index, turn_rows in enumerate(turns, start=1):
+        fallback = next((r for r in turn_rows if r.get("event") == "fallback_action_selected"), None)
+        commit = next((r for r in turn_rows if r.get("event") == "commit_stage_recorded"), None)
+        intent = next((r for r in turn_rows if r.get("event") == "intent_classified"), None)
+        provenance = next((r for r in turn_rows if r.get("event") == "provenance_summary"), None)
+
+        chosen_action = str((fallback or {}).get("chosen_action") or "")
+
+        # Law 1: local-repair confinement in fiber (no global jump repair).
+        if chosen_action == "CONTINUE_REPAIR_RECONSTRUCTION":
+            pending_repair = (commit or {}).get("pending_repair_state") if isinstance(commit, dict) else None
+            remaining_obligations = (commit or {}).get("remaining_obligations") if isinstance(commit, dict) else None
+            local_commit_witness = (
+                isinstance(pending_repair, dict)
+                and bool(pending_repair.get("repair_required_by_policy") or pending_repair.get("repair_offered_to_user"))
+            ) or (isinstance(remaining_obligations, list) and "continue_repair_reconstruction" in remaining_obligations)
+
+            if not local_commit_witness:
+                violations.append(
+                    {
+                        "turn_index": index,
+                        "law": "local_repair_confinement",
+                        "message": "repair continuation action lacked same-turn committed repair witness",
+                    }
+                )
+
+        # Law 2: justified transport witness for continuity evidence.
+        continuity_evidence = (commit or {}).get("retrieval_continuity_evidence") if isinstance(commit, dict) else None
+        if isinstance(continuity_evidence, list) and continuity_evidence:
+            used_memory_refs = (provenance or {}).get("used_memory_refs") if isinstance(provenance, dict) else None
+            basis_statement = str((provenance or {}).get("basis_statement") or "") if isinstance(provenance, dict) else ""
+            if not (isinstance(used_memory_refs, list) and used_memory_refs and basis_statement.strip()):
+                violations.append(
+                    {
+                        "turn_index": index,
+                        "law": "justified_transport",
+                        "message": "continuity transport lacked provenance witness (used_memory_refs + basis_statement)",
+                    }
+                )
+
+        # Law 3: reindexing coherence between intent.resolve and policy.decide telemetry.
+        intent_label = str((intent or {}).get("intent") or "")
+        fallback_intent = str((fallback or {}).get("intent") or "")
+        if intent_label and fallback_intent and intent_label != fallback_intent:
+            violations.append(
+                {
+                    "turn_index": index,
+                    "law": "reindexing_coherence",
+                    "message": "intent_classified.intent diverged from fallback_action_selected.intent",
+                }
+            )
+
+    observed_case_counts = {
+        "local_repair_confinement": sum(
+            1
+            for turn_rows in turns
+            if str(next((r for r in turn_rows if r.get("event") == "fallback_action_selected"), {}).get("chosen_action") or "")
+            == "CONTINUE_REPAIR_RECONSTRUCTION"
+        ),
+        "justified_transport": sum(
+            1
+            for turn_rows in turns
+            if isinstance(next((r for r in turn_rows if r.get("event") == "commit_stage_recorded"), {}).get("retrieval_continuity_evidence"), list)
+            and bool(next((r for r in turn_rows if r.get("event") == "commit_stage_recorded"), {}).get("retrieval_continuity_evidence"))
+        ),
+        "reindexing_coherence": sum(
+            1
+            for turn_rows in turns
+            if bool(next((r for r in turn_rows if r.get("event") == "intent_classified"), {}).get("intent"))
+            and bool(next((r for r in turn_rows if r.get("event") == "fallback_action_selected"), {}).get("intent"))
+        ),
+    }
+
+    checks = {
+        "local_repair_confinement": not any(v["law"] == "local_repair_confinement" for v in violations),
+        "justified_transport": not any(v["law"] == "justified_transport" for v in violations),
+        "reindexing_coherence": not any(v["law"] == "reindexing_coherence" for v in violations),
+    }
+    vacuous_checks = [law for law, count in observed_case_counts.items() if count == 0]
+
+    return {
+        "checks": checks,
+        "violations": violations,
+        "violating_turn_count": len({v["turn_index"] for v in violations}),
+        "checked_turn_count": len(turns),
+        "observed_case_counts": observed_case_counts,
+        "vacuous_checks": vacuous_checks,
+        "pass": not violations,
+    }
+
 def _write_jsonl(path: Path, rows: Iterable[dict[str, Any]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as handle:
@@ -318,9 +434,11 @@ def main() -> int:
     dataset = aggregate_turn_dataset(normalized_rows)
     kpis = compute_kpis(dataset)
     alignment_dimension_summary = compute_alignment_dimension_summary(normalized_rows)
+    falsifiability_summary = evaluate_categorical_falsifiability(normalized_rows)
     summary_payload = {
         **kpis,
         **alignment_dimension_summary,
+        "categorical_falsifiability": falsifiability_summary,
         "invalid_rows": validation_summary.invalid_rows,
         "skipped_rows": validation_summary.skipped_rows,
         "per_event_validation_failures": validation_summary.per_event_validation_failures,
