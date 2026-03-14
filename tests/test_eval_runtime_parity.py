@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any
 
@@ -16,6 +15,7 @@ eval_recall = importlib.util.module_from_spec(_eval_spec)
 _eval_spec.loader.exec_module(eval_recall)
 from testbot.eval_fixtures import cases_by_id
 from tests.helpers.eval_case_builders import build_eval_case_candidate_sets_by_id
+from tests.helpers.eval_runtime_parity_scenarios import runtime_parity_scenarios
 from testbot.context_resolution import ContinuityPosture, resolve as resolve_context
 from testbot import sat_chatbot_memory_v2 as runtime
 from testbot.candidate_encoding import FactCandidate
@@ -191,15 +191,6 @@ def test_eval_runtime_parity_near_tie_fixture_case() -> None:
     assert max(top_scores) - min(top_scores) <= NEAR_TIE_DELTA
 
 
-def _load_runtime_parity_fixtures(file_name: str) -> list[dict[str, Any]]:
-    fixtures_path = Path("tests/fixtures") / file_name
-    loaded: list[dict[str, Any]] = []
-    with fixtures_path.open("r", encoding="utf-8") as fixture_file:
-        for line in fixture_file:
-            loaded.append(json.loads(line))
-    return loaded
-
-
 def test_eval_runtime_parity_high_similarity_but_weak_objective_not_confident() -> None:
     utterance = "What was my sleep quality last night?"
     candidates = [
@@ -267,38 +258,25 @@ def test_eval_runtime_parity_confidence_boundary_exact_threshold() -> None:
 
 
 def test_eval_runtime_parity_fixture_families() -> None:
-    fixture_files = [
-        "eval_runtime_parity_ordering_topx_fallback_confidence.jsonl",
-        "eval_runtime_parity_edge_time.jsonl",
-        "eval_runtime_parity_ambiguous_intent.jsonl",
-        "eval_runtime_parity_observation_making_processes.jsonl",
-        "eval_runtime_parity_temporal_uncertainty.jsonl",
-        "eval_runtime_parity_divergent_analysis.jsonl",
-    ]
+    for scenario in runtime_parity_scenarios():
+        candidates = [dict(candidate) for candidate in scenario.candidates]
+        runtime = _runtime_path_result(scenario.utterance, candidates)
+        eval_path = _eval_path_result(scenario.utterance, candidates)
 
-    fixtures: list[dict[str, Any]] = []
-    for file_name in fixture_files:
-        fixtures.extend(_load_runtime_parity_fixtures(file_name))
+        _assert_runtime_eval_signal_parity(runtime, eval_path, fixture_id=scenario.fixture_id)
 
-    for fixture in fixtures:
-        candidates = [dict(candidate) for candidate in fixture["candidates"]]
-        runtime = _runtime_path_result(fixture["utterance"], candidates)
-        eval_path = _eval_path_result(fixture["utterance"], candidates)
-
-        _assert_runtime_eval_signal_parity(runtime, eval_path, fixture_id=fixture["fixture_id"])
-
-        expected = fixture["expected"]
+        expected = scenario.expected
         top_k = int(expected.get("top_k", 1))
-        assert runtime["ranked_doc_ids"][:top_k] == expected["ranked_doc_ids_top_k"], fixture["fixture_id"]
-        assert runtime["intent"] == expected["intent"], fixture["fixture_id"]
-        assert _structured_mode(runtime) == expected.get("mode", _structured_mode(runtime)), fixture["fixture_id"]
+        assert runtime["ranked_doc_ids"][:top_k] == expected["ranked_doc_ids_top_k"], scenario.fixture_id
+        assert runtime["intent"] == expected["intent"], scenario.fixture_id
+        assert _structured_mode(runtime) == expected.get("mode", _structured_mode(runtime)), scenario.fixture_id
 
         if "ambiguity_detected" in expected:
-            assert runtime["ambiguity_detected"] is bool(expected["ambiguity_detected"]), fixture["fixture_id"]
+            assert runtime["ambiguity_detected"] is bool(expected["ambiguity_detected"]), scenario.fixture_id
         if "context_confident" in expected:
-            assert runtime["context_confident"] is bool(expected["context_confident"]), fixture["fixture_id"]
+            assert runtime["context_confident"] is bool(expected["context_confident"]), scenario.fixture_id
         if "near_tie_min_count" in expected:
-            assert len(runtime["near_tie_candidates"]) >= int(expected["near_tie_min_count"]), fixture["fixture_id"]
+            assert len(runtime["near_tie_candidates"]) >= int(expected["near_tie_min_count"]), scenario.fixture_id
 
 
 def test_structured_mode_distinguishes_ambiguous_and_low_confidence_dont_know() -> None:
