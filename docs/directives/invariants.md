@@ -23,10 +23,6 @@ This file is a mirror view for readers in `docs/directives/`. The synchronized b
 
 <!-- END_SYNCED_INVARIANTS_TABLE_AND_SCENARIO_MAP -->
 
-## Stage transition conformance directive
+## Canonical pipeline invariants (reference only)
 
-Canonical stage transition conformance is enforced by `scripts/validate_pipeline_stage_conformance.py` and must preserve the exact 11-stage order:
-
-`observe.turn → encode.candidates → stabilize.pre_route → context.resolve → intent.resolve → retrieve.evidence → policy.decide → answer.assemble → answer.validate → answer.render → answer.commit`
-
-Directive guard: intent resolution must consume enriched artifacts (`turn_observation`, `encoded_candidates`, `stabilized_turn_state`) and must not collapse raw utterance directly to interpreted intent (`U → I`) per `PINV-003`; the fixed stage ordering requirement is `PINV-001` and stage artifact-precondition enforcement is `PINV-002`.
+Pipeline stage-order and conformance requirements are canonicalized in [`docs/invariants/pipeline.md`](../invariants/pipeline.md) (`PINV-*`), with runtime-contract details in [`docs/architecture/canonical-turn-pipeline.md`](../architecture/canonical-turn-pipeline.md). This directive-view file is non-primary and mirror-only; do not define additional normative pipeline directives here.
