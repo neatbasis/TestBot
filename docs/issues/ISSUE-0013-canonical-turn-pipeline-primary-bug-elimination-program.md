@@ -256,12 +256,12 @@ Investigation cross-reference: `docs/issues/evidence/complexipy-hotspots-legacy-
 
 Execution tasks staged under this issue:
 
-- [ ] `TASK-CX-001` Extract debug payload/schema shaping from monolith into dedicated module with parity tests.
-- [ ] `TASK-CX-002` Remove duplicate policy helper trees in monolith and route through canonical `answer_policy.py` primitives.
-- [ ] `TASK-CX-003` Isolate decision/fallback compatibility mappings in a single legacy-bridge adapter module.
-- [ ] `TASK-CX-004` Add complexity ratchet checks for touched runtime files to prevent net-new branching regressions.
-- [ ] `TASK-CX-005` Decompose `CanonicalTurnOrchestrator.run` stage guards into stage-scoped validators without changing stage semantics.
-- [ ] `TASK-CX-006` Add characterization tests confirming unchanged orchestrator stage-order/contract semantics after decomposition.
+- [ ] `TASK-CX-001` Extract debug payload/schema shaping from monolith into dedicated module with parity tests. **Owner: runtime-pipeline; Due: 2026-03-20; Status note: Pending kickoff; parity harness scope definition required before extraction begins.**
+- [ ] `TASK-CX-002` Remove duplicate policy helper trees in monolith and route through canonical `answer_policy.py` primitives. **Owner: runtime-pipeline; Due: 2026-03-22; Status note: Pending; inventory of duplicate helper trees queued after TASK-CX-001 baseline capture.**
+- [ ] `TASK-CX-003` Isolate decision/fallback compatibility mappings in a single legacy-bridge adapter module. **Owner: runtime-pipeline; Due: 2026-03-24; Status note: Pending; adapter boundary and backward-compatibility acceptance notes not yet attached.**
+- [ ] `TASK-CX-004` Add complexity ratchet checks for touched runtime files to prevent net-new branching regressions. **Owner: platform-qa; Due: 2026-03-24; Status note: Pending; ratchet threshold proposal awaiting updated hotspot baseline from CX-001..003.**
+- [ ] `TASK-CX-005` Decompose `CanonicalTurnOrchestrator.run` stage guards into stage-scoped validators without changing stage semantics. **Owner: runtime-pipeline; Due: 2026-03-26; Status note: Pending; decomposition plan blocked on legacy-bridge decisions from TASK-CX-003.**
+- [ ] `TASK-CX-006` Add characterization tests confirming unchanged orchestrator stage-order/contract semantics after decomposition. **Owner: platform-qa; Due: 2026-03-27; Status note: Pending; fixture matrix to be finalized alongside TASK-CX-005 implementation plan.**
 
 Progress discipline for each `TASK-CX-*` slice:
 

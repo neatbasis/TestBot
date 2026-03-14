@@ -65,8 +65,8 @@ Linked investigation: `docs/issues/evidence/complexipy-hotspots-legacy-canonical
 
 Delivery-plan tracking tasks (governance/reporting):
 
-- [ ] `TASK-CX-007` Refactor rule-heavy validator scripts to table-driven rules where feasible, preserving deterministic checks.
-- [ ] `TASK-CX-008` Add/refresh focused tests for refactored rule tables and validation edge cases.
+- [ ] `TASK-CX-007` Refactor rule-heavy validator scripts to table-driven rules where feasible, preserving deterministic checks. **Owner: platform-qa; Due: 2026-03-21; Status note: Pending scoping; candidate validator rule clusters identified for table-driven migration.**
+- [ ] `TASK-CX-008` Add/refresh focused tests for refactored rule tables and validation edge cases. **Owner: platform-qa; Due: 2026-03-23; Status note: Pending; edge-case matrix draft depends on final rule-table boundaries from TASK-CX-007.**
 - [ ] Add a recurring checkpoint note in sprint reviews capturing: latest hotspot count, top 10 function scores, and delta vs previous snapshot.
 
 Checkpoint evidence requirements for complexity-focused slices:
