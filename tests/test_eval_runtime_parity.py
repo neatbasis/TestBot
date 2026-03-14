@@ -15,6 +15,7 @@ assert _eval_spec and _eval_spec.loader
 eval_recall = importlib.util.module_from_spec(_eval_spec)
 _eval_spec.loader.exec_module(eval_recall)
 from testbot.eval_fixtures import cases_by_id
+from tests.helpers.eval_case_builders import build_eval_case_candidate_sets_by_id
 from testbot.context_resolution import ContinuityPosture, resolve as resolve_context
 from testbot import sat_chatbot_memory_v2 as runtime
 from testbot.candidate_encoding import FactCandidate
@@ -27,16 +28,6 @@ from testbot.sat_chatbot_memory_v2 import has_sufficient_context_confidence
 
 FIXED_NOW = arrow.get("2026-03-10T11:00:00+00:00")
 NEAR_TIE_DELTA = 0.02
-
-
-def _load_candidate_set_fixture(fixture_id: str) -> dict[str, Any]:
-    fixtures_path = Path("tests/fixtures/candidate_sets.jsonl")
-    with fixtures_path.open("r", encoding="utf-8") as fixture_file:
-        for line in fixture_file:
-            fixture = json.loads(line)
-            if fixture["fixture_id"] == fixture_id:
-                return fixture
-    raise AssertionError(f"Missing fixture_id: {fixture_id}")
 
 
 def _runtime_path_result(utterance: str, candidates: list[dict[str, Any]]) -> dict[str, Any]:
@@ -186,7 +177,7 @@ def test_eval_runtime_parity_clear_winner_case() -> None:
 
 
 def test_eval_runtime_parity_near_tie_fixture_case() -> None:
-    fixture = _load_candidate_set_fixture("candidate-set-no-memory-match")
+    fixture = build_eval_case_candidate_sets_by_id()["candidate-set-no-memory-match"]
     candidates = [dict(candidate, type="user_utterance") for candidate in fixture["candidates"]]
     candidates[1]["sim_score"] = 0.27
 
