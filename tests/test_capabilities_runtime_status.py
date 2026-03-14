@@ -47,7 +47,10 @@ def _capabilities_help_answer(snapshot) -> str:
 def test_shared_snapshot_keeps_cli_fallback_truth_consistent(monkeypatch, capsys) -> None:
     runtime = _base_runtime()
     monkeypatch.setattr("testbot.sat_chatbot_memory_v2._ha_connection_error", lambda *_args: "Missing HA_API_SECRET")
-    monkeypatch.setattr("testbot.sat_chatbot_memory_v2._ollama_connection_error", lambda *_args: None)
+    monkeypatch.setattr(
+        "testbot.sat_chatbot_memory_v2._ollama_connection_error",
+        lambda *_args, **_kwargs: None,
+    )
 
     snapshot = build_capability_snapshot(requested_mode="auto", daemon_mode=False, runtime=runtime)
     _print_startup_status(snapshot=snapshot)
@@ -72,7 +75,10 @@ def test_shared_snapshot_keeps_satellite_truth_consistent(monkeypatch, capsys) -
     runtime = _base_runtime()
     runtime["ha_api_secret"] = "top-secret"
     monkeypatch.setattr("testbot.sat_chatbot_memory_v2._ha_connection_error", lambda *_args: None)
-    monkeypatch.setattr("testbot.sat_chatbot_memory_v2._ollama_connection_error", lambda *_args: None)
+    monkeypatch.setattr(
+        "testbot.sat_chatbot_memory_v2._ollama_connection_error",
+        lambda *_args, **_kwargs: None,
+    )
 
     snapshot = build_capability_snapshot(requested_mode="satellite", daemon_mode=False, runtime=runtime)
     _print_startup_status(snapshot=snapshot)
