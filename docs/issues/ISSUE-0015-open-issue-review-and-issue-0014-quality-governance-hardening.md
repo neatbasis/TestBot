@@ -219,7 +219,7 @@ ISSUE-0015 remains `Status: open` and `Severity: red` until all dependency condi
 
 - [x] **Owner: runtime-pipeline** — Resolved prior failure-attribution mismatch and documented corrective dependency evidence update in ISSUE-0014. **Done: 2026-03-09**. Artifact: `docs/issues/evidence/2026-03-09-runtime-pipeline-dependency-gate-progress.md`.
 - [x] **Owner: platform-qa** — Re-ran `python scripts/all_green_gate.py --continue-on-failure --json-output artifacts/all-green-gate-summary.json` and attached updated summary showing passed status at snapshot `2026-03-10T21:36:04Z` (with QA warning-mode KPI non-zero stage details preserved). **Done: 2026-03-10**. Artifact: `artifacts/all-green-gate-summary.json`.
-- [x] **Owner: release-governance** — Updated ISSUE-0013/0014/0015 and RED_TAG lifecycle text to the same refreshed-gate sequencing posture from snapshot `2026-03-10T21:36:04Z`. **Done: 2026-03-10**. Artifact: `artifacts/all-green-gate-summary.json`.
+- [x] **Owner: release-governance** — Updated ISSUE-0013/0014/0015 and RED_TAG lifecycle text to the same refreshed-gate sequencing posture from snapshot `2026-03-10T21:36:04Z` for documentation-governance consolidation scope only (not product readiness). Cross-check: `docs/qa/feature-status-report.md` reports `Implemented: 0 | Partial: 9 | Missing: 0`, so capability readiness remains partial. **Done: 2026-03-10**. Artifact: `artifacts/all-green-gate-summary.json`.
 
 
 ## 2026-03-09 Governance validator rerun

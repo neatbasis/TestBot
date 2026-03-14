@@ -73,7 +73,7 @@ Governance validator fallback audit (2026-03-10): `docs/issues/evidence/2026-03-
 
 - [x] **Owner: runtime-pipeline** — Resolved prior failure attribution mismatch in `docs/issues/evidence/2026-03-09-issue-0014-0013-all-green-gate.log` and documented corrective note. **Done: 2026-03-09**. Artifact: `docs/issues/evidence/2026-03-09-runtime-pipeline-dependency-gate-progress.md`.
 - [x] **Owner: platform-qa** — Re-ran canonical gate (`--continue-on-failure`) and published refreshed passed-with-warning snapshot artifact (`artifacts/all-green-gate-summary.json`, timestamp `2026-03-10T21:36:04Z`). **Done: 2026-03-10**. Artifact: `artifacts/all-green-gate-summary.json`.
-- [x] **Owner: release-governance** — Updated lifecycle language in ISSUE-0013/0014/0015/RED_TAG after refreshed evidence confirmed passed-with-warning dependency posture (not dependency satisfaction). **Done: 2026-03-10**. Artifact: `artifacts/all-green-gate-summary.json`.
+- [x] **Owner: release-governance** — Updated lifecycle language in ISSUE-0013/0014/0015/RED_TAG after refreshed evidence confirmed passed-with-warning dependency posture (not dependency satisfaction) for documentation-governance consolidation scope only (not product readiness). Cross-check: `docs/qa/feature-status-report.md` reports `Implemented: 0 | Partial: 9 | Missing: 0`, so capability readiness remains partial. **Done: 2026-03-10**. Artifact: `artifacts/all-green-gate-summary.json`.
 
 ## Resolved
 
