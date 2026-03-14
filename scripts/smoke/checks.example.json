@@ -39,7 +39,10 @@
       "capability_id": "cap-ollama-model-runtime-ready",
       "capability_name": "Ollama model runtime readiness",
       "business_impact": "Knowing-mode responses cannot be generated when model serving is unavailable.",
-      "severity_if_broken": "critical"
+      "severity_if_broken": "critical",
+      "headers": {
+        "X-Ollama-Key": "${X_OLLAMA_KEY}"
+      }
     },
     {
       "name": "ollama-embedding-ready",
@@ -50,7 +53,10 @@
       "capability_id": "cap-ollama-embedding-runtime-ready",
       "capability_name": "Ollama embedding runtime readiness",
       "business_impact": "Retrieval and grounding pipelines cannot build semantic context when embeddings are unavailable.",
-      "severity_if_broken": "high"
+      "severity_if_broken": "high",
+      "headers": {
+        "X-Ollama-Key": "${X_OLLAMA_KEY}"
+      }
     }
   ]
 }

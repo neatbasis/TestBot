@@ -24,6 +24,7 @@ Set these keys in the shell/session before running smoke checks:
 - `OLLAMA_BASE_URL` (full `http://` or `https://` URL)
 - `OLLAMA_MODEL` (chat/generation model name, for example `llama3.1:latest`)
 - `OLLAMA_EMBEDDING_MODEL` (embedding model name, for example `nomic-embed-text`)
+- `X_OLLAMA_KEY` (non-empty Ollama API key sent as `X-Ollama-Key` for readiness and execution auth)
 - `SMOKE_CONNECT_TIMEOUT_S` (numeric, greater than `0`)
 - `SMOKE_REQUEST_TIMEOUT_S` (numeric, greater than `0`)
 
@@ -36,6 +37,7 @@ HA_SATELLITE_ENTITY_ID=assist_satellite.kitchen
 OLLAMA_BASE_URL=http://localhost:11434
 OLLAMA_MODEL=llama3.1:latest
 OLLAMA_EMBEDDING_MODEL=nomic-embed-text
+X_OLLAMA_KEY=replace-with-ollama-api-key
 SMOKE_CONNECT_TIMEOUT_S=3
 SMOKE_REQUEST_TIMEOUT_S=10
 ```
@@ -54,7 +56,7 @@ The default `scripts/smoke/checks.example.json` is designed to validate these st
 Live smoke now separates two classes of Ollama validation:
 
 - **Readiness checks** (fast):
-  - `GET ${OLLAMA_BASE_URL}/api/tags` probes (`ollama-api-ready`, `ollama-embedding-ready`)
+  - `GET ${OLLAMA_BASE_URL}/api/tags` probes (`ollama-api-ready`, `ollama-embedding-ready`) with `X-Ollama-Key: ${X_OLLAMA_KEY}`
   - Goal: determine endpoint/service reachability quickly.
   - Failure category in artifact rows: `endpoint_unreachable`.
 - **Execution checks** (explicit runtime calls):

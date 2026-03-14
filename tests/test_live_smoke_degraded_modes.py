@@ -20,7 +20,7 @@ pytestmark = pytest.mark.live_smoke
 
 require_live_smoke_config(
     suite_name="degraded-mode live_smoke tests",
-    required_fields=("OLLAMA_BASE_URL", "OLLAMA_MODEL", "OLLAMA_EMBEDDING_MODEL"),
+    required_fields=("OLLAMA_BASE_URL", "OLLAMA_MODEL", "OLLAMA_EMBEDDING_MODEL", "X_OLLAMA_KEY"),
 )
 
 
@@ -128,6 +128,7 @@ def test_live_smoke_degraded_modes_runtime_contracts(
         ollama_endpoint = _require_env("OLLAMA_BASE_URL")
         _require_env("OLLAMA_MODEL")
         _require_env("OLLAMA_EMBEDDING_MODEL")
+        _require_env("X_OLLAMA_KEY")
 
     monkeypatch.setenv("HA_API_URL", ha_endpoint)
     monkeypatch.setenv("HA_API_SECRET", ha_secret)

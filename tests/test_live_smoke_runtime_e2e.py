@@ -28,6 +28,7 @@ require_live_smoke_config(
         "OLLAMA_BASE_URL",
         "OLLAMA_MODEL",
         "OLLAMA_EMBEDDING_MODEL",
+        "X_OLLAMA_KEY",
     ),
 )
 
@@ -47,6 +48,7 @@ def _require_live_runtime_env() -> None:
         "OLLAMA_BASE_URL",
         "OLLAMA_MODEL",
         "OLLAMA_EMBEDDING_MODEL",
+        "X_OLLAMA_KEY",
     ):
         _require_env(env_name)
 
@@ -56,6 +58,7 @@ def _require_live_ollama_env() -> None:
         "OLLAMA_BASE_URL",
         "OLLAMA_MODEL",
         "OLLAMA_EMBEDDING_MODEL",
+        "X_OLLAMA_KEY",
     ):
         _require_env(env_name)
 
