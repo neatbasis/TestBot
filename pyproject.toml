@@ -14,6 +14,7 @@ dependencies = [
   "ha-ask @ git+https://github.com/neatbasis/Ask.git",
   "langchain-core",
   "langchain-ollama",
+  "numpy",
   "python-dotenv",
 ]
 
