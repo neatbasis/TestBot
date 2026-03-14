@@ -81,6 +81,8 @@ These tests are deterministic and do **not** require production Ollama, Home Ass
 
 Run separately against real Home Assistant + Ollama for environment confidence. Keep these tests opt-in and out of default quick runs.
 
+Live-smoke suites are expected to self-skip when required environment variables are missing. Skip notices should explicitly state both **why** execution was skipped (which variables are absent) and the **expected behavior** once configuration is provided (end-to-end checks run against reachable live services).
+
 ## Commands
 
 Use the following canonical commands from repository root.

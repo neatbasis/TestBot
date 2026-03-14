@@ -4,7 +4,7 @@ import os
 
 import pytest
 
-from tests.conftest import require_live_smoke_config
+from tests.live_smoke_support import require_live_smoke_config
 from homeassistant_api import Client
 from homeassistant_api.errors import HomeassistantAPIError
 
