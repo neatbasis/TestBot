@@ -56,15 +56,19 @@ KPI warning-mode governance policy is defined in `docs/testing.md` under [KPI gu
 - Lifecycle sync refreshed on 2026-03-10 for gate snapshot `2026-03-10T21:36:04Z` (vocabulary normalized to blocker/dependent/parallel stream/open/blocked pending evidence and passed-with-warning gate posture).
 
 - ISSUE-0015 — **Open-issue review identifies ISSUE-0014 quality/governance gaps that could permit partial-fix closure**: Open red-tag governance hardening issue. Lifecycle interpretation: remains open/red until dependency exit conditions are met in ISSUE-0013 AC-0013-11 and ISSUE-0014 Phase 1 (identity semantic preservation, retrieval activation on self-reference recall, and confirmed identity fact promotion at commit).
-  - Last reviewed: 2026-03-10
-  - Next review due: 2026-03-17
+  - Last reviewed: 2026-03-14
+  - Next review due: 2026-03-21
   - KPI evidence: artifacts/all-green-gate-summary.json
-  - Decision notes: Dependency chain vocabulary remains synchronized; ISSUE-0015 stays open/blocked pending evidence because gate snapshot `2026-03-10T21:36:04Z` is passed (warning: `qa_validate_kpi_guardrails`; first failing command in non-zero stage: `qa -> /root/.pyenv/versions/3.11.14/bin/python scripts/validate_kpi_guardrails.py --summary logs/turn_analytics_summary.json --config config/kpi_guardrails.json`). KPI warning debt owner/due linkage: **Owner: platform-qa; Due: 2026-03-17** (with lifecycle wording sync follow-through by **release-governance; Due: 2026-03-17**).
+  - Decision notes: Dependency chain vocabulary remains synchronized; ISSUE-0015 stays open/blocked pending evidence because gate snapshot `2026-03-10T21:36:04Z` is passed (warning: `qa_validate_kpi_guardrails`; first failing command in non-zero stage: `qa -> /root/.pyenv/versions/3.11.14/bin/python scripts/validate_kpi_guardrails.py --summary logs/turn_analytics_summary.json --config config/kpi_guardrails.json`). KPI warning debt owner/due linkage remains active and synchronized: **Owner: platform-qa; Due: 2026-03-21** (with lifecycle wording sync follow-through by **release-governance; Due: 2026-03-21**).
 - ISSUE-0014 — **CLI self-identity turns are stabilized structurally but semantically misrouted before memory retrieval and durable fact promotion**: Open red-tag regression; evidence indicates rewrite-stage semantic inversion and self-reference misrouting prevent retrieval activation and confirmed-user-fact promotion. This is a blocking dependency for ISSUE-0013 AC-0013-11 and ISSUE-0015 closure gates.
-  - Last reviewed: 2026-03-10
-  - Next review due: 2026-03-17
+  - Last reviewed: 2026-03-14
+  - Next review due: 2026-03-21
   - KPI evidence: artifacts/all-green-gate-summary.json
-  - Decision notes: ISSUE-0014 remains a blocker in the active chain; lifecycle wording is open/blocked pending evidence and aligned to gate snapshot `2026-03-10T21:36:04Z` (`status=passed`, warning check: `qa_validate_kpi_guardrails`, non-zero stage first failing command: `qa -> /root/.pyenv/versions/3.11.14/bin/python scripts/validate_kpi_guardrails.py --summary logs/turn_analytics_summary.json --config config/kpi_guardrails.json`). KPI warning debt owner/due linkage: **Owner: platform-qa; Due: 2026-03-17** (with lifecycle wording sync follow-through by **release-governance; Due: 2026-03-17**).
+  - Decision notes: ISSUE-0014 remains a blocker in the active chain; lifecycle wording is open/blocked pending evidence and aligned to gate snapshot `2026-03-10T21:36:04Z` (`status=passed`, warning check: `qa_validate_kpi_guardrails`, non-zero stage first failing command: `qa -> /root/.pyenv/versions/3.11.14/bin/python scripts/validate_kpi_guardrails.py --summary logs/turn_analytics_summary.json --config config/kpi_guardrails.json`). KPI warning debt owner/due linkage remains active and synchronized: **Owner: platform-qa; Due: 2026-03-21** (with lifecycle wording sync follow-through by **release-governance; Due: 2026-03-21**).
+
+## Governance review notes
+
+- 2026-03-14: Reconciled RED_TAG against ISSUE-0013/0014/0015 with no lifecycle status change. Confirmed synchronized `open/blocked pending evidence` language, blocker/dependent/parallel-stream dependency wording (including AC-0013-11 linkage), and consistent canonical gate snapshot reference (`artifacts/all-green-gate-summary.json`, `2026-03-10T21:36:04Z`). Updated active red-tag triage review cadence dates and carried forward warning-debt ownership/due-date linkage.
 
 Dependency evidence pointer (2026-03-09): `docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md` with linked behave/pytest logs, reproducible CLI traces, and canonical gate artifacts used for open/blocked pending evidence tracking.
 Governance validator fallback audit (2026-03-10): `docs/issues/evidence/2026-03-10-governance-validator-base-ref-fallback-audit.md` documents `origin/main` unavailability, automatic `HEAD~1` fallback, and explicit `HEAD~1` reruns for auditable readiness evidence.

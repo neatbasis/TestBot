@@ -29,7 +29,7 @@ Dependent open-issue routing is sequenced through ISSUE-0013 using the following
 
 - **Selected mode:** warning mode (`--kpi-guardrail-mode optional`, current default policy in `docs/testing.md`).
 - **Readiness interpretation for this dependency chain:** canonical readiness remains `open/blocked pending evidence` while any blocking gate checks fail; KPI warnings are tracked as explicit warning debt and must remain issue-linked with owner + due date until cleared.
-- **Current warning debt linkage (snapshot `2026-03-10T21:36:04Z`):** `qa_validate_kpi_guardrails` warning remains linked to ISSUE-0014/ISSUE-0015 dependency sequencing under **Owner: platform-qa**, **Due: 2026-03-17** (next triage review) with lifecycle synchronization responsibility under **Owner: release-governance**, **Due: 2026-03-17**.
+- **Current warning debt linkage (snapshot `2026-03-10T21:36:04Z`):** `qa_validate_kpi_guardrails` warning remains linked to ISSUE-0014/ISSUE-0015 dependency sequencing under **Owner: platform-qa**, **Due: 2026-03-21** (next triage review) with lifecycle synchronization responsibility under **Owner: release-governance**, **Due: 2026-03-21**.
 
 ## Evidence
 
@@ -192,7 +192,7 @@ Dependency labels (machine-auditable ordered chain):
     - missing-evidence checklist:
       - [ ] **Owner: runtime-pipeline** — confirm optional-mode KPI warning debt handling and close remaining dependency evidence gaps after canonical gate status moved to passed (non-zero `qa` stage at `qa_validate_kpi_guardrails`) in branch evidence. **Due: 2026-03-16**.
       - [ ] **Owner: platform-qa** — rerun canonical all-green gate and attach refreshed passing artifacts after failures are resolved. **Due: 2026-03-16**.
-      - [ ] **Owner: release-governance** — promote lifecycle language to evidence-satisfied only after refreshed passing gate evidence is attached across ISSUE-0013/0014/0015/RED_TAG. **Due: 2026-03-17**.
+      - [ ] **Owner: release-governance** — promote lifecycle language to evidence-satisfied only after refreshed passing gate evidence is attached across ISSUE-0013/0014/0015/RED_TAG. **Due: 2026-03-21**.
 
 - [~] [AC-0013-12] `docs/qa/feature-status.yaml` canonical pipeline capability slices are advanced from `planned` to implemented maturity states that reflect delivered behavior.
   - dependency-labels: `DEP-0012-PARALLEL`, `DEP-0014-BLOCKER`, `DEP-0015-DEPENDENT`
@@ -306,9 +306,9 @@ Progress discipline for each `TASK-CX-*` slice:
 
 ## Red-tag triage note (dependency gate)
 
-- Last reviewed: 2026-03-09
-- Next review due: 2026-03-16
-- KPI evidence: docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md
+- Last reviewed: 2026-03-14
+- Next review due: 2026-03-21
+- KPI evidence: artifacts/all-green-gate-summary.json
 - Decision notes: Deterministic behave/pytest bundle and required CLI identity-continuity closure traces are attached; AC-0013-11 dependency remains unresolved because, despite `status=passed`, the currently referenced canonical gate artifact still carries optional-mode KPI warning debt (`qa_validate_kpi_guardrails`) and open cross-issue closure sequencing requirements, keeping dependency posture open/blocked pending evidence.
 
 - 2026-03-07: Opened as the primary bug-elimination program to align runtime behavior with the canonical turn pipeline contract and eliminate raw-utterance-first routing as the dominant defect source.

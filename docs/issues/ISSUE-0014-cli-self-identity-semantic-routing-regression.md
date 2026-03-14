@@ -16,7 +16,7 @@
 
 - **Selected mode:** warning mode (`--kpi-guardrail-mode optional`).
 - **Readiness criteria impact:** ISSUE-0014 remains `open/blocked pending evidence` until shared closure evidence is complete and canonical gate evidence is refreshed; KPI warnings remain blocker evidence for this red-tag blocker path unless linked warning debt (owner + due date) is current.
-- **Active KPI warning debt record:** `qa_validate_kpi_guardrails` from snapshot `2026-03-10T21:36:04Z` is owned by **platform-qa** with review/mitigation due **2026-03-17**, synchronized in ISSUE-0015 and `docs/issues/RED_TAG.md`.
+- **Active KPI warning debt record:** `qa_validate_kpi_guardrails` from snapshot `2026-03-10T21:36:04Z` is owned by **platform-qa** with review/mitigation due **2026-03-21**, synchronized in ISSUE-0015 and `docs/issues/RED_TAG.md`.
 
 
 - Routing anchor: ISSUE-0013 (**blocker** in current execution order; identity-continuity behavioral gate for AC-0013-11).
@@ -274,7 +274,7 @@ Issue validation passed.
 
 - Last reviewed: 2026-03-14
 - Next review due: 2026-03-21
-- KPI evidence: docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md
+- KPI evidence: artifacts/all-green-gate-summary.json
 - Decision notes: Phase 1 deterministic suites and required CLI closure-proof traces remain attached with AC mapping complete, but the refreshed canonical gate snapshot at `2026-03-10T21:36:04Z` is passed with KPI warning-mode debt (`qa_validate_kpi_guardrails`) and a non-zero QA stage whose first failing command is `scripts/validate_kpi_guardrails.py`. Per `docs/testing.md#kpi-guardrail-mode-policy-authoritative`, persistent warning-mode KPI results remain linked governance debt and require owner/due-date linkage in this issue, ISSUE-0015, and RED_TAG.
 
 - 2026-03-08: Opened from production-style CLI session evidence showing stabilization progress with persistent semantic routing and fact-promotion defects in identity continuity turns.
