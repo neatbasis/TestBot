@@ -110,6 +110,54 @@ Status legend: `[ ] pending`, `[~] in progress`, `[x] complete`.
 - [ ] **TASK-CX-007:** Convert repetitive condition blocks in `scripts/validate_issue_links.py` and `scripts/validate_pipeline_stage_conformance.py` into table-driven rules.
 - [ ] **TASK-CX-008:** Add focused tests around table rules to preserve deterministic behavior and keep policy enforcement auditable.
 
+## Canonical complexity baseline specification (for net-new regression comparisons)
+
+This section is the canonical source for how complexity baselines are stored and compared for `TASK-CX-004` and related complexity-governance checkpoints.
+
+### Baseline artifact location
+
+- Canonical path: `artifacts/complexipy/baselines/`
+- Governance mirror (optional for reviewability in issue docs): `docs/issues/evidence/`
+- Runtime and CI comparisons MUST read from the canonical artifact path under `artifacts/`; the docs mirror is informational and not a second source of truth.
+
+### File naming/versioning convention
+
+- File pattern: `complexipy-baseline-<scope>-v<major>.<minor>.json`
+- `scope` SHOULD identify comparison coverage (for example: `runtime`, `repo`, `scripts-and-runtime`).
+- Versioning rules:
+  - Increment `<minor>` for baseline refreshes that preserve the same scope and threshold policy.
+  - Increment `<major>` when scope definition, threshold policy, or required fields change.
+  - Keep exactly one `latest` pointer file per scope named `complexipy-baseline-<scope>-latest.json` containing the currently active baseline payload.
+
+### Required columns/fields
+
+Each baseline record MUST include at least:
+
+1. `function_fqn` (fully-qualified function identifier, e.g. `src/testbot/module.py::function_name`)
+2. `score` (observed complexity score for that function)
+3. `threshold` (active gating threshold used when baseline was produced)
+4. `timestamp` (ISO-8601 UTC generation time)
+5. `command` (exact command used to generate the baseline snapshot)
+
+Recommended additional metadata for baseline files:
+
+- `scope`
+- `version`
+- `generated_by`
+- `notes`
+
+### Update rule (replace vs fixed baseline)
+
+- Keep baseline fixed during normal feature/refactor work; use it to detect net-new regressions on touched files.
+- Replace baseline only when one of the following is true:
+  1. Approved complexity-reduction slice materially lowers legacy hotspot scores and a new ratchet floor is intentionally adopted.
+  2. Scope/threshold policy is intentionally changed and documented in ISSUE-0013 + ISSUE-0012 notes.
+  3. Tooling output schema changes require a version bump.
+- Baseline replacement MUST be accompanied by:
+  - before/after hotspot delta table,
+  - updated versioned baseline artifact,
+  - issue-note entry stating why replacement was required.
+
 ## Progress logging guidance for next contributor
 
 When picking up this work, append a dated note here including:

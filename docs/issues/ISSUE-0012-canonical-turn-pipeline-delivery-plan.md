@@ -63,6 +63,8 @@ The canonical turn pipeline contract in `docs/architecture/canonical-turn-pipeli
 
 Linked investigation: `docs/issues/evidence/complexipy-hotspots-legacy-canonical-analysis-2026-03-14.md`.
 
+Checkpoint-note baseline governance source: [Canonical complexity baseline specification](evidence/complexipy-hotspots-legacy-canonical-analysis-2026-03-14.md#canonical-complexity-baseline-specification-for-net-new-regression-comparisons).
+
 Delivery-plan tracking tasks (governance/reporting):
 
 - [ ] `TASK-CX-007` Refactor rule-heavy validator scripts to table-driven rules where feasible, preserving deterministic checks. **Owner: platform-qa; Due: 2026-03-21; Status note: Pending scoping; candidate validator rule clusters identified for table-driven migration.**
