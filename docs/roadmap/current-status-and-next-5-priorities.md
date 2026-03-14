@@ -15,11 +15,16 @@ This document answers four operational questions in one place:
 
 ## Current status
 
-Evidence timestamp reference (artifact freshness):
+Canonical gate snapshot reference (single source used in this document):
 
-- `artifacts/feature-status-summary.json` → `generated_at_utc`: `2026-03-10T21:16:54Z`.
-- `docs/qa/feature-status-report.md` reports the same generation moment (`Generated at (UTC): 2026-03-10T21:16:54Z`), so capability counts below are tied to that artifact run.
-- `artifacts/all-green-gate-summary.json` is the gate execution artifact used for gate status and failed-check assertions below (current artifact mtime UTC from the latest feature summary metadata: `2026-03-10T21:16:13Z`).
+- Timestamp (UTC): `2026-03-14T18:27:04Z`
+- Artifact path: `artifacts/all-green-gate-summary.json`
+- Gate status: `failed` with `warning_count=1` (`qa_validate_kpi_guardrails`)
+
+### Artifact freshness and source-of-truth
+
+- Regenerate values in this section whenever `artifacts/all-green-gate-summary.json` or `docs/qa/feature-status-report.md` is refreshed.
+- If a conflict appears between this roadmap and other docs, treat `artifacts/all-green-gate-summary.json` as authoritative for gate outcome details (`status`, warning checks, first failing command), and treat `docs/qa/feature-status-report.md` as authoritative for capability counts.
 
 Source-of-truth refresh discipline (use this order on each update):
 
@@ -31,23 +36,23 @@ From the latest generated status artifacts:
 
 - Capability summary line (`docs/qa/feature-status-report.md`): **Implemented: 0 | Partial: 9 | Missing: 0**.
 - Gate status (`artifacts/all-green-gate-summary.json` → top-level `status`): **failed**.
-- Current failing and warning-mode checks/signals in the same gate artifact:
-  - Failing checks: `product_behave`, `qa_pytest_not_live_smoke`, `qa_validate_invariant_sync`.
-  - Warning-mode check: `qa_validate_kpi_guardrails` returned `warning` (non-zero exit code tracked as a warning by the gate runner).
+- Warning-mode signal in the same gate artifact:
+  - Warning-mode check: `qa_validate_kpi_guardrails` returned `warning` (non-zero exit code intentionally tracked as a warning by the gate runner in optional mode).
+  - Failing checks: `qa_pytest_not_live_smoke`, `qa_validate_issue_links`.
+  - Warning-mode check: `qa_validate_kpi_guardrails` returned `warning` (non-zero exit code intentionally tracked as a warning by the gate runner in optional mode).
   - First failing command by stage:
-    - `product`: `/root/.pyenv/versions/3.11.14/bin/python -m behave`
     - `qa`: `/root/.pyenv/versions/3.11.14/bin/python -m pytest -m 'not live_smoke'`
 
 ### What is working
 
 - `product_eval_recall_topk4`, safety validators, governance validators, markdown-path validation, and turn analytics aggregation are passing in the gate artifact.
 - Time-aware memory retrieval/reranking and canonical merge-gate/governance capabilities remain tracked as **implemented** in the feature status report.
-- Governance validators (`qa_validate_issue_links`, `qa_validate_issues`) and markdown path validation (`qa_validate_markdown_paths`) are passing in the current gate artifact run.
+- Governance validator `qa_validate_issues` and markdown path validation (`qa_validate_markdown_paths`) are passing in the current gate artifact run, while `qa_validate_issue_links` is currently failing.
 
 ### Current blockers (active)
 
-- Canonical gate evidence is currently **failed** due to `product_behave`, `qa_pytest_not_live_smoke`, and `qa_validate_invariant_sync`; treat behavior as not merge-ready until these checks are green in a newer artifact run.
-- KPI guardrail validation remains in explicit **warning mode** (`qa_validate_kpi_guardrails`), so guardrail threshold violations are active quality signals alongside failing checks.
+- Canonical gate evidence is currently **failed** (`status=failed`, `warning_count=1`) due to active failing checks; this snapshot is not merge-ready.
+- KPI guardrail validation remains in explicit **warning mode** (`qa_validate_kpi_guardrails`), so guardrail threshold violations remain active quality signals alongside failing checks.
 - All canonical pipeline capability slices remain **partial** in the latest status report and should still be treated as delivery blockers for full readiness:
   - `foundation` slice: **Canonical turn pipeline foundation (observe/encode/stabilize)** is partial.
   - `decisioning` slice: **Canonical turn pipeline decisioning (context/intent/retrieve/policy)** is partial.
@@ -55,7 +60,7 @@ From the latest generated status artifacts:
 
 ### Risk interpretation
 
-- **Knowing-mode risk:** high immediate execution risk (active behavior and deterministic-test failures) plus capability-completeness risk and KPI warning-mode guardrail risk.
+- **Knowing-mode risk:** high immediate execution risk (active deterministic-test/governance failures) plus capability-completeness risk and KPI warning-mode guardrail debt.
 - **Unknowing-mode risk:** behavior remains partially complete per feature contract and is currently not merge-ready due to active gate failures.
 
 ---
