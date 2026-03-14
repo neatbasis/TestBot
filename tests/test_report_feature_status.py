@@ -127,6 +127,7 @@ def test_build_report_links_partial_capability_to_issue_via_id_keyword(tmp_path:
 
     report_markdown, summary = report_feature_status.build_report(
         contract=contract,
+        gate_payload={},
         gate_results={},
         open_issues=[issue],
         roadmap_priorities={"P5": ["docs/roadmap/current-status-and-next-5-priorities.md"]},
@@ -229,6 +230,7 @@ def test_build_report_renders_gate_stale_warning_with_refresh_hint(tmp_path: Pat
 
     report_markdown, summary = report_feature_status.build_report(
         contract={"capabilities": []},
+        gate_payload={},
         gate_results={},
         open_issues=[],
         roadmap_priorities={},
@@ -389,6 +391,7 @@ def test_build_report_includes_unresolved_criteria_in_markdown_and_json(tmp_path
 
     report_markdown, summary = report_feature_status.build_report(
         contract=contract,
+        gate_payload={},
         gate_results={},
         open_issues=[issue],
         roadmap_priorities={},
@@ -451,6 +454,7 @@ def test_build_report_handles_missing_criterion_markup_gracefully(tmp_path: Path
 
     report_markdown, summary = report_feature_status.build_report(
         contract=contract,
+        gate_payload={},
         gate_results={},
         open_issues=[issue],
         roadmap_priorities={},
@@ -546,6 +550,7 @@ def test_build_report_surfaces_unmapped_scenarios_for_missing_issue_ac_tags(
 
     report_markdown, summary = report_feature_status.build_report(
         contract=contract,
+        gate_payload={},
         gate_results={},
         open_issues=[],
         roadmap_priorities={},
