@@ -243,7 +243,7 @@ Phase 1 status: **open/blocked pending evidence for dependency sequencing**. AC-
 
 - [x] **Owner: runtime-pipeline** — Resolved failure attribution mismatch from the prior bundle (`product_behave`) to the actual optional KPI warning path and documented dependency-gate evidence state update. **Done: 2026-03-09**. Artifact: `docs/issues/evidence/2026-03-09-runtime-pipeline-dependency-gate-progress.md`.
 - [x] **Owner: platform-qa** — Re-ran `python scripts/all_green_gate.py --continue-on-failure --json-output artifacts/all-green-gate-summary.json` and refreshed gate snapshot (`status=passed`) with warning checks and stage-level first-failing-command capture for the non-zero QA stage. **Done: 2026-03-10**. Artifact: `artifacts/all-green-gate-summary.json`.
-- [x] **Owner: release-governance** — Refreshed ISSUE-0013/ISSUE-0015/RED_TAG lifecycle language to the same refreshed-gate posture snapshot (`2026-03-10T21:36:04Z`) and synchronized dependency wording. **Done: 2026-03-10**. Artifact: `artifacts/all-green-gate-summary.json`.
+- [x] **Owner: release-governance** — Refreshed ISSUE-0013/ISSUE-0015/RED_TAG lifecycle language to the same refreshed-gate posture snapshot (`2026-03-10T21:36:04Z`) and synchronized dependency wording for documentation-governance consolidation scope only (not product readiness). Cross-check: `docs/qa/feature-status-report.md` reports `Implemented: 0 | Partial: 9 | Missing: 0`, so capability readiness remains partial. **Done: 2026-03-10**. Artifact: `artifacts/all-green-gate-summary.json`.
 
 Governance validator rerun (2026-03-09):
 - `python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main` -> **pass** (base-ref fallback `origin/main` -> `HEAD~1`).
