@@ -41,11 +41,16 @@ Live-smoke and deterministic runtime-pipeline validation now confirm that source
 
 ## Work Plan
 
-- [ ] Align runtime contract decision with ISSUE-0018/ISSUE-0019 orchestration expectations.
-- [ ] Implement ingestion-enable semantics with backward-compatible warning window.
-- [ ] Update quickstart source-ingestion section to remove mandatory `SOURCE_INGEST_ENABLED=1` from canonical examples.
-- [ ] Add deterministic tests covering implicit enablement and explicit disable override.
-- [ ] Run canonical gate and governance validators.
+- [Blocked] Align runtime contract decision with ISSUE-0018/ISSUE-0019 orchestration expectations (blocked by unresolved scheduler/engine ownership boundaries in ISSUE-0018 and ISSUE-0019).
+- [Not Started] Implement ingestion-enable semantics with backward-compatible warning window.
+- [Not Started] Update quickstart source-ingestion section to remove mandatory `SOURCE_INGEST_ENABLED=1` from canonical examples.
+- [Not Started] Add deterministic tests covering implicit enablement and explicit disable override.
+- [In Progress] Run governance validators now; run canonical gate in implementation PR once dependency decisions are merged.
+
+## Triage Notes
+
+- **2026-03-14:** **Phase:** blocked. **Immediate next owner action:** consume ISSUE-0018/ISSUE-0019 architecture decisions, then draft concrete deprecation contract and migration warning copy for review. **Target review date:** 2026-03-21.
+
 
 ## Verification
 
@@ -58,6 +63,10 @@ python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main
 python scripts/validate_issues.py --all-issue-files --base-ref origin/main
 python scripts/all_green_gate.py
 ```
+
+Governance-validation artifacts (current branch triage run):
+- `artifacts/issue-triage-2026-03-14/validate_issue_links.txt`
+- `artifacts/issue-triage-2026-03-14/validate_issues.txt`
 
 ## Closure Notes
 

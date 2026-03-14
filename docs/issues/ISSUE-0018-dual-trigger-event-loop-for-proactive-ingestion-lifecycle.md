@@ -7,7 +7,7 @@
 - **Owner:** runtime-pipeline
 - **Created:** 2026-03-09
 - **Target Sprint:** Sprint 8
-- **Canonical Cross-Reference:** ISSUE-0017 (latest pending-ingestion lifecycle contract/closure evidence), ISSUE-0013 (canonical pipeline bug-elimination program), ISSUE-0012 (delivery-plan context), ISSUE-0010 (unknowing fallback contract)
+- **Canonical Cross-Reference:** ISSUE-0017 (latest pending-ingestion lifecycle contract/closure evidence), ISSUE-0019 (channel-agnostic conversation engine dependency for adapter decoupling), ISSUE-0020 (quickstart ingestion-toggle deprecation depends on scheduler semantics), ISSUE-0013 (canonical pipeline bug-elimination program), ISSUE-0012 (delivery-plan context), ISSUE-0010 (unknowing fallback contract)
 - **Principle Alignment:** contract-first, invariant-driven, traceable, deterministic, ci-enforced, user-centric
 
 ## Problem Statement
@@ -53,30 +53,17 @@ To satisfy this robustly across interfaces, loop processing must support both **
 
 ## Work Plan
 
-- [ ] **Event model + scheduler**
-  - Introduce a minimal event envelope and dispatcher for loop processing:
-    - user events: `user_utterance_received`
-    - system events: `background_ingestion_completed`, `poll_tick`
-  - Keep single canonical pipeline authority for answer generation.
+- [Not Started] **Event model + scheduler:** introduce a minimal event envelope and dispatcher for loop processing (`user_utterance_received`, `background_ingestion_completed`, `poll_tick`) while keeping a single canonical pipeline authority for answer generation.
+- [Blocked] **Input/poll integration:** add non-blocking read adapter or bounded wait strategy so periodic poll/timer events are processed even when no user input arrives; blocked by ISSUE-0019 engine boundary decision on adapter contracts.
+- [Not Started] **Pending-start strictness:** harden validation/answer policy path so first pending-lookup response is always explicit ingestion-progress text and cannot be replaced by a GK fallback degrade path.
+- [Blocked] **Completion fast-path:** route completion events through system-triggered loop path and emit linked user message + linked grounded answer immediately with idempotency guarantees; blocked by ISSUE-0019 shared dispatcher ownership.
+- [Not Started] **Tests + BDD:** expand lifecycle scenarios for user-triggered start and system-triggered completion/timer polling and add deterministic ordering/no-input completion tests with correlation IDs.
+- [In Progress] **Governance/docs sync:** update `docs/architecture.md`, relevant invariant/directive mirrors, and explicit issue linkage text across ISSUE-0019 and ISSUE-0020 as scheduler dependencies are clarified.
 
-- [ ] **Input/poll integration**
-  - Add non-blocking read adapter or bounded wait strategy so periodic poll/timer events are processed even when no user input arrives.
-  - Preserve deterministic behavior with explicit poll cadence controls in runtime config.
+## Triage Notes
 
-- [ ] **Pending-start strictness**
-  - Harden validation/answer policy path so first pending-lookup response is always explicit ingestion-progress text.
-  - Ensure any general-knowledge fallback degrade path cannot replace this first lifecycle-start acknowledgement.
+- **2026-03-14:** **Phase:** blocked. **Immediate next owner action:** finalize ISSUE-0019 conversation-engine ownership boundaries, then implement dual-trigger scheduler wiring and unblock completion fast-path tasks. **Target review date:** 2026-03-19.
 
-- [ ] **Completion fast-path**
-  - Route completion events through system-triggered loop path and emit linked user message + linked grounded answer immediately.
-  - Ensure idempotent processing for duplicate completion signals.
-
-- [ ] **Tests + BDD**
-  - Expand BDD lifecycle scenarios for user-triggered start and system-triggered completion/timer polling.
-  - Add deterministic runtime tests for event ordering, no-input completion handling, and linked correlation IDs.
-
-- [ ] **Governance/docs sync**
-  - Update `docs/architecture.md`, relevant invariant/directive mirrors, and issue linkage text in ISSUE-0017/ISSUE-0013 as needed.
 
 ## Verification
 
@@ -95,6 +82,10 @@ Expected pass signal:
 - runtime deterministic tests prove dual-trigger + timer/poll behavior,
 - governance validators pass,
 - canonical all-green gate passes.
+
+Governance-validation artifacts (current branch triage run):
+- `artifacts/issue-triage-2026-03-14/validate_issue_links.txt`
+- `artifacts/issue-triage-2026-03-14/validate_issues.txt`
 
 ## Closure Notes
 
