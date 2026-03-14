@@ -23,6 +23,7 @@ import arrow
 from homeassistant_api import Client
 
 from testbot.clock import Clock, SystemClock
+from testbot.config import Config
 from testbot.memory_cards import make_reflection_card, make_utterance_card, store_doc, utc_now_iso
 from testbot.memory_strata import (
     MemoryStratum,
@@ -682,29 +683,30 @@ def _parse_args(argv: list[str] | None = None) -> Namespace:
 
 
 def _read_runtime_env() -> dict[str, object]:
+    config = Config.from_env()
     memory_store_mode = os.getenv("MEMORY_STORE_MODE", "in_memory")
     debug_verbose = os.getenv("TESTBOT_DEBUG_VERBOSE", "0") == "1"
     return {
-        "ha_api_url": os.getenv("HA_API_URL", "http://localhost:8123"),
-        "ha_api_secret": os.getenv("HA_API_SECRET", ""),
-        "ha_satellite_entity_id": os.getenv("HA_SATELLITE_ENTITY_ID", ""),
-        "ollama_base_url": os.getenv("OLLAMA_BASE_URL") or os.getenv("OLLAMA_HOST") or "http://localhost:11434",
-        "ollama_model": os.getenv("OLLAMA_MODEL", "llama3.1:latest"),
-        "ollama_embedding_model": os.getenv("OLLAMA_EMBEDDING_MODEL", "nomic-embed-text:latest"),
-        "memory_near_tie_delta": _parse_env_float("MEMORY_NEAR_TIE_DELTA", 0.02),
+        "ha_api_url": config.HA_API_URL,
+        "ha_api_secret": config.HA_API_SECRET,
+        "ha_satellite_entity_id": config.HA_SATELLITE_ENTITY_ID,
+        "ollama_base_url": config.OLLAMA_BASE_URL,
+        "ollama_model": config.OLLAMA_MODEL,
+        "ollama_embedding_model": config.OLLAMA_EMBEDDING_MODEL,
+        "memory_near_tie_delta": config.MEMORY_NEAR_TIE_DELTA,
         "memory_store_mode": memory_store_mode,
         "memory_store_backend": normalize_memory_store_mode(memory_store_mode),
         "elasticsearch_url": os.getenv("ELASTICSEARCH_URL", "http://localhost:9200"),
         "elasticsearch_index": os.getenv("ELASTICSEARCH_INDEX", "testbot_memory_cards"),
-        "source_ingest_enabled": os.getenv("SOURCE_INGEST_ENABLED", "0") == "1",
-        "source_connector_type": os.getenv("SOURCE_CONNECTOR_TYPE", "fixture"),
-        "source_fixture_path": os.getenv("SOURCE_FIXTURE_PATH", ""),
-        "source_ingest_limit": _parse_env_int("SOURCE_INGEST_LIMIT", 50),
-        "source_ingest_cursor": os.getenv("SOURCE_INGEST_CURSOR") or None,
-        "source_markdown_path": os.getenv("SOURCE_MARKDOWN_PATH", ""),
-        "source_wikipedia_topic": os.getenv("SOURCE_WIKIPEDIA_TOPIC", ""),
-        "source_wikipedia_language": os.getenv("SOURCE_WIKIPEDIA_LANGUAGE", "en"),
-        "source_arxiv_query": os.getenv("SOURCE_ARXIV_QUERY", ""),
+        "source_ingest_enabled": config.SOURCE_INGEST_ENABLED,
+        "source_connector_type": config.SOURCE_CONNECTOR_TYPE,
+        "source_fixture_path": config.SOURCE_FIXTURE_PATH,
+        "source_ingest_limit": config.SOURCE_INGEST_LIMIT,
+        "source_ingest_cursor": config.SOURCE_INGEST_CURSOR,
+        "source_markdown_path": config.SOURCE_MARKDOWN_PATH,
+        "source_wikipedia_topic": config.SOURCE_WIKIPEDIA_TOPIC,
+        "source_wikipedia_language": config.SOURCE_WIKIPEDIA_LANGUAGE,
+        "source_arxiv_query": config.SOURCE_ARXIV_QUERY,
         "source_ingest_async_continuation": os.getenv("SOURCE_INGEST_ASYNC_CONTINUATION", "0") == "1",
         "source_ingest_background_future": None,
         "source_ingest_background_in_progress": False,
