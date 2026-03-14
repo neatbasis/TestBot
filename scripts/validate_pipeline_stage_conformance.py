@@ -76,16 +76,25 @@ PIPELINE_ONTOLOGY_TABLE_RULES: dict[str, tuple[PipelineOntologyTableRule, ...]] 
 }
 
 
-def _extract_stages_from_architecture_doc(path: Path) -> list[str]:
+def _extract_stages_from_canonical_pipeline_doc(path: Path) -> list[str]:
     text = path.read_text(encoding="utf-8")
+    marker = "## Canonical stage sequence"
+    if marker not in text:
+        raise ValidationError(f"Missing '{marker}' section in {path}")
+    section = text.split(marker, maxsplit=1)[1]
+
+    code_block_match = re.search(r"```(?:text)?\n(.*?)\n```", section, flags=re.DOTALL)
+    if not code_block_match:
+        raise ValidationError(f"Missing canonical stage-sequence code block in {path}")
+
     stages: list[str] = []
-    for line in text.splitlines():
-        stripped = line.strip()
-        if not stripped.startswith(tuple(f"{i}. **`" for i in range(1, 12))):
+    for raw_line in code_block_match.group(1).splitlines():
+        stripped = raw_line.strip().lstrip("→").strip()
+        if not stripped:
             continue
-        parts = stripped.split("`")
-        if len(parts) >= 2:
-            stages.append(parts[1])
+        if "." not in stripped:
+            continue
+        stages.append(stripped)
     return stages
 
 
@@ -270,18 +279,19 @@ def validate_pipeline_stage_conformance(
 ) -> list[str]:
     errors: list[str] = []
 
-    architecture_stages = _extract_stages_from_architecture_doc(architecture_doc)
-    if tuple(architecture_stages) != CANONICAL_STAGE_ORDER:
+    canonical_stages = _extract_stages_from_canonical_pipeline_doc(canonical_pipeline_doc)
+    canonical_stage_order = tuple(canonical_stages)
+    if canonical_stage_order != CANONICAL_STAGE_ORDER:
         errors.append(
-            "docs/architecture.md stage list must match canonical stage ordering: "
-            f"expected {CANONICAL_STAGE_ORDER}, got {tuple(architecture_stages)}"
+            "docs/architecture/canonical-turn-pipeline.md canonical stage sequence must match canonical stage ordering: "
+            f"expected {CANONICAL_STAGE_ORDER}, got {canonical_stage_order}"
         )
 
     invariant_stages = _extract_stages_from_invariants_table(invariants_doc)
-    if tuple(invariant_stages) != CANONICAL_STAGE_ORDER:
+    if tuple(invariant_stages) != canonical_stage_order:
         errors.append(
             "docs/invariants/pipeline.md stage transition contracts must match canonical stage ordering: "
-            f"expected {CANONICAL_STAGE_ORDER}, got {tuple(invariant_stages)}"
+            f"expected {canonical_stage_order}, got {tuple(invariant_stages)}"
         )
 
     pipeline_text = canonical_pipeline_doc.read_text(encoding="utf-8")
@@ -295,10 +305,10 @@ def validate_pipeline_stage_conformance(
         errors.append("docs/invariants/pipeline.md must explicitly document the forbidden early U -> I projection guard.")
 
     stage_order = _extract_orchestrator_stage_order(orchestrator_path)
-    if stage_order != CANONICAL_STAGE_ORDER:
+    if stage_order != canonical_stage_order:
         errors.append(
             "src/testbot/canonical_turn_orchestrator.py STAGE_ORDER must match canonical stage ordering: "
-            f"expected {CANONICAL_STAGE_ORDER}, got {stage_order}"
+            f"expected {canonical_stage_order}, got {stage_order}"
         )
 
     observed_keys = _extract_intent_precondition_keys(orchestrator_path)
