@@ -41,11 +41,29 @@ Live-smoke and deterministic runtime-pipeline validation now confirm that source
 
 ## Work Plan
 
-- [Blocked] Align runtime contract decision with ISSUE-0018/ISSUE-0019 orchestration expectations (blocked by unresolved scheduler/engine ownership boundaries in ISSUE-0018 and ISSUE-0019).
-- [Not Started] Implement ingestion-enable semantics with backward-compatible warning window.
-- [Not Started] Update quickstart source-ingestion section to remove mandatory `SOURCE_INGEST_ENABLED=1` from canonical examples.
-- [Not Started] Add deterministic tests covering implicit enablement and explicit disable override.
-- [In Progress] Run governance validators now; run canonical gate in implementation PR once dependency decisions are merged.
+- [ ] **ISSUE-0020-WP1 (target 2026-03-20):** Ratify deprecation contract for `SOURCE_INGEST_ENABLED` after ISSUE-0018 lifecycle + ISSUE-0019 engine decisions are merged.
+  **Depends on:** ISSUE-0018-WP4, ISSUE-0019-WP3.
+- [ ] **ISSUE-0020-WP2 (target 2026-03-20):** Implement implicit-ingestion enablement when connector intent is present, with explicit disable override and warning window.
+  **Depends on:** ISSUE-0020-WP1.
+- [ ] **ISSUE-0020-WP3 (target 2026-03-21):** Update quickstart/source-ingestion docs to remove mandatory `SOURCE_INGEST_ENABLED=1` from canonical commands and add migration note.
+  **Depends on:** ISSUE-0020-WP2.
+- [ ] **ISSUE-0020-WP4 (target 2026-03-21):** Add deterministic tests for implicit enablement + explicit opt-out across fixture connector and runtime pipeline paths.
+  **Depends on:** ISSUE-0020-WP2.
+- [ ] **ISSUE-0020-WP5 (target 2026-03-21):** Run governance validators and canonical gate for implementation PR and publish closure evidence.
+  **Depends on:** ISSUE-0020-WP3, ISSUE-0020-WP4.
+
+## Current State (2026-03-14)
+
+- **Scope:** convert ingestion quickstart from toggle-heavy ergonomics to connector-intent-driven defaults without losing explicit opt-out control.
+- **Owner:** runtime-pipeline.
+- **Blocker:** awaiting ISSUE-0018 and ISSUE-0019 contract decisions that define lifecycle timing and engine ownership assumptions.
+- **Next Action:** draft deprecation contract text and warning strategy template so ISSUE-0020-WP1 can be finalized immediately after upstream decisions land.
+
+## Cross-Issue Dependency Map
+
+- **Depends on ISSUE-0018:** ISSUE-0018-WP4 defines proactive completion lifecycle semantics referenced by the quickstart behavior contract.
+- **Depends on ISSUE-0019:** ISSUE-0019-WP3 defines shared engine/history behavior needed to ensure default-ingestion semantics are channel-neutral.
+- **Feeds back to ISSUE-0018/0019:** ISSUE-0020 docs and runtime toggles provide operator-facing validation that lifecycle and engine contracts are usable in canonical startup flows.
 
 ## Triage Notes
 
@@ -67,6 +85,9 @@ python scripts/all_green_gate.py
 Governance-validation artifacts (current branch triage run):
 - `artifacts/issue-triage-2026-03-14/validate_issue_links.txt`
 - `artifacts/issue-triage-2026-03-14/validate_issues.txt`
+
+Next verification artifact expected for this issue:
+- `artifacts/issue-0020/2026-03-21/source-ingestion-toggle-deprecation-validation.md`
 
 ## Closure Notes
 

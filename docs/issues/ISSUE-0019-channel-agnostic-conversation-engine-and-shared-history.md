@@ -54,12 +54,30 @@ Stakeholder expectation is that CLI should behave like any channel transport and
 
 ## Work Plan
 
-- [In Progress] Define a minimal event envelope and engine-owned dispatcher (`user_utterance_received`, `poll_tick`, `background_ingestion_completed`, `assistant_message_ready`).
-- [Not Started] Refactor CLI and satellite into transport adapters that push/pull engine events without owning conversation progression.
-- [Not Started] Introduce shared conversation history store keyed by conversation ID with channel metadata fields.
-- [Blocked] Route pending-ingestion completion outputs via engine dispatch so delivery is not gated by adapter input blocking (blocked by ISSUE-0018 poll cadence + trigger contract finalization).
-- [Not Started] Add deterministic tests and BDD scenarios for channel handoff continuity and non-user-triggered completion delivery.
-- [In Progress] Sync architecture + issue cross-links + invariant/directive references across ISSUE-0018 and ISSUE-0020.
+- [ ] **ISSUE-0019-WP1 (target 2026-03-17):** Finalize engine boundary RFC defining event ownership, adapter responsibilities, and canonical dispatch API.
+- [ ] **ISSUE-0019-WP2 (target 2026-03-18):** Refactor CLI/satellite adapters into transport-only wrappers that push/pull engine events without owning progression.
+  **Depends on:** ISSUE-0019-WP1.
+- [ ] **ISSUE-0019-WP3 (target 2026-03-18):** Introduce shared conversation history store keyed by conversation ID (channel retained as metadata) and migrate existing runtime paths.
+  **Depends on:** ISSUE-0019-WP1.
+- [ ] **ISSUE-0019-WP4 (target 2026-03-19):** Route pending-ingestion completion dispatch through engine to remove adapter-blocking delivery dependency.
+  **Depends on:** ISSUE-0018-WP2, ISSUE-0019-WP2, ISSUE-0019-WP3.
+- [ ] **ISSUE-0019-WP5 (target 2026-03-19):** Add deterministic tests + BDD for channel handoff continuity and system-originated completion delivery.
+  **Depends on:** ISSUE-0019-WP4.
+- [ ] **ISSUE-0019-WP6 (target 2026-03-20):** Sync architecture/invariant/directive docs and cross-issue links with finalized engine model.
+  **Depends on:** ISSUE-0019-WP5, ISSUE-0018-WP6, ISSUE-0020-WP3.
+
+## Current State (2026-03-14)
+
+- **Scope:** establish channel-agnostic engine ownership and shared-history authority to unlock scheduler and ingestion-contract workstreams.
+- **Owner:** runtime-pipeline.
+- **Blocker:** no approved RFC yet for event-dispatch ownership between engine and adapters.
+- **Next Action:** complete ISSUE-0019-WP1 RFC sign-off and start adapter refactor (ISSUE-0019-WP2) immediately afterward.
+
+## Cross-Issue Dependency Map
+
+- **Unblocks ISSUE-0018:** ISSUE-0019-WP1/WP2/WP3 are prerequisites for ISSUE-0018-WP1/WP2/WP4 dual-trigger scheduler wiring.
+- **Unblocks ISSUE-0020:** ISSUE-0019-WP3 shared-history/engine contract constrains ISSUE-0020 default-ingestion enablement behavior and docs wording.
+- **Depends on ISSUE-0018:** ISSUE-0019-WP4 consumes ISSUE-0018-WP2 bounded-poll semantics to guarantee non-user-triggered completion dispatch timing.
 
 ## Triage Notes
 
@@ -87,6 +105,9 @@ Expected pass signal:
 Governance-validation artifacts (current branch triage run):
 - `artifacts/issue-triage-2026-03-14/validate_issue_links.txt`
 - `artifacts/issue-triage-2026-03-14/validate_issues.txt`
+
+Next verification artifact expected for this issue:
+- `artifacts/issue-0019/2026-03-20/channel-handoff-history-parity.json`
 
 ## Closure Notes
 
