@@ -5,6 +5,8 @@ import os
 
 import pytest
 
+from tests.conftest import require_live_smoke_config
+
 from testbot.pipeline_state import PipelineState
 from testbot.sat_chatbot_memory_v2 import (
     _print_startup_status,
@@ -16,11 +18,10 @@ from testbot.sat_chatbot_memory_v2 import (
 
 pytestmark = pytest.mark.live_smoke
 
-if os.getenv("TESTBOT_ENABLE_LIVE_SMOKE", "").strip().lower() not in {"1", "true", "yes"}:
-    pytest.skip(
-        "Set TESTBOT_ENABLE_LIVE_SMOKE=1 to run degraded-mode live_smoke tests",
-        allow_module_level=True,
-    )
+require_live_smoke_config(
+    suite_name="degraded-mode live_smoke tests",
+    required_fields=("OLLAMA_BASE_URL", "OLLAMA_MODEL", "OLLAMA_EMBEDDING_MODEL"),
+)
 
 
 class _FailIfInvokedLLM:

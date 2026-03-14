@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import sys
 from pathlib import Path
 
@@ -8,18 +7,19 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
+from testbot.config import Config
 
-def pytest_configure(config: pytest.Config) -> None:
-    """Auto-enable live smoke gating when those tests are explicitly targeted."""
-    explicit_args = tuple(str(arg) for arg in config.invocation_params.args)
-    requested_live_smoke_file = any(
-        "test_live_smoke_" in arg and arg.endswith(".py") for arg in explicit_args
-    )
-    is_live_smoke_enabled = os.getenv("TESTBOT_ENABLE_LIVE_SMOKE", "").strip().lower() in {
-        "1",
-        "true",
-        "yes",
-    }
 
-    if requested_live_smoke_file and not is_live_smoke_enabled:
-        os.environ["TESTBOT_ENABLE_LIVE_SMOKE"] = "1"
+def require_live_smoke_config(*, suite_name: str, required_fields: tuple[str, ...]) -> None:
+    config = Config.from_env()
+    missing_fields = [
+        field_name
+        for field_name in required_fields
+        if not str(getattr(config, field_name, "")).strip()
+    ]
+    if missing_fields:
+        formatted = ", ".join(missing_fields)
+        pytest.skip(
+            f"Set non-empty configuration values for {formatted} to run {suite_name}",
+            allow_module_level=True,
+        )

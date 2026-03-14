@@ -262,13 +262,12 @@ Run Ollama live smoke integration tests only (`tests/test_live_smoke_ollama.py`)
 OLLAMA_BASE_URL=http://localhost:11434 \
 OLLAMA_MODEL=llama3.1:latest \
 OLLAMA_EMBEDDING_MODEL=nomic-embed-text \
-TESTBOT_ENABLE_LIVE_SMOKE=1 \
 python -m pytest tests/test_live_smoke_ollama.py -m live_smoke -vv
 ```
 
 Expected outcomes for `tests/test_live_smoke_ollama.py`:
 
-- If `TESTBOT_ENABLE_LIVE_SMOKE` is not set to `1` (or `true`/`yes`), the module is skipped so live tests do not run accidentally.
+- Live smoke modules now gate on required runtime endpoint/model configuration fields being defined and non-empty.
 - If prerequisites are set and Ollama is reachable with both models pulled, both tests pass.
 - If `OLLAMA_BASE_URL`, `OLLAMA_MODEL`, or `OLLAMA_EMBEDDING_MODEL` are missing, tests skip with explicit guidance naming the missing variable.
 - If endpoint/model provisioning is incorrect, tests fail with a live connectivity/model error (intentional signal that environment is not ready).
@@ -283,14 +282,12 @@ Run degraded-mode live smoke scenarios only (`tests/test_live_smoke_degraded_mod
 # 3) both unavailable
 #
 # Required baseline live env vars:
-# - TESTBOT_ENABLE_LIVE_SMOKE=1
 # - OLLAMA_BASE_URL / OLLAMA_MODEL / OLLAMA_EMBEDDING_MODEL (for the "Ollama available" scenario)
 # - HA_API_URL / HA_API_SECRET / HA_SATELLITE_ENTITY_ID (for the "HA available" scenario)
 #
 # Failure injection for degraded scenarios is environment-driven only. The test module
 # swaps endpoints to unreachable localhost ports (HA: 127.0.0.1:9, Ollama: 127.0.0.1:1)
 # and does not monkeypatch runtime connectivity helpers.
-TESTBOT_ENABLE_LIVE_SMOKE=1 \
 OLLAMA_BASE_URL=http://localhost:11434 \
 OLLAMA_MODEL=llama3.1:latest \
 OLLAMA_EMBEDDING_MODEL=nomic-embed-text \

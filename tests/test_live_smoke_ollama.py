@@ -4,6 +4,8 @@ import os
 
 import pytest
 
+from tests.conftest import require_live_smoke_config
+
 from testbot.sat_chatbot_memory_v2 import _read_runtime_env
 
 langchain_ollama = pytest.importorskip(
@@ -14,14 +16,12 @@ langchain_ollama = pytest.importorskip(
 ChatOllama = langchain_ollama.ChatOllama
 OllamaEmbeddings = langchain_ollama.OllamaEmbeddings
 
-
 pytestmark = pytest.mark.live_smoke
 
-if os.getenv("TESTBOT_ENABLE_LIVE_SMOKE", "").strip().lower() not in {"1", "true", "yes"}:
-    pytest.skip(
-        "Set TESTBOT_ENABLE_LIVE_SMOKE=1 to run live_smoke Ollama integration tests",
-        allow_module_level=True,
-    )
+require_live_smoke_config(
+    suite_name="live_smoke Ollama integration tests",
+    required_fields=("OLLAMA_BASE_URL", "OLLAMA_MODEL", "OLLAMA_EMBEDDING_MODEL"),
+)
 
 
 def _require_env(name: str) -> str:
