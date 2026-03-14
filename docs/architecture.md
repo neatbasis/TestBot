@@ -46,6 +46,18 @@ Program linkage: [`ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-pr
 
 Earlier revisions described a simplified 6-stage flow (`observe → intent → encode → retrieve → rerank → answer`). Treat that model as historical shorthand only; runtime design and acceptance criteria are governed by the canonical 11-stage pipeline in [docs/architecture/canonical-turn-pipeline.md](architecture/canonical-turn-pipeline.md).
 
+## Related architecture/governance docs
+
+Canonical authorities for runtime contract and decision policy:
+
+- [docs/architecture/canonical-turn-pipeline.md](architecture/canonical-turn-pipeline.md)
+- [docs/directives/traceability-matrix.md](directives/traceability-matrix.md)
+- [docs/directives/decision-policy.md](directives/decision-policy.md)
+
+Support/overview only (non-authoritative):
+
+- [docs/architecture/behavior-governance.md](architecture/behavior-governance.md) — test/spec traceability and overlap-resolution guide.
+
 ## Pipeline overview
 
 TestBot follows a canonical state-first loop for every turn:
