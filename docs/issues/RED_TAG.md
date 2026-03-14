@@ -34,7 +34,7 @@ KPI warning-mode governance policy is defined in `docs/testing.md` under [KPI gu
 
 - **Selected mode:** warning mode (`--kpi-guardrail-mode optional`).
 - **Operational rule:** for active red-tag entries, warning-mode KPI results are blocker evidence until each warning has explicit issue linkage with owner + due date.
-- **Active warning debt linkage (snapshot `2026-03-10T21:36:04Z`):** `qa_validate_kpi_guardrails` -> **Owner: platform-qa**, **Due: 2026-03-17** (triage review + mitigation update), with lifecycle synchronization accountability **Owner: release-governance**, **Due: 2026-03-17** across ISSUE-0013/0014/0015/RED_TAG.
+- **Active warning debt linkage (snapshot `2026-03-10T21:36:04Z`):** `qa_validate_kpi_guardrails` -> **Owner: platform-qa**, **Due: 2026-03-21** (triage review + mitigation update), with lifecycle synchronization accountability **Owner: release-governance**, **Due: 2026-03-21** across ISSUE-0013/0014/0015/RED_TAG.
 
 ## KPI warning debt vs blocker interpretation
 
@@ -55,7 +55,7 @@ KPI warning-mode governance policy is defined in `docs/testing.md` under [KPI gu
 
 - Lifecycle sync refreshed on 2026-03-10 for gate snapshot `2026-03-10T21:36:04Z` (vocabulary normalized to blocker/dependent/parallel stream/open/blocked pending evidence and passed-with-warning gate posture).
 
-- ISSUE-0015 — **Open-issue review identifies ISSUE-0014 quality/governance gaps that could permit partial-fix closure**: Open red-tag governance hardening issue. Lifecycle interpretation: remains open/red until dependency exit conditions are met in ISSUE-0013 AC-0013-11 and ISSUE-0014 Phase 1 (identity semantic preservation, retrieval activation on self-reference recall, and confirmed identity fact promotion at commit).
+- ISSUE-0015 — **Open-issue review identifies ISSUE-0014 quality/governance gaps that could permit partial-fix closure**: Open red-tag governance hardening issue. Lifecycle interpretation: remains open/red until dependency exit conditions are met in ISSUE-0013 AC-0013-11 and ISSUE-0014 Phase 1 (identity semantic preservation, retrieval activation on immediate self-reference recall, and confirmed identity fact promotion at commit).
   - Last reviewed: 2026-03-14
   - Next review due: 2026-03-21
   - KPI evidence: artifacts/all-green-gate-summary.json
@@ -69,6 +69,7 @@ KPI warning-mode governance policy is defined in `docs/testing.md` under [KPI gu
 ## Governance review notes
 
 - 2026-03-14: Reconciled RED_TAG against ISSUE-0013/0014/0015 with no lifecycle status change. Confirmed synchronized `open/blocked pending evidence` language, blocker/dependent/parallel-stream dependency wording (including AC-0013-11 linkage), and consistent canonical gate snapshot reference (`artifacts/all-green-gate-summary.json`, `2026-03-10T21:36:04Z`). Updated active red-tag triage review cadence dates and carried forward warning-debt ownership/due-date linkage.
+- 2026-03-14: Reconciliation refresh aligned cross-file warning-debt owner/due fields to **platform-qa: 2026-03-21** and **release-governance: 2026-03-21**, normalized ISSUE-0015 closure-condition wording to "immediate self-reference recall," and reconfirmed shared gate snapshot reference (`2026-03-10T21:36:04Z`) across ISSUE-0013/0014/0015/RED_TAG.
 
 Dependency evidence pointer (2026-03-09): `docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md` with linked behave/pytest logs, reproducible CLI traces, and canonical gate artifacts used for open/blocked pending evidence tracking.
 Governance validator fallback audit (2026-03-10): `docs/issues/evidence/2026-03-10-governance-validator-base-ref-fallback-audit.md` documents `origin/main` unavailability, automatic `HEAD~1` fallback, and explicit `HEAD~1` reruns for auditable readiness evidence.
