@@ -4240,7 +4240,7 @@ def _run_satellite_mode(
 ) -> None:
     rest = normalize_rest_api_url(api_url)
     with Client(rest, token) as client:
-        sat_say(client, entity_id, "v0 memory loop online. Ask one memory-based question. Say 'stop' to exit.")
+        sat_say(client, entity_id, "v0 memory loop online. Say 'stop' to exit.")
 
         def _read() -> str | None:
             res = ask_question(
