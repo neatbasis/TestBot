@@ -38,6 +38,7 @@ class CheckResult:
     exit_code: int | None
     duration_s: float
     artifact_path: str | None
+    diagnostic_reason: str | None = None
 
 
 def with_remediation(summary: dict[str, object], *messages: str) -> dict[str, object]:
@@ -109,6 +110,15 @@ def extract_artifact_path(command: Sequence[str]) -> str | None:
     return None
 
 
+def extract_kpi_reason_classification(stdout: str) -> str | None:
+    try:
+        payload = json.loads(stdout)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(payload, dict):
+        return None
+    reason = payload.get("reason_classification")
+    return reason if isinstance(reason, str) else None
 
 
 def git_ref_exists(ref: str) -> bool:
@@ -295,10 +305,17 @@ def build_checks(
 def run_check(check: GateCheck) -> CheckResult:
     started = time.monotonic()
     command_text = shlex.join(check.command)
+    diagnostic_reason: str | None = None
     try:
-        completed = subprocess.run(check.command, cwd=REPO_ROOT)
+        completed = subprocess.run(check.command, cwd=REPO_ROOT, capture_output=True, text=True)
+        if completed.stdout:
+            print(completed.stdout, end="")
+        if completed.stderr:
+            print(completed.stderr, file=sys.stderr, end="")
         code = int(completed.returncode)
         status = "passed" if code == 0 else "failed"
+        if check.name == "qa_validate_kpi_guardrails":
+            diagnostic_reason = extract_kpi_reason_classification(completed.stdout)
     except FileNotFoundError:
         code = 127
         status = "failed"
@@ -311,6 +328,7 @@ def run_check(check: GateCheck) -> CheckResult:
         exit_code=code,
         duration_s=duration_s,
         artifact_path=extract_artifact_path(check.command),
+        diagnostic_reason=diagnostic_reason,
     )
 
 
@@ -332,6 +350,7 @@ def run_gate(checks: Sequence[GateCheck], continue_on_failure: bool) -> tuple[li
                         exit_code=None,
                         duration_s=0.0,
                         artifact_path=extract_artifact_path(remaining.command),
+                        diagnostic_reason=None,
                     )
                 )
             break
@@ -353,6 +372,7 @@ def preflight_bdd_dependencies() -> CheckResult | None:
         exit_code=1,
         duration_s=duration_s,
         artifact_path=None,
+        diagnostic_reason=None,
     )
 
 
@@ -367,6 +387,7 @@ def summarize_stages(results: Sequence[CheckResult]) -> list[dict[str, object]]:
                     "exit_code": 0,
                     "first_failing_command": None,
                     "artifact_path": None,
+                    "warning_reasons": [],
                 }
             )
 
@@ -378,6 +399,11 @@ def summarize_stages(results: Sequence[CheckResult]) -> list[dict[str, object]]:
 
         if result.status in {"failed", "warning"} and summary["first_failing_command"] is None:
             summary["first_failing_command"] = result.command
+
+        if result.status == "warning" and result.diagnostic_reason:
+            warning_reasons = summary["warning_reasons"]
+            if result.diagnostic_reason not in warning_reasons:
+                warning_reasons.append(result.diagnostic_reason)
 
         if result.exit_code not in {None, 0} and summary["exit_code"] == 0:
             summary["exit_code"] = result.exit_code
@@ -393,9 +419,11 @@ def print_stage_summary(stage_summaries: Sequence[dict[str, object]]) -> None:
         exit_code = stage_summary["exit_code"]
         first_failing_command = stage_summary["first_failing_command"] or "-"
         artifact_path = stage_summary["artifact_path"] or "-"
+        warning_reasons = ",".join(stage_summary["warning_reasons"]) or "-"
         print(
             f"- {stage}: duration_s={duration_s:.3f}, exit_code={exit_code}, "
-            f"first_failing_command={first_failing_command}, artifact_path={artifact_path}"
+            f"first_failing_command={first_failing_command}, artifact_path={artifact_path}, "
+            f"warning_reasons={warning_reasons}"
         )
 
 
@@ -403,11 +431,17 @@ def summarize(results: Sequence[CheckResult], continue_on_failure: bool) -> dict
     has_failure = any(result.status == "failed" for result in results)
     warning_count = sum(1 for result in results if result.status == "warning")
     stage_summaries = summarize_stages(results)
+    warning_diagnostics = [
+        {"check": result.name, "reason_classification": result.diagnostic_reason}
+        for result in results
+        if result.status == "warning"
+    ]
     return {
         "status": "failed" if has_failure else "passed",
         "exit_code": 1 if has_failure else 0,
         "continue_on_failure": continue_on_failure,
         "warning_count": warning_count,
+        "warning_diagnostics": warning_diagnostics,
         "stages": stage_summaries,
         "checks": [asdict(result) for result in results],
     }

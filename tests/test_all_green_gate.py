@@ -23,6 +23,7 @@ def _result(
     exit_code: int | None,
     duration_s: float,
     artifact_path: str | None = None,
+    diagnostic_reason: str | None = None,
 ) -> all_green_gate.CheckResult:
     return all_green_gate.CheckResult(
         name=name,
@@ -32,6 +33,7 @@ def _result(
         exit_code=exit_code,
         duration_s=duration_s,
         artifact_path=artifact_path,
+        diagnostic_reason=diagnostic_reason,
     )
 
 
@@ -289,6 +291,7 @@ def test_summarize_includes_stable_stage_rollups() -> None:
             "exit_code": 5,
             "first_failing_command": "eval",
             "artifact_path": "artifacts/eval.json",
+            "warning_reasons": [],
         },
         {
             "stage": "qa",
@@ -296,6 +299,7 @@ def test_summarize_includes_stable_stage_rollups() -> None:
             "exit_code": 0,
             "first_failing_command": None,
             "artifact_path": None,
+            "warning_reasons": [],
         },
     ]
 
@@ -306,3 +310,32 @@ def test_parse_args_supports_default_json_output_path(monkeypatch: pytest.Monkey
     args = all_green_gate.parse_args()
 
     assert args.json_output == Path("artifacts/all-green-gate-summary.json")
+
+
+def test_extract_kpi_reason_classification_reads_structured_reason() -> None:
+    reason = all_green_gate.extract_kpi_reason_classification(
+        '{"status":"failed","reason_classification":"missing_input"}'
+    )
+
+    assert reason == "missing_input"
+
+
+def test_summarize_includes_warning_reason_diagnostics() -> None:
+    summary = all_green_gate.summarize(
+        results=[
+            _result(
+                name="qa_validate_kpi_guardrails",
+                command="kpi",
+                status="warning",
+                exit_code=1,
+                duration_s=0.1,
+                diagnostic_reason="threshold_violation",
+            )
+        ],
+        continue_on_failure=False,
+    )
+
+    assert summary["warning_diagnostics"] == [
+        {"check": "qa_validate_kpi_guardrails", "reason_classification": "threshold_violation"}
+    ]
+    assert summary["stages"][0]["warning_reasons"] == ["threshold_violation"]
