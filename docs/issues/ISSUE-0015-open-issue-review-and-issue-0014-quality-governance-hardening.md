@@ -16,7 +16,7 @@
 
 - **Selected mode:** warning mode (`--kpi-guardrail-mode optional`) with explicit debt tracking.
 - **Readiness criteria update for ISSUE-0015 closure:** while warning mode remains, unresolved KPI warnings are blocker evidence for this red-tag dependent stream and must remain linked to owner + due date in ISSUE-0015, ISSUE-0014, and `docs/issues/RED_TAG.md` for every review cycle.
-- **Current linked warning debt:** `qa_validate_kpi_guardrails` warning at snapshot `2026-03-10T21:36:04Z` -> **Owner: platform-qa**, **Due: 2026-03-17**; lifecycle-language synchronization follow-through -> **Owner: release-governance**, **Due: 2026-03-17**.
+- **Current linked warning debt:** `qa_validate_kpi_guardrails` warning at snapshot `2026-03-10T21:36:04Z` -> **Owner: platform-qa**, **Due: 2026-03-21**; lifecycle-language synchronization follow-through -> **Owner: release-governance**, **Due: 2026-03-21**.
 
 
 - Routing anchor: ISSUE-0013 (**dependent** in current execution order; governance close-order stream with open/blocked pending evidence state).
@@ -129,9 +129,9 @@ Review scope was limited to open issues (`open` or `in_progress`) and issue-gove
 
 ## Red-tag triage note (dependency gate)
 
-- Last reviewed: 2026-03-09
-- Next review due: 2026-03-16
-- KPI evidence: docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md
+- Last reviewed: 2026-03-14
+- Next review due: 2026-03-21
+- KPI evidence: artifacts/all-green-gate-summary.json
 - Decision notes: ISSUE-0015 remains dependent and open/blocked pending evidence while blockers are active; AC-0013-11 and ISSUE-0014 Phase 1 use the same closure condition (identity semantic preservation, retrieval activation on immediate self-reference recall, confirmed identity fact promotion at commit) with deterministic tests, reproducible CLI traces, and canonical gate evidence.
 
 - 2026-03-08: Opened from open-issue review focused on canonical pipeline streams, with ISSUE-0014 assessed as strong runtime narrative but incomplete quality/governance control artifact.
