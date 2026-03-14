@@ -53,6 +53,14 @@ def _require_live_ollama_env() -> None:
         _require_env(env_name)
 
 
+
+
+def _ollama_client_kwargs(runtime: dict[str, object]) -> dict[str, object]:
+    if str(runtime.get("x_ollama_key", "")).strip():
+        return {"client_kwargs": {"headers": {"X-Ollama-Key": str(runtime["x_ollama_key"])}}}
+    return {}
+
+
 def test_live_smoke_runtime_e2e_turn_pipeline(monkeypatch: pytest.MonkeyPatch) -> None:
     _require_live_runtime_env()
 
@@ -74,11 +82,13 @@ def test_live_smoke_runtime_e2e_turn_pipeline(monkeypatch: pytest.MonkeyPatch) -
     llm = ChatOllama(
         model=str(runtime["ollama_model"]),
         base_url=str(runtime["ollama_base_url"]),
+        **_ollama_client_kwargs(runtime),
         temperature=0.0,
     )
     embeddings = OllamaEmbeddings(
         model=str(runtime["ollama_embedding_model"]),
         base_url=str(runtime["ollama_base_url"]),
+        **_ollama_client_kwargs(runtime),
     )
     store = build_memory_store(
         embeddings=embeddings,
@@ -174,11 +184,13 @@ def test_live_smoke_runtime_e2e_wikipedia_source_ingest_one_cli_turn(monkeypatch
     llm = ChatOllama(
         model=str(runtime["ollama_model"]),
         base_url=str(runtime["ollama_base_url"]),
+        **_ollama_client_kwargs(runtime),
         temperature=0.0,
     )
     embeddings = OllamaEmbeddings(
         model=str(runtime["ollama_embedding_model"]),
         base_url=str(runtime["ollama_base_url"]),
+        **_ollama_client_kwargs(runtime),
     )
     store = build_memory_store(
         embeddings=embeddings,

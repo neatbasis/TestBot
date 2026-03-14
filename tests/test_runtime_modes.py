@@ -56,12 +56,14 @@ def test_runtime_env_loads_ollama_values_from_process_env(monkeypatch) -> None:
     monkeypatch.setenv("OLLAMA_BASE_URL", "http://127.0.0.1:21143")
     monkeypatch.setenv("OLLAMA_MODEL", "llama3.2:latest")
     monkeypatch.setenv("OLLAMA_EMBEDDING_MODEL", "nomic-embed-text:v1")
+    monkeypatch.setenv("X_OLLAMA_KEY", "x-ollama-test-key")
 
     runtime_env = runtime._read_runtime_env()
 
     assert runtime_env["ollama_base_url"] == "http://127.0.0.1:21143"
     assert runtime_env["ollama_model"] == "llama3.2:latest"
     assert runtime_env["ollama_embedding_model"] == "nomic-embed-text:v1"
+    assert runtime_env["x_ollama_key"] == "x-ollama-test-key"
 
 
 def test_runtime_and_live_smoke_resolve_ollama_env_from_same_process_env(monkeypatch) -> None:
@@ -71,6 +73,7 @@ def test_runtime_and_live_smoke_resolve_ollama_env_from_same_process_env(monkeyp
     monkeypatch.setenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434")
     monkeypatch.setenv("OLLAMA_MODEL", "llama3.1:latest")
     monkeypatch.setenv("OLLAMA_EMBEDDING_MODEL", "nomic-embed-text")
+    monkeypatch.setenv("X_OLLAMA_KEY", "shared-ollama-key")
     monkeypatch.setenv("SMOKE_CONNECT_TIMEOUT_S", "2")
     monkeypatch.setenv("SMOKE_REQUEST_TIMEOUT_S", "3")
 
@@ -81,6 +84,7 @@ def test_runtime_and_live_smoke_resolve_ollama_env_from_same_process_env(monkeyp
     assert runtime_env["ollama_base_url"] == smoke_env["OLLAMA_BASE_URL"]
     assert runtime_env["ollama_model"] == smoke_env["OLLAMA_MODEL"]
     assert runtime_env["ollama_embedding_model"] == smoke_env["OLLAMA_EMBEDDING_MODEL"]
+    assert runtime_env["x_ollama_key"] == "shared-ollama-key"
 
 def test_read_runtime_env_debug_verbose_defaults_false(monkeypatch) -> None:
     monkeypatch.delenv("TESTBOT_DEBUG_VERBOSE", raising=False)
