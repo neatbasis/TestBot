@@ -81,6 +81,8 @@ These tests are deterministic and do **not** require production Ollama, Home Ass
 
 Run separately against real Home Assistant + Ollama for environment confidence. Keep these tests opt-in and out of default quick runs.
 
+Live-smoke suites are expected to self-skip when required environment variables are missing. Skip notices should explicitly state both **why** execution was skipped (which variables are absent) and the **expected behavior** once configuration is provided (end-to-end checks run against reachable live services).
+
 ## Commands
 
 Use the following canonical commands from repository root.
@@ -262,6 +264,7 @@ Run Ollama live smoke integration tests only (`tests/test_live_smoke_ollama.py`)
 OLLAMA_BASE_URL=http://localhost:11434 \
 OLLAMA_MODEL=llama3.1:latest \
 OLLAMA_EMBEDDING_MODEL=nomic-embed-text \
+X_OLLAMA_KEY=<ollama-api-key> \
 python -m pytest tests/test_live_smoke_ollama.py -m live_smoke -vv
 ```
 
@@ -269,7 +272,7 @@ Expected outcomes for `tests/test_live_smoke_ollama.py`:
 
 - Live smoke modules now gate on required runtime endpoint/model configuration fields being defined and non-empty.
 - If prerequisites are set and Ollama is reachable with both models pulled, both tests pass.
-- If `OLLAMA_BASE_URL`, `OLLAMA_MODEL`, or `OLLAMA_EMBEDDING_MODEL` are missing, tests skip with explicit guidance naming the missing variable.
+- If `OLLAMA_BASE_URL`, `OLLAMA_MODEL`, `OLLAMA_EMBEDDING_MODEL`, or `X_OLLAMA_KEY` are missing, tests skip with explicit guidance naming the missing variable.
 - If endpoint/model provisioning is incorrect, tests fail with a live connectivity/model error (intentional signal that environment is not ready).
 
 
@@ -282,7 +285,7 @@ Run degraded-mode live smoke scenarios only (`tests/test_live_smoke_degraded_mod
 # 3) both unavailable
 #
 # Required baseline live env vars:
-# - OLLAMA_BASE_URL / OLLAMA_MODEL / OLLAMA_EMBEDDING_MODEL (for the "Ollama available" scenario)
+# - OLLAMA_BASE_URL / OLLAMA_MODEL / OLLAMA_EMBEDDING_MODEL / X_OLLAMA_KEY (for the "Ollama available" scenario)
 # - HA_API_URL / HA_API_SECRET / HA_SATELLITE_ENTITY_ID (for the "HA available" scenario)
 #
 # Failure injection for degraded scenarios is environment-driven only. The test module
@@ -291,6 +294,7 @@ Run degraded-mode live smoke scenarios only (`tests/test_live_smoke_degraded_mod
 OLLAMA_BASE_URL=http://localhost:11434 \
 OLLAMA_MODEL=llama3.1:latest \
 OLLAMA_EMBEDDING_MODEL=nomic-embed-text \
+X_OLLAMA_KEY=<ollama-api-key> \
 HA_API_URL=http://localhost:8123 \
 HA_API_SECRET=<token> \
 HA_SATELLITE_ENTITY_ID=assist_satellite.kitchen \

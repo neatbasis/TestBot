@@ -4,7 +4,7 @@ import os
 
 import pytest
 
-from tests.conftest import require_live_smoke_config
+from tests.live_smoke_support import require_live_smoke_config
 
 from testbot.sat_chatbot_memory_v2 import _read_runtime_env
 
@@ -20,7 +20,7 @@ pytestmark = pytest.mark.live_smoke
 
 require_live_smoke_config(
     suite_name="live_smoke Ollama integration tests",
-    required_fields=("OLLAMA_BASE_URL", "OLLAMA_MODEL", "OLLAMA_EMBEDDING_MODEL"),
+    required_fields=("OLLAMA_BASE_URL", "OLLAMA_MODEL", "OLLAMA_EMBEDDING_MODEL", "X_OLLAMA_KEY"),
 )
 
 

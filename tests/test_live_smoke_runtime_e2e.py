@@ -5,7 +5,7 @@ import os
 
 import pytest
 
-from tests.conftest import require_live_smoke_config
+from tests.live_smoke_support import require_live_smoke_config
 from langchain_ollama import ChatOllama, OllamaEmbeddings
 
 from testbot.clock import SystemClock
@@ -28,6 +28,7 @@ require_live_smoke_config(
         "OLLAMA_BASE_URL",
         "OLLAMA_MODEL",
         "OLLAMA_EMBEDDING_MODEL",
+        "X_OLLAMA_KEY",
     ),
 )
 
@@ -47,6 +48,7 @@ def _require_live_runtime_env() -> None:
         "OLLAMA_BASE_URL",
         "OLLAMA_MODEL",
         "OLLAMA_EMBEDDING_MODEL",
+        "X_OLLAMA_KEY",
     ):
         _require_env(env_name)
 
@@ -56,6 +58,7 @@ def _require_live_ollama_env() -> None:
         "OLLAMA_BASE_URL",
         "OLLAMA_MODEL",
         "OLLAMA_EMBEDDING_MODEL",
+        "X_OLLAMA_KEY",
     ):
         _require_env(env_name)
 

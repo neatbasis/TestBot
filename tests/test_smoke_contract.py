@@ -44,6 +44,7 @@ def _smoke_env() -> dict[str, str]:
         "OLLAMA_BASE_URL": "http://127.0.0.1:11434",
         "OLLAMA_MODEL": "llama3.1:latest",
         "OLLAMA_EMBEDDING_MODEL": "nomic-embed-text",
+        "X_OLLAMA_KEY": "x-ollama-test-key",
         "SMOKE_CONNECT_TIMEOUT_S": "2",
         "SMOKE_REQUEST_TIMEOUT_S": "3",
     }

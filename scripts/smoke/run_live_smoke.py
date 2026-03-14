@@ -22,6 +22,7 @@ REQUIRED_ENV_KEYS = (
     "OLLAMA_BASE_URL",
     "OLLAMA_MODEL",
     "OLLAMA_EMBEDDING_MODEL",
+    "X_OLLAMA_KEY",
     "SMOKE_CONNECT_TIMEOUT_S",
     "SMOKE_REQUEST_TIMEOUT_S",
 )
@@ -261,9 +262,14 @@ def _run_ollama_execution_probe(env_values: dict[str, str]) -> dict[str, Any]:
     }
 
     try:
+        ollama_client_kwargs = {
+            "client_kwargs": {"headers": {"X-Ollama-Key": env_values["X_OLLAMA_KEY"]}}
+        }
+
         llm = ChatOllama(
             model=env_values["OLLAMA_MODEL"],
             base_url=env_values["OLLAMA_BASE_URL"],
+            **ollama_client_kwargs,
             temperature=0.0,
         )
         response = llm.invoke("Reply with exactly: ok")
@@ -274,6 +280,7 @@ def _run_ollama_execution_probe(env_values: dict[str, str]) -> dict[str, Any]:
         embeddings = OllamaEmbeddings(
             model=env_values["OLLAMA_EMBEDDING_MODEL"],
             base_url=env_values["OLLAMA_BASE_URL"],
+            **ollama_client_kwargs,
         )
         vector = embeddings.embed_query("smoke test")
         if not vector or not any(float(value) != 0.0 for value in vector):
