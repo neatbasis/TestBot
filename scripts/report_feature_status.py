@@ -210,11 +210,14 @@ def load_yaml(path: Path) -> dict[str, Any]:
     return yaml.safe_load(path.read_text(encoding="utf-8"))
 
 
-def load_gate_results(path: Path) -> dict[str, str]:
+def load_gate_payload(path: Path) -> dict[str, Any]:
     if not path.exists():
         return {}
-    payload = json.loads(path.read_text(encoding="utf-8"))
-    checks = payload.get("checks", [])
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def load_gate_results(gate_payload: dict[str, Any]) -> dict[str, str]:
+    checks = gate_payload.get("checks", [])
     results: dict[str, str] = {}
     for check in checks:
         name = str(check.get("name", "")).strip()
@@ -305,6 +308,7 @@ def effective_status(base_status: str, gate_failed: bool, has_open_issues: bool)
 
 def build_report(
     contract: dict[str, Any],
+    gate_payload: dict[str, Any],
     gate_results: dict[str, str],
     open_issues: list[OpenIssue],
     roadmap_priorities: dict[str, list[str]],
@@ -438,6 +442,14 @@ def build_report(
     gate_mtime_utc = gate_metadata.get("mtime_utc", "unknown")
     gate_sha256 = gate_metadata.get("sha256", "unknown")
     gate_sha256_short = gate_sha256[:12] if gate_sha256 != "unknown" else "unknown"
+    gate_status = str(gate_payload.get("status", "unknown"))
+    gate_warning_count = int(gate_payload.get("warning_count", 0) or 0)
+    gate_warning_checks = [
+        str(check.get("name", "")).strip()
+        for check in gate_payload.get("checks", [])
+        if str(check.get("status", "")).strip() == "warning" and str(check.get("name", "")).strip()
+    ]
+    warning_check_list = ", ".join(gate_warning_checks) if gate_warning_checks else "none"
 
     lines = [
         "# Feature Status Report",
@@ -454,6 +466,24 @@ def build_report(
         ),
         "",
         f"Implemented: **{counts['implemented']}** | Partial: **{counts['partial']}** | Missing: **{counts['missing']}**",
+        "",
+        "## Canonical gate snapshot reference",
+        "",
+        f"- Timestamp (UTC): `{gate_mtime_utc}`",
+        f"- Artifact path: `{input_paths['gate_summary_path']}`",
+        f"- Gate status: `{gate_status}` with `warning_count={gate_warning_count}` (warning checks: `{warning_check_list}`)",
+        "",
+        "## Artifact freshness and source-of-truth",
+        "",
+        (
+            "- Regenerate this report and `artifacts/feature-status-summary.json` together via "
+            "`python scripts/report_feature_status.py --output docs/qa/feature-status-report.md --json-output artifacts/feature-status-summary.json` "
+            "whenever gate evidence or issue/roadmap status inputs change."
+        ),
+        (
+            "- If conflict appears, treat `artifacts/all-green-gate-summary.json` as authoritative for gate-state fields "
+            "and this generated report as authoritative for capability status rollups."
+        ),
         "",
         "| Capability | Status | Evidence signals |",
         "| --- | --- | --- |",
@@ -538,7 +568,8 @@ def main() -> int:
     features_dir = args.features_dir if args.features_dir.is_absolute() else REPO_ROOT / args.features_dir
 
     contract = load_yaml(contract_path)
-    gate_results = load_gate_results(gate_path)
+    gate_payload = load_gate_payload(gate_path)
+    gate_results = load_gate_results(gate_payload)
     open_issues = collect_open_issues(issues_dir)
     roadmap_priorities = collect_roadmap_priorities(roadmap_dir)
     scenario_traces = collect_feature_scenario_traceability(features_dir)
@@ -578,6 +609,7 @@ def main() -> int:
 
     report_text, summary_payload = build_report(
         contract=contract,
+        gate_payload=gate_payload,
         gate_results=gate_results,
         open_issues=open_issues,
         roadmap_priorities=roadmap_priorities,

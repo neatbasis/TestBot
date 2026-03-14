@@ -1,23 +1,36 @@
 # Feature Status Report
 
-Generated at (UTC): `2026-03-14T17:58:37Z`
-Gate evidence as-of (UTC): `2026-03-14T17:58:30Z` (sha256: `eb979604a52b`)
+Generated at (UTC): `2026-03-14T18:29:03Z`
+Gate evidence as-of (UTC): `2026-03-14T18:27:04Z` (sha256: `195b9333460e`)
 Inputs: contract=`docs/qa/feature-status.yaml`, gate_summary=`artifacts/all-green-gate-summary.json`, issues_dir=`docs/issues`, roadmap_dir=`docs/roadmap`, features_dir=`features`
 
-Implemented: **2** | Partial: **7** | Missing: **0**
+Implemented: **0** | Partial: **9** | Missing: **0**
+
+## Canonical gate snapshot reference
+
+- Timestamp (UTC): `2026-03-14T18:27:04Z`
+- Artifact path: `artifacts/all-green-gate-summary.json`
+- Gate status: `failed` with `warning_count=1` (warning checks: `qa_validate_kpi_guardrails`)
+
+## Artifact freshness and source-of-truth
+
+- Regenerate this report and `artifacts/feature-status-summary.json` together via `python scripts/report_feature_status.py --output docs/qa/feature-status-report.md --json-output artifacts/feature-status-summary.json` whenever gate evidence or issue/roadmap status inputs change.
+- If conflict appears, treat `artifacts/all-green-gate-summary.json` as authoritative for gate-state fields and this generated report as authoritative for capability status rollups.
 
 | Capability | Status | Evidence signals |
 | --- | --- | --- |
+> ⚠️ Gate summary appears older than one or more source files (contract, open issue records, or roadmap files); regenerate gate evidence for freshest status. Hint: run `python scripts/all_green_gate.py --continue-on-failure --json-output artifacts/all-green-gate-summary.json` to refresh `artifacts/all-green-gate-summary.json`.
+
 | Knowing-mode grounded answer with provenance | partial (declared: implemented) | open issues: ISSUE-0009; roadmap priorities (current docs): P2, P4 |
 | Unknowing-mode explicit uncertainty and safe fallback | partial (declared: implemented) | open issues: ISSUE-0010; roadmap priorities (current docs): P3 |
-| Deterministic intent grounding and route selection | partial (declared: partial) | open issues: ISSUE-0008; roadmap priorities (current docs): P3 |
-| Time-aware memory retrieval and reranking | implemented (declared: implemented) | roadmap priorities (current docs): P2, P5 |
-| External source ingestion connectors for grounding | partial (declared: partial) | open issues: ISSUE-0018, ISSUE-0020; roadmap priorities (current docs): P1, P2 |
-| Canonical turn pipeline foundation (observe/encode/stabilize) | partial (declared: partial) | open issues: ISSUE-0013; roadmap priorities (current docs): P3, P4; unresolved criteria: AC-0013-01, AC-0013-02, AC-0013-03, AC-0013-05, AC-0013-06, AC-0013-07 |
-| Canonical turn pipeline decisioning (context/intent/retrieve/policy) | partial (declared: partial) | open issues: ISSUE-0013; roadmap priorities (current docs): P3, P4; unresolved criteria: AC-0013-01, AC-0013-02, AC-0013-04, AC-0013-05, AC-0013-08, AC-0013-10 |
-| Canonical turn pipeline commit and auditability (assemble/validate/render/commit) | partial (declared: partial) | open issues: ISSUE-0013; roadmap priorities (current docs): P4, P5; unresolved criteria: AC-0013-02, AC-0013-09, AC-0013-11 |
-| Canonical all-green merge gate and issue governance checks | implemented (declared: implemented) | roadmap priorities (current docs): P5 |
+| Deterministic intent grounding and route selection | partial (declared: partial) | failed checks: qa_pytest_not_live_smoke; open issues: ISSUE-0008; roadmap priorities (current docs): P3 |
+| Time-aware memory retrieval and reranking | partial (declared: implemented) | failed checks: qa_pytest_not_live_smoke; roadmap priorities (current docs): P2, P5 |
+| External source ingestion connectors for grounding | partial (declared: partial) | failed checks: qa_pytest_not_live_smoke; open issues: ISSUE-0018, ISSUE-0020; roadmap priorities (current docs): P1, P2 |
+| Canonical turn pipeline foundation (observe/encode/stabilize) | partial (declared: partial) | failed checks: qa_pytest_not_live_smoke; open issues: ISSUE-0013; roadmap priorities (current docs): P3, P4; unresolved criteria: AC-0013-01, AC-0013-02, AC-0013-03, AC-0013-05, AC-0013-06, AC-0013-07 |
+| Canonical turn pipeline decisioning (context/intent/retrieve/policy) | partial (declared: partial) | failed checks: qa_pytest_not_live_smoke; open issues: ISSUE-0013; roadmap priorities (current docs): P3, P4; unresolved criteria: AC-0013-01, AC-0013-02, AC-0013-04, AC-0013-05, AC-0013-08, AC-0013-10 |
+| Canonical turn pipeline commit and auditability (assemble/validate/render/commit) | partial (declared: partial) | failed checks: qa_pytest_not_live_smoke; open issues: ISSUE-0013; roadmap priorities (current docs): P4, P5; unresolved criteria: AC-0013-02, AC-0013-09, AC-0013-11 |
+| Canonical all-green merge gate and issue governance checks | partial (declared: implemented) | failed checks: qa_validate_issue_links; roadmap priorities (current docs): P5 |
 
-Generated by `python scripts/report_feature_status.py`. Generated at (UTC): `2026-03-14T17:58:37Z`.
-Gate evidence as-of (UTC): `2026-03-14T17:58:30Z` (sha256: `eb979604a52b`).
+Generated by `python scripts/report_feature_status.py`. Generated at (UTC): `2026-03-14T18:29:03Z`.
+Gate evidence as-of (UTC): `2026-03-14T18:27:04Z` (sha256: `195b9333460e`).
 Inputs: contract=`docs/qa/feature-status.yaml`, gate_summary=`artifacts/all-green-gate-summary.json`, issues_dir=`docs/issues`, roadmap_dir=`docs/roadmap`, features_dir=`features`
