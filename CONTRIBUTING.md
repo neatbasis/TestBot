@@ -13,12 +13,18 @@ When updating docs, complete this lightweight checklist before opening a PR:
 - [ ] File tree examples match the current repository layout.
 - [ ] Commands are runnable as written from the documented context.
 - [ ] Required terms match the canonical glossary in `docs/terminology.md`.
+- [ ] Testing/readiness guidance references and links point to `docs/testing.md`.
 
 Optional validation for markdown links/paths:
 
 ```bash
 python scripts/validate_markdown_paths.py
 ```
+
+Contributor guidance:
+
+- Use `docs/testing.md` as the canonical merge-readiness/testing reference (including the all-systems-green stakeholder obligations mapping).
+- Use `docs/terminology.md` for canonical term checks whenever adding or revising user-facing language.
 
 Issue workflow validation (CI-friendly):
 
