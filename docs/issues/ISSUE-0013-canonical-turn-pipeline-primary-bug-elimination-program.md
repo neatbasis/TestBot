@@ -176,7 +176,7 @@ Dependency labels (machine-auditable ordered chain):
     python scripts/validate_issues.py --all-issue-files --base-ref origin/main
     # expected pass signal: dependency tests PASS and issue validators report zero errors
     ```
-  - required dependency evidence (ISSUE-0014): identity declaration semantic preservation, retrieval activation on self-reference recall, and confirmed identity fact promotion at commit.
+  - required dependency evidence (ISSUE-0014): identity declaration semantic preservation, retrieval activation on immediate self-reference recall, and confirmed identity fact promotion at commit.
   - dependency cross-links: [ISSUE-0014 Defect Taxonomy](ISSUE-0014-cli-self-identity-semantic-routing-regression.md#defect-taxonomy), [ISSUE-0014 Stage Contract Clauses](ISSUE-0014-cli-self-identity-semantic-routing-regression.md#stage-contract-clauses), [ISSUE-0014 Required Observability Fields](ISSUE-0014-cli-self-identity-semantic-routing-regression.md#required-observability-fields)
   - closure rule: structural telemetry/stage instrumentation updates are insufficient for ISSUE-0013 closure unless the linked behavioral criteria are passing in deterministic tests and reproducible CLI evidence.
   - exit condition EC-0013-11-A: ISSUE-0014 marks its Phase 1 behavioral criteria as satisfied with linked deterministic test evidence and reproducible CLI traces.
