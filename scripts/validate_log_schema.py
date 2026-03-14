@@ -75,8 +75,11 @@ def validate_row(row: dict[str, Any], *, row_label: str = "row") -> list[str]:
     schema_version = row.get("schema_version", 1)
     if not isinstance(schema_version, int):
         errors.append(f"{row_label}: key 'schema_version' expected int when present")
-    elif schema_version not in {1, 2, 3, CURRENT_SCHEMA_VERSION}:
-        errors.append(f"{row_label}: unsupported schema_version '{schema_version}'")
+    elif schema_version != CURRENT_SCHEMA_VERSION:
+        errors.append(
+            f"{row_label}: schema_version '{schema_version}' is obsolete; only schema_version '"
+            f"{CURRENT_SCHEMA_VERSION}' is accepted"
+        )
 
     event = row.get("event")
     if isinstance(event, str) and event in EVENT_FIELDS:
@@ -108,7 +111,7 @@ def validate_file(path: Path) -> list[str]:
 
 def main() -> int:
     sample_dir = Path("tests/fixtures/log_schema")
-    paths = sorted(sample_dir.glob("*.jsonl"))
+    paths = sorted(sample_dir.glob(f"*schema_v{CURRENT_SCHEMA_VERSION}.jsonl"))
     if not paths:
         print(f"No sample artifacts found in {sample_dir}")
         return 1
@@ -123,7 +126,7 @@ def main() -> int:
             print(f"- {err}")
         return 1
 
-    print(f"Validated {len(paths)} artifact(s) against v1/v{CURRENT_SCHEMA_VERSION} schemas.")
+    print(f"Validated {len(paths)} artifact(s) against schema v{CURRENT_SCHEMA_VERSION}.")
     return 0
 
 
