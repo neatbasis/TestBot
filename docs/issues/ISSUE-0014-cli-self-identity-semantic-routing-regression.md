@@ -272,8 +272,8 @@ Issue validation passed.
 
 ## Red-tag triage note (dependency gate)
 
-- Last reviewed: 2026-03-09
-- Next review due: 2026-03-16
+- Last reviewed: 2026-03-14
+- Next review due: 2026-03-21
 - KPI evidence: docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md
 - Decision notes: Phase 1 deterministic suites and required CLI closure-proof traces remain attached with AC mapping complete, but the refreshed canonical gate snapshot at `2026-03-10T21:36:04Z` is passed with KPI warning-mode debt (`qa_validate_kpi_guardrails`) and a non-zero QA stage whose first failing command is `scripts/validate_kpi_guardrails.py`. Per `docs/testing.md#kpi-guardrail-mode-policy-authoritative`, persistent warning-mode KPI results remain linked governance debt and require owner/due-date linkage in this issue, ISSUE-0015, and RED_TAG.
 
@@ -289,12 +289,12 @@ Issue validation passed.
 
 | Role | Team | Assigned Owner | Backup |
 |---|---|---|---|
-| Facilitator | platform-qa | _TBD_ | _TBD_ |
-| Scribe | release governance | _TBD_ | _TBD_ |
-| Rewrite owner | runtime/pipeline engineering | _TBD_ | _TBD_ |
-| Intent/routing owner | runtime/pipeline engineering | _TBD_ | _TBD_ |
-| Commit/persistence owner | runtime/pipeline engineering | _TBD_ | _TBD_ |
-| Test/BDD owner | test/BDD ownership | _TBD_ | _TBD_ |
+| Facilitator | platform-qa | Sebastian | Codex |
+| Scribe | release governance | Sebastian | Codex |
+| Rewrite owner | runtime/pipeline engineering | Sebastian | Codex |
+| Intent/routing owner | runtime/pipeline engineering | Sebastian | Codex |
+| Commit/persistence owner | runtime/pipeline engineering | Sebastian | Codex |
+| Test/BDD owner | test/BDD ownership | Sebastian | Codex |
 
 ### Session Execution Contract (D0-D8)
 
@@ -352,3 +352,5 @@ Issue validation passed.
   - Verification command:
     - `PYTHONPATH=src python -m pytest tests/test_answer_rendering_offer_bearing.py tests/test_intent_router.py tests/test_decisioning_stages.py tests/test_answer_commit_identity_promotion.py -q`
     - expected/observed: `53 passed`.
+
+- 2026-03-14: Cross-functional Sprint 6 owner matrix assignments were updated to set Assigned Owner=`Sebastian` and Backup=`Codex` for every D1 role so stakeholder-requested accountability mapping is explicit before dependency-gate closure review. Assignment intent remains aligned with active-chain blocker/dependent/open/blocked pending evidence language and preserves ISSUE-0014 blocker posture until required evidence is complete.
