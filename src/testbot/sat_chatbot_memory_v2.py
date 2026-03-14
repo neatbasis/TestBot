@@ -12,7 +12,7 @@ from concurrent.futures import Future, ThreadPoolExecutor
 from threading import Lock
 from urllib.error import URLError
 from urllib.parse import urljoin, urlparse
-from urllib.request import urlopen
+from urllib.request import Request, urlopen
 from argparse import ArgumentParser, BooleanOptionalAction, Namespace
 from collections import deque
 from dataclasses import asdict, dataclass, is_dataclass, replace
@@ -735,7 +735,13 @@ def _validate_ollama_base_url(base_url: str) -> str | None:
     return None
 
 
-def _ollama_connection_error(base_url: str, chat_model: str, embedding_model: str) -> str | None:
+def _ollama_connection_error(
+    base_url: str,
+    chat_model: str,
+    embedding_model: str,
+    *,
+    x_ollama_key: str | None = None,
+) -> str | None:
     def _model_aliases(model_name: str) -> set[str]:
         trimmed = model_name.strip()
         if not trimmed:
@@ -752,8 +758,12 @@ def _ollama_connection_error(base_url: str, chat_model: str, embedding_model: st
         return base_url_error
 
     tags_url = urljoin(base_url.rstrip("/") + "/", "api/tags")
+    request = Request(tags_url)
+    if x_ollama_key:
+        request.add_header("X-Ollama-Key", x_ollama_key)
+
     try:
-        with urlopen(tags_url, timeout=3.0) as resp:  # noqa: S310
+        with urlopen(request, timeout=3.0) as resp:  # noqa: S310
             payload = json.loads(resp.read().decode("utf-8"))
     except URLError as exc:  # pragma: no cover - network dependent
         return f"Cannot reach Ollama endpoint {base_url}: {type(exc.reason).__name__}: {exc.reason}"
@@ -4305,6 +4315,7 @@ def build_capability_snapshot(*, requested_mode: str, daemon_mode: bool, runtime
         str(runtime["ollama_base_url"]),
         str(runtime["ollama_model"]),
         str(runtime["ollama_embedding_model"]),
+        x_ollama_key=str(runtime.get("x_ollama_key") or ""),
     )
 
     effective_mode, fallback_reason, exit_reason = _resolve_effective_mode(

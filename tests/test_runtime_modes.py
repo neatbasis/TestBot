@@ -97,6 +97,36 @@ def test_read_runtime_env_debug_verbose_opt_in(monkeypatch) -> None:
     runtime_env = runtime._read_runtime_env()
     assert runtime_env["debug_verbose"] is True
 
+
+def test_build_capability_snapshot_passes_x_ollama_key_to_connectivity_probe(monkeypatch) -> None:
+    captured = {"x_ollama_key": None}
+
+    monkeypatch.setattr(runtime, "_ha_connection_error", lambda *_args, **_kwargs: None)
+
+    def _fake_ollama_probe(_base_url, _chat_model, _embedding_model, *, x_ollama_key=None):
+        captured["x_ollama_key"] = x_ollama_key
+        return None
+
+    monkeypatch.setattr(runtime, "_ollama_connection_error", _fake_ollama_probe)
+
+    runtime.build_capability_snapshot(
+        requested_mode="auto",
+        daemon_mode=False,
+        runtime={
+            "ha_api_url": "http://localhost:8123",
+            "ha_api_secret": "token",
+            "ha_satellite_entity_id": "assist_satellite.kitchen",
+            "ollama_base_url": "http://localhost:11434",
+            "ollama_model": "llama3.1:latest",
+            "ollama_embedding_model": "nomic-embed-text",
+            "x_ollama_key": "probe-key",
+            "memory_store_backend": "in_memory",
+            "debug_verbose": False,
+        },
+    )
+
+    assert captured["x_ollama_key"] == "probe-key"
+
 def test_resolve_mode_prefers_satellite_when_ha_available() -> None:
     assert _resolve_mode("auto", None) == "satellite"
 
@@ -150,6 +180,34 @@ def test_ollama_connection_error_accepts_implicit_latest_alias(monkeypatch) -> N
     monkeypatch.setattr(runtime, "urlopen", lambda *_args, **_kwargs: _Resp())
     err = runtime._ollama_connection_error("http://localhost:11434", "llama3.1:latest", "nomic-embed-text")
     assert err is None
+
+
+def test_ollama_connection_error_includes_x_ollama_key_when_configured(monkeypatch) -> None:
+    observed = {"x_ollama_key": None}
+
+    class _Resp:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def read(self):
+            return b'{"models":[{"model":"llama3.1:latest"},{"model":"nomic-embed-text:latest"}]}'
+
+    def _fake_urlopen(request, **_kwargs):
+        observed["x_ollama_key"] = request.get_header("X-ollama-key")
+        return _Resp()
+
+    monkeypatch.setattr(runtime, "urlopen", _fake_urlopen)
+    err = runtime._ollama_connection_error(
+        "http://localhost:11434",
+        "llama3.1:latest",
+        "nomic-embed-text",
+        x_ollama_key="test-key",
+    )
+    assert err is None
+    assert observed["x_ollama_key"] == "test-key"
 
 
 def test_ollama_connection_error_accepts_explicit_latest_alias(monkeypatch) -> None:
