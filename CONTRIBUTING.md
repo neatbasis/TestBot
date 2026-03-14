@@ -2,9 +2,7 @@
 
 Thanks for contributing to TestBot.
 
-Canonical turn-pipeline triage note: track pipeline defect elimination and delivery status in
-[`docs/issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md`](docs/issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md).
-Use ISSUE-0012 only as linked historical delivery-planning context.
+Program anchor: [`docs/issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md`](docs/issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md).
 
 ## Docs QA checklist
 
