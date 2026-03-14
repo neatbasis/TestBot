@@ -12,7 +12,7 @@ When updating docs, complete this lightweight checklist before opening a PR:
 
 - [ ] File tree examples match the current repository layout.
 - [ ] Commands are runnable as written from the documented context.
-- [ ] Required terms match the canonical glossary in `docs/directives/terms.md`.
+- [ ] Required terms match the canonical glossary in `docs/terminology.md`.
 
 Optional validation for markdown links/paths:
 
