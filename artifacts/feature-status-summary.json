@@ -427,7 +427,7 @@
       "relevant_open_issues": [
         {
           "id": "ISSUE-0013",
-          "title": "Implement canonical turn pipeline as the primary bug-elimination program",
+          "title": "Implement canonical turn pipeline as the primary defect-elimination program",
           "path": "docs/issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md"
         }
       ],
@@ -522,7 +522,7 @@
       "relevant_open_issues": [
         {
           "id": "ISSUE-0013",
-          "title": "Implement canonical turn pipeline as the primary bug-elimination program",
+          "title": "Implement canonical turn pipeline as the primary defect-elimination program",
           "path": "docs/issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md"
         }
       ],
@@ -616,7 +616,7 @@
       "relevant_open_issues": [
         {
           "id": "ISSUE-0013",
-          "title": "Implement canonical turn pipeline as the primary bug-elimination program",
+          "title": "Implement canonical turn pipeline as the primary defect-elimination program",
           "path": "docs/issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md"
         }
       ],

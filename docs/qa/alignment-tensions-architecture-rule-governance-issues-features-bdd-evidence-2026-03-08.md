@@ -29,7 +29,7 @@ Artifacts reviewed include architecture contracts, directive/governance docs, is
 
 ### 2) Rule Governance → Issue Programs
 
-**Tension G1: Canonical pipeline is designated as the primary bug-elimination program (ISSUE-0013), but active red-tag pressure is concentrated in ISSUE-0014/0015 with closure-state ambiguity.**
+**Tension G1: Canonical pipeline is designated as the primary defect-elimination program (ISSUE-0013), but active red-tag pressure is concentrated in ISSUE-0014/0015 with closure-state ambiguity.**
 
 - ISSUE-0013 is the declared triage anchor but remains `open`/`amber` with many acceptance criteria still partial.
 - ISSUE-0015 remains listed as `open`/`red` even though its own acceptance-criteria status section says no acceptance criteria remain open.
