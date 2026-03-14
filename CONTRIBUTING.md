@@ -23,6 +23,7 @@ python scripts/validate_markdown_paths.py
 
 Contributor guidance:
 
+- Use [docs/style-guide.md](docs/style-guide.md) for documentation style and language consistency.
 - Use `docs/testing.md` as the canonical merge-readiness/testing reference (including the all-systems-green stakeholder obligations mapping).
 - Use `docs/terminology.md` for canonical term checks whenever adding or revising user-facing language.
 

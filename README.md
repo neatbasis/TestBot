@@ -54,9 +54,9 @@ TestBot operates in two explicit response intents:
 - **Unknowing mode**: do not fabricate; explicitly state uncertainty, keep confidence calibration visible to the user, and either ask for clarification or provide a safe fallback path.
 
 ### Start here by role
-- **Operator**: read [docs/quickstart.md](docs/quickstart.md).
-- **Developer / QA**: read [docs/testing.md](docs/testing.md).
-- **Designer / reviewer**: read [docs/architecture.md](docs/architecture.md).
+- **Operator**: setup and run guidance in [docs/quickstart.md](docs/quickstart.md).
+- **Contributor / QA**: validation and readiness guidance in [docs/testing.md](docs/testing.md).
+- **Designer / reviewer**: runtime contract overview in [docs/architecture/canonical-turn-pipeline.md](docs/architecture/canonical-turn-pipeline.md).
 
 ## Issue tracking (canonical, in-repo)
 
@@ -82,10 +82,14 @@ Use this high-level map instead of a full tree snapshot:
 
 For canonical project status and planned work, use `docs/roadmap/`.
 
+### Product principles, roadmap, and status
+- Product principles: [docs/directives/product-principles.md](docs/directives/product-principles.md)
+- Roadmap: [docs/roadmap/next-4-sprints-grounded-knowing.md](docs/roadmap/next-4-sprints-grounded-knowing.md)
+- Current status: [docs/roadmap/current-status-and-next-5-priorities.md](docs/roadmap/current-status-and-next-5-priorities.md)
+
 ## Grounding model
 Authoritative runtime-contract and decision-policy references:
 
-- [docs/architecture.md](docs/architecture.md)
 - [docs/architecture/canonical-turn-pipeline.md](docs/architecture/canonical-turn-pipeline.md)
 - [docs/directives/traceability-matrix.md](docs/directives/traceability-matrix.md)
 - [docs/directives/decision-policy.md](docs/directives/decision-policy.md)
@@ -101,90 +105,11 @@ Supporting verification-governance overview (non-authoritative):
 - For current validation expectations, see [docs/testing.md](docs/testing.md).
 - For roadmap and delivery status, see [docs/roadmap/](docs/roadmap/).
 
-## Setup by persona
-From the repository root:
+## Setup and validation
+Use role-based guides instead of duplicated install/readiness instructions:
 
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -U pip
-```
-
-### Operator / runtime only
-
-Install only runtime dependencies:
-
-```bash
-pip install -e .
-```
-
-### Contributor / QA (validation enabled)
-
-Install the canonical contributor environment:
-
-```bash
-pip install -e .[dev]
-```
-
-`.[dev]` includes runtime dependencies plus validation tooling (for example `pytest` and `behave`). If `behave` is missing, your setup is incomplete—see the canonical note in [docs/testing.md](docs/testing.md#bdd-tooling-health-check-canonical).
-
-For full environment prerequisites and `.env` variables, use [docs/quickstart.md](docs/quickstart.md).
-
-## Run
-Start in auto mode (prefers Home Assistant satellite, falls back to CLI chat):
-
-```bash
-testbot --mode auto
-```
-
-Other common modes:
-
-```bash
-testbot --mode satellite
-testbot --mode cli
-testbot --mode satellite --daemon
-```
-
-Alternative direct module run:
-
-```bash
-python src/testbot/sat_chatbot_memory_v2.py
-```
-
-
-## Required before merge
-
-Run the single authoritative all-systems-green gate locally before requesting review or merge:
-
-```bash
-python scripts/all_green_gate.py
-```
-
-## Validate
-- **Only authoritative merge/readiness sequence**: `python scripts/all_green_gate.py`
-- BDD execution inside the canonical gate is a hard prerequisite for interpreting feature-status evidence as behavior confidence. If preflight reports missing `behave`, remediate with `python -m pip install -e .[dev]` before trusting capability status.
-- Optional run-all mode (same sequence, continues after failures): `python scripts/all_green_gate.py --continue-on-failure`
-- Machine-readable summary artifact for the same sequence: `python scripts/all_green_gate.py --json-output artifacts/all-green-gate-summary.json`
-- Optional post-merge live smoke profile: `pytest -m live_smoke`
-
-### Turn analytics in canonical gate
-
-`scripts/all_green_gate.py` now mirrors release-gate rollout behavior for turn analytics KPI checks via `--kpi-guardrail-mode {off,optional,blocking}` (default `optional`).
-
-- `off`: skips turn analytics aggregation and KPI guardrail validation.
-- `optional`: runs `scripts/aggregate_turn_analytics.py` and `scripts/validate_kpi_guardrails.py` as non-blocking warnings.
-- `blocking`: runs the same commands as hard failures that block gate success.
-
-### Quick contributor validation
-
-For non-live code changes, use this offline/deterministic gate:
-
-1. `pip install -e .[dev]`
-2. `python scripts/all_green_gate.py`
-
-See [docs/testing.md](docs/testing.md) for test-layer policy and acceptance criteria.
-
-The canonical definition of **"all systems green"** is the stakeholder obligations matrix in [docs/testing.md](docs/testing.md#readiness-evidence-all-systems-green-criteria).
+- Setup/runtime: [docs/quickstart.md](docs/quickstart.md)
+- Validation/readiness: [docs/testing.md](docs/testing.md)
 
 ## Contribute
-Please follow [CONTRIBUTING.md](CONTRIBUTING.md) and use [docs/style-guide.md](docs/style-guide.md) for documentation style.
+Use [CONTRIBUTING.md](CONTRIBUTING.md) as the single gateway for contribution workflow, standards, and checks.
