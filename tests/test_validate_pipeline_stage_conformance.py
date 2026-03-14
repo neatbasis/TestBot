@@ -18,13 +18,15 @@ def test_validate_pipeline_stage_conformance_passes_current_repository_contract(
     assert validator.validate_pipeline_stage_conformance() == []
 
 
-def test_validate_pipeline_stage_conformance_detects_architecture_stage_order_drift(tmp_path: Path) -> None:
+def test_validate_pipeline_stage_conformance_accepts_overview_only_architecture_doc(tmp_path: Path) -> None:
     architecture_doc = tmp_path / "architecture.md"
     architecture_doc.write_text(
         "\n".join(
             [
-                "1. **`observe.turn`**",
-                "2. **`intent.resolve`**",
+                "# Architecture",
+                "## Pipeline overview",
+                "This document intentionally links to canonical pipeline details.",
+                "See docs/architecture/canonical-turn-pipeline.md for stage ordering.",
             ]
         ),
         encoding="utf-8",
@@ -32,7 +34,30 @@ def test_validate_pipeline_stage_conformance_detects_architecture_stage_order_dr
 
     errors = validator.validate_pipeline_stage_conformance(architecture_doc=architecture_doc)
 
-    assert any("docs/architecture.md stage list" in error for error in errors)
+    assert not any("docs/architecture.md" in error for error in errors)
+
+
+def test_validate_pipeline_stage_conformance_detects_canonical_pipeline_stage_order_drift(tmp_path: Path) -> None:
+    canonical_pipeline_doc = tmp_path / "canonical-turn-pipeline.md"
+    canonical_pipeline_doc.write_text(
+        "\n".join(
+            [
+                "# Canonical Turn Pipeline",
+                "## Canonical stage sequence",
+                "```text",
+                "observe.turn",
+                "→ intent.resolve",
+                "```",
+                "Avoid early lossy projection",
+                "U → I",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    errors = validator.validate_pipeline_stage_conformance(canonical_pipeline_doc=canonical_pipeline_doc)
+
+    assert any("canonical-turn-pipeline.md canonical stage sequence" in error for error in errors)
 
 
 def test_validate_pipeline_stage_conformance_detects_missing_u_to_i_guard_in_invariants(tmp_path: Path) -> None:
