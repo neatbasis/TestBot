@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 import importlib.util
-import json
 import sys
 from pathlib import Path
+
+from tests.helpers.turn_analytics_events import (
+    build_dashboard_safe_alignment_dimension_rows,
+    build_grounded_memory_and_fallback_turn_rows,
+)
 
 _RELEASE_PATH = Path(__file__).resolve().parents[1] / "scripts" / "aggregate_turn_analytics.py"
 _spec = importlib.util.spec_from_file_location("aggregate_turn_analytics", _RELEASE_PATH)
@@ -14,8 +18,7 @@ _spec.loader.exec_module(aggregator)
 
 
 def test_aggregate_turn_dataset_from_fixture() -> None:
-    fixture = Path(__file__).parent / "fixtures" / "session_events_fixture.jsonl"
-    rows = [json.loads(line) for line in fixture.read_text(encoding="utf-8").splitlines() if line.strip()]
+    rows = build_grounded_memory_and_fallback_turn_rows()
 
     dataset = aggregator.aggregate_turn_dataset(rows)
 
@@ -104,8 +107,7 @@ def test_compute_alignment_dimension_summary_excludes_not_applicable_from_averag
 
 
 def test_compute_alignment_dimension_summary_from_grounded_and_fallback_fixture_is_dashboard_safe() -> None:
-    fixture = Path(__file__).parent / "fixtures" / "alignment_dimension_events_fixture.jsonl"
-    rows = [json.loads(line) for line in fixture.read_text(encoding="utf-8").splitlines() if line.strip()]
+    rows = build_dashboard_safe_alignment_dimension_rows()
 
     summary = aggregator.compute_alignment_dimension_summary(rows)
 
