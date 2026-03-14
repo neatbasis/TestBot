@@ -118,3 +118,47 @@ When picking up this work, append a dated note here including:
 2. Before/after complexity for each touched hotspot function.
 3. Which `TASK-CX-*` items were advanced and which issue(s) were updated.
 4. Whether `python scripts/all_green_gate.py` stayed green after each slice.
+
+## Progress entry template
+
+Copy/paste this block for each progress update:
+
+```markdown
+### Progress entry — YYYY-MM-DD HH:MM (TZ)
+
+- **Date/time:** YYYY-MM-DD HH:MM (TZ)
+- **TASK-CX IDs advanced:** TASK-CX-000, TASK-CX-000
+- **Files touched:** `path/to/file_a.py`, `path/to/file_b.py`
+- **Complexipy command used:** `complexipy scripts src/testbot tests -mx 15 -f -j`
+
+| Hotspot function | Before | After | Delta |
+| --- | ---: | ---: | ---: |
+| `path/to/module.py::function_name` | 00 | 00 | -00 |
+| `path/to/module.py::other_function` | 00 | 00 | +00 |
+
+- **Deterministic test commands + outcomes:**
+  - ✅ `python -m pytest tests/test_example.py` (passed)
+  - ✅ `python -m pytest -m "not live_smoke"` (passed)
+- **`python scripts/all_green_gate.py` status:** ✅ passed
+- **Issue documents updated:** `docs/issues/ISSUE-0012.md`, `docs/issues/ISSUE-0013.md`
+```
+
+### Progress entry — 2026-03-14 16:20 UTC
+
+- **Date/time:** 2026-03-14 16:20 UTC
+- **TASK-CX IDs advanced:** TASK-CX-001, TASK-CX-006
+- **Files touched:** `src/testbot/turn_debug_payload.py`, `src/testbot/sat_chatbot_memory_v2.py`, `tests/test_turn_debug_payload.py`
+- **Complexipy command used:** `complexipy scripts src/testbot tests -mx 15 -f -j`
+
+| Hotspot function | Before | After | Delta |
+| --- | ---: | ---: | ---: |
+| `src/testbot/sat_chatbot_memory_v2.py::_build_debug_turn_payload` | 58 | 21 | -37 |
+| `src/testbot/sat_chatbot_memory_v2.py::answer_assemble` | 43 | 41 | -2 |
+| `src/testbot/canonical_turn_orchestrator.py::CanonicalTurnOrchestrator.run` | 85 | 85 | 0 |
+
+- **Deterministic test commands + outcomes:**
+  - ✅ `python -m pytest tests/test_turn_debug_payload.py` (passed)
+  - ✅ `python -m pytest tests/test_canonical_turn_orchestrator.py tests/test_pipeline_semantic_contracts.py` (passed)
+  - ✅ `python -m pytest -m "not live_smoke"` (passed)
+- **`python scripts/all_green_gate.py` status:** ✅ passed
+- **Issue documents updated:** `docs/issues/ISSUE-0012.md`, `docs/issues/ISSUE-0013.md`
