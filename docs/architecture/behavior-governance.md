@@ -1,5 +1,15 @@
 # Rule Governance Matrix for Feature Verification
 
+> **Non-authoritative support document.** This page is an implementation-support overview for test/spec traceability only.
+> It does **not** define the runtime contract or decision policy authority.
+> Canonical authorities are:
+>
+> - [`docs/architecture.md`](../architecture.md)
+> - [`docs/architecture/canonical-turn-pipeline.md`](../architecture/canonical-turn-pipeline.md)
+> - [`docs/directives/traceability-matrix.md`](../directives/traceability-matrix.md)
+> - [`docs/directives/decision-policy.md`](../directives/decision-policy.md)
+> - [`docs/issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md`](../issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md)
+
 This matrix governs **test/spec traceability and overlap resolution only**. Runtime behavior authority remains defined by the canonical turn pipeline architecture and linked issue/program records.
 
 - Source-of-truth hierarchy for behavior definition: architecture + canonical issue/program docs first, executable feature files second.

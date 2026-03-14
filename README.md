@@ -83,11 +83,17 @@ Use this high-level map instead of a full tree snapshot:
 For canonical project status and planned work, use `docs/roadmap/`.
 
 ## Grounding model
-Authoritative grounding/intent references:
+Authoritative runtime-contract and decision-policy references:
 
 - [docs/architecture.md](docs/architecture.md)
-- [features/intent_grounding.feature](features/intent_grounding.feature)
+- [docs/architecture/canonical-turn-pipeline.md](docs/architecture/canonical-turn-pipeline.md)
 - [docs/directives/traceability-matrix.md](docs/directives/traceability-matrix.md)
+- [docs/directives/decision-policy.md](docs/directives/decision-policy.md)
+
+Supporting verification-governance overview (non-authoritative):
+
+- [docs/architecture/behavior-governance.md](docs/architecture/behavior-governance.md)
+- [features/intent_grounding.feature](features/intent_grounding.feature)
 
 ## Current limitations
 - External fact integrations are currently limited.

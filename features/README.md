@@ -172,9 +172,9 @@ Rule-governance traceability convention (verification governance):
 - `@Rule:SourceBackedAnswer`
 - `@Rule:FallbackSemantics`
 
-For canonical primary/secondary verification surfaces and overlap-resolution precedence, use
+For the non-authoritative verification-governance overview of primary/secondary feature surfaces and overlap-resolution precedence, use
 [`docs/architecture/behavior-governance.md`](../docs/architecture/behavior-governance.md).
-This matrix governs test/spec traceability only and does not override architecture or canonical issue/program sources of truth.
+This support matrix governs test/spec traceability only and does not override architecture, directives, or canonical issue/program sources of truth.
 
 ---
 
