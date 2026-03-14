@@ -32,7 +32,7 @@ Policy-facing, testable product principles that operationalize Mission claims ar
 - **`commit_receipt` continuity evidence is normative for context/retrieval**: continuity anchors consumed by context resolution and evidence retrieval must come from committed receipts so behavior is reproducible and inspectable.
 - **Persistence exists to preserve user agency across turns**: explicit continuity state lets users amend facts, satisfy obligations, and complete repair flows without losing conversational control.
 
-For deterministic reject diagnostics and machine-readable fallback reasons, see [docs/reject-taxonomy.md](reject-taxonomy.md).
+For deterministic fallback routing, alignment scoring, and machine-readable reject diagnostics, see [docs/directives/decision-policy.md](directives/decision-policy.md).
 
 Terminology note: use canonical pipeline identifiers as normative names and pair them with standard AI wording when needed per [docs/terminology.md](terminology.md).
 
