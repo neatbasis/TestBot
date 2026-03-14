@@ -53,12 +53,31 @@ To satisfy this robustly across interfaces, loop processing must support both **
 
 ## Work Plan
 
-- [Not Started] **Event model + scheduler:** introduce a minimal event envelope and dispatcher for loop processing (`user_utterance_received`, `background_ingestion_completed`, `poll_tick`) while keeping a single canonical pipeline authority for answer generation.
-- [Blocked] **Input/poll integration:** add non-blocking read adapter or bounded wait strategy so periodic poll/timer events are processed even when no user input arrives; blocked by ISSUE-0019 engine boundary decision on adapter contracts.
-- [Not Started] **Pending-start strictness:** harden validation/answer policy path so first pending-lookup response is always explicit ingestion-progress text and cannot be replaced by a GK fallback degrade path.
-- [Blocked] **Completion fast-path:** route completion events through system-triggered loop path and emit linked user message + linked grounded answer immediately with idempotency guarantees; blocked by ISSUE-0019 shared dispatcher ownership.
-- [Not Started] **Tests + BDD:** expand lifecycle scenarios for user-triggered start and system-triggered completion/timer polling and add deterministic ordering/no-input completion tests with correlation IDs.
-- [In Progress] **Governance/docs sync:** update `docs/architecture.md`, relevant invariant/directive mirrors, and explicit issue linkage text across ISSUE-0019 and ISSUE-0020 as scheduler dependencies are clarified.
+- [ ] **ISSUE-0018-WP1 (target 2026-03-17):** Publish event envelope + scheduler contract (`user_utterance_received`, `poll_tick`, `background_ingestion_completed`) with explicit engine ownership boundaries.  
+  **Depends on:** ISSUE-0019-WP1.
+- [ ] **ISSUE-0018-WP2 (target 2026-03-18):** Implement bounded-wait/non-blocking input integration so poll/timer events progress without new user input.  
+  **Depends on:** ISSUE-0018-WP1, ISSUE-0019-WP2.
+- [ ] **ISSUE-0018-WP3 (target 2026-03-18):** Enforce strict first-turn pending-start answer (`BACKGROUND_INGESTION_PROGRESS_ANSWER`) in all pending lookup flows.  
+  **Depends on:** ISSUE-0017-WP4, ISSUE-0018-WP1.
+- [ ] **ISSUE-0018-WP4 (target 2026-03-19):** Route completion fast-path through system-triggered loop with idempotent linked completion message + grounded answer emission.  
+  **Depends on:** ISSUE-0018-WP2, ISSUE-0018-WP3, ISSUE-0019-WP3.
+- [ ] **ISSUE-0018-WP5 (target 2026-03-19):** Expand deterministic tests + BDD for user-triggered start and system-triggered completion under no-input conditions.  
+  **Depends on:** ISSUE-0018-WP4.
+- [ ] **ISSUE-0018-WP6 (target 2026-03-19):** Complete docs/governance sync across architecture/invariants/directives and linked issue records.  
+  **Depends on:** ISSUE-0018-WP5, ISSUE-0019-WP5, ISSUE-0020-WP1.
+
+## Current State (2026-03-14)
+
+- **Scope:** finalize dual-trigger scheduler behavior and strict pending-start guarantee for proactive ingestion lifecycle.
+- **Owner:** runtime-pipeline.
+- **Blocker:** engine boundary and adapter ownership decision from ISSUE-0019 is still required for scheduler wiring.
+- **Next Action:** close ISSUE-0019-WP1/WP2, then execute ISSUE-0018-WP1 and ISSUE-0018-WP2 as the immediate implementation slice.
+
+## Cross-Issue Dependency Map
+
+- **Depends on ISSUE-0019:** ISSUE-0019-WP1/WP2 define engine/adaptor boundaries required by ISSUE-0018-WP1/WP2; ISSUE-0019-WP3 is required by ISSUE-0018-WP4.
+- **Unblocks ISSUE-0017:** ISSUE-0018-WP3 is consumed by ISSUE-0017-WP5 for reopened CLI-path replay closure evidence.
+- **Unblocks ISSUE-0020:** ISSUE-0018-WP4 lifecycle semantics feed ISSUE-0020-WP1 contract decision and quickstart deprecation language.
 
 ## Triage Notes
 
@@ -86,6 +105,9 @@ Expected pass signal:
 Governance-validation artifacts (current branch triage run):
 - `artifacts/issue-triage-2026-03-14/validate_issue_links.txt`
 - `artifacts/issue-triage-2026-03-14/validate_issues.txt`
+
+Next verification artifact expected for this issue:
+- `artifacts/issue-0018/2026-03-19/dual-trigger-event-order-report.md`
 
 ## Closure Notes
 

@@ -51,11 +51,25 @@ This indicates an invariant-definition gap: response-policy constraints are not 
 
 ## Work Plan
 
-- [Done] Capture minimal deterministic reproduction fixture for the pending-lookup CLI path in unit/integration tests (unit/integration coverage landed).
-- [Done] Normalize fallback-policy predicate definitions so assist/dont-know pending-lookup behavior is unambiguous and non-conflicting.
-- [Done] Decouple commit-post checks into concern-specific groups (policy, alignment/provenance integrity, pipeline-stage semantics) while preserving existing contracts.
-- [Done] Sync invariant docs and directive mirror text to match executable policy.
-- [In Progress] Validate with targeted pytest + governance validators + canonical all-green gate (including the reopened CLI-path evidence set).
+- [x] **ISSUE-0017-WP1 (completed 2026-03-14):** Capture deterministic reproduction fixture for pending-lookup CLI path in unit/integration tests.
+- [x] **ISSUE-0017-WP2 (completed 2026-03-14, depends on ISSUE-0017-WP1):** Normalize fallback-policy predicates so assist/dont-know pending-lookup behavior is non-conflicting.
+- [x] **ISSUE-0017-WP3 (completed 2026-03-14, depends on ISSUE-0017-WP2):** Decouple commit-post checks into concern-specific validators (policy, alignment/provenance, pipeline-stage semantics).
+- [x] **ISSUE-0017-WP4 (completed 2026-03-14, depends on ISSUE-0017-WP3):** Sync invariant/directive mirror text to executable policy.
+- [ ] **ISSUE-0017-WP5 (target 2026-03-18, depends on ISSUE-0017-WP4 + ISSUE-0018-WP3):** Re-run reopened CLI-path evidence with strict pending-start semantics and capture behavior deltas.
+- [ ] **ISSUE-0017-WP6 (target 2026-03-18, depends on ISSUE-0017-WP5):** Execute targeted pytest, issue validators, and canonical gate; attach artifacts and closure recommendation.
+
+## Current State (2026-03-14)
+
+- **Scope:** finalize reopened regression evidence against strict pending-lookup lifecycle semantics.
+- **Owner:** runtime-pipeline.
+- **Blocker:** pending-start strictness handoff from ISSUE-0018 is required before final replay evidence is conclusive.
+- **Next Action:** start ISSUE-0017-WP5 immediately after ISSUE-0018-WP3 merges, then complete ISSUE-0017-WP6.
+
+## Cross-Issue Dependency Map
+
+- **Depends on ISSUE-0018:** ISSUE-0018-WP3 provides strict pending-start semantics required by ISSUE-0017-WP5 replay.
+- **Informs ISSUE-0019:** commit-post concern boundaries from ISSUE-0017 reduce policy/engine coupling during ISSUE-0019 dispatcher refactor.
+- **Informs ISSUE-0020:** fallback-policy invariants from ISSUE-0017 remain mandatory guardrails when ISSUE-0020 changes ingestion-enable defaults.
 
 ## Triage Notes
 
@@ -75,6 +89,8 @@ This indicates an invariant-definition gap: response-policy constraints are not 
 - 2026-03-14 governance-validation artifacts (current branch):
   - `artifacts/issue-triage-2026-03-14/validate_issue_links.txt`
   - `artifacts/issue-triage-2026-03-14/validate_issues.txt`
+- Next verification artifact expected:
+  - `artifacts/issue-0017/2026-03-18/cli-pending-lookup-replay.log`
 
 ## Closure Notes
 
