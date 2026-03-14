@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-import json
-from pathlib import Path
-
 from testbot.eval_fixtures import best_candidate_doc_id, cases_by_id, is_iso_timestamp
 from tests.helpers.eval_case_builders import build_eval_case_candidate_sets
+from tests.helpers.eval_runtime_parity_scenarios import runtime_parity_scenarios
 
 
 def test_eval_cases_have_fixed_timestamps_and_expected_doc_ids() -> None:
@@ -25,18 +23,7 @@ def test_candidate_set_fixtures_track_eval_cases() -> None:
 
 
 def test_eval_runtime_parity_fixture_sets_have_fixed_timestamps() -> None:
-    fixture_files = [
-        "tests/fixtures/eval_runtime_parity_ordering_topx_fallback_confidence.jsonl",
-        "tests/fixtures/eval_runtime_parity_edge_time.jsonl",
-        "tests/fixtures/eval_runtime_parity_ambiguous_intent.jsonl",
-        "tests/fixtures/eval_runtime_parity_observation_making_processes.jsonl",
-        "tests/fixtures/eval_runtime_parity_temporal_uncertainty.jsonl",
-    ]
-
-    for fixture_path in fixture_files:
-        with Path(fixture_path).open("r", encoding="utf-8") as fixture_file:
-            for line in fixture_file:
-                fixture = json.loads(line)
-                assert fixture["family"]
-                assert fixture["expected"]["intent"] in {"memory-grounded", "dont-know"}
-                assert all((not candidate.get("ts")) or is_iso_timestamp(candidate["ts"]) for candidate in fixture["candidates"])
+    for scenario in runtime_parity_scenarios():
+        assert scenario.family
+        assert scenario.expected["intent"] in {"memory-grounded", "dont-know"}
+        assert all((not candidate.get("ts")) or is_iso_timestamp(candidate["ts"]) for candidate in scenario.candidates)
