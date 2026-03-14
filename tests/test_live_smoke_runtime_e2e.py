@@ -4,6 +4,8 @@ from collections import deque
 import os
 
 import pytest
+
+from tests.conftest import require_live_smoke_config
 from langchain_ollama import ChatOllama, OllamaEmbeddings
 
 from testbot.clock import SystemClock
@@ -15,14 +17,19 @@ from testbot.sat_chatbot_memory_v2 import (
 )
 from testbot.vector_store import build_memory_store
 
-
 pytestmark = pytest.mark.live_smoke
 
-if os.getenv("TESTBOT_ENABLE_LIVE_SMOKE", "").strip().lower() not in {"1", "true", "yes"}:
-    pytest.skip(
-        "Set TESTBOT_ENABLE_LIVE_SMOKE=1 to run live_smoke runtime end-to-end tests",
-        allow_module_level=True,
-    )
+require_live_smoke_config(
+    suite_name="live_smoke runtime end-to-end tests",
+    required_fields=(
+        "HA_API_URL",
+        "HA_API_SECRET",
+        "HA_SATELLITE_ENTITY_ID",
+        "OLLAMA_BASE_URL",
+        "OLLAMA_MODEL",
+        "OLLAMA_EMBEDDING_MODEL",
+    ),
+)
 
 
 def _require_env(name: str) -> str:

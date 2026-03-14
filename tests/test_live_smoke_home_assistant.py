@@ -3,19 +3,19 @@ from __future__ import annotations
 import os
 
 import pytest
+
+from tests.conftest import require_live_smoke_config
 from homeassistant_api import Client
 from homeassistant_api.errors import HomeassistantAPIError
 
 from ha_ask.config import normalize_rest_api_url
 
-
 pytestmark = pytest.mark.live_smoke
 
-if os.getenv("TESTBOT_ENABLE_LIVE_SMOKE", "").strip().lower() not in {"1", "true", "yes"}:
-    pytest.skip(
-        "Set TESTBOT_ENABLE_LIVE_SMOKE=1 to run live_smoke Home Assistant integration tests",
-        allow_module_level=True,
-    )
+require_live_smoke_config(
+    suite_name="live_smoke Home Assistant integration tests",
+    required_fields=("HA_API_URL", "HA_API_SECRET", "HA_SATELLITE_ENTITY_ID"),
+)
 
 
 def _require_env(name: str) -> str:
