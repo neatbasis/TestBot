@@ -1,14 +1,14 @@
-# Drift Traceability Matrix
+# Drift Traceability Matrix (Drift Audit)
 
 This matrix tracks policy/implementation drift across normative repository statements and active issue acceptance criteria.
 
-## Update rules (mandatory for future PRs)
+> **Non-canonical audit artifact:** This document is for drift auditing/remediation planning only and is not a source of normative product behavior requirements. Canonical behavior standards are defined in `docs/directives/traceability-matrix.md` and other directive artifacts.
 
-1. **Behavior-touch rule:** any PR that changes behavior, routing, retrieval, fallback, provenance, or persistence in `src/testbot/` **must** add/update impacted rows in this file.
-2. **Validation-touch rule:** any PR that changes behavior specs/tests (`features/`, `tests/`) **must** update the `Expected validation surfaces` and `Current status` columns.
-3. **Governance-touch rule:** any PR changing normative docs (`README.md`, `docs/architecture.md`, `docs/invariants.md`, `docs/invariants/`, `docs/directives/`, `docs/issues/`, `docs/issues/RED_TAG.md`) **must** add/update corresponding source rows.
-4. **Issue lifecycle rule:** when an issue status changes between active (`open`, `in_progress`, `blocked`) and inactive (`resolved`, `closed`), issue-criterion rows must be added/removed or reclassified in the same PR.
-5. **No silent drift rule:** `Current status` must use one of `implemented_tested`, `implemented_untested`, `documented_only`, `conflict`; any non-green status must include a non-`none` drift classification and severity.
+## Audit maintenance guidance
+
+- Keep this audit matrix aligned with the canonical requirements documented in `docs/directives/traceability-matrix.md`.
+- When behavior/tests/docs change, update this file only as an audit trace that reflects canonical-source deltas.
+- Do not treat this file as an independent authority for product behavior standards.
 
 ## Status and drift enums
 
@@ -92,4 +92,4 @@ This matrix tracks policy/implementation drift across normative repository state
 
 ## Maintenance note
 
-`docs/governance/drift-traceability-matrix.md` is intended to be updated alongside `docs/directives/traceability-matrix.md`, issue acceptance criteria edits, and canonical capability status changes.
+`docs/governance/drift-traceability-matrix.md` should be maintained as a drift-audit companion to `docs/directives/traceability-matrix.md`, issue acceptance-criteria edits, and canonical capability status changes.
