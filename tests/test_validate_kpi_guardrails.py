@@ -61,3 +61,25 @@ def test_evaluate_thresholds_rejects_non_numeric_metric() -> None:
 
     with pytest.raises(ValueError, match="must be numeric"):
         validator.evaluate_thresholds(summary=summary, config=config)
+
+
+def test_classify_failure_identifies_missing_summary_input() -> None:
+    summary_path = Path('/tmp/turn_analytics_summary.json')
+
+    reason = validator.classify_failure(
+        summary_path=summary_path,
+        violations=[],
+        error=FileNotFoundError(f"missing file: {summary_path}"),
+    )
+
+    assert reason == "missing_input"
+
+
+def test_classify_failure_identifies_threshold_violation() -> None:
+    reason = validator.classify_failure(
+        summary_path=Path('/tmp/turn_analytics_summary.json'),
+        violations=["false_knowing_rate=0.2000 above maximum 0.0500"],
+        error=None,
+    )
+
+    assert reason == "threshold_violation"

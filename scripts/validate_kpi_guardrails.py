@@ -67,20 +67,45 @@ def evaluate_thresholds(summary: dict[str, Any], config: dict[str, Any]) -> list
     return violations
 
 
+def classify_failure(summary_path: Path, violations: list[str], error: Exception | None) -> str | None:
+    if isinstance(error, FileNotFoundError):
+        if str(summary_path) in str(error):
+            return "missing_input"
+        return "schema_error"
+    if isinstance(error, (ValueError, json.JSONDecodeError, TypeError)):
+        return "schema_error"
+    if violations:
+        return "threshold_violation"
+    return None
+
+
 def main() -> int:
     args = parse_args()
-    config = _read_json(_resolve(args.config))
-    summary = _read_json(_resolve(args.summary))
-    violations = evaluate_thresholds(summary=summary, config=config)
+    summary_path = _resolve(args.summary)
+    config_path = _resolve(args.config)
+
+    violations: list[str] = []
+    error: Exception | None = None
+
+    try:
+        config = _read_json(config_path)
+        summary = _read_json(summary_path)
+        violations = evaluate_thresholds(summary=summary, config=config)
+    except Exception as exc:  # surfaced as structured diagnostics below
+        error = exc
 
     payload = {
-        "status": "failed" if violations else "passed",
-        "summary_path": str(_resolve(args.summary)),
-        "config_path": str(_resolve(args.config)),
+        "status": "failed" if error or violations else "passed",
+        "summary_path": str(summary_path),
+        "config_path": str(config_path),
+        "reason_classification": classify_failure(summary_path, violations, error),
         "violations": violations,
     }
+    if error is not None:
+        payload["error"] = str(error)
+
     print(json.dumps(payload, indent=2))
-    return 1 if violations else 0
+    return 1 if error or violations else 0
 
 
 if __name__ == "__main__":
