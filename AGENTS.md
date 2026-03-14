@@ -20,7 +20,7 @@ Start with:
 1. `README.md`
 2. `docs/architecture.md`
 3. `docs/testing.md`
-4. `docs/directives/stakeholder-obligations.md`
+4. `docs/testing.md#readiness-evidence-all-systems-green-criteria`
 
 ## Environment setup
 From repository root:

@@ -184,7 +184,7 @@ For non-live code changes, use this offline/deterministic gate:
 
 See [docs/testing.md](docs/testing.md) for test-layer policy and acceptance criteria.
 
-The canonical definition of **"all systems green"** is the stakeholder obligations matrix in [docs/testing.md](docs/testing.md#all-systems-green-definition).
+The canonical definition of **"all systems green"** is the stakeholder obligations matrix in [docs/testing.md](docs/testing.md#readiness-evidence-all-systems-green-criteria).
 
 ## Contribute
 Please follow [CONTRIBUTING.md](CONTRIBUTING.md) and use [docs/style-guide.md](docs/style-guide.md) for documentation style.
