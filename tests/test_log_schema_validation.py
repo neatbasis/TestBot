@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 from pathlib import Path
 
-FIXTURE_DIR = Path("tests/fixtures/log_schema")
+from tests.helpers.log_schema_samples import build_valid_rows_by_schema_version
+
 VALIDATOR_PATH = Path("scripts/validate_log_schema.py")
 
 spec = importlib.util.spec_from_file_location("validate_log_schema", VALIDATOR_PATH)
@@ -15,16 +17,27 @@ validate_file = module.validate_file
 validate_row = module.validate_row
 
 
-def test_validate_log_schema_accepts_previous_and_current_fixture_artifacts() -> None:
-    fixture_paths = [
-        FIXTURE_DIR / "previous_schema_v1.jsonl",
-        FIXTURE_DIR / "current_schema_v2.jsonl",
-        FIXTURE_DIR / "current_schema_v3.jsonl",
-        FIXTURE_DIR / "current_schema_v4.jsonl",
-    ]
+def test_validate_log_schema_accepts_generated_rows_for_current_schema_v4(tmp_path: Path) -> None:
+    rows_by_schema_version = build_valid_rows_by_schema_version()
+    output_path = tmp_path / "schema_v4.jsonl"
+    output_path.write_text(
+        "\n".join(json.dumps(row, sort_keys=True) for row in rows_by_schema_version[4]) + "\n",
+        encoding="utf-8",
+    )
 
-    for fixture_path in fixture_paths:
-        assert validate_file(fixture_path) == []
+    assert validate_file(output_path) == []
+
+
+def test_validate_log_schema_rejects_obsolete_schema_versions() -> None:
+    rows_by_schema_version = build_valid_rows_by_schema_version()
+
+    for obsolete_version in (1, 2, 3):
+        errors = validate_row(rows_by_schema_version[obsolete_version][0], row_label="test-row")
+
+        assert (
+            f"test-row: schema_version '{obsolete_version}' is obsolete; only schema_version '4' is accepted"
+            in errors
+        )
 
 
 def test_validate_log_schema_rejects_invalid_schema_version_type() -> None:
