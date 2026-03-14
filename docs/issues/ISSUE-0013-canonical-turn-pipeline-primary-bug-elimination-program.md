@@ -249,6 +249,27 @@ Dependency labels (machine-auditable ordered chain):
   - `src/testbot/answer_commit.py`
 - Add stage/state fields at minimum: `turn_id`, `same_turn_exclusion_doc_ids`, `candidate_facts`, `candidate_speech_acts`, `candidate_dialogue_state`, `active_segments`, `resolved_context`, `resolved_intent_class`, `evidence_bundle`, `decision_class`, `decision_reason`, `answer_bindings`, `pending_repair_state`, `resolved_obligations`, `remaining_obligations`, `confirmed_user_facts`.
 
+
+## Complexipy hotspot follow-up (legacy/canonical mixing)
+
+Investigation cross-reference: `docs/issues/evidence/complexipy-hotspots-legacy-canonical-analysis-2026-03-14.md`.
+
+Execution tasks staged under this issue:
+
+- [ ] `TASK-CX-001` Extract debug payload/schema shaping from monolith into dedicated module with parity tests.
+- [ ] `TASK-CX-002` Remove duplicate policy helper trees in monolith and route through canonical `answer_policy.py` primitives.
+- [ ] `TASK-CX-003` Isolate decision/fallback compatibility mappings in a single legacy-bridge adapter module.
+- [ ] `TASK-CX-004` Add complexity ratchet checks for touched runtime files to prevent net-new branching regressions.
+- [ ] `TASK-CX-005` Decompose `CanonicalTurnOrchestrator.run` stage guards into stage-scoped validators without changing stage semantics.
+- [ ] `TASK-CX-006` Add characterization tests confirming unchanged orchestrator stage-order/contract semantics after decomposition.
+
+Progress discipline for each `TASK-CX-*` slice:
+
+1. Attach before/after complexipy function scores for touched hotspots.
+2. Attach deterministic test evidence for affected runtime surfaces.
+3. Re-run `python scripts/all_green_gate.py` and link the latest artifact/log snapshot.
+4. Update ISSUE-0013 AC mapping notes where complexity work directly advances AC-0013-01 / AC-0013-09 / AC-0013-10.
+
 ## Verification
 
 - Command: `python scripts/report_feature_status.py --output docs/qa/feature-status-report.md --json-output artifacts/feature-status-summary.json`
