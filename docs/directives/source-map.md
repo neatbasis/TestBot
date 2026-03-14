@@ -2,7 +2,7 @@
 
 This document maps the major behavior and process directives in TestBot to their sources, how they are enforced, and whether they are hard constraints (`enforced`) or guidance (`advisory`).
 
-Program linkage: [`ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md`](../issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md) is the project's **primary bug-elimination program** in the current state; contributors should triage canonical pipeline defects and follow-on work against ISSUE-0013 first, with ISSUE-0012 treated as linked delivery planning context in [`ISSUE-0012-canonical-turn-pipeline-delivery-plan.md`](../issues/ISSUE-0012-canonical-turn-pipeline-delivery-plan.md).
+Active program: ISSUE-0013. See docs/roadmap/ for status and docs/issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md for the full record.
 
 Documentation naming note: when updating directive or architecture docs, follow the terminology policy in [docs/terminology.md](../terminology.md), including the rule to preserve real system identifiers verbatim.
 

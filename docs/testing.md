@@ -17,7 +17,7 @@ From the repository root with project dependencies installed. Prefer offline det
 ## Why
 This split keeps acceptance behavior explicit, speeds feedback loops, and avoids flaky default suites while still providing optional end-to-end confidence.
 
-Program linkage: [`ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md`](issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md) is the project's **primary bug-elimination program** in the current state; contributors should triage canonical pipeline defects and follow-on work against ISSUE-0013 first, with ISSUE-0012 treated as linked delivery planning context in [`ISSUE-0012-canonical-turn-pipeline-delivery-plan.md`](issues/ISSUE-0012-canonical-turn-pipeline-delivery-plan.md).
+Active program: ISSUE-0013. See docs/roadmap/ for status and docs/issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md for the full record.
 
 ## BDD-first policy
 
