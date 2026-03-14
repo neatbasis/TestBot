@@ -65,7 +65,7 @@ Project issue tracking is now standardized in-repo and remains the default workf
 - Canonical workflow: `docs/issues.md`
 - Issue records: `docs/issues/`
 - Red-tag escalation index: `docs/issues/RED_TAG.md`
-- Current canonical pipeline program: [`ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md`](docs/issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md) is the project's **primary bug-elimination program** in the current state; align canonical turn pipeline (agent inference pipeline) delivery planning from `ISSUE-0012` under this program first.
+- Program anchor: [`docs/issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md`](docs/issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md).
 
 Use issue IDs (for example `ISSUE-0002`) in PR descriptions and non-trivial commit messages for any non-trivial change.
 
