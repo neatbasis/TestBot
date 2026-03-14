@@ -1,10 +1,9 @@
+import logging
 import os
 from dataclasses import dataclass
-def _require(name: str) -> str:
-    value = os.getenv(name)
-    if not value:
-        raise RuntimeError(f"Missing required environment variable: {name}")
-    return value
+
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def _float_from_env(name: str, default: float) -> float:
@@ -13,10 +12,12 @@ def _float_from_env(name: str, default: float) -> float:
         return default
     try:
         parsed = float(raw)
-    except ValueError as exc:
-        raise RuntimeError(f"Invalid float for {name}: {raw!r}") from exc
+    except ValueError:
+        _LOGGER.warning("Invalid %s=%r; using default=%s", name, raw, default)
+        return default
     if parsed < 0:
-        raise RuntimeError(f"{name} must be non-negative; got {parsed}")
+        _LOGGER.warning("Invalid %s=%r; using default=%s", name, raw, default)
+        return default
     return parsed
 
 
@@ -26,10 +27,12 @@ def _int_from_env(name: str, default: int) -> int:
         return default
     try:
         parsed = int(raw)
-    except ValueError as exc:
-        raise RuntimeError(f"Invalid int for {name}: {raw!r}") from exc
+    except ValueError:
+        _LOGGER.warning("Invalid %s=%r; using default=%s", name, raw, default)
+        return default
     if parsed < 0:
-        raise RuntimeError(f"{name} must be non-negative; got {parsed}")
+        _LOGGER.warning("Invalid %s=%r; using default=%s", name, raw, default)
+        return default
     return parsed
 
 @dataclass(frozen=True)
@@ -59,8 +62,8 @@ class Config:
             OLLAMA_MODEL=os.getenv("OLLAMA_MODEL", "llama3.1:latest"),
             OLLAMA_EMBEDDING_MODEL=os.getenv("OLLAMA_EMBEDDING_MODEL", "nomic-embed-text:latest"),
             HA_API_URL=os.getenv("HA_API_URL", "http://localhost:8123"),
-            HA_API_SECRET=_require("HA_API_SECRET"),
-            HA_SATELLITE_ENTITY_ID=_require("HA_SATELLITE_ENTITY_ID"),
+            HA_API_SECRET=os.getenv("HA_API_SECRET", ""),
+            HA_SATELLITE_ENTITY_ID=os.getenv("HA_SATELLITE_ENTITY_ID", ""),
             MEMORY_NEAR_TIE_DELTA=_float_from_env("MEMORY_NEAR_TIE_DELTA", 0.02),
             SOURCE_INGEST_ENABLED=(os.getenv("SOURCE_INGEST_ENABLED", "0") == "1"),
             SOURCE_CONNECTOR_TYPE=os.getenv("SOURCE_CONNECTOR_TYPE", "fixture"),
