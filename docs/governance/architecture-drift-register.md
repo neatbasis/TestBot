@@ -1,10 +1,10 @@
 # Architecture Drift Register
 
-This register captures architecture-contract drift found by reviewing module dependencies and control-flow paths in `src/testbot/` against `docs/architecture.md`.
+This register captures architecture-contract drift found by reviewing module dependencies and control-flow paths in `src/testbot/` against `docs/architecture/canonical-turn-pipeline.md` (using `docs/architecture.md` only as a high-level overview).
 
 ## Review scope
 
-- Contract source: `docs/architecture.md`.
+- Contract source: `docs/architecture/canonical-turn-pipeline.md` (`docs/architecture.md` for overview/context only).
 - Runtime scope reviewed: `src/testbot/` (with focus on response-intent behavior, orchestration/core boundaries, and policy/invariant enforcement paths).
 - Analysis method: static dependency and control-flow inspection.
 
