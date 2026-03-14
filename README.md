@@ -32,7 +32,7 @@ TestBot's pipeline mirrors a perception → memory → reasoning → action mode
 ## Vision
 TestBot is a user-steered assistant that combines conversational memory with ingested external sources to produce evidence-backed responses without overstating certainty or autonomy.
 
-For stakeholder-critical outputs, trust must be measurable: responses should be attributable to explicit evidence references (for example `used_source_evidence_refs` plus `source_evidence_attribution` / `used_memory_refs` metadata) and fallback decisions should remain policy-explainable through directive traceability artifacts such as [docs/directives/traceability-matrix.md](docs/directives/traceability-matrix.md) and [docs/directives/source-map.md](docs/directives/source-map.md).
+For stakeholder-critical outputs, trust must be measurable: responses should be attributable to explicit evidence references (for example `used_source_evidence_refs` plus `source_evidence_attribution` / `used_memory_refs` metadata) and fallback decisions should remain policy-explainable through directive traceability artifacts such as [docs/directives/traceability-matrix.md](docs/directives/traceability-matrix.md) and [docs/directives/decision-policy.md](docs/directives/decision-policy.md).
 
 Non-goal: TestBot does not claim perfect truth, complete source coverage, or universally correct answers across all domains.
 

@@ -9,9 +9,9 @@ The following directive documents are canonical references and must be treated a
 - `docs/invariants.md` (invariant index and migration boundary)
 - `docs/invariants/answer-policy.md` (canonical response-policy invariant registry)
 - `docs/invariants/pipeline.md` (canonical pipeline semantics invariant registry)
-- `docs/directives/source-map.md`
-- `docs/directives/terms.md`
+- `docs/terminology.md`
 - `docs/directives/traceability-matrix.md`
+- `docs/directives/decision-policy.md`
 
 `docs/directives/invariants.md` is a required mirror of the canonical sync block in `docs/invariants/answer-policy.md` and must not diverge on invariant IDs, invariant statements, or scenario-ID mappings.
 
@@ -69,8 +69,9 @@ Missing fields are a merge blocker.
 When a directive changes, the same PR must update linked artifacts to preserve end-to-end traceability.
 
 - If a **term** changes in meaning or scope, update:
-  - `docs/directives/terms.md`, and
-  - any impacted rows in `docs/directives/source-map.md` and `docs/directives/traceability-matrix.md`.
+  - `docs/terminology.md`,
+  - any impacted decision-path guidance in `docs/directives/decision-policy.md`, and
+  - any impacted rows in `docs/directives/traceability-matrix.md`.
 - If an **invariant** is added/changed/removed, update:
   - `docs/directives/invariants.md`,
   - impacted directive mappings in `docs/directives/traceability-matrix.md`, and
@@ -91,6 +92,6 @@ Before merge, reviewers must confirm:
 1. semantic version label matches the highest-impact directive change,
 2. all required PR justification fields are present,
 3. canonical references are aligned,
-4. traceability matrix and BDD scenarios were updated where required.
+4. required terminology/decision-policy updates, traceability matrix updates, and BDD scenarios were completed where required.
 
 If any check fails, the PR should be returned for revision.
