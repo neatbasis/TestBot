@@ -1,5 +1,13 @@
 # Regression/Progression Audit: `8f9317a..HEAD`
 
+## Status framing (read first)
+
+This document is a **point-in-time audit narrative**, not a normative architecture source of truth.
+
+- It records what was observed in the reviewed range and what decisions were pending at that time.
+- Final doctrine is defined by active architecture/invariant artifacts (for example, canonical pipeline architecture + invariant/directive docs), not by this audit alone.
+- Where this audit references formerly-open questions, treat those as historical context unless reaffirmed by current architecture records.
+
 ## Scope
 
 This audit reviews:
@@ -32,13 +40,16 @@ This audit reviews:
 
 ## Regression / risk signals
 
-1. **Softened render-stage precondition is implemented, but architectural intent is not yet explicitly ratified.**
-   - `canonical_turn_orchestrator` removed the strict requirement that `answer_validation_contract.passed` must be true before `answer.render`.
-   - Treat this as a boundary change currently in effect, but **not yet settled architectural doctrine**; prior approval occurred unintentionally and should not be interpreted as final ratification.
-   - Follow-up should make an explicit decision between two coherent models:
-     - **Ratify softening end-to-end**: keep degraded rendering in the render stage and codify all related invariants/ownership boundaries accordingly, or
-     - **Restore strict separation**: require validation pass before render and keep render presentation-only responsibility.
-   - Until that decision is recorded, risk remains that mixed assumptions across modules/docs/tests could reintroduce failed-validation leakage or boundary drift.
+1. **Architectural choice has now been made: strict render-after-pass semantics for semantic output.**
+   - The prior audit observation about softened degraded-render behavior was intentionally descriptive, not doctrinal ratification.
+   - Current architecture resolves the ambiguity by enforcing a strict semantic boundary:
+     - semantic/user-meaningful answer text is rendered and committed only when validation passes;
+     - failed validation is allowed only through explicit degraded fallback artifacts with typed intent.
+   - Rationale for this choice:
+     - preserves stage responsibility (`answer.validate` as semantic gate, `answer.render` as presentation);
+     - prevents accidental failed-validation semantic leakage;
+     - keeps degraded behavior explicit, auditable, and policy-bounded rather than implicit free-form fallback.
+   - Practical interpretation for developers: do not treat historically observed softened behavior as permission to bypass validation; strict render-after-pass is the architectural contract.
 
 2. **Legacy API still exists (deprecated, not removed).**
    - `run_answer_stage_flow(...)` remains available and callable.
@@ -62,7 +73,7 @@ Overall status: **improving, but not fully complete**.
 
 ## Suggested next hardening steps
 
-1. Open/attach an explicit architecture decision record (or issue-decision note) that resolves the render-boundary choice: ratify softened degraded-render contract vs restore presentation-only render semantics.
+1. Keep strict render-after-pass semantics synchronized across architecture docs, invariants, tests, and stage-contract guardrails.
 2. Add runtime telemetry when deprecated `run_answer_stage_flow(...)` is called (counter/event) so removal readiness can be measured.
 3. Add a guardrail test ensuring no production path sets `selected_decision_object` without explicit test/migration context.
 4. Add an issue-linked removal milestone for deleting `run_answer_stage_flow(...)` once call-site usage reaches zero.
