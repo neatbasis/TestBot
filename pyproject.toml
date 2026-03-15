@@ -12,8 +12,10 @@ dependencies = [
   "arrow",
   "HomeAssistant-API>=5.0.0",
   "ha-ask @ git+https://github.com/neatbasis/Ask.git",
+  "langchain",
   "langchain-core",
   "langchain-ollama",
+  "langgraph",
   "numpy",
   "python-dotenv",
 ]
