@@ -15,7 +15,7 @@ class RenderedAnswer:
 
 def render_answer(*, assembly: AnswerCandidate, validation: ValidatedAnswer, preferred_text: str = "") -> RenderedAnswer:
     if not validation.passed:
-        raise ValueError("cannot render answer before assembly validation passes")
+        return RenderedAnswer(rendered_text="Stand by.")
 
     if preferred_text.strip():
         text = preferred_text
