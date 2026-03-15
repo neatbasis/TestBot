@@ -20,6 +20,17 @@ This document defines static architecture boundaries enforced by `tests/architec
 - Avoid accidental drift where stage ordering is redefined outside orchestrators.
 - Prevent bypasses that skip validation/commit semantics by rendering directly from raw or partially processed state.
 
+## Deprecated by boundary enforcement
+
+The boundary rules deprecate the following implementation patterns for canonical pipeline work:
+
+- Stage-module direct imports of infrastructure adapters/SDK clients (for example connector clients) for runtime execution paths.
+- Domain-type module coupling to external client libraries (`elasticsearch`, `langchain_ollama`, `homeassistant_api`).
+- New end-to-end canonical stage-order declarations outside orchestration modules.
+- New direct `render_answer(...)` shortcut call sites outside the canonical render flow allowlist.
+
+Existing legacy paths that still use these patterns should be treated as migration debt and removed behind issue-tracked follow-up work rather than expanded.
+
 ## Enforcement
 
 Run:

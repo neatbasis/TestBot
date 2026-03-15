@@ -8,7 +8,7 @@
 - **Created:** 2026-03-07
 - **Target Sprint:** Sprint 3-5
 - **Canonical Cross-Reference:** `ISSUE-0012-canonical-turn-pipeline-delivery-plan.md`
-- **Cross-Reference Pointers:** ISSUE-0014 (active red identity-continuity regression), ISSUE-0015 (active red quality/governance hardening review), ISSUE-0017 (pending-lookup fallback invariant-boundary normalization for answer.commit.post)
+- **Cross-Reference Pointers:** ISSUE-0014 (active red identity-continuity regression), ISSUE-0015 (active red quality/governance hardening review), ISSUE-0017 (pending-lookup fallback invariant-boundary normalization for answer.commit.post), ISSUE-0021 (legacy-boundary-pattern deprecation and migration)
 - **Principle Alignment:** contract-first, invariant-driven, traceable, deterministic, ci-enforced, ontology-aware
 
 ## Problem Statement
@@ -411,3 +411,9 @@ Progress discipline for each `TASK-CX-*` slice:
   - Coverage commands include:
     - `PYTHONPATH=src python -m pytest tests/test_answer_rendering_offer_bearing.py tests/test_intent_router.py tests/test_decisioning_stages.py tests/test_answer_commit_identity_promotion.py -q`
   - Observed outcome in this pass: `53 passed`.
+
+
+- 2026-03-15: Architecture-boundary and stage-contract test expansion landed as a directional hardening step and should be treated as deprecation-start evidence for legacy coupling patterns.
+  - Boundary enforcement/tests added: `docs/architecture-boundaries.md`, `tests/architecture/test_import_boundaries.py`.
+  - Canonical stage contract matrix tests added under `tests/pipeline/` for `intent.resolve`, `retrieve.evidence`, `policy.decide`, `answer.validate`, `answer.commit`, and pipeline metrics contracts.
+  - Follow-up requirement: track migration/deprecation closure for remaining legacy boundary violations under ISSUE-0021 before declaring canonical direction complete.
