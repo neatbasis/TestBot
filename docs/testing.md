@@ -23,6 +23,43 @@ Program anchor: [`issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-eliminat
 
 Behavior that stakeholders care about must be written first as `.feature` scenarios. Implementation is complete only when those scenarios pass and deterministic supporting tests confirm lower-level logic.
 
+## Canonical Turn Pipeline TDD
+
+Use this section as the required test-first blueprint for pipeline work aligned to the canonical stage sequence in [`docs/architecture/canonical-turn-pipeline.md`](architecture/canonical-turn-pipeline.md).
+
+### Test-first order by stage
+
+Write tests in pipeline order before implementation changes, then make each stage green without skipping upstream stage failures:
+
+1. `observe.turn` + `encode.candidates`: observation preservation and multiplicity capture tests.
+2. `stabilize.pre_route` + `context.resolve`: durable pre-route facts/provenance and pending-repair/context anchor tests.
+3. `intent.resolve`: resolved-intent authority and telemetry alias consistency tests.
+4. `retrieve.evidence`: retrieval branch coherence and empty-evidence distinction tests.
+5. `policy.decide`: action-class choice determinism and ambiguity handling tests.
+6. `answer.assemble` + `answer.validate`: provenance binding, grounding, and decision/answer-class alignment tests.
+7. `answer.render` + `answer.commit`: render-class preservation and committed-state persistence tests.
+
+### Required test categories per stage set
+
+Every stage-affecting change must include all three categories below:
+
+- **Stage contract tests**: deterministic checks that the stage input/output and stage invariants hold.
+- **Decision matrix tests**: matrix-style scenario checks proving stable branch selection across intent, evidence, capability, and ambiguity combinations.
+- **Property/regression tests**: invariant-preserving property checks and explicit regressions for previously observed failure modes.
+
+Any missing category is a readiness failure even when individual spot checks pass.
+
+### Fake adapter strategy (deterministic by default)
+
+Prefer fake adapters for pipeline tests unless a test is explicitly marked live smoke:
+
+- Replace LLM/rewrite/answer generators with deterministic fakes or fixtures.
+- Replace vector stores/connectors with in-memory fakes and fixed timestamps.
+- Keep provenance IDs, candidate ordering, and fallback actions deterministic.
+- Use monkeypatch or dependency injection at runtime boundaries instead of network calls.
+
+This strategy is required to keep stage contracts, decision matrix coverage, and regressions reproducible under `python scripts/all_green_gate.py`.
+
 ## Scenario traceability quick map
 
 For fast failure triage across behavior specs, runtime anchors, and deterministic tests, use [docs/directives/traceability-matrix.md](directives/traceability-matrix.md#quick-reference-fast-triage).
@@ -449,14 +486,22 @@ The Ops obligation previously lacked a deterministic assertion that degraded sta
 
 ### Explicit "all systems green" criteria
 
-"All systems green" means every obligation row above has passing deterministic evidence in the same change window:
+"All systems green" requires a successful canonical gate run (`python scripts/all_green_gate.py`) and all criteria below in the same change window:
 
-1. Product behavior scenarios pass (`python -m behave`).
-2. Safety deny/fallback checks pass (BDD + targeted `python -m pytest` + schema validation).
-3. Ops startup degradation checks pass (runtime mode + startup status tests).
-4. QA fixture/gate checks pass (deterministic `python -m pytest` + governance/doc sync validations).
+1. **Stage contract suite pass**: stage contract coverage for canonical turn stages passes (via deterministic pytest coverage and canonical conformance validators).
+2. **Decision matrix pass**: matrix-style policy/branching checks pass for intent/evidence/capability combinations.
+3. **Provenance/grounding suite pass**: provenance binding, citation completeness, and grounding safety checks pass (BDD + deterministic targeted suites).
+4. **KPI thresholds pass**: fallback and invalid-answer quality guardrails meet configured thresholds in `config/kpi_guardrails.json`:
+   - `fallback_appropriateness >= 0.70`
+   - `false_knowing_rate <= 0.05`
 
-If any row fails, the repository is not considered green for merge readiness.
+Failure conditions (must block readiness):
+
+- `python scripts/all_green_gate.py` exits non-zero for any blocking check category.
+- Any required suite above has failing tests/validators.
+- KPI guardrails violate thresholds in blocking mode, or remain unresolved warning debt contrary to repository governance policy in optional mode.
+
+If any failure condition is present, the repository is not considered green for merge readiness.
 
 ## Rerank objective under test (canonical)
 

@@ -29,6 +29,25 @@ TestBot executes a turn-oriented pipeline with supporting policy and governance 
 5. **Validation gate (`scripts/all_green_gate.py`)**
    - Aggregates readiness checks used for merge confidence.
 
+
+## Stage-by-stage invariant table
+
+For implementation and review, use this condensed invariant table alongside the canonical specification in [docs/architecture/canonical-turn-pipeline.md](architecture/canonical-turn-pipeline.md). Changes that violate any row are readiness failures and must fail the canonical gate run (`python scripts/all_green_gate.py`) via tests or conformance checks.
+
+| Stage | Primary invariant | Failure condition (must block readiness) |
+| --- | --- | --- |
+| `observe.turn` | Preserve raw utterance and turn metadata before any interpretation. | Raw content/metadata is dropped or mutated such that downstream reconstruction is impossible. |
+| `encode.candidates` | Preserve multiplicity of plausible candidates (no early single-interpretation collapse). | Candidate set is prematurely collapsed to one authoritative interpretation without justification. |
+| `stabilize.pre_route` | Persist durable facts and provenance before routing authority is applied. | Durable fact candidates/provenance are missing or non-durable prior to route-dependent logic. |
+| `context.resolve` | Materialize pending repair and discourse anchors from stabilized state. | Repair obligations or offer anchors are ignored, causing context-blind downstream behavior. |
+| `intent.resolve` | Resolve intent from enriched state; telemetry alias `intent` mirrors `resolved_intent`. | Intent is derived from raw text only, or alias fields diverge from resolved authority. |
+| `retrieve.evidence` | Retrieval branch and evidence shape are coherent with resolved intent/context. | Retrieval path contradicts resolved intent or conflates empty evidence with scored-empty candidates. |
+| `policy.decide` | Decision class aligns with semantic response class under capability/ambiguity constraints. | Decision class is inconsistent with response semantics or ambiguity policy contract. |
+| `answer.assemble` | Assembled answer remains bound to explicit evidence/provenance. | Answer content includes unsupported claims or unbound generation outside decision class. |
+| `answer.validate` | Enforce grounding, provenance, and decision-answer class alignment checks. | Validation allows ungrounded content, broken provenance, or class misalignment to pass. |
+| `answer.render` | Rendering preserves validated semantic class. | Rendering mutates semantic class (for example, renders knowing-form output from fallback decision). |
+| `answer.commit` | Commit assistant turn, provenance, and repair/obligation state for next turn. | Post-answer state omits required persistence (utterance card, provenance, or repair state). |
+
 ## Canonical references
 For normative contract details, use these documents directly:
 
