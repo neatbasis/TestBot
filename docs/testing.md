@@ -39,6 +39,11 @@ Write tests in pipeline order before implementation changes, then make each stag
 6. `answer.assemble` + `answer.validate`: provenance binding, grounding, and decision/answer-class alignment tests.
 7. `answer.render` + `answer.commit`: render-class preservation and committed-state persistence tests.
 
+Validation-failure answer contract (canonical):
+- Normal render/commit paths require `answer.validate.passed == True`.
+- If validation fails, canonical execution may only produce/commit an explicit degraded artifact (`[degraded:clarifier]`, `[degraded:alternatives]`, or `[degraded:deny]`).
+- Unvalidated semantic answer text must never be rendered or committed as a normal answer.
+
 ### Required test categories per stage set
 
 Every stage-affecting change must include all three categories below:

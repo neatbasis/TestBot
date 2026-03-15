@@ -109,8 +109,6 @@ class CanonicalTurnOrchestrator:
             if expected_stage == "answer.render":
                 if "answer_validation_contract" not in context.artifacts:
                     raise RuntimeError("answer.render requires answer_validation_contract artifact")
-                if not getattr(context.artifacts["answer_validation_contract"], "passed", False):
-                    raise RuntimeError("answer.render requires a passing answer.validate contract")
                 if self._artifact_fingerprint(
                     context.artifacts.get("answer_assembly_contract")
                 ) != semantic_contracts.get("validated_answer_assembly_fingerprint"):

@@ -193,7 +193,9 @@ Output:
 - user-visible rendered response `R`
 
 Invariant:
-- Rendering does not change semantic class.
+- Passing validation renders a normal validated answer.
+- Failed validation may render only an explicit degraded fallback artifact.
+- Unvalidated semantic answer text is never rendered.
 
 ### 11) `answer.commit`
 
@@ -211,6 +213,8 @@ Must persist:
 - confirmed user facts
 
 Invariant:
+- Commit accepts either a passing validated answer or an explicit degraded fallback artifact.
+- Failed-validation semantic answer text is never committed.
 - If a repair offer is rendered, pending repair state is established in `S'`.
 
 ## Canonical invariants

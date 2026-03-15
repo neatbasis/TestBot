@@ -11,11 +11,49 @@ class RenderedAnswer:
     rendered_text: str
     repair_offer_rendered: bool = False
     repair_followup_route: str = ""
+    response_contract: str = "validated_normal"
+    degraded_response: bool = False
+
+
+def _render_degraded_fallback(*, assembly: AnswerCandidate, validation: ValidatedAnswer) -> RenderedAnswer:
+    invariant_decisions = dict(validation.invariant_decisions or {})
+    alignment_decision = dict(validation.alignment_decision or {})
+
+    explicit_deny_or_safety = (
+        str(invariant_decisions.get("answer_mode") or "") == "deny"
+        or str(alignment_decision.get("final_alignment_decision") or "") == "deny"
+    )
+    if explicit_deny_or_safety:
+        return RenderedAnswer(
+            rendered_text="[degraded:deny] I don't know from memory.",
+            response_contract="degraded_deny_safety_only",
+            degraded_response=True,
+        )
+
+    if assembly.decision_class == "ask_for_clarification":
+        return RenderedAnswer(
+            rendered_text=(
+                "[degraded:clarifier] I couldn't validate a direct answer yet. "
+                "Which specific detail should I focus on first?"
+            ),
+            response_contract="degraded_targeted_clarifier",
+            degraded_response=True,
+        )
+
+    return RenderedAnswer(
+        rendered_text=(
+            "[degraded:alternatives] I couldn't validate a direct answer yet. "
+            "I can (1) ask one focused follow-up question, or "
+            "(2) offer at least two capability-based next steps you can use right now."
+        ),
+        response_contract="degraded_capability_alternatives",
+        degraded_response=True,
+    )
 
 
 def render_answer(*, assembly: AnswerCandidate, validation: ValidatedAnswer, preferred_text: str = "") -> RenderedAnswer:
     if not validation.passed:
-        return RenderedAnswer(rendered_text="Stand by.")
+        return _render_degraded_fallback(assembly=assembly, validation=validation)
 
     if preferred_text.strip():
         text = preferred_text

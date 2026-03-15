@@ -90,7 +90,7 @@ def test_stabilize_pre_route_persists_utterance_before_downstream_decision_logic
     assert call_log[-1] == "decision_logic:turn-002"
 
 
-def test_answer_render_invalid_validation_degrades_to_standby_without_semantic_text() -> None:
+def test_answer_render_invalid_validation_routes_to_explicit_degraded_contract_without_semantic_text() -> None:
     assembly = AnswerCandidate(
         decision_class="answer_from_memory",
         rendered_class="answer_from_memory",
@@ -107,7 +107,9 @@ def test_answer_render_invalid_validation_degrades_to_standby_without_semantic_t
 
     rendered = render_answer(assembly=assembly, validation=invalid, preferred_text=invalid.final_answer)
 
-    assert rendered.rendered_text == "Stand by."
+    assert rendered.degraded_response is True
+    assert rendered.response_contract in {"degraded_targeted_clarifier", "degraded_capability_alternatives"}
+    assert rendered.rendered_text.startswith("[degraded:")
     assert "Sensitive semantic text" not in rendered.rendered_text
 
 
@@ -145,3 +147,53 @@ def test_answer_commit_merges_stabilized_facts_once_per_fact_without_duplicate_c
     assert committed.confirmed_user_facts == ["timezone=UTC", "name=Ava"]
     assert committed.confirmed_user_facts.count("timezone=UTC") == 1
     assert committed.confirmed_user_facts.count("name=Ava") == 1
+
+
+def test_answer_render_invalid_validation_uses_deny_fallback_only_for_explicit_deny_safety() -> None:
+    assembly = AnswerCandidate(
+        decision_class="answer_from_memory",
+        rendered_class="answer_from_memory",
+        retrieval_branch="memory_retrieval",
+        rationale="test",
+        evidence_counts={"structured_facts": 1},
+        pending_repair_state={"repair_required_by_policy": False, "repair_offered_to_user": False},
+        pending_ingestion_request_id="",
+        resolved_obligations=[],
+        remaining_obligations=[],
+        confirmed_user_facts=[],
+    )
+    invalid = ValidatedAnswer(
+        passed=False,
+        failures=["invalid"],
+        final_answer="Sensitive semantic text",
+        invariant_decisions={"answer_mode": "deny"},
+    )
+
+    rendered = render_answer(assembly=assembly, validation=invalid, preferred_text=invalid.final_answer)
+
+    assert rendered.degraded_response is True
+    assert rendered.response_contract == "degraded_deny_safety_only"
+    assert rendered.rendered_text == "[degraded:deny] I don't know from memory."
+
+
+def test_answer_render_invalid_validation_prefers_clarifier_for_clarification_decision_class() -> None:
+    assembly = AnswerCandidate(
+        decision_class="ask_for_clarification",
+        rendered_class="ask_for_clarification",
+        retrieval_branch="memory_retrieval",
+        rationale="test",
+        evidence_counts={"structured_facts": 0},
+        pending_repair_state={"repair_required_by_policy": False, "repair_offered_to_user": False},
+        pending_ingestion_request_id="",
+        resolved_obligations=[],
+        remaining_obligations=[],
+        confirmed_user_facts=[],
+    )
+    invalid = ValidatedAnswer(passed=False, failures=["invalid"], final_answer="Sensitive semantic text")
+
+    rendered = render_answer(assembly=assembly, validation=invalid, preferred_text=invalid.final_answer)
+
+    assert rendered.degraded_response is True
+    assert rendered.response_contract == "degraded_targeted_clarifier"
+    assert "Which specific detail should I focus on first?" in rendered.rendered_text
+    assert "Sensitive semantic text" not in rendered.rendered_text
