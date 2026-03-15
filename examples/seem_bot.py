@@ -155,6 +155,17 @@ def _latest_passage_of_kind(state: State, kind: str) -> PassageRecord | None:
     return None
 
 
+def _recent_user_texts(state: State, *, limit: int = 5, exclude_latest: bool = False) -> list[str]:
+    observations = [
+        _strip_role_prefix(p["canonical_text"], "human")
+        for p in state.get("passages", [])
+        if p["kind"] == "observation"
+    ]
+    if exclude_latest and observations:
+        observations = observations[:-1]
+    return [text for text in observations if text][-limit:]
+
+
 def _make_passage(
     *,
     state: State,
@@ -182,37 +193,75 @@ def _strip_role_prefix(text: str, prefix: str) -> str:
     return text.strip()
 
 
-def _intent_hint(text: str) -> str:
-    lowered = text.lower().strip()
+def _tokenize(text: str) -> list[str]:
+    return re.findall(r"[a-zA-Z']+", text.lower())
 
-    casual = {"what's up", "whats up", "sup", "yo", "hey", "hi", "hello", "morjens"}
-    clarification = {
-        "what do you mean",
-        "what do you mean?",
-        "what do you mean by that",
-        "can you clarify",
-        "clarify",
-        "what does that mean",
-        "what?",
+
+def _dialogue_act_features(text: str) -> dict[str, bool]:
+    tokens = _tokenize(text)
+    token_set = set(tokens)
+    is_short = len(tokens) <= 3
+    has_question_mark = "?" in text
+
+    greeting_tokens = {"hi", "hello", "hey", "yo", "sup"}
+    affirmation_tokens = {"yes", "yep", "yeah", "sure", "ok", "okay", "correct", "right", "exactly"}
+    rejection_tokens = {"no", "nope", "nah", "wrong", "incorrect"}
+    clarification_tokens = {"what", "mean", "clarify", "confused"}
+    summary_tokens = {"summarize", "summarise", "summary", "recap"}
+    recall_tokens = {"asked", "ask", "said", "tell", "told"}
+    generation_verbs = {"write", "generate", "draft", "create", "compose", "build"}
+    analysis_verbs = {"fix", "debug", "explain", "review", "analyze", "analyse", "inspect"}
+
+    looks_summary_request = (
+        bool(token_set.intersection(summary_tokens))
+        and bool(token_set.intersection({"i", "me", "my"}))
+        and bool(token_set.intersection(recall_tokens))
+    )
+
+    is_bare_confirmation = is_short and bool(token_set.intersection(affirmation_tokens))
+    is_bare_rejection = is_short and bool(token_set.intersection(rejection_tokens))
+    is_bare_clarifier = is_short and has_question_mark and bool(token_set.intersection(clarification_tokens))
+
+    return {
+        "is_short": is_short,
+        "has_question_mark": has_question_mark,
+        "is_greeting": bool(token_set.intersection(greeting_tokens)) and is_short,
+        "is_confirmation": is_bare_confirmation,
+        "is_rejection": is_bare_rejection,
+        "is_clarification": is_bare_clarifier,
+        "is_summary_request": looks_summary_request,
+        "starts_generation": bool(tokens) and tokens[0] in generation_verbs,
+        "starts_analysis": bool(tokens) and tokens[0] in analysis_verbs,
     }
-    confirmation = {"yes", "yep", "yeah", "exactly", "correct", "right"}
-    rejection = {"no", "nope", "not that", "the other thing"}
 
-    if lowered in casual:
+
+def _intent_hint(text: str) -> str:
+    features = _dialogue_act_features(text)
+
+    if features["is_greeting"]:
         return "casual_greeting"
-    if lowered in clarification:
+    if features["is_clarification"]:
         return "clarification_request"
-    if lowered in confirmation:
+    if features["is_confirmation"]:
         return "confirmation"
-    if lowered in rejection:
+    if features["is_rejection"]:
         return "rejection"
-    if "?" in text:
+    if features["is_summary_request"]:
+        return "request_user_query_summary"
+    if features["has_question_mark"]:
         return "question"
-    if lowered.startswith(("write ", "generate ", "draft ", "create ")):
+    if features["starts_generation"]:
         return "generation_request"
-    if lowered.startswith(("fix ", "debug ", "explain ", "review ", "analyze ")):
+    if features["starts_analysis"]:
         return "analysis_request"
     return "statement"
+
+
+def _format_user_query_summary(items: list[str]) -> str:
+    if not items:
+        return "I don't have enough prior messages to summarize yet."
+    bullets = "\n".join(f"- {item}" for item in items)
+    return f"You asked about:\n{bullets}"
 
 
 def _extract_simple_facts(passage: PassageRecord) -> list[FactRecord]:
@@ -393,6 +442,8 @@ def decide_response_plan(state: State) -> dict[str, Any]:
         mode = "generate"
     elif intent == "question":
         mode = "answer"
+    elif intent == "request_user_query_summary":
+        mode = "summarize_user_queries"
     else:
         mode = "respond"
 
@@ -471,6 +522,62 @@ def answer_from_state(state: State) -> dict[str, Any]:
     self_model = state.get("self_model", {})
     pending_focus = state.get("pending_focus", {})
     latest_user_text = ctx.get("latest_user_text", "")
+    intent = ctx.get("user_intent_hint", "statement")
+    act = _dialogue_act_features(latest_user_text)
+
+    if intent == "request_user_query_summary":
+        summary_items = _recent_user_texts(state, exclude_latest=True)
+        return {"messages": [AIMessage(content=_format_user_query_summary(summary_items))]}
+
+    if act["is_confirmation"] and not pending_focus:
+        recent = _recent_user_texts(state, limit=1, exclude_latest=True)
+        if recent:
+            content = (
+                "Got it — it sounds like you're confirming this: "
+                f"\"{recent[0]}\". If that's not right, tell me what you're saying yes to."
+            )
+        else:
+            content = "Got it. What would you like to confirm exactly?"
+        return {"messages": [AIMessage(content=content)]}
+
+    if act["is_confirmation"] and pending_focus.get("kind") == "assistant_question":
+        question = pending_focus.get("assistant_question", "")
+        content = "Thanks for confirming."
+        if question:
+            content += f" You answered yes to: \"{question}\""
+        content += " If you'd like, tell me the next detail and I'll build on it."
+        return {"messages": [AIMessage(content=content)]}
+
+    if act["is_rejection"] and not pending_focus:
+        return {
+            "messages": [
+                AIMessage(
+                    content=(
+                        "Thanks — I may be missing what you're rejecting. "
+                        "Could you say what part you want to change?"
+                    )
+                )
+            ]
+        }
+
+    if act["is_rejection"] and pending_focus.get("kind") == "assistant_question":
+        question = pending_focus.get("assistant_question", "")
+        content = "Understood — thanks for clarifying."
+        if question:
+            content += f" You meant no to: \"{question}\""
+        content += " What direction should we take instead?"
+        return {"messages": [AIMessage(content=content)]}
+
+    if act["is_clarification"] and not pending_focus:
+        return {
+            "messages": [
+                AIMessage(
+                    content=(
+                        "Happy to clarify. Could you point to the specific sentence or topic you mean?"
+                    )
+                )
+            ]
+        }
 
     system_prompt = (
         "You are a helpful assistant.\n"
