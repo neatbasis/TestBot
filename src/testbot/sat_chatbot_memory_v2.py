@@ -2731,6 +2731,30 @@ def _resolve_answer_routing_from_decision_object(
     )
 
 
+
+
+def _selected_decision_from_confidence(confidence_decision: dict[str, object]) -> DecisionObject | None:
+    raw = confidence_decision.get("selected_decision_object")
+    if not isinstance(raw, dict):
+        return None
+    decision_class_value = str(raw.get("decision_class") or "").strip()
+    retrieval_branch = str(raw.get("retrieval_branch") or "").strip()
+    if not decision_class_value or not retrieval_branch:
+        return None
+    try:
+        decision_class = DecisionClass(decision_class_value)
+    except ValueError:
+        return None
+    reasoning = raw.get("reasoning")
+    if not isinstance(reasoning, dict):
+        reasoning = {}
+    return DecisionObject(
+        decision_class=decision_class,
+        retrieval_branch=retrieval_branch,
+        rationale=str(raw.get("rationale") or "selected_decision_override"),
+        reasoning={str(key): value for key, value in reasoning.items()},
+    )
+
 def _resolve_answer_routing_for_stage(
     state: PipelineState,
     *,
@@ -2776,12 +2800,14 @@ def _decision_object_from_assembled(assembled: AnswerAssembleResult) -> Decision
     decision_class = decision_lookup.get(fallback_action, DecisionClass.ANSWER_GENERAL_KNOWLEDGE_LABELED)
     return DecisionObject(
         decision_class=decision_class,
-        retrieval_branch="legacy_stage_answer",
+        retrieval_branch=("memory_retrieval" if decision_class is DecisionClass.ANSWER_FROM_MEMORY else "direct_answer"),
         rationale="derived_from_answer_policy_rationale",
     )
 
 
-def run_answer_stage_flow(
+
+
+def _run_answer_stages_from_supplied_artifacts(
     llm: ChatOllama,
     state: PipelineState,
     *,
@@ -2843,6 +2869,148 @@ def run_answer_stage_flow(
     )
     return replace(state, draft_answer=assembled.draft_answer)
 
+def _run_full_canonical_turn_from_seeded_artifacts(
+    llm: ChatOllama,
+    state: PipelineState,
+    *,
+    chat_history: deque[ChatMsg],
+    hits: list[Document],
+    capability_status: CapabilityStatus,
+    selected_decision: DecisionObject | None = None,
+    runtime_capability_status: RuntimeCapabilityStatus | None = None,
+    clock: Clock | None = None,
+) -> PipelineState:
+    class _SeededMemoryStore:
+        def __init__(self, seeded_hits: list[Document]) -> None:
+            self._seeded_hits = list(seeded_hits)
+            self._stored_docs: list[Document] = []
+
+        def add_documents(self, docs: list[Document]) -> None:
+            self._stored_docs.extend(docs)
+
+        def similarity_search_with_score(self, _query: str, k: int = 4, **_kwargs):
+            docs = (self._seeded_hits + self._stored_docs)[: max(k, 0)]
+            return [(doc, 1.0) for doc in docs]
+
+    seeded_store = _SeededMemoryStore(hits)
+    effective_clock = clock or SystemClock()
+    resolved_runtime_status = runtime_capability_status or RuntimeCapabilityStatus(
+        ollama_available=True,
+        ha_available=False,
+        effective_mode="cli",
+        requested_mode="cli",
+        daemon_mode=False,
+        fallback_reason=None,
+        memory_backend="in_memory",
+        debug_enabled=False,
+        debug_verbose=False,
+        text_clarification_available=True,
+        satellite_ask_available=False,
+    )
+    capability_snapshot = CapabilitySnapshot(
+        runtime={},
+        requested_mode=resolved_runtime_status.requested_mode,
+        daemon_mode=resolved_runtime_status.daemon_mode,
+        effective_mode=resolved_runtime_status.effective_mode,
+        fallback_reason=resolved_runtime_status.fallback_reason,
+        exit_reason=None,
+        ha_error=None,
+        ollama_error=None,
+        runtime_capability_status=resolved_runtime_status,
+    )
+    classified_intent = state.classified_intent or classify_intent(state.user_input).value
+    resolved_intent = state.resolved_intent or classified_intent
+    state_with_selected_decision = replace(
+        state,
+        classified_intent=classified_intent,
+        resolved_intent=resolved_intent,
+    )
+    if selected_decision is not None:
+        state_with_selected_decision = replace(
+            state_with_selected_decision,
+            confidence_decision={
+                **state_with_selected_decision.confidence_decision,
+                "selected_decision_object": {
+                    "decision_class": selected_decision.decision_class.value,
+                    "retrieval_branch": selected_decision.retrieval_branch,
+                    "rationale": selected_decision.rationale,
+                    "reasoning": dict(selected_decision.reasoning),
+                },
+            },
+        )
+
+    final_state, _ = _run_canonical_turn_pipeline(
+        runtime={},
+        llm=llm,
+        store=seeded_store,
+        state=state_with_selected_decision,
+        utterance=state.user_input,
+        prior_pipeline_state=None,
+        turn_id=f"answer-stage-{uuid.uuid4()}",
+        near_tie_delta=0.0,
+        chat_history=chat_history,
+        capability_status=capability_status,
+        capability_snapshot=capability_snapshot,
+        clock=effective_clock,
+        io_channel=resolved_runtime_status.effective_mode,
+    )
+    return final_state
+
+
+def run_canonical_answer_stage_flow(
+    llm: ChatOllama,
+    state: PipelineState,
+    *,
+    chat_history: deque[ChatMsg],
+    hits: list[Document],
+    capability_status: CapabilityStatus,
+    selected_decision: DecisionObject | None = None,
+    runtime_capability_status: RuntimeCapabilityStatus | None = None,
+    clock: Clock | None = None,
+    timezone: str = "Europe/Helsinki",
+) -> PipelineState:
+    return _run_answer_stages_from_supplied_artifacts(
+        llm,
+        state,
+        chat_history=chat_history,
+        hits=hits,
+        capability_status=capability_status,
+        selected_decision=selected_decision,
+        runtime_capability_status=runtime_capability_status,
+        clock=clock,
+        timezone=timezone,
+    )
+
+
+
+def run_answer_stage_flow(
+    llm: ChatOllama,
+    state: PipelineState,
+    *,
+    chat_history: deque[ChatMsg],
+    hits: list[Document],
+    capability_status: CapabilityStatus,
+    selected_decision: DecisionObject | None = None,
+    runtime_capability_status: RuntimeCapabilityStatus | None = None,
+    clock: Clock | None = None,
+    timezone: str = "Europe/Helsinki",
+) -> PipelineState:
+    warnings.warn(
+        "run_answer_stage_flow(...) is deprecated; use run_canonical_answer_stage_flow(...) instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+    return run_canonical_answer_stage_flow(
+        llm,
+        state,
+        chat_history=chat_history,
+        hits=hits,
+        capability_status=capability_status,
+        selected_decision=selected_decision,
+        runtime_capability_status=runtime_capability_status,
+        clock=clock,
+        timezone=timezone,
+    )
 
 
 def answer_commit_persistence(
@@ -3774,7 +3942,8 @@ def _run_canonical_turn_pipeline(
                 retrieval_candidates_considered=considered,
                 hit_count=len(hits),
             )
-            ctx.artifacts["decision_object"] = decide_from_evidence(
+            selected_decision = _selected_decision_from_confidence(ctx.state.confidence_decision)
+            ctx.artifacts["decision_object"] = selected_decision or decide_from_evidence(
                 intent=resolved_intent,
                 retrieval=ctx.artifacts["retrieval_result"],
                 repair_required=repair_required,
@@ -3786,7 +3955,8 @@ def _run_canonical_turn_pipeline(
                 guard_forced_memory_retrieval=bool(ctx.artifacts.get("guard_forced_memory_retrieval", False)),
             )
             ctx.artifacts["policy_decision"] = policy_decision
-            ctx.artifacts["decision_object"] = decide_from_evidence(
+            selected_decision = _selected_decision_from_confidence(ctx.state.confidence_decision)
+            ctx.artifacts["decision_object"] = selected_decision or decide_from_evidence(
                 intent=resolved_intent,
                 retrieval=ctx.artifacts["retrieval_result"],
                 repair_required=repair_required,

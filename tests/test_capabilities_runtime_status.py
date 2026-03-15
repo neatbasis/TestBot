@@ -6,7 +6,7 @@ from testbot.pipeline_state import PipelineState
 from testbot.sat_chatbot_memory_v2 import (
     _print_startup_status,
     build_capability_snapshot,
-    run_answer_stage_flow,
+    run_canonical_answer_stage_flow,
 )
 
 
@@ -32,7 +32,7 @@ def _capabilities_help_answer(snapshot) -> str:
         user_input="what can you do",
         confidence_decision={"context_confident": False, "ambiguity_detected": False},
     )
-    answer_state = run_answer_stage_flow(
+    answer_state = run_canonical_answer_stage_flow(
         _FailIfInvokedLLM(),
         state,
         chat_history=deque(),

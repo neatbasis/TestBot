@@ -27,7 +27,7 @@ from testbot.sat_chatbot_memory_v2 import (
     _user_followup_signal_proxy,
     build_provenance_metadata,
     generate_reflection_yaml,
-    run_answer_stage_flow,
+    run_canonical_answer_stage_flow,
     stage_rewrite_query,
 )
 
@@ -137,7 +137,7 @@ def test_stage_rewrite_query_self_identification_guard_skips_llm_invoke() -> Non
 
     assert rewritten.rewritten_query == "My name is Jordan"
 
-def test_run_answer_stage_flow_invoke_failure_uses_deterministic_fallback_and_logs(monkeypatch) -> None:
+def test_run_canonical_answer_stage_flow_invoke_failure_uses_deterministic_fallback_and_logs(monkeypatch) -> None:
     events: list[tuple[str, dict]] = []
     monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: events.append((event, payload)))
     monkeypatch.setattr(runtime, "_validate_and_log_transition", lambda _result: None)
@@ -148,7 +148,7 @@ def test_run_answer_stage_flow_invoke_failure_uses_deterministic_fallback_and_lo
         confidence_decision={"context_confident": True, "ambiguity_detected": False},
     )
 
-    answered = run_answer_stage_flow(
+    answered = run_canonical_answer_stage_flow(
         _ExplodingLLM("answer down"),
         state,
         chat_history=deque(),
@@ -296,7 +296,7 @@ def test_build_provenance_metadata_mixed_memory_and_source_mentions_both_in_basi
     assert any(p.value == "MEMORY" for p in provenance_types)
     assert "memory context and source evidence documents" in basis_statement.lower()
 
-def test_run_answer_stage_flow_non_memory_without_ambiguity_does_not_emit_memory_fragment_clarifier(monkeypatch) -> None:
+def test_run_canonical_answer_stage_flow_non_memory_without_ambiguity_does_not_emit_memory_fragment_clarifier(monkeypatch) -> None:
     monkeypatch.setattr(runtime, "decide_fallback_action", lambda **_: "ANSWER_GENERAL_KNOWLEDGE")
 
     state = PipelineState(
@@ -311,7 +311,7 @@ def test_run_answer_stage_flow_non_memory_without_ambiguity_does_not_emit_memory
         },
     )
 
-    answered = run_answer_stage_flow(
+    answered = run_canonical_answer_stage_flow(
         _StaticLLM("General definition (not from your memory): Ontology is a model of concepts and relations (doc_id: gk-1, ts: 2026-01-01T00:00:00Z)."),
         state,
         chat_history=deque(),
@@ -377,7 +377,7 @@ def test_chat_loop_definitional_question_attempts_retrieval_and_does_not_mark_sk
     )
     monkeypatch.setattr(
         runtime,
-        "run_answer_stage_flow",
+        "run_canonical_answer_stage_flow",
         lambda _llm, state, **kwargs: replace(  # noqa: ARG005
             state,
             final_answer="General definition (not from your memory): Ontology is a model of concepts and relationships.",
@@ -442,7 +442,7 @@ def test_chat_loop_conversational_prompt_skips_knowledge_retrieval_path(monkeypa
     monkeypatch.setattr(runtime, "persist_promoted_context", lambda *args, **kwargs: [])
     monkeypatch.setattr(
         runtime,
-        "run_answer_stage_flow",
+        "run_canonical_answer_stage_flow",
         lambda _llm, state, **kwargs: replace(  # noqa: ARG005
             state,
             final_answer="Hi!",
@@ -497,7 +497,7 @@ def test_chat_loop_conversational_prompt_skips_knowledge_retrieval_path(monkeypa
     assert "retry" not in retrieval_payload
 
 
-def test_run_answer_stage_flow_low_source_confidence_non_memory_uses_safe_unknowing_mode_legacy_assertions() -> None:
+def test_run_canonical_answer_stage_flow_low_source_confidence_non_memory_uses_safe_unknowing_mode_legacy_assertions() -> None:
     state = PipelineState(
         user_input="What happened in my calendar?",
         resolved_intent=IntentType.KNOWLEDGE_QUESTION.value,
@@ -508,7 +508,7 @@ def test_run_answer_stage_flow_low_source_confidence_non_memory_uses_safe_unknow
         },
     )
 
-    answered = run_answer_stage_flow(
+    answered = run_canonical_answer_stage_flow(
         _StaticLLM("ignored"),
         state,
         chat_history=deque(),
@@ -524,7 +524,7 @@ def test_run_answer_stage_flow_low_source_confidence_non_memory_uses_safe_unknow
 
 
 
-def test_run_answer_stage_flow_greeting_command_preserves_social_draft_answer() -> None:
+def test_run_canonical_answer_stage_flow_greeting_command_preserves_social_draft_answer() -> None:
     state = PipelineState(
         user_input="say hello",
         resolved_intent=IntentType.CONTROL.value,
@@ -536,7 +536,7 @@ def test_run_answer_stage_flow_greeting_command_preserves_social_draft_answer() 
         },
     )
 
-    answered = run_answer_stage_flow(
+    answered = run_canonical_answer_stage_flow(
         _StaticLLM("Hello! Nice to meet you."),
         state,
         chat_history=deque(),
@@ -549,7 +549,7 @@ def test_run_answer_stage_flow_greeting_command_preserves_social_draft_answer() 
     assert answered.invariant_decisions.get("answer_mode") == "assist"
 
 
-def test_run_answer_stage_flow_low_source_confidence_non_memory_uses_uncertainty_response() -> None:
+def test_run_canonical_answer_stage_flow_low_source_confidence_non_memory_uses_uncertainty_response() -> None:
     state = PipelineState(
         user_input="What happened in my calendar?",
         resolved_intent=IntentType.KNOWLEDGE_QUESTION.value,
@@ -560,7 +560,7 @@ def test_run_answer_stage_flow_low_source_confidence_non_memory_uses_uncertainty
         },
     )
 
-    answered = run_answer_stage_flow(
+    answered = run_canonical_answer_stage_flow(
         _StaticLLM("ignored"),
         state,
         chat_history=deque(),
@@ -574,7 +574,7 @@ def test_run_answer_stage_flow_low_source_confidence_non_memory_uses_uncertainty
     assert answered.invariant_decisions.get("answer_mode") == "dont-know"
 
 
-def test_run_answer_stage_flow_self_introduction_preserves_acknowledgement_draft() -> None:
+def test_run_canonical_answer_stage_flow_self_introduction_preserves_acknowledgement_draft() -> None:
     state = PipelineState(
         user_input="my name is taylor",
         resolved_intent=IntentType.META_CONVERSATION.value,
@@ -586,7 +586,7 @@ def test_run_answer_stage_flow_self_introduction_preserves_acknowledgement_draft
         },
     )
 
-    answered = run_answer_stage_flow(
+    answered = run_canonical_answer_stage_flow(
         _StaticLLM("Thanks, Taylor — I'll remember that for this conversation."),
         state,
         chat_history=deque(),
@@ -599,7 +599,7 @@ def test_run_answer_stage_flow_self_introduction_preserves_acknowledgement_draft
     assert answered.invariant_decisions.get("answer_mode") == "assist"
 
 
-def test_run_answer_stage_flow_regression_say_hello_keeps_greeting_instead_of_memory_fallback() -> None:
+def test_run_canonical_answer_stage_flow_regression_say_hello_keeps_greeting_instead_of_memory_fallback() -> None:
     state = PipelineState(
         user_input="say hello",
         resolved_intent=IntentType.CONTROL.value,
@@ -611,7 +611,7 @@ def test_run_answer_stage_flow_regression_say_hello_keeps_greeting_instead_of_me
         },
     )
 
-    answered = run_answer_stage_flow(
+    answered = run_canonical_answer_stage_flow(
         _StaticLLM("hello"),
         state,
         chat_history=deque(),
@@ -624,7 +624,7 @@ def test_run_answer_stage_flow_regression_say_hello_keeps_greeting_instead_of_me
     assert "reliable memory" not in answered.final_answer.lower()
 
 
-def test_run_answer_stage_flow_memory_recall_confident_hit_recovers_from_contract_failure() -> None:
+def test_run_canonical_answer_stage_flow_memory_recall_confident_hit_recovers_from_contract_failure() -> None:
     state = PipelineState(
         user_input="what did i note about release prep?",
         resolved_intent=IntentType.MEMORY_RECALL.value,
@@ -634,7 +634,7 @@ def test_run_answer_stage_flow_memory_recall_confident_hit_recovers_from_contrac
         },
     )
 
-    answered = run_answer_stage_flow(
+    answered = run_canonical_answer_stage_flow(
         _StaticLLM("It should be fine."),
         state,
         chat_history=deque(),
@@ -697,7 +697,7 @@ def test_chat_loop_debug_trace_logs_structured_payload_for_queryable_policy_fiel
     )
     monkeypatch.setattr(
         runtime,
-        "run_answer_stage_flow",
+        "run_canonical_answer_stage_flow",
         lambda _llm, state, **kwargs: replace(  # noqa: ARG005
             state,
             final_answer=ASSIST_ALTERNATIVES_ANSWER,
@@ -798,7 +798,7 @@ def test_chat_loop_alignment_decision_event_writes_json_safe_session_log(tmp_pat
     )
     monkeypatch.setattr(
         runtime,
-        "run_answer_stage_flow",
+        "run_canonical_answer_stage_flow",
         lambda _llm, state, **kwargs: replace(  # noqa: ARG005
             state,
             final_answer="From memory, I found: release prep includes changelog checks.",
@@ -961,7 +961,7 @@ def test_chat_loop_cli_turn_logs_jsonl_with_alignment_decision_object(tmp_path, 
     )
     monkeypatch.setattr(
         runtime,
-        "run_answer_stage_flow",
+        "run_canonical_answer_stage_flow",
         lambda _llm, state, **kwargs: replace(  # noqa: ARG005
             state,
             final_answer="From memory, I found: release prep includes changelog checks.",
@@ -1037,7 +1037,7 @@ def test_chat_loop_logs_commit_stage_record_with_durable_commit_state(tmp_path, 
     monkeypatch.setattr(runtime, "stage_rerank", lambda state, docs_and_scores, **kwargs: (replace(state, reranked_hits=[]), []))
     monkeypatch.setattr(
         runtime,
-        "run_answer_stage_flow",
+        "run_canonical_answer_stage_flow",
         lambda _llm, state, **kwargs: replace(  # noqa: ARG005
             state,
             final_answer="From memory, your name is Sam.",
@@ -1140,7 +1140,7 @@ def test_chat_loop_identity_recall_after_self_identification_forces_retrieval_an
     monkeypatch.setattr(runtime, "stage_rerank", _stage_rerank_identity)
     monkeypatch.setattr(
         runtime,
-        "run_answer_stage_flow",
+        "run_canonical_answer_stage_flow",
         lambda _llm, state, **kwargs: replace(
             state,
             draft_answer="Memory answer",
@@ -1260,7 +1260,7 @@ def test_chat_loop_two_turn_commit_continuity_is_consumed_by_context_and_retriev
 
     monkeypatch.setattr(runtime, "stage_retrieve", _stage_retrieve_with_continuity)
     monkeypatch.setattr(runtime, "stage_rerank", lambda state, docs_and_scores, **kwargs: (replace(state, reranked_hits=[CandidateHit(doc_id=str(docs_and_scores[0][0].id), score=0.99, card_type="profile_fact")], confidence_decision={**state.confidence_decision, "context_confident": True, "ambiguity_detected": False}), [docs_and_scores[0][0]]))
-    monkeypatch.setattr(runtime, "run_answer_stage_flow", lambda _llm, state, **kwargs: replace(state, draft_answer="Memory answer", final_answer="From committed facts, your name is Sam.", claims=["name=Sam"], basis_statement="prior commit continuity"))
+    monkeypatch.setattr(runtime, "run_canonical_answer_stage_flow", lambda _llm, state, **kwargs: replace(state, draft_answer="Memory answer", final_answer="From committed facts, your name is Sam.", claims=["name=Sam"], basis_statement="prior commit continuity"))
 
     prompts = iter(["what did i say my name is?", "what did i say my name is again?", "stop"])
     replies: list[str] = []
@@ -1343,7 +1343,7 @@ def test_build_provenance_metadata_sorts_memory_and_source_references_determinis
 
 
 
-def test_run_answer_stage_flow_selected_decision_for_note_taking_preserves_direct_answer_contract() -> None:
+def test_run_canonical_answer_stage_flow_selected_decision_for_note_taking_preserves_direct_answer_contract() -> None:
     state = PipelineState(
         user_input="please make a note that i prefer tea",
         resolved_intent=IntentType.META_CONVERSATION.value,
@@ -1353,7 +1353,7 @@ def test_run_answer_stage_flow_selected_decision_for_note_taking_preserves_direc
         },
     )
 
-    answered = run_answer_stage_flow(
+    answered = run_canonical_answer_stage_flow(
         _StaticLLM("Got it — I can keep that in mind."),
         state,
         chat_history=deque(),
@@ -1371,7 +1371,7 @@ def test_run_answer_stage_flow_selected_decision_for_note_taking_preserves_direc
     assert answered.invariant_decisions.get("fallback_action") == "ANSWER_GENERAL_KNOWLEDGE"
     assert answered.invariant_decisions.get("answer_mode") == "assist"
 
-def test_run_answer_stage_flow_uses_selected_decision_object_for_memory_action() -> None:
+def test_run_canonical_answer_stage_flow_uses_selected_decision_object_for_memory_action() -> None:
     state = PipelineState(
         user_input="what did i note about release prep?",
         resolved_intent=IntentType.MEMORY_RECALL.value,
@@ -1381,7 +1381,7 @@ def test_run_answer_stage_flow_uses_selected_decision_object_for_memory_action()
         },
     )
 
-    answered = run_answer_stage_flow(
+    answered = run_canonical_answer_stage_flow(
         _StaticLLM("From memory, I found: release prep includes checklist review. doc_id: mem-7, ts: 2026-03-01T12:00:00Z"),
         state,
         chat_history=deque(),
@@ -1406,7 +1406,7 @@ def test_run_answer_stage_flow_uses_selected_decision_object_for_memory_action()
     assert answered.invariant_decisions.get("answer_policy_rationale", {}).get("authority") == "decision_object"
 
 
-def test_run_answer_stage_flow_selected_decision_clarify_keeps_policy_and_answer_aligned() -> None:
+def test_run_canonical_answer_stage_flow_selected_decision_clarify_keeps_policy_and_answer_aligned() -> None:
     state = PipelineState(
         user_input="what did i say?",
         resolved_intent=IntentType.MEMORY_RECALL.value,
@@ -1416,7 +1416,7 @@ def test_run_answer_stage_flow_selected_decision_clarify_keeps_policy_and_answer
         },
     )
 
-    answered = run_answer_stage_flow(
+    answered = run_canonical_answer_stage_flow(
         _StaticLLM("ignored"),
         state,
         chat_history=deque(),
@@ -1437,7 +1437,7 @@ def test_run_answer_stage_flow_selected_decision_clarify_keeps_policy_and_answer
 
 
 
-def test_run_answer_stage_flow_selected_decision_pending_lookup_uses_non_clarify_mode() -> None:
+def test_run_canonical_answer_stage_flow_selected_decision_pending_lookup_uses_non_clarify_mode() -> None:
     state = PipelineState(
         user_input="what did i say?",
         resolved_intent=IntentType.MEMORY_RECALL.value,
@@ -1448,7 +1448,7 @@ def test_run_answer_stage_flow_selected_decision_pending_lookup_uses_non_clarify
         },
     )
 
-    answered = run_answer_stage_flow(
+    answered = run_canonical_answer_stage_flow(
         _StaticLLM("ignored"),
         state,
         chat_history=deque(),
@@ -1469,7 +1469,7 @@ def test_run_answer_stage_flow_selected_decision_pending_lookup_uses_non_clarify
 
 
 
-def test_run_answer_stage_flow_selected_decision_non_memory_clarify_pending_lookup_degrades_to_safe_uncertainty() -> None:
+def test_run_canonical_answer_stage_flow_selected_decision_non_memory_clarify_pending_lookup_degrades_to_safe_uncertainty() -> None:
     state = PipelineState(
         user_input="what is dark matter?",
         resolved_intent=IntentType.KNOWLEDGE_QUESTION.value,
@@ -1481,7 +1481,7 @@ def test_run_answer_stage_flow_selected_decision_non_memory_clarify_pending_look
         },
     )
 
-    answered = run_answer_stage_flow(
+    answered = run_canonical_answer_stage_flow(
         _StaticLLM("ignored"),
         state,
         chat_history=deque(),
@@ -1503,7 +1503,7 @@ def test_run_answer_stage_flow_selected_decision_non_memory_clarify_pending_look
 
 
 
-def test_run_answer_stage_flow_canonical_commit_is_authoritative_for_answer_provenance_and_commit_receipt() -> None:
+def test_run_canonical_answer_stage_flow_canonical_commit_is_authoritative_for_answer_provenance_and_commit_receipt() -> None:
     state = PipelineState(
         user_input="what did i note about release prep?",
         resolved_intent=IntentType.MEMORY_RECALL.value,
@@ -1513,7 +1513,7 @@ def test_run_answer_stage_flow_canonical_commit_is_authoritative_for_answer_prov
         },
     )
 
-    answered = run_answer_stage_flow(
+    answered = run_canonical_answer_stage_flow(
         _StaticLLM("From memory, I found: release prep includes checklist review. doc_id: mem-7, ts: 2026-03-01T12:00:00Z"),
         state,
         chat_history=deque(),
@@ -1539,7 +1539,7 @@ def test_run_answer_stage_flow_canonical_commit_is_authoritative_for_answer_prov
     assert answered.commit_receipt.get("commit_stage") == "answer.commit"
     assert answered.commit_receipt.get("committed") is True
 
-def test_run_answer_stage_flow_selected_decision_non_memory_clarify_no_clarify_mode_degrades_to_assist() -> None:
+def test_run_canonical_answer_stage_flow_selected_decision_non_memory_clarify_no_clarify_mode_degrades_to_assist() -> None:
     state = PipelineState(
         user_input="tell me a joke",
         resolved_intent=IntentType.KNOWLEDGE_QUESTION.value,
@@ -1550,7 +1550,7 @@ def test_run_answer_stage_flow_selected_decision_non_memory_clarify_no_clarify_m
         },
     )
 
-    answered = run_answer_stage_flow(
+    answered = run_canonical_answer_stage_flow(
         _StaticLLM("ignored"),
         state,
         chat_history=deque(),
@@ -2136,13 +2136,13 @@ def test_resolve_context_consumes_commit_receipt_continuity_deterministically() 
     )
 
 
-def test_run_answer_stage_flow_distinguishes_knowing_success_and_unknowing_rejection_paths() -> None:
+def test_run_canonical_answer_stage_flow_distinguishes_knowing_success_and_unknowing_rejection_paths() -> None:
     knowing_state = PipelineState(
         user_input="what did i note about release prep?",
         resolved_intent=IntentType.MEMORY_RECALL.value,
         confidence_decision={"context_confident": True, "ambiguity_detected": False},
     )
-    knowing = run_answer_stage_flow(
+    knowing = run_canonical_answer_stage_flow(
         _StaticLLM("From memory, I found: release prep requires changelog review."),
         knowing_state,
         chat_history=deque(),
@@ -2166,7 +2166,7 @@ def test_run_answer_stage_flow_distinguishes_knowing_success_and_unknowing_rejec
             "general_knowledge_support": 0,
         },
     )
-    rejecting = run_answer_stage_flow(
+    rejecting = run_canonical_answer_stage_flow(
         _StaticLLM("Ontology is the study of being and existence."),
         rejecting_state,
         chat_history=deque(),
@@ -2287,7 +2287,7 @@ def test_capabilities_help_followup_yes_please_look_it_up_matches_existing_decis
     assert expected_intent is IntentType.CAPABILITIES_HELP
     assert actual_intent is expected_intent
 
-    baseline = run_answer_stage_flow(
+    baseline = run_canonical_answer_stage_flow(
         _StaticLLM("unused"),
         PipelineState(
             user_input="please look up the definition",
@@ -2300,7 +2300,7 @@ def test_capabilities_help_followup_yes_please_look_it_up_matches_existing_decis
         clock=_FIXED_CLOCK,
     )
 
-    edge_case = run_answer_stage_flow(
+    edge_case = run_canonical_answer_stage_flow(
         _StaticLLM("unused"),
         PipelineState(
             user_input="yes please look it up",
@@ -2323,7 +2323,7 @@ def test_capabilities_help_followup_debug_policy_never_reports_general_knowledge
         confidence_decision={"context_confident": False, "ambiguity_detected": False},
     )
 
-    answered = run_answer_stage_flow(
+    answered = run_canonical_answer_stage_flow(
         _StaticLLM("unused"),
         state,
         chat_history=deque(),
