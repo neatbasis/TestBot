@@ -63,7 +63,7 @@ E2E_STAGE_COMPOSITION_ALLOWLIST: tuple[Path, ...] = (
 )
 
 CANONICAL_RENDER_FLOW_ALLOWLIST: dict[Path, set[str]] = {
-    SRC_ROOT / "sat_chatbot_memory_v2.py": {"run_answer_stage_flow", "_answer_render"},
+    SRC_ROOT / "sat_chatbot_memory_v2.py": {"run_canonical_answer_stage_flow", "_run_answer_stages_from_supplied_artifacts", "_answer_render"},
     SRC_ROOT / "answer_rendering.py": {"render_answer"},
     SRC_ROOT / "answer_render.py": set(),
 }

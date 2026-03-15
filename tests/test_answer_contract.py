@@ -18,8 +18,10 @@ from testbot.sat_chatbot_memory_v2 import (
     raw_claim_like_text_detected,
     render_context,
     response_contains_claims,
-    run_answer_stage_flow,
+    run_canonical_answer_stage_flow,
     validate_answer_contract,
+    _decision_object_from_assembled,
+    AnswerAssembleResult,
 )
 
 
@@ -47,6 +49,35 @@ def _runtime_status() -> RuntimeCapabilityStatus:
     )
 
 
+
+
+def test_decision_object_from_assembled_uses_canonical_retrieval_branches() -> None:
+    memory = _decision_object_from_assembled(
+        AnswerAssembleResult(
+            draft_answer="draft",
+            final_answer="final",
+            fallback_action="ANSWER_FROM_MEMORY",
+            intent_class="memory_recall",
+            social_or_non_knowledge_intent=False,
+            answer_policy_rationale={},
+        )
+    )
+    direct = _decision_object_from_assembled(
+        AnswerAssembleResult(
+            draft_answer="draft",
+            final_answer="final",
+            fallback_action="ANSWER_GENERAL_KNOWLEDGE",
+            intent_class="knowledge_question",
+            social_or_non_knowledge_intent=False,
+            answer_policy_rationale={},
+        )
+    )
+
+    assert memory.retrieval_branch == "memory_retrieval"
+    assert direct.retrieval_branch == "direct_answer"
+    assert memory.retrieval_branch != "legacy_stage_answer"
+    assert direct.retrieval_branch != "legacy_stage_answer"
+
 def test_non_memory_general_knowledge_contract_failure_degrades_to_knowledge_safe_response() -> None:
     state = PipelineState(
         user_input="what is ontology?",
@@ -59,7 +90,7 @@ def test_non_memory_general_knowledge_contract_failure_degrades_to_knowledge_saf
         resolved_intent="knowledge_question",
     )
 
-    answer_state = run_answer_stage_flow(
+    answer_state = run_canonical_answer_stage_flow(
         _UnlabeledGeneralKnowledgeLLM(),
         state,
         chat_history=deque(),
@@ -92,7 +123,7 @@ def test_memory_recall_confident_contract_failure_uses_deterministic_recovery_hi
         )
     ]
 
-    answer_state = run_answer_stage_flow(
+    answer_state = run_canonical_answer_stage_flow(
         _UnlabeledGeneralKnowledgeLLM(),
         state,
         chat_history=deque(),
@@ -240,7 +271,7 @@ def test_non_memory_low_source_confidence_uses_unknown_fallback_without_source_c
         resolved_intent="knowledge_question",
     )
 
-    answer_state = run_answer_stage_flow(
+    answer_state = run_canonical_answer_stage_flow(
         _UnlabeledGeneralKnowledgeLLM(),
         state,
         chat_history=deque(),
@@ -292,7 +323,7 @@ def test_memory_recall_no_hit_routes_to_assist_alternatives_token() -> None:
     assert decision.canonical_response_token == "ASSIST_ALTERNATIVES_ANSWER"
 
 
-def test_run_answer_stage_flow_invariant_records_policy_rationale_for_low_confidence_non_memory() -> None:
+def test_run_canonical_answer_stage_flow_invariant_records_policy_rationale_for_low_confidence_non_memory() -> None:
     state = PipelineState(
         user_input="what happened in my source records?",
         confidence_decision={
@@ -303,7 +334,7 @@ def test_run_answer_stage_flow_invariant_records_policy_rationale_for_low_confid
         resolved_intent="knowledge_question",
     )
 
-    answer_state = run_answer_stage_flow(
+    answer_state = run_canonical_answer_stage_flow(
         _UnlabeledGeneralKnowledgeLLM(),
         state,
         chat_history=deque(),
@@ -335,7 +366,7 @@ def test_noisy_heuristic_history_does_not_force_constraints_into_final_answer() 
         {"role": "user", "content": "Battery levels for Kitchen and Hallway?"},
     ])
 
-    answer_state = run_answer_stage_flow(
+    answer_state = run_canonical_answer_stage_flow(
         _UnlabeledGeneralKnowledgeLLM(),
         state,
         chat_history=noisy_history,
