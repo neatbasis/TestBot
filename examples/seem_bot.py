@@ -1,14 +1,13 @@
 from __future__ import annotations
 
-import operator
+import os
 from datetime import datetime, timezone
-from typing import Annotated, Any, TypedDict
+from typing import Any, TypedDict
 from uuid import uuid4
 
 from dotenv import load_dotenv
-from langchain.chat_models import init_chat_model
 from langchain_core.messages import AIMessage, AnyMessage, HumanMessage
-from langgraph.graph import END, START, StateGraph
+from langchain_ollama import ChatOllama
 
 
 class PassageRecord(TypedDict):
@@ -21,15 +20,13 @@ class PassageRecord(TypedDict):
 
 
 class State(TypedDict):
-    messages: Annotated[list[AnyMessage], operator.add]
-    passages: Annotated[list[PassageRecord], operator.add]
+    messages: list[AnyMessage]
+    passages: list[PassageRecord]
     iteration: int
 
 
 ITERATION_LIMIT = 5
-
-load_dotenv()
-model = init_chat_model("openai:gpt-4o")
+DEFAULT_MODEL = os.getenv("SEEM_BOT_MODEL", "llama3.2:3b")
 
 
 def _message_id(msg: AnyMessage, index_hint: int) -> str:
@@ -37,68 +34,74 @@ def _message_id(msg: AnyMessage, index_hint: int) -> str:
     return str(existing) if existing else f"msg-{index_hint}-{uuid4().hex[:12]}"
 
 
-def read_input(state: State) -> dict[str, Any]:
+def read_input() -> HumanMessage | None:
     user_query = input("query: ").strip()
     if not user_query:
-        return {}
-    return {"messages": [HumanMessage(content=user_query)]}
+        return None
+    return HumanMessage(content=user_query)
 
 
-def stabilize_passage(state: State) -> dict[str, Any]:
-    messages = state.get("messages", [])
-    if not messages:
-        return {}
-
-    last_msg = messages[-1]
-    if not isinstance(last_msg, HumanMessage):
-        return {}
-
-    sequence_index = len(state.get("passages", []))
-    msg_text = last_msg.content if isinstance(last_msg.content, str) else str(last_msg.content)
+def stabilize_passage(state: State, user_message: HumanMessage) -> PassageRecord:
+    sequence_index = len(state["passages"])
+    msg_text = user_message.content if isinstance(user_message.content, str) else str(user_message.content)
 
     passage: PassageRecord = {
         "passage_id": f"passage-{uuid4().hex}",
         "observed_at": datetime.now(timezone.utc).isoformat(),
         "sequence_index": sequence_index,
-        "source_message_ids": [_message_id(last_msg, sequence_index)],
+        "source_message_ids": [_message_id(user_message, sequence_index)],
         "canonical_text": f"human: {msg_text.strip()}",
         "metadata": {},
     }
-    return {"passages": [passage]}
+    return passage
 
 
-def answer_from_state(state: State) -> dict[str, Any]:
-    messages = state.get("messages", [])
-    if not messages:
-        return {}
-
-    answer: AIMessage = model.invoke(messages)
-    print("answer:", answer.content)
-    return {
-        "messages": [answer],
-        "iteration": state.get("iteration", 0) + 1,
-    }
+def answer_from_state(model: ChatOllama, state: State) -> AIMessage:
+    answer: AIMessage = model.invoke(state["messages"])
+    return answer
 
 
-def should_continue(state: State) -> str:
-    if state.get("iteration", 0) >= ITERATION_LIMIT:
-        return END
-    return "read_input"
+def _build_model() -> ChatOllama:
+    return ChatOllama(model=DEFAULT_MODEL, temperature=0)
 
 
-graph = StateGraph(State)
+def _offline_fallback(user_message: HumanMessage) -> AIMessage:
+    content = user_message.content if isinstance(user_message.content, str) else str(user_message.content)
+    return AIMessage(
+        content=(
+            "[offline fallback] I could not reach Ollama in this environment. "
+            f"I recorded your prompt: {content}"
+        )
+    )
 
-graph.add_node("read_input", read_input)
-graph.add_node("stabilize_passage", stabilize_passage)
-graph.add_node("answer_from_state", answer_from_state)
 
-graph.add_edge(START, "read_input")
-graph.add_edge("read_input", "stabilize_passage")
-graph.add_edge("stabilize_passage", "answer_from_state")
-graph.add_conditional_edges("answer_from_state", should_continue, {
-    "read_input": "read_input",
-    END: END,
-})
+def run() -> None:
+    load_dotenv()
+    state: State = {"messages": [], "passages": [], "iteration": 0}
+    model = _build_model()
 
-workflow = graph.compile()
-workflow.invoke({"iteration": 0})
+    print(f"seem_bot started (model={DEFAULT_MODEL}, max_turns={ITERATION_LIMIT})")
+    print("Submit an empty line to exit.")
+
+    while state["iteration"] < ITERATION_LIMIT:
+        user_message = read_input()
+        if user_message is None:
+            break
+
+        state["messages"].append(user_message)
+        state["passages"].append(stabilize_passage(state, user_message))
+
+        try:
+            answer = answer_from_state(model, state)
+        except Exception:
+            answer = _offline_fallback(user_message)
+
+        state["messages"].append(answer)
+        state["iteration"] += 1
+        print("answer:", answer.content)
+
+    print(f"done (iterations={state['iteration']}, passages={len(state['passages'])})")
+
+
+if __name__ == "__main__":
+    run()
