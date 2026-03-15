@@ -173,3 +173,44 @@ def test_persisted_facts_are_exactly_one_write_per_fact_candidate() -> None:
     assert persisted_facts == ["timezone=UTC", "name=Ava"]
     assert committed.confirmed_user_facts == ["timezone=UTC", "name=Ava"]
     assert len(persisted_facts) == len(set(persisted_facts))
+
+
+def test_commit_rejects_failed_validation_without_explicit_degraded_artifact() -> None:
+    with pytest.raises(ValueError, match="failed-validation answer unless rendered artifact is explicitly degraded"):
+        commit_answer_stage(
+            PipelineState(user_input="hello"),
+            assembly=_assembly(confirmed_user_facts=[]),
+            validation=ValidatedAnswer(passed=False, failures=["invalid"], final_answer="unvalidated"),
+            rendered=RenderedAnswer(rendered_text="unvalidated"),
+        )
+
+
+def test_commit_accepts_failed_validation_only_with_explicit_degraded_artifact() -> None:
+    committed_state, committed = commit_answer_stage(
+        PipelineState(user_input="hello"),
+        assembly=_assembly(confirmed_user_facts=[]),
+        validation=ValidatedAnswer(passed=False, failures=["invalid"], final_answer="unvalidated"),
+        rendered=RenderedAnswer(
+            rendered_text="[degraded:clarifier] I couldn't validate a direct answer yet. Which specific detail should I focus on first?",
+            response_contract="degraded_targeted_clarifier",
+            degraded_response=True,
+        ),
+    )
+
+    assert committed.rendered_text.startswith("[degraded:clarifier]")
+    assert committed_state.commit_receipt.get("degraded_response") is True
+    assert committed_state.commit_receipt.get("response_contract") == "degraded_targeted_clarifier"
+
+
+def test_commit_rejects_degraded_artifact_when_validation_passes() -> None:
+    with pytest.raises(ValueError, match="validated answers must not be committed through degraded response contract"):
+        commit_answer_stage(
+            PipelineState(user_input="hello"),
+            assembly=_assembly(confirmed_user_facts=[]),
+            validation=ValidatedAnswer(passed=True, failures=[]),
+            rendered=RenderedAnswer(
+                rendered_text="[degraded:alternatives] ...",
+                response_contract="degraded_capability_alternatives",
+                degraded_response=True,
+            ),
+        )

@@ -81,8 +81,12 @@ def commit_answer_stage(
     rendered: RenderedAnswer,
     commit_stage_id: str = "answer.commit",
 ) -> tuple[PipelineState, CommittedTurnState]:
-    if not validation.passed:
-        raise ValueError("cannot commit answer before validation boundary passes")
+    degraded_response = bool(getattr(rendered, "degraded_response", False))
+    if not validation.passed and not degraded_response:
+        raise ValueError("cannot commit failed-validation answer unless rendered artifact is explicitly degraded")
+
+    if validation.passed and degraded_response:
+        raise ValueError("validated answers must not be committed through degraded response contract")
 
     committed_facts = _merge_confirmed_user_facts(assembly=assembly, state=state)
 
@@ -110,6 +114,8 @@ def commit_answer_stage(
             "resolved_obligations": list(assembly.resolved_obligations),
             "remaining_obligations": list(assembly.remaining_obligations),
             "confirmed_user_facts": committed_facts,
+            "response_contract": str(getattr(rendered, "response_contract", "validated_normal") or "validated_normal"),
+            "degraded_response": degraded_response,
         }
     )
     turn_id = str(state.candidate_facts.get("turn_id") or state.commit_receipt.get("turn_id") or "")

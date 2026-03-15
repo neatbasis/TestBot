@@ -220,3 +220,34 @@ def test_orchestrator_rejects_intent_resolution_without_stabilization_artifacts(
 
     with pytest.raises(RuntimeError, match="stabilize.pre_route must produce stabilized_turn_state artifact"):
         orchestrator.run(context)
+
+
+def test_orchestrator_allows_answer_render_stage_entry_with_failed_validation_contract() -> None:
+    state = PipelineState(user_input="hello")
+    context = CanonicalTurnContext(state=state)
+
+    stages: list[CanonicalStage] = []
+    for stage_name in CanonicalTurnOrchestrator.STAGE_ORDER:
+
+        def _handler(ctx: CanonicalTurnContext, name: str = stage_name) -> CanonicalTurnContext:
+            if name == "observe.turn":
+                ctx.artifacts["turn_observation"] = {"turn_id": "turn-1", "utterance": "hello"}
+            if name == "encode.candidates":
+                ctx.artifacts["encoded_candidates"] = {"facts": [{"key": "utterance_raw", "value": "hello"}]}
+            if name == "stabilize.pre_route":
+                ctx.artifacts["stabilized_turn_state"] = {"candidate_facts": [{"key": "utterance_raw", "value": "hello"}]}
+            if name == "context.resolve":
+                ctx.artifacts["resolved_context"] = {"continuity_posture": "reevaluate"}
+            if name == "retrieve.evidence":
+                ctx.artifacts["retrieval_result"] = {"posture": "empty_evidence"}
+            if name == "answer.assemble":
+                ctx.artifacts["answer_assembly_contract"] = {"decision_class": "ask_for_clarification"}
+            if name == "answer.validate":
+                ctx.artifacts["answer_validation_contract"] = type("Validation", (), {"passed": False})()
+            return ctx
+
+        stages.append(CanonicalStage(name=stage_name, handler=_handler))
+
+    final_context = CanonicalTurnOrchestrator(stages=stages).run(context)
+
+    assert final_context.stage_audit_trail == list(CanonicalTurnOrchestrator.STAGE_ORDER)
