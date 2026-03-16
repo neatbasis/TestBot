@@ -37,7 +37,13 @@ def _result(
     )
 
 
-def test_main_fails_fast_when_behave_dependency_missing(monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]) -> None:
+def test_main_fails_fast_when_behave_dependency_missing(
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setattr(all_green_gate, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(all_green_gate, "VERIFICATION_MANIFEST_DIR", tmp_path / "artifacts" / "verification")
     monkeypatch.setattr(all_green_gate, "parse_args", lambda: all_green_gate.argparse.Namespace(
         continue_on_failure=False,
         base_ref="origin/main",
@@ -45,6 +51,7 @@ def test_main_fails_fast_when_behave_dependency_missing(monkeypatch: pytest.Monk
         profile="triage",
         kpi_guardrail_mode="optional",
         force_full_governance=False,
+        run_id=None,
     ))
     monkeypatch.setattr(all_green_gate.importlib.util, "find_spec", lambda _name: None)
 
@@ -79,6 +86,8 @@ def test_main_writes_behave_remediation_to_json_summary(
     tmp_path: Path,
 ) -> None:
     summary_path = tmp_path / "all-green-summary.json"
+    monkeypatch.setattr(all_green_gate, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(all_green_gate, "VERIFICATION_MANIFEST_DIR", tmp_path / "artifacts" / "verification")
     monkeypatch.setattr(
         all_green_gate,
         "parse_args",
@@ -89,6 +98,7 @@ def test_main_writes_behave_remediation_to_json_summary(
             profile="readiness",
             kpi_guardrail_mode="optional",
             force_full_governance=False,
+            run_id=None,
         ),
     )
     monkeypatch.setattr(all_green_gate.importlib.util, "find_spec", lambda _name: None)
@@ -114,7 +124,10 @@ def test_resolve_base_ref_falls_back_when_origin_main_missing(monkeypatch: pytes
 
 def test_main_propagates_effective_base_ref_to_governance_checks_in_readiness_profile(
     monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
 ) -> None:
+    monkeypatch.setattr(all_green_gate, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(all_green_gate, "VERIFICATION_MANIFEST_DIR", tmp_path / "artifacts" / "verification")
     monkeypatch.setattr(
         all_green_gate,
         "parse_args",
@@ -125,6 +138,7 @@ def test_main_propagates_effective_base_ref_to_governance_checks_in_readiness_pr
             profile="readiness",
             kpi_guardrail_mode="optional",
             force_full_governance=False,
+            run_id=None,
         ),
     )
     monkeypatch.setattr(all_green_gate.importlib.util, "find_spec", lambda _name: object())
@@ -439,3 +453,45 @@ def test_parse_args_supports_force_full_governance_flag(monkeypatch: pytest.Monk
     args = all_green_gate.parse_args()
 
     assert args.force_full_governance is True
+
+
+def test_parse_args_supports_run_id(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sys, "argv", ["all_green_gate.py", "--run-id", "run-abc123"])
+
+    args = all_green_gate.parse_args()
+
+    assert args.run_id == "run-abc123"
+
+
+def test_write_verification_manifest_writes_expected_payload(tmp_path: Path) -> None:
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr(all_green_gate, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(all_green_gate, "VERIFICATION_MANIFEST_DIR", tmp_path / "artifacts" / "verification")
+
+    summary = {
+        "status": "passed",
+        "checks": [{"name": "product_behave", "status": "passed"}],
+    }
+    args = all_green_gate.argparse.Namespace(
+        base_ref="origin/main",
+        continue_on_failure=False,
+        kpi_guardrail_mode="optional",
+    )
+
+    manifest_path = all_green_gate.write_verification_manifest(
+        run_id="20260316T181500Z-1a2b3c4d",
+        args=args,
+        effective_base_ref="HEAD~1",
+        profile="readiness",
+        summary=summary,
+    )
+
+    assert manifest_path == tmp_path / "artifacts" / "verification" / "20260316T181500Z-1a2b3c4d.json"
+    payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    assert payload["schema_version"] == all_green_gate.VERIFICATION_MANIFEST_SCHEMA_VERSION
+    assert payload["run_id"] == "20260316T181500Z-1a2b3c4d"
+    assert payload["manifest_path"] == "artifacts/verification/20260316T181500Z-1a2b3c4d.json"
+    assert payload["required_checks"] == all_green_gate.REQUIRED_VERIFICATION_CHECKS
+    assert payload["gate"]["base_ref_effective"] == "HEAD~1"
+    assert payload["summary"]["status"] == "passed"
+    monkeypatch.undo()
