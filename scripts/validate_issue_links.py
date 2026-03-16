@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import subprocess
 import sys
@@ -55,6 +56,15 @@ REQUIRED_SECTION_BODIES = [
     "Verification",
     "Closure Notes",
 ]
+VERIFICATION_REQUIRED_CHECKS = {
+    "product_behave",
+    "product_eval_recall_topk4",
+    "safety_validate_log_schema",
+    "safety_validate_pipeline_stage_conformance",
+    "qa_pytest_not_live_smoke",
+}
+VERIFICATION_MANIFEST_PATH_PATTERN = re.compile(r"artifacts/verification/([A-Za-z0-9_.-]+)\.json")
+VERIFICATION_RUN_ID_PATTERN = re.compile(r"(?:^|\b)run(?:[\s_-]?id)\s*[:=]\s*`?([A-Za-z0-9_.-]+)`?", re.IGNORECASE)
 
 RULESET_STRICT = "strict"
 RULESET_TRIAGE = "triage"
@@ -340,7 +350,90 @@ def validate_issue_schema(
                     f"{rel}: section '{section_name}' is empty or placeholder.",
                     f"Add concrete content under ## {section_name}.",
                 )
+        validate_verification_manifest_reference(sections.get("Verification", ""), rel, failures)
     return parsed
+
+
+def validate_verification_manifest_reference(
+    verification_body: str,
+    issue_rel_path: Path,
+    failures: list[ValidationFailure],
+) -> None:
+    path_match = VERIFICATION_MANIFEST_PATH_PATTERN.search(verification_body)
+    if path_match is None:
+        return
+
+    manifest_rel = Path(path_match.group(0))
+    file_run_id = path_match.group(1)
+    run_id_match = VERIFICATION_RUN_ID_PATTERN.search(verification_body)
+    if run_id_match is None:
+        record_failure(
+            failures,
+            "VERIFICATION",
+            f"{issue_rel_path}: Verification references {manifest_rel} but does not declare 'Run ID: <id>'.",
+            "Add a Run ID line in the Verification section next to the manifest path.",
+        )
+        return
+
+    declared_run_id = run_id_match.group(1)
+    if declared_run_id != file_run_id:
+        record_failure(
+            failures,
+            "VERIFICATION",
+            f"{issue_rel_path}: Verification run ID '{declared_run_id}' does not match manifest file run ID '{file_run_id}'.",
+            "Ensure Run ID matches artifacts/verification/<run-id>.json exactly.",
+        )
+        return
+
+    manifest_path = REPO_ROOT / manifest_rel
+    if not manifest_path.exists():
+        record_failure(
+            failures,
+            "VERIFICATION",
+            f"{issue_rel_path}: referenced verification manifest does not exist: {manifest_rel}",
+            "Run scripts/all_green_gate.py to generate the manifest or fix the referenced path.",
+        )
+        return
+
+    try:
+        payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        record_failure(
+            failures,
+            "VERIFICATION",
+            f"{issue_rel_path}: verification manifest is not valid JSON: {manifest_rel} ({exc})",
+            "Regenerate the verification manifest with scripts/all_green_gate.py.",
+        )
+        return
+
+    manifest_run_id = payload.get("run_id")
+    if manifest_run_id != declared_run_id:
+        record_failure(
+            failures,
+            "VERIFICATION",
+            f"{issue_rel_path}: manifest run_id '{manifest_run_id}' does not match declared run ID '{declared_run_id}'.",
+            "Reference the correct manifest file or update the Run ID declaration.",
+        )
+
+    checks = payload.get("checks")
+    if not isinstance(checks, list):
+        record_failure(
+            failures,
+            "VERIFICATION",
+            f"{issue_rel_path}: verification manifest {manifest_rel} is missing a 'checks' list.",
+            "Regenerate the verification manifest with scripts/all_green_gate.py.",
+        )
+        return
+
+    check_names = {row.get("name") for row in checks if isinstance(row, dict) and isinstance(row.get("name"), str)}
+    missing_checks = sorted(VERIFICATION_REQUIRED_CHECKS - check_names)
+    if missing_checks:
+        record_failure(
+            failures,
+            "VERIFICATION",
+            f"{issue_rel_path}: verification manifest {manifest_rel} is missing required checks: {', '.join(missing_checks)}",
+            "Rerun scripts/all_green_gate.py and reference a manifest from a canonical gate run.",
+        )
 
 
 def validate_red_tag_generated_content(failures: list[ValidationFailure]) -> None:

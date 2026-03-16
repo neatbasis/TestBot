@@ -195,3 +195,224 @@ def test_resolve_base_ref_falls_back_to_head_when_head1_missing(monkeypatch: pyt
 
     assert resolved == "HEAD"
     assert any("falling back to 'HEAD'" in note for note in notes)
+
+
+def test_validate_issue_schema_accepts_verification_manifest_reference(
+    tmp_path: Path,
+) -> None:
+    repo_root = tmp_path
+    manifest_dir = repo_root / "artifacts" / "verification"
+    manifest_dir.mkdir(parents=True)
+    run_id = "20260316T181500Z-1a2b3c4d"
+    manifest_path = manifest_dir / f"{run_id}.json"
+    manifest_path.write_text(
+        """{
+  "run_id": "20260316T181500Z-1a2b3c4d",
+  "checks": [
+    {"name": "product_behave"},
+    {"name": "product_eval_recall_topk4"},
+    {"name": "safety_validate_log_schema"},
+    {"name": "safety_validate_pipeline_stage_conformance"},
+    {"name": "qa_pytest_not_live_smoke"}
+  ]
+}
+""",
+        encoding="utf-8",
+    )
+
+    issue_file = repo_root / "ISSUE-0011-example.md"
+    issue_file.write_text(
+        f"""# ISSUE-0011: Example
+
+- **ID:** ISSUE-0011
+- **Title:** Example
+- **Status:** open
+- **Severity:** amber
+- **Owner:** Example Owner
+- **Created:** 2026-03-05
+- **Target Sprint:** Sprint-1
+- **Principle Alignment:** traceable
+
+## Problem Statement
+
+Need better governance checks.
+
+## Evidence
+
+- Sample evidence.
+
+## Impact
+
+Important.
+
+## Acceptance Criteria
+
+1. Done.
+
+## Work Plan
+
+- Implement checks.
+
+## Verification
+
+- Verification manifest: `artifacts/verification/{run_id}.json`
+- Run ID: `{run_id}`
+
+## Closure Notes
+
+ready
+""",
+        encoding="utf-8",
+    )
+
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr(validate_issue_links, "REPO_ROOT", repo_root)
+    failures: list[validate_issue_links.ValidationFailure] = []
+    validate_issue_links.validate_issue_schema([issue_file], CANONICAL_SECTIONS, failures)
+    monkeypatch.undo()
+
+    assert failures == []
+
+
+def test_validate_issue_schema_fails_when_verification_manifest_missing_required_checks(
+    tmp_path: Path,
+) -> None:
+    repo_root = tmp_path
+    manifest_dir = repo_root / "artifacts" / "verification"
+    manifest_dir.mkdir(parents=True)
+    run_id = "20260316T181500Z-deadbeef"
+    (manifest_dir / f"{run_id}.json").write_text(
+        """{
+  "run_id": "20260316T181500Z-deadbeef",
+  "checks": [
+    {"name": "product_behave"},
+    {"name": "qa_pytest_not_live_smoke"}
+  ]
+}
+""",
+        encoding="utf-8",
+    )
+
+    issue_file = repo_root / "ISSUE-0011-example.md"
+    issue_file.write_text(
+        f"""# ISSUE-0011: Example
+
+- **ID:** ISSUE-0011
+- **Title:** Example
+- **Status:** open
+- **Severity:** amber
+- **Owner:** Example Owner
+- **Created:** 2026-03-05
+- **Target Sprint:** Sprint-1
+- **Principle Alignment:** traceable
+
+## Problem Statement
+
+Need better governance checks.
+
+## Evidence
+
+- Sample evidence.
+
+## Impact
+
+Important.
+
+## Acceptance Criteria
+
+1. Done.
+
+## Work Plan
+
+- Implement checks.
+
+## Verification
+
+- Verification manifest: `artifacts/verification/{run_id}.json`
+- Run ID: `{run_id}`
+
+## Closure Notes
+
+ready
+""",
+        encoding="utf-8",
+    )
+
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr(validate_issue_links, "REPO_ROOT", repo_root)
+    failures: list[validate_issue_links.ValidationFailure] = []
+    validate_issue_links.validate_issue_schema([issue_file], CANONICAL_SECTIONS, failures)
+    monkeypatch.undo()
+
+    messages = "\n".join(f.message for f in failures)
+    assert "missing required checks" in messages
+
+
+def test_validate_issue_schema_fails_when_verification_manifest_run_id_mismatch(
+    tmp_path: Path,
+) -> None:
+    repo_root = tmp_path
+    manifest_dir = repo_root / "artifacts" / "verification"
+    manifest_dir.mkdir(parents=True)
+    (manifest_dir / "20260316T181500Z-1a2b3c4d.json").write_text(
+        """{
+  "run_id": "20260316T181500Z-1a2b3c4d",
+  "checks": []
+}
+""",
+        encoding="utf-8",
+    )
+
+    issue_file = repo_root / "ISSUE-0011-example.md"
+    issue_file.write_text(
+        """# ISSUE-0011: Example
+
+- **ID:** ISSUE-0011
+- **Title:** Example
+- **Status:** open
+- **Severity:** amber
+- **Owner:** Example Owner
+- **Created:** 2026-03-05
+- **Target Sprint:** Sprint-1
+- **Principle Alignment:** traceable
+
+## Problem Statement
+
+Need better governance checks.
+
+## Evidence
+
+- Sample evidence.
+
+## Impact
+
+Important.
+
+## Acceptance Criteria
+
+1. Done.
+
+## Work Plan
+
+- Implement checks.
+
+## Verification
+
+- Verification manifest: `artifacts/verification/20260316T181500Z-1a2b3c4d.json`
+- Run ID: `20260316T181500Z-deadbeef`
+
+## Closure Notes
+
+ready
+""",
+        encoding="utf-8",
+    )
+
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr(validate_issue_links, "REPO_ROOT", repo_root)
+    failures: list[validate_issue_links.ValidationFailure] = []
+    validate_issue_links.validate_issue_schema([issue_file], CANONICAL_SECTIONS, failures)
+    monkeypatch.undo()
+
+    messages = "\n".join(f.message for f in failures)
+    assert "does not match manifest file run ID" in messages
