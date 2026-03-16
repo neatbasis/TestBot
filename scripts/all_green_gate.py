@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import datetime as dt
 import importlib.util
 import json
 import os
@@ -11,11 +12,21 @@ import shlex
 import subprocess
 import sys
 import time
+import uuid
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Sequence
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+VERIFICATION_MANIFEST_DIR = REPO_ROOT / "artifacts" / "verification"
+VERIFICATION_MANIFEST_SCHEMA_VERSION = "1.0"
+REQUIRED_VERIFICATION_CHECKS = [
+    "product_behave",
+    "product_eval_recall_topk4",
+    "safety_validate_log_schema",
+    "safety_validate_pipeline_stage_conformance",
+    "qa_pytest_not_live_smoke",
+]
 BEHAVE_PREFLIGHT_CHECK_NAME = "preflight_bdd_dependencies"
 BEHAVE_REMEDIATION_MESSAGE = (
     "Missing required BDD dependency 'behave'. Install development dependencies before running "
@@ -77,6 +88,14 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--run-id",
+        default=None,
+        help=(
+            "Optional verification run identifier used in artifacts/verification/<run-id>.json. "
+            "When omitted, a deterministic timestamp+suffix id is generated."
+        ),
+    )
+    parser.add_argument(
         "--profile",
         choices=("triage", "readiness"),
         default=None,
@@ -103,6 +122,41 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     return parser.parse_args()
+
+
+def generate_run_id() -> str:
+    timestamp = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    return f"{timestamp}-{uuid.uuid4().hex[:8]}"
+
+
+def write_verification_manifest(
+    *,
+    run_id: str,
+    args: argparse.Namespace,
+    effective_base_ref: str | None,
+    profile: str,
+    summary: dict[str, object],
+) -> Path:
+    VERIFICATION_MANIFEST_DIR.mkdir(parents=True, exist_ok=True)
+    manifest_path = VERIFICATION_MANIFEST_DIR / f"{run_id}.json"
+    payload = {
+        "schema_version": VERIFICATION_MANIFEST_SCHEMA_VERSION,
+        "run_id": run_id,
+        "generated_at_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
+        "manifest_path": str(manifest_path.relative_to(REPO_ROOT)),
+        "required_checks": REQUIRED_VERIFICATION_CHECKS,
+        "gate": {
+            "base_ref_requested": args.base_ref,
+            "base_ref_effective": effective_base_ref,
+            "continue_on_failure": args.continue_on_failure,
+            "profile": profile,
+            "kpi_guardrail_mode": args.kpi_guardrail_mode,
+        },
+        "summary": summary,
+        "checks": summary.get("checks", []),
+    }
+    manifest_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    return manifest_path
 
 
 def stage_name_for_check(check_name: str) -> str:
@@ -569,6 +623,7 @@ def summarize(results: Sequence[CheckResult], continue_on_failure: bool) -> dict
 
 def main() -> int:
     args = parse_args()
+    run_id = args.run_id or generate_run_id()
     preflight_result = preflight_bdd_dependencies()
     if preflight_result is not None:
         summary = with_remediation(
@@ -582,6 +637,14 @@ def main() -> int:
             out_path = args.json_output if args.json_output.is_absolute() else REPO_ROOT / args.json_output
             out_path.parent.mkdir(parents=True, exist_ok=True)
             out_path.write_text(summary_json + "\n", encoding="utf-8")
+        manifest_path = write_verification_manifest(
+            run_id=run_id,
+            args=args,
+            effective_base_ref=None,
+            profile=resolve_profile(args.profile),
+            summary=summary,
+        )
+        print(f"[INFO] Verification manifest written: {manifest_path.relative_to(REPO_ROOT)}")
         return 1
 
     effective_base_ref, base_ref_notes = resolve_base_ref(args.base_ref)
@@ -650,6 +713,15 @@ def main() -> int:
         out_path = args.json_output if args.json_output.is_absolute() else REPO_ROOT / args.json_output
         out_path.parent.mkdir(parents=True, exist_ok=True)
         out_path.write_text(summary_json + "\n", encoding="utf-8")
+
+    manifest_path = write_verification_manifest(
+        run_id=run_id,
+        args=args,
+        effective_base_ref=effective_base_ref,
+        profile=profile,
+        summary=summary,
+    )
+    print(f"[INFO] Verification manifest written: {manifest_path.relative_to(REPO_ROOT)}")
 
     return exit_code
 
