@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import importlib.util
 import sys
 from pathlib import Path
@@ -19,6 +20,7 @@ def _load_module(module_name: str, path: Path):
 
 
 validate_issue_links = _load_module("validate_issue_links", _SCRIPTS_DIR / "validate_issue_links.py")
+all_green_gate = _load_module("all_green_gate_from_links_test", _SCRIPTS_DIR / "all_green_gate.py")
 validate_issues = _load_module("validate_issues_from_links_test", _SCRIPTS_DIR / "validate_issues.py")
 
 governance_rules = _load_module("governance_rules_from_links_test", _SCRIPTS_DIR / "governance_rules.py")
@@ -416,3 +418,81 @@ ready
 
     messages = "\n".join(f.message for f in failures)
     assert "does not match manifest file run ID" in messages
+
+
+def test_verification_manifest_round_trip_generated_manifest_is_accepted(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    run_id = "20260316T181500Z-1a2b3c4d"
+    repo_root = tmp_path
+    manifest_dir = repo_root / "artifacts" / "verification"
+
+    monkeypatch.setattr(all_green_gate, "REPO_ROOT", repo_root)
+    monkeypatch.setattr(all_green_gate, "VERIFICATION_MANIFEST_DIR", manifest_dir)
+    monkeypatch.setattr(validate_issue_links, "REPO_ROOT", repo_root)
+
+    args = argparse.Namespace(base_ref="origin/main", continue_on_failure=False, kpi_guardrail_mode="optional")
+    summary = {
+        "checks": [{"name": check_name} for check_name in all_green_gate.REQUIRED_VERIFICATION_CHECKS],
+    }
+    manifest_path = all_green_gate.write_verification_manifest(
+        run_id=run_id,
+        args=args,
+        effective_base_ref="origin/main",
+        profile="full",
+        summary=summary,
+    )
+
+    verification_body = (
+        f"- Verification manifest: `artifacts/verification/{run_id}.json`\n"
+        f"- Run ID: `{run_id}`"
+    )
+
+    failures: list[validate_issue_links.ValidationFailure] = []
+    validate_issue_links.validate_verification_manifest_reference(
+        verification_body,
+        Path("docs/issues/ISSUE-9999.md"),
+        failures,
+    )
+
+    assert manifest_path.exists()
+    assert failures == []
+
+
+def test_verification_manifest_round_trip_fails_when_declared_run_id_mismatches_filename(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    run_id = "20260316T181500Z-1a2b3c4d"
+    repo_root = tmp_path
+    manifest_dir = repo_root / "artifacts" / "verification"
+
+    monkeypatch.setattr(all_green_gate, "REPO_ROOT", repo_root)
+    monkeypatch.setattr(all_green_gate, "VERIFICATION_MANIFEST_DIR", manifest_dir)
+    monkeypatch.setattr(validate_issue_links, "REPO_ROOT", repo_root)
+
+    args = argparse.Namespace(base_ref="origin/main", continue_on_failure=False, kpi_guardrail_mode="optional")
+    summary = {
+        "checks": [{"name": check_name} for check_name in all_green_gate.REQUIRED_VERIFICATION_CHECKS],
+    }
+    all_green_gate.write_verification_manifest(
+        run_id=run_id,
+        args=args,
+        effective_base_ref="origin/main",
+        profile="full",
+        summary=summary,
+    )
+
+    verification_body = (
+        f"- Verification manifest: `artifacts/verification/{run_id}.json`\n"
+        "- Run ID: `20260316T181500Z-deadbeef`"
+    )
+
+    failures: list[validate_issue_links.ValidationFailure] = []
+    validate_issue_links.validate_verification_manifest_reference(
+        verification_body,
+        Path("docs/issues/ISSUE-9999.md"),
+        failures,
+    )
+
+    assert failures
+    assert any("does not match manifest file run ID" in failure.message for failure in failures)
