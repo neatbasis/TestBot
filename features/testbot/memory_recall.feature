@@ -1,4 +1,4 @@
-@Rule:CitationContract @Role:Resident @Priority:High @fast
+@Owner:testbot @Rule:CitationContract @Role:Resident @Priority:High @fast
 Feature: Memory recall behavior
   In order to trust responses grounded in memory
   As a resident

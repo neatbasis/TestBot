@@ -230,8 +230,8 @@ def build_checks(
                     sys.executable,
                     "-m",
                     "behave",
-                    "features/answer_contract.feature",
-                    "features/memory_recall.feature",
+                    "features/testbot/answer_contract.feature",
+                    "features/testbot/memory_recall.feature",
                 ],
             ),
             GateCheck(

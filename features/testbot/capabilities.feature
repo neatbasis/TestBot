@@ -1,4 +1,4 @@
-@Rule:CapabilitiesHelp @Role:Resident @Priority:High @fast
+@Owner:testbot @Rule:CapabilitiesHelp @Role:Resident @Priority:High @fast
 Feature: Capabilities help responses
   In order to understand what the assistant can do
   As a resident

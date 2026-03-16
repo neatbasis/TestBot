@@ -45,7 +45,7 @@ To satisfy this robustly across interfaces, loop processing must support both **
 6. **BDD lifecycle scenario expanded:** source-ingestion BDD includes user-triggered start and system-triggered completion/timer polling behavior.
 7. **Docs/invariants synced:** architecture + invariant/directive text is updated to reflect strict pending-start and dual-trigger proactive completion semantics.
 8. **Validation evidence attached:**
-   - `python -m behave features/source_ingestion.feature features/answer_contract.feature`
+   - `python -m behave features/testbot/source_ingestion.feature features/testbot/answer_contract.feature`
    - `python -m pytest tests/test_runtime_logging_events.py tests/test_runtime_modes.py tests/test_alignment_transitions.py`
    - `python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main`
    - `python scripts/validate_issues.py --all-issue-files --base-ref origin/main`
@@ -89,7 +89,7 @@ To satisfy this robustly across interfaces, loop processing must support both **
 Planned verification bundle for closure:
 
 ```bash
-python -m behave features/source_ingestion.feature features/answer_contract.feature
+python -m behave features/testbot/source_ingestion.feature features/testbot/answer_contract.feature
 python -m pytest tests/test_runtime_logging_events.py tests/test_runtime_modes.py tests/test_alignment_transitions.py
 python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main
 python scripts/validate_issues.py --all-issue-files --base-ref origin/main

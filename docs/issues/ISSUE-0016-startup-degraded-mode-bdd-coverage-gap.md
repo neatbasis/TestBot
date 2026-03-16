@@ -19,7 +19,7 @@ This leaves a behavior-contract gap between policy language and executable accep
 ## Evidence
 
 - Principle/source policy: `docs/directives/product-principles.md` (P4).
-- Existing behavior specs: `features/capabilities.feature` (capability-help behavior) with no startup degraded-status scenario family.
+- Existing behavior specs: `features/testbot/capabilities.feature` (capability-help behavior) with no startup degraded-status scenario family.
 - Existing deterministic tests for degradation/startup behavior:
   - `tests/test_runtime_modes.py`
   - `tests/test_startup_status.py`
@@ -57,7 +57,7 @@ This leaves a behavior-contract gap between policy language and executable accep
 
 - Command: `python -m behave`
   - Expected: exits `0` with startup degraded-mode scenarios included.
-  - Outcome: pass (`0`); includes new `features/startup_status.feature` degraded startup scenario covering explicit CLI fallback and continuity messaging.
+  - Outcome: pass (`0`); includes new `features/testbot/startup_status.feature` degraded startup scenario covering explicit CLI fallback and continuity messaging.
 - Command: `python -m pytest -m "not live_smoke"`
   - Expected: exits `0`.
   - Outcome: pass (`0`); includes deterministic startup/runtime assertions for degraded startup contract.
@@ -68,4 +68,4 @@ This leaves a behavior-contract gap between policy language and executable accep
 ## Closure Notes
 
 - 2026-03-09: Opened from mission/vision alignment audit to close P4 executable contract gap with BDD-first coverage.
-- 2026-03-09: Closed with explicit startup degraded-mode BDD coverage in `features/startup_status.feature`, new step harness in `features/steps/startup_status_steps.py`, and aligned deterministic runtime-mode/startup-status assertions in `tests/test_runtime_modes.py` and `tests/test_startup_status.py`. Evidence commands completed successfully: `python -m behave`; `python -m pytest -m "not live_smoke"`; `python scripts/all_green_gate.py`.
+- 2026-03-09: Closed with explicit startup degraded-mode BDD coverage in `features/testbot/startup_status.feature`, new step harness in `features/steps/testbot_startup_status_steps.py`, and aligned deterministic runtime-mode/startup-status assertions in `tests/test_runtime_modes.py` and `tests/test_startup_status.py`. Evidence commands completed successfully: `python -m behave`; `python -m pytest -m "not live_smoke"`; `python scripts/all_green_gate.py`.

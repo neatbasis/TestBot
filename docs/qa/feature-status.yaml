@@ -17,8 +17,8 @@ capabilities:
   capability_name: Knowing-mode grounded answer with provenance
   owner_module: src/testbot/canonical_turn_orchestrator.py
   acceptance_tests:
-  - features/answer_contract.feature
-  - features/memory_recall.feature
+  - features/testbot/answer_contract.feature
+  - features/testbot/memory_recall.feature
   - tests/test_runtime_logging_events.py
   - tests/test_eval_runtime_parity.py
   gate_checks:
@@ -40,8 +40,8 @@ capabilities:
   capability_name: Unknowing-mode explicit uncertainty and safe fallback
   owner_module: src/testbot/reflection_policy.py
   acceptance_tests:
-  - features/answer_contract.feature
-  - features/intent_grounding.feature
+  - features/testbot/answer_contract.feature
+  - features/testbot/intent_grounding.feature
   - tests/test_reflection_policy.py
   gate_checks:
   - product_behave
@@ -59,7 +59,7 @@ capabilities:
   capability_name: Deterministic intent grounding and route selection
   owner_module: src/testbot/sat_chatbot_memory_v2.py::context.resolve|intent.resolve|retrieve.evidence|policy.decide
   acceptance_tests:
-  - features/intent_grounding.feature
+  - features/testbot/intent_grounding.feature
   - tests/test_intent_router.py
   - tests/test_promotion_policy.py
   gate_checks:
@@ -78,7 +78,7 @@ capabilities:
   capability_name: Time-aware memory retrieval and reranking
   owner_module: src/testbot/rerank.py
   acceptance_tests:
-  - features/time_awareness.feature
+  - features/testbot/time_awareness.feature
   - tests/test_rerank.py
   - tests/test_time_reasoning.py
   - tests/test_eval_recall.py
@@ -98,7 +98,7 @@ capabilities:
   capability_name: External source ingestion connectors for grounding
   owner_module: src/testbot/source_connectors.py
   acceptance_tests:
-  - features/source_ingestion.feature
+  - features/testbot/source_ingestion.feature
   - tests/test_source_connectors.py
   - tests/test_source_ingest.py
   gate_checks:
@@ -126,8 +126,8 @@ capabilities:
   - a725984
   next_step_focus: Resolve production CLI regressions where self-identification utterances still route as knowledge_question and do not yield durable recall continuity.
   acceptance_tests:
-  - features/memory_recall.feature
-  - features/answer_contract.feature
+  - features/testbot/memory_recall.feature
+  - features/testbot/answer_contract.feature
   - tests/test_runtime_logging_events.py
   - tests/test_debug_turn_trace.py
   - tests/test_canonical_turn_orchestrator.py
@@ -172,8 +172,8 @@ capabilities:
   - issue0013-segment-aware-strata-retrieval
   next_step_focus: Fix CLI/runtime decisioning drift where memory/temporal follow-ups are reclassified as knowledge_question/direct_answer and fail to preserve memory-recall intent continuity.
   acceptance_tests:
-  - features/intent_grounding.feature
-  - features/answer_contract.feature
+  - features/testbot/intent_grounding.feature
+  - features/testbot/answer_contract.feature
   - tests/test_intent_router.py
   - tests/test_promotion_policy.py
   gate_checks:
@@ -216,7 +216,7 @@ capabilities:
   - issue0013-commit-repair-followup-continuity-audit-lock
   next_step_focus: Resolve remaining product_behave regressions while preserving deterministic two-turn continuity, repair-followup continuity, and commit audit payload completeness coverage.
   acceptance_tests:
-  - features/answer_contract.feature
+  - features/testbot/answer_contract.feature
   - tests/test_runtime_logging_events.py
   - tests/test_turn_analytics_aggregator.py
   gate_checks:

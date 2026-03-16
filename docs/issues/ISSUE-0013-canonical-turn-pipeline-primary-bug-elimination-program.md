@@ -56,7 +56,7 @@ Dependency labels (machine-auditable ordered chain):
 - [~] [AC-0013-01] Main turn runtime enforces canonical stage ordering and removes direct raw-utterance-first routing (`U -> I`) from the primary loop.
   - dependency-labels: `DEP-0008-BLOCKER`, `DEP-0011-BLOCKER`, `DEP-0012-PARALLEL`
   - code-paths: `src/testbot/canonical_turn_orchestrator.py`, `src/testbot/sat_chatbot_memory_v2.py`, `src/testbot/intent_router.py`
-  - behavior-specs: `features/intent_grounding.feature`, `features/memory_recall.feature`
+  - behavior-specs: `features/testbot/intent_grounding.feature`, `features/testbot/memory_recall.feature`
   - deterministic-tests: `tests/test_canonical_turn_orchestrator.py`, `tests/test_pipeline_semantic_contracts.py`, `tests/test_intent_router.py`
   - verification:
     ```bash
@@ -67,7 +67,7 @@ Dependency labels (machine-auditable ordered chain):
 - [~] [AC-0013-02] Typed artifacts exist and are used at stage boundaries for `TurnObservation`, `SpeechActCandidate`, `FactCandidate`, `RepairCandidate`, `DialogueStateCandidate`, `StabilizedTurnState`, `ResolvedContext`, `ResolvedIntent`, `EvidenceBundle`, `DecisionObject`, `AnswerCandidate`, `ValidatedAnswer`, and `CommittedTurnState`.
   - dependency-labels: `DEP-0008-BLOCKER`, `DEP-0011-BLOCKER`, `DEP-0012-PARALLEL`
   - code-paths: `src/testbot/pipeline_state.py`, `src/testbot/stage_transitions.py`, `src/testbot/stabilization.py`, `src/testbot/evidence_retrieval.py`
-  - behavior-specs: `features/intent_grounding.feature`
+  - behavior-specs: `features/testbot/intent_grounding.feature`
   - deterministic-tests: `tests/test_canonical_turn_pipeline_contract_ac_0013_02.py`, `tests/test_pipeline_state_artifacts.py`, `tests/test_pipeline_semantic_contracts.py`
   - verification:
     ```bash
@@ -78,7 +78,7 @@ Dependency labels (machine-auditable ordered chain):
 - [~] [AC-0013-03] `stabilize.pre_route` becomes the first durable semantic boundary and persists utterance card, candidate facts with provenance, candidate dialogue state, and durable references before route authority.
   - dependency-labels: `DEP-0008-BLOCKER`, `DEP-0011-BLOCKER`, `DEP-0012-PARALLEL`
   - code-paths: `src/testbot/stabilization.py`, `src/testbot/sat_chatbot_memory_v2.py`, `src/testbot/runtime_logging.py`
-  - behavior-specs: `features/memory_recall.feature`
+  - behavior-specs: `features/testbot/memory_recall.feature`
   - deterministic-tests: `tests/test_runtime_logging_events.py`, `tests/test_pipeline_state_artifacts.py`
   - verification:
     ```bash
@@ -89,7 +89,7 @@ Dependency labels (machine-auditable ordered chain):
 - [~] [AC-0013-04] Retrieval keeps evidence classes distinct in `EvidenceBundle` (structured facts, episodic utterances, repair anchors/offers, reflections/hypotheses, source evidence) and does not flatten to a single undifferentiated top-k before policy.
   - dependency-labels: `DEP-0008-BLOCKER`, `DEP-0011-BLOCKER`, `DEP-0012-PARALLEL`
   - code-paths: `src/testbot/evidence_retrieval.py`, `src/testbot/policy_decision.py`
-  - behavior-specs: `features/memory_recall.feature`
+  - behavior-specs: `features/testbot/memory_recall.feature`
   - deterministic-tests: `tests/test_evidence_retrieval_mapping.py`, `tests/test_decisioning_stages.py`
   - verification:
     ```bash
@@ -100,7 +100,7 @@ Dependency labels (machine-auditable ordered chain):
 - [~] [AC-0013-05] Same-turn retrieval hygiene is enforced by construction: `same_turn_exclusion_doc_ids` is populated during stabilization, standard answer-evidence retrieval excludes same-turn artifacts, and only explicitly permitted same-turn access classes (for example observation-state and repair anchors) are allowed.
   - dependency-labels: `DEP-0008-BLOCKER`, `DEP-0011-BLOCKER`, `DEP-0012-PARALLEL`
   - code-paths: `src/testbot/stabilization.py`, `src/testbot/evidence_retrieval.py`, `src/testbot/vector_store.py`
-  - behavior-specs: `features/memory_recall.feature`
+  - behavior-specs: `features/testbot/memory_recall.feature`
   - deterministic-tests: `tests/test_evidence_retrieval_mapping.py`, `tests/test_runtime_logging_events.py`, `tests/test_vector_store.py`
   - verification:
     ```bash
@@ -111,7 +111,7 @@ Dependency labels (machine-auditable ordered chain):
 - [~] [AC-0013-06] Durable memory strata are implemented and persisted for episodic, semantic, and procedural/dialogue-state memory.
   - dependency-labels: `DEP-0011-BLOCKER`, `DEP-0012-PARALLEL`
   - code-paths: `src/testbot/memory_strata.py`, `src/testbot/sat_chatbot_memory_v2.py`, `src/testbot/answer_commit.py`
-  - behavior-specs: `features/memory_recall.feature`
+  - behavior-specs: `features/testbot/memory_recall.feature`
   - deterministic-tests: `tests/test_memory_segments_and_strata.py`, `tests/test_answer_commit_identity_promotion.py`
   - verification:
     ```bash
@@ -122,7 +122,7 @@ Dependency labels (machine-auditable ordered chain):
 - [~] [AC-0013-07] Segment-level memory construction and retrieval are introduced with minimum segment types (contiguous topic, repair, task, self-profile, temporal episode), and segment IDs and membership edges are persisted.
   - dependency-labels: `DEP-0011-BLOCKER`, `DEP-0012-PARALLEL`
   - code-paths: `src/testbot/memory_strata.py`, `src/testbot/vector_store.py`, `src/testbot/context_resolution.py`
-  - behavior-specs: `features/memory_recall.feature`
+  - behavior-specs: `features/testbot/memory_recall.feature`
   - deterministic-tests: `tests/test_memory_segments_and_strata.py`, `tests/test_vector_store.py`
   - verification:
     ```bash
@@ -133,7 +133,7 @@ Dependency labels (machine-auditable ordered chain):
 - [~] [AC-0013-08] `policy.decide` is explicitly typed and separated from `answer.assemble`; answer assembly consumes only the `DecisionObject` + `EvidenceBundle` contract and disallows free-form decision drift.
   - dependency-labels: `DEP-0008-BLOCKER`, `DEP-0011-BLOCKER`, `DEP-0012-PARALLEL`
   - code-paths: `src/testbot/policy_decision.py`, `src/testbot/answer_assembly.py`, `src/testbot/sat_chatbot_memory_v2.py`
-  - behavior-specs: `features/answer_contract.feature`, `features/intent_grounding.feature`
+  - behavior-specs: `features/testbot/answer_contract.feature`, `features/testbot/intent_grounding.feature`
   - deterministic-tests: `tests/test_decisioning_stages.py`, `tests/test_answer_contract.py`, `tests/test_pipeline_semantic_contracts.py`
   - verification:
     ```bash
@@ -144,7 +144,7 @@ Dependency labels (machine-auditable ordered chain):
 - [~] [AC-0013-09] `answer.commit` persists continuity-critical state, including pending repair state, obligations, and confirmed facts promotion path.
   - dependency-labels: `DEP-0011-BLOCKER`, `DEP-0012-PARALLEL`, `DEP-0014-BLOCKER`
   - code-paths: `src/testbot/answer_commit.py`, `src/testbot/context_resolution.py`, `src/testbot/evidence_retrieval.py`
-  - behavior-specs: `features/memory_recall.feature`
+  - behavior-specs: `features/testbot/memory_recall.feature`
   - deterministic-tests: `tests/test_runtime_logging_events.py`, `tests/test_turn_analytics_aggregator.py`, `tests/test_answer_commit_identity_promotion.py`
   - verification:
     ```bash
@@ -155,11 +155,11 @@ Dependency labels (machine-auditable ordered chain):
 - [~] [AC-0013-10] Deterministic behavior scenarios pass for observe-before-infer, stabilize-before-route, same-turn retrieval exclusion, self-identification persistence (for example `user_name=Sebastian`), repair-offer continuation (`What do you need?` after assistant repair offer), empty-evidence distinct from scored-empty, and semantic-memory recall winning over raw utterance recall when both exist.
   - dependency-labels: `DEP-0008-BLOCKER`, `DEP-0011-BLOCKER`, `DEP-0012-PARALLEL`, `DEP-0014-BLOCKER`
   - code-paths: `src/testbot/canonical_turn_orchestrator.py`, `src/testbot/stabilization.py`, `src/testbot/evidence_retrieval.py`, `src/testbot/policy_decision.py`
-  - behavior-specs: `features/intent_grounding.feature`, `features/memory_recall.feature`, `features/answer_contract.feature`
+  - behavior-specs: `features/testbot/intent_grounding.feature`, `features/testbot/memory_recall.feature`, `features/testbot/answer_contract.feature`
   - deterministic-tests: `tests/test_runtime_logging_events.py`, `tests/test_evidence_retrieval_mapping.py`, `tests/test_intent_router.py`, `tests/test_promotion_policy.py`
   - verification:
     ```bash
-    python -m behave features/intent_grounding.feature features/memory_recall.feature features/answer_contract.feature
+    python -m behave features/testbot/intent_grounding.feature features/testbot/memory_recall.feature features/testbot/answer_contract.feature
     python -m pytest tests/test_runtime_logging_events.py tests/test_evidence_retrieval_mapping.py tests/test_intent_router.py tests/test_promotion_policy.py
     # expected pass signal: behave scenarios PASS; deterministic pytest suites PASS
     ```
@@ -167,7 +167,7 @@ Dependency labels (machine-auditable ordered chain):
 - [~] [AC-0013-11] ISSUE-0013 identity-continuity closure is explicitly dependent on ISSUE-0014 Phase 1 behavioral evidence and cannot be treated as satisfied by structural instrumentation progress alone.
   - dependency-labels: `DEP-0014-BLOCKER`, `DEP-0015-DEPENDENT`
   - code-paths: `src/testbot/intent_resolution.py`, `src/testbot/stage_rewrite_query.py`, `src/testbot/answer_commit.py`, `src/testbot/context_resolution.py`
-  - behavior-specs: `features/memory_recall.feature`, `features/intent_grounding.feature`
+  - behavior-specs: `features/testbot/memory_recall.feature`, `features/testbot/intent_grounding.feature`
   - deterministic-tests: `tests/test_intent_router.py`, `tests/test_promotion_policy.py`, `tests/test_answer_commit_identity_promotion.py`
   - verification:
     ```bash
@@ -197,7 +197,7 @@ Dependency labels (machine-auditable ordered chain):
 - [~] [AC-0013-12] `docs/qa/feature-status.yaml` canonical pipeline capability slices are advanced from `planned` to implemented maturity states that reflect delivered behavior.
   - dependency-labels: `DEP-0012-PARALLEL`, `DEP-0014-BLOCKER`, `DEP-0015-DEPENDENT`
   - code-paths: `src/testbot/capabilities_runtime_status.py`, `src/testbot/canonical_turn_orchestrator.py`
-  - behavior-specs: `features/capabilities.feature`
+  - behavior-specs: `features/testbot/capabilities.feature`
   - deterministic-tests: `tests/test_capabilities_runtime_status.py`, `tests/test_report_feature_status.py`, `tests/test_all_green_gate.py`
   - verification:
     ```bash
@@ -329,13 +329,13 @@ Progress discipline for each `TASK-CX-*` slice:
   - commit/audit module contracts landed (`25cdf6b`)
   - reporting/governance recalibration landed (`605fad9`, merged via `9820354`)
 - 2026-03-08: Next-step execution plan refreshed from commit audit evidence:
-  1. Close deterministic self-identification and durable fact-ingestion gaps in canonical examples (`features/memory_recall.feature`, `tests/test_eval_runtime_parity.py`, canonical orchestrator flow).
+  1. Close deterministic self-identification and durable fact-ingestion gaps in canonical examples (`features/testbot/memory_recall.feature`, `tests/test_eval_runtime_parity.py`, canonical orchestrator flow).
   2. Tighten decision-object routing so known facts avoid `ANSWER_GENERAL_KNOWLEDGE` fallback when grounded evidence exists (`src/testbot/policy_decision.py`, `src/testbot/answer_policy.py`, `src/testbot/reflection_policy.py`).
   3. Add commit/audit proof tests that committed-turn artifacts are persisted and re-used on subsequent turns (`tests/test_runtime_logging_events.py`, `tests/test_turn_analytics_aggregator.py`, canonical pipeline integration tests).
   4. Keep governance evidence explicit: blocking gate artifact for merge-readiness and separate advisory artifact labeling for KPI guardrail warnings, following `docs/testing.md#kpi-guardrail-mode-policy-authoritative` for mode/severity interpretation and required issue linkage when warnings persist.
 
-- 2026-03-08: Deterministic proof for foundation next-step focus recorded — canonical stage tests now cover self-identification extraction and stabilization ordering (`tests/test_canonical_turn_orchestrator.py`), with scenario alignment in answer-contract behavior specs (`features/answer_contract.feature`). `docs/qa/feature-status.yaml` foundation capability advanced to `implemented` and evidence refs extended with `a725984` for traceable promotion.
-- 2026-03-08: Deterministic decisioning proof expanded — evidence bundle class mapping plus decision-object authority routing are exercised in deterministic runtime and contract tests (`tests/test_evidence_retrieval_mapping.py`, `tests/test_runtime_logging_events.py`, `features/answer_contract.feature`). However, runtime trace evidence still shows unresolved note-taking and memory-write misrouting in canonical flows, so `docs/qa/feature-status.yaml` decisioning capability remains `partial` pending behavioral closure; evidence refs are extended with `76a88be` and `ee1727d` for traceability.
+- 2026-03-08: Deterministic proof for foundation next-step focus recorded — canonical stage tests now cover self-identification extraction and stabilization ordering (`tests/test_canonical_turn_orchestrator.py`), with scenario alignment in answer-contract behavior specs (`features/testbot/answer_contract.feature`). `docs/qa/feature-status.yaml` foundation capability advanced to `implemented` and evidence refs extended with `a725984` for traceable promotion.
+- 2026-03-08: Deterministic decisioning proof expanded — evidence bundle class mapping plus decision-object authority routing are exercised in deterministic runtime and contract tests (`tests/test_evidence_retrieval_mapping.py`, `tests/test_runtime_logging_events.py`, `features/testbot/answer_contract.feature`). However, runtime trace evidence still shows unresolved note-taking and memory-write misrouting in canonical flows, so `docs/qa/feature-status.yaml` decisioning capability remains `partial` pending behavioral closure; evidence refs are extended with `76a88be` and `ee1727d` for traceability.
 - 2026-03-08: Commit/audit continuity closure evidence recorded — deterministic tests now prove committed-turn artifacts persist and are re-used on subsequent turns with explicit retrieval continuity anchors. Runtime log coverage: `test_chat_loop_logs_commit_stage_record_with_durable_commit_state` and `test_chat_loop_two_turn_commit_continuity_is_consumed_by_context_and_retrieval` in `tests/test_runtime_logging_events.py`; analytics normalization/aggregation continuity coverage: `test_aggregate_turn_dataset_multi_turn_commit_continuity_fields_preserved` in `tests/test_turn_analytics_aggregator.py`. `docs/qa/feature-status.yaml` commit/audit capability advances to `implemented` with next-step wording updated from gap-closure to regression monitoring.
 - 2026-03-08: Fresh readiness artifacts regenerated with canonical scripts for ISSUE-0013 governance traceability:
   - `artifacts/all-green-gate-summary.json` generated at `2026-03-08T15:15:32Z` via `python scripts/all_green_gate.py --json-output artifacts/all-green-gate-summary.json`.
@@ -345,7 +345,7 @@ Progress discipline for each `TASK-CX-*` slice:
 
 - 2026-03-08: Decision-path closure evidence appended for note-taking and memory-write utterances in canonical routing:
   - Deterministic intent routing now classifies explicit note-taking/memory-write commands as non-knowledge meta conversation (`src/testbot/intent_router.py`, `tests/test_intent_router.py`).
-  - Deterministic canonical contract probes now assert resolved intent, retrieval branch, decision-object class, fallback action, and final answer mode for both utterance classes (`features/intent_grounding.feature`, `features/steps/intent_grounding_steps.py`, `tests/test_runtime_logging_events.py`).
+  - Deterministic canonical contract probes now assert resolved intent, retrieval branch, decision-object class, fallback action, and final answer mode for both utterance classes (`features/testbot/intent_grounding.feature`, `features/steps/testbot_intent_grounding_steps.py`, `tests/test_runtime_logging_events.py`).
   - Stage-answer authority regression coverage confirms decision-object mapping remains authoritative and avoids silent `ANSWER_GENERAL_KNOWLEDGE` fallback when grounded memory evidence is present (`tests/test_runtime_logging_events.py`).
 
 - 2026-03-08: Canonical reporting artifacts regenerated after commit/audit status refresh:
@@ -357,7 +357,7 @@ Progress discipline for each `TASK-CX-*` slice:
   - Runtime persistence now stamps explicit memory strata (`episodic`, `semantic`, `procedural_dialogue_state`) and segment metadata (`segment_type`, `segment_id`, `segment_membership_edge_refs`) during stabilization and commit persistence paths (`src/testbot/stabilization.py`, `src/testbot/sat_chatbot_memory_v2.py`, `src/testbot/memory_strata.py`).
   - Retrieval path now accepts and enforces segment constraints for canonical recall (`src/testbot/sat_chatbot_memory_v2.py`, `src/testbot/vector_store.py`).
   - Evidence bundling now preserves segment-aware fields and applies strata precedence so semantic memory wins over same-segment episodic utterance recall (`src/testbot/evidence_retrieval.py`).
-  - Deterministic proof coverage added for segment continuity, segment-constrained retrieval, and semantic-over-episodic precedence (`tests/test_memory_segments_and_strata.py`, `tests/test_evidence_retrieval_mapping.py`, `features/memory_recall.feature`, `features/steps/memory_steps.py`).
+  - Deterministic proof coverage added for segment continuity, segment-constrained retrieval, and semantic-over-episodic precedence (`tests/test_memory_segments_and_strata.py`, `tests/test_evidence_retrieval_mapping.py`, `features/testbot/memory_recall.feature`, `features/steps/testbot_memory_steps.py`).
 
 - 2026-03-08: Historical progress note retained for traceability: foundation/decisioning/commit slices were assessed as materially advanced at that time, but lifecycle interpretation is superseded by the active dependency gate; ISSUE-0013 remains open until AC-0013-11 exit conditions are fully satisfied.
 
@@ -368,7 +368,7 @@ Progress discipline for each `TASK-CX-*` slice:
 
 
 
-- 2026-03-08: Regression-hardening pass added explicit acceptance traceability for `AC-0013-01`, `AC-0013-03`, `AC-0013-05`, and `AC-0013-10` across canonical routing entrypoints and deterministic behavior coverage (`src/testbot/canonical_turn_orchestrator.py`, `src/testbot/sat_chatbot_memory_v2.py`, `src/testbot/stabilization.py`, `features/memory_recall.feature`, `tests/test_canonical_turn_orchestrator.py`, `tests/test_runtime_logging_events.py`).
+- 2026-03-08: Regression-hardening pass added explicit acceptance traceability for `AC-0013-01`, `AC-0013-03`, `AC-0013-05`, and `AC-0013-10` across canonical routing entrypoints and deterministic behavior coverage (`src/testbot/canonical_turn_orchestrator.py`, `src/testbot/sat_chatbot_memory_v2.py`, `src/testbot/stabilization.py`, `features/testbot/memory_recall.feature`, `tests/test_canonical_turn_orchestrator.py`, `tests/test_runtime_logging_events.py`).
 
 
 - 2026-03-08: AC-0013-09 continuity proof set expanded and locked with deterministic two-turn + repair-followup coverage.
@@ -400,7 +400,7 @@ Progress discipline for each `TASK-CX-*` slice:
     - `python -m pytest tests/test_pipeline_semantic_contracts.py tests/test_canonical_turn_orchestrator.py`
 
 - 2026-03-09: AC-0013-11 dependency evidence refreshed with explicit pass/fail linkage for ISSUE-0014 Phase 1 behavioral exits.
-  - Deterministic targeted suites pass: BDD (`python -m behave features/memory_recall.feature features/intent_grounding.feature`) and focused regression pytests (`tests/test_pipeline_semantic_contracts.py`, `tests/test_canonical_turn_orchestrator.py`, `tests/test_intent_router.py`).
+  - Deterministic targeted suites pass: BDD (`python -m behave features/testbot/memory_recall.feature features/testbot/intent_grounding.feature`) and focused regression pytests (`tests/test_pipeline_semantic_contracts.py`, `tests/test_canonical_turn_orchestrator.py`, `tests/test_intent_router.py`).
   - Current gate snapshot (`2026-03-10T21:36:04Z`) records `status=passed` with warning-mode KPI guardrail check `qa_validate_kpi_guardrails`; only non-zero stage is `qa`; first failing command by stage: `qa -> /root/.pyenv/versions/3.11.14/bin/python scripts/validate_kpi_guardrails.py --summary logs/turn_analytics_summary.json --config config/kpi_guardrails.json`.
   - Governance validators rerun and passing: `python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main` and `python scripts/validate_issues.py --all-issue-files --base-ref origin/main` (both with documented `origin/main` -> `HEAD~1` fallback behavior).
   - Governance outcome: AC-0013-11 remains open/blocked pending evidence in dependency sequencing; closure condition is identical to ISSUE-0014 Phase 1 (identity semantic preservation, retrieval activation on immediate self-reference recall, and confirmed identity fact promotion at commit) with deterministic tests, reproducible CLI traces, and canonical gate evidence.

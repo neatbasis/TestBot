@@ -76,7 +76,7 @@ Required materials:
 
 ### D6 (Implement & Validate) - 15 min
 - Validation gate commitments:
-  - `python -m behave features/memory_recall.feature features/intent_grounding.feature`
+  - `python -m behave features/testbot/memory_recall.feature features/testbot/intent_grounding.feature`
   - `python -m pytest -m "not live_smoke"`
   - `python scripts/all_green_gate.py`
 - Require explicit AC traceability from ISSUE-0014 acceptance criteria to test names and outputs.

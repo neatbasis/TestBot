@@ -122,43 +122,43 @@
     ],
     "feature_files": [
       {
-        "path": "features/answer_contract.feature",
+        "path": "features/testbot/answer_contract.feature",
         "size_bytes": 8319,
         "mtime_utc": "2026-03-14T16:36:23Z",
         "sha256": "2226367d32ba3fa2329717619902786f986ffde904d7f4ee84f5e6430235d230"
       },
       {
-        "path": "features/capabilities.feature",
+        "path": "features/testbot/capabilities.feature",
         "size_bytes": 2458,
         "mtime_utc": "2026-03-14T16:36:23Z",
         "sha256": "6608161e934565904ae180017080c8334d200147d54368dff39375ea1dd19333"
       },
       {
-        "path": "features/intent_grounding.feature",
+        "path": "features/testbot/intent_grounding.feature",
         "size_bytes": 18941,
         "mtime_utc": "2026-03-14T16:36:23Z",
         "sha256": "18ffd3878f1f389c42fdadd0c5ab43a3d0a2b4a7621f918bd75d0be413396752"
       },
       {
-        "path": "features/memory_recall.feature",
+        "path": "features/testbot/memory_recall.feature",
         "size_bytes": 6683,
         "mtime_utc": "2026-03-14T16:36:23Z",
         "sha256": "823f16f1ab8ad58cfd69855ee4b25f28455fa3c9d8e97b3f548f7779c29ff001"
       },
       {
-        "path": "features/source_ingestion.feature",
+        "path": "features/testbot/source_ingestion.feature",
         "size_bytes": 2845,
         "mtime_utc": "2026-03-14T16:36:23Z",
         "sha256": "b577b0f355190f87aab2317c7d8fed2836288d7a5d8dd39ea2b47ec30eb6b3f2"
       },
       {
-        "path": "features/startup_status.feature",
+        "path": "features/testbot/startup_status.feature",
         "size_bytes": 1024,
         "mtime_utc": "2026-03-14T16:36:23Z",
         "sha256": "0853a90425e87ba6bee2763ff6816b55b40e46f595489b4fc57912db39196165"
       },
       {
-        "path": "features/time_awareness.feature",
+        "path": "features/testbot/time_awareness.feature",
         "size_bytes": 774,
         "mtime_utc": "2026-03-14T16:36:23Z",
         "sha256": "6631272d9f1869d2c8f0a28756f2e2cedfc7232e4798fd244a605f12c1c953c2"
@@ -204,8 +204,8 @@
         ]
       },
       "acceptance_tests": [
-        "features/answer_contract.feature",
-        "features/memory_recall.feature",
+        "features/testbot/answer_contract.feature",
+        "features/testbot/memory_recall.feature",
         "tests/test_runtime_logging_events.py",
         "tests/test_eval_runtime_parity.py"
       ],
@@ -247,8 +247,8 @@
         ]
       },
       "acceptance_tests": [
-        "features/answer_contract.feature",
-        "features/intent_grounding.feature",
+        "features/testbot/answer_contract.feature",
+        "features/testbot/intent_grounding.feature",
         "tests/test_reflection_policy.py"
       ],
       "runtime_dependency_flags": [
@@ -290,7 +290,7 @@
         ]
       },
       "acceptance_tests": [
-        "features/intent_grounding.feature",
+        "features/testbot/intent_grounding.feature",
         "tests/test_intent_router.py",
         "tests/test_promotion_policy.py"
       ],
@@ -333,7 +333,7 @@
         ]
       },
       "acceptance_tests": [
-        "features/time_awareness.feature",
+        "features/testbot/time_awareness.feature",
         "tests/test_rerank.py",
         "tests/test_time_reasoning.py",
         "tests/test_eval_recall.py"
@@ -389,7 +389,7 @@
         ]
       },
       "acceptance_tests": [
-        "features/source_ingestion.feature",
+        "features/testbot/source_ingestion.feature",
         "tests/test_source_connectors.py",
         "tests/test_source_ingest.py"
       ],
@@ -442,8 +442,8 @@
         ]
       },
       "acceptance_tests": [
-        "features/memory_recall.feature",
-        "features/answer_contract.feature",
+        "features/testbot/memory_recall.feature",
+        "features/testbot/answer_contract.feature",
         "tests/test_runtime_logging_events.py",
         "tests/test_debug_turn_trace.py",
         "tests/test_canonical_turn_orchestrator.py"
@@ -536,8 +536,8 @@
         ]
       },
       "acceptance_tests": [
-        "features/intent_grounding.feature",
-        "features/answer_contract.feature",
+        "features/testbot/intent_grounding.feature",
+        "features/testbot/answer_contract.feature",
         "tests/test_intent_router.py",
         "tests/test_promotion_policy.py"
       ],
@@ -629,7 +629,7 @@
         ]
       },
       "acceptance_tests": [
-        "features/answer_contract.feature",
+        "features/testbot/answer_contract.feature",
         "tests/test_runtime_logging_events.py",
         "tests/test_turn_analytics_aggregator.py"
       ],

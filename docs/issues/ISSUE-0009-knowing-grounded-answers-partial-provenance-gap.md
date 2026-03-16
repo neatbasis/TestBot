@@ -33,7 +33,7 @@ The `knowing_grounded_answers` capability remains `partial`. ISSUE-0009 is the p
 
 ## Acceptance Criteria
 
-1. `python -m behave features/answer_contract.feature features/memory_recall.feature` passes.
+1. `python -m behave features/testbot/answer_contract.feature features/testbot/memory_recall.feature` passes.
 2. `python -m pytest tests/test_runtime_logging_events.py tests/test_eval_runtime_parity.py` passes.
 3. `python scripts/all_green_gate.py --continue-on-failure --json-output artifacts/all-green-gate-summary.json` reports `product_behave`, `safety_behave_answer_contract_and_memory`, and `qa_eval_fixtures_and_runtime_parity` as `passed`.
 4. `docs/qa/feature-status.yaml` is updated to `implemented` for `knowing_grounded_answers` only after criteria 1-3 are met.
@@ -56,7 +56,7 @@ The `knowing_grounded_answers` capability remains `partial`. ISSUE-0009 is the p
 ## Work Plan
 
 - [x] Capture production-debug evidence trace and map symptoms to ISSUE-0009/ISSUE-0010 acceptance criteria (`docs/issues/evidence/production-debug-cli-trace-2026-03-07.md`).
-- [x] **Remaining delta: confident memory-recall recovery** — fix equivalent-candidate ambiguity/tie-break flow so `features/memory_recall.feature:22` passes consistently.
+- [x] **Remaining delta: confident memory-recall recovery** — fix equivalent-candidate ambiguity/tie-break flow so `features/testbot/memory_recall.feature:22` passes consistently.
 - [x] **Remaining delta: citation-context format** — align memory-hit citation/provenance formatting with deterministic contract expectations across BDD and pytest parity checks.
 - [x] **Remaining delta: debug reason accuracy** — ensure debug/trace reason values reflect true confidence/ambiguity branch decisions for memory-recall turns.
 - [x] Regenerate report/status artifacts with existing scripts only after acceptance criteria 1-3 are fully implemented and validated as passing (`artifacts/all-green-gate-summary.json`, `logs/turn_analytics_summary.json`).
@@ -75,7 +75,7 @@ The `knowing_grounded_answers` capability remains `partial`. ISSUE-0009 is the p
 
 ## Verification
 
-- Command: `python -m behave features/answer_contract.feature features/memory_recall.feature`
+- Command: `python -m behave features/testbot/answer_contract.feature features/testbot/memory_recall.feature`
   - Observed (2026-03-09): exit `0` (pass).
 - Command: `python -m pytest tests/test_runtime_logging_events.py tests/test_eval_runtime_parity.py`
   - Observed (2026-03-09): exit `0` (pass).

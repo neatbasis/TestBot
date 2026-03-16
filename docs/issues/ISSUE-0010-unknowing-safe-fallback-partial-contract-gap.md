@@ -33,7 +33,7 @@ The `unknowing_safe_fallback` capability is still marked `partial`. ISSUE-0010 i
 
 ## Acceptance Criteria
 
-1. `python -m behave features/answer_contract.feature features/intent_grounding.feature` passes for uncertainty/fallback scenarios.
+1. `python -m behave features/testbot/answer_contract.feature features/testbot/intent_grounding.feature` passes for uncertainty/fallback scenarios.
 2. `python -m pytest tests/test_reflection_policy.py tests/test_runtime_logging_events.py` passes.
 3. `python scripts/all_green_gate.py --continue-on-failure --json-output artifacts/all-green-gate-summary.json` reports `product_behave` and `safety_reflection_and_runtime_logging_pytests` as `passed`.
 4. `docs/qa/feature-status.yaml` is updated to `implemented` for `unknowing_safe_fallback` only after criteria 1-3 are met.
@@ -75,7 +75,7 @@ The `unknowing_safe_fallback` capability is still marked `partial`. ISSUE-0010 i
 
 ## Verification
 
-- Command: `python -m behave features/answer_contract.feature features/intent_grounding.feature`
+- Command: `python -m behave features/testbot/answer_contract.feature features/testbot/intent_grounding.feature`
   - Observed (2026-03-09): exit `0` (pass).
 - Command: `python -m pytest tests/test_reflection_policy.py tests/test_runtime_logging_events.py`
   - Observed (2026-03-09): exit `0` (pass).

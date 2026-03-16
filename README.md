@@ -97,7 +97,7 @@ Authoritative runtime-contract and decision-policy references:
 Supporting verification-governance overview (non-authoritative):
 
 - [docs/architecture/behavior-governance.md](docs/architecture/behavior-governance.md)
-- [features/intent_grounding.feature](features/intent_grounding.feature)
+- [features/testbot/intent_grounding.feature](features/testbot/intent_grounding.feature)
 
 ## Current limitations
 - External fact integrations are currently limited.

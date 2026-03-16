@@ -528,20 +528,20 @@ def test_build_report_surfaces_unmapped_scenarios_for_missing_issue_ac_tags(
                 "capability_id": "intent_grounding_router",
                 "capability_name": "Deterministic intent grounding and route selection",
                 "current_status": "implemented",
-                "acceptance_tests": ["features/intent_grounding.feature"],
+                "acceptance_tests": ["features/testbot/intent_grounding.feature"],
             }
         ]
     }
 
     scenario_traces = [
         report_feature_status.FeatureScenarioTrace(
-            feature_path="features/intent_grounding.feature",
+            feature_path="features/testbot/intent_grounding.feature",
             scenario_name="tagged",
             issue_tags=["@ISSUE-0008"],
             ac_tags=["@AC-0008-01"],
         ),
         report_feature_status.FeatureScenarioTrace(
-            feature_path="features/intent_grounding.feature",
+            feature_path="features/testbot/intent_grounding.feature",
             scenario_name="untagged",
             issue_tags=[],
             ac_tags=[],

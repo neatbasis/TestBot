@@ -22,7 +22,7 @@ The initial merge-blocking failures were remediated, but `intent_grounding_route
 ## Evidence
 
 - Capability contract still marks `intent_grounding_router` as `partial`.
-- Route selection quality depends on consistent `features/intent_grounding.feature` behavior and deterministic policy tests.
+- Route selection quality depends on consistent `features/testbot/intent_grounding.feature` behavior and deterministic policy tests.
 - Existing closure notes addressed acute gate failures but did not close all roadmap-aligned quality gaps for this capability.
 
 ## Impact
@@ -33,7 +33,7 @@ The initial merge-blocking failures were remediated, but `intent_grounding_route
 
 ## Acceptance Criteria
 
-1. `python -m behave features/intent_grounding.feature` passes with no flaky scenario outcomes across two consecutive local runs.
+1. `python -m behave features/testbot/intent_grounding.feature` passes with no flaky scenario outcomes across two consecutive local runs.
 2. `python -m pytest tests/test_intent_router.py tests/test_promotion_policy.py` passes and includes deterministic coverage for all route branches currently marked partial.
 3. `python scripts/all_green_gate.py --continue-on-failure --json-output artifacts/all-green-gate-summary.json` reports `product_behave` and `qa_pytest_not_live_smoke` as `passed`.
 4. `docs/qa/feature-status.yaml` is updated to `implemented` for `intent_grounding_router` only after criteria 1-3 are met.
@@ -46,11 +46,11 @@ The initial merge-blocking failures were remediated, but `intent_grounding_route
 
 - Align remaining route-confidence hardening tasks with the staged canonical pipeline plan tracked in ISSUE-0012 (Sprint 4 decisioning checkpoint).
 
-- [x] Linked memory-recall follow-up safeguard: scored-empty evidence now remains `ask_for_clarification` on `memory_retrieval` (no silent downgrade to generic-knowledge path), with deterministic checks in `features/intent_grounding.feature`, `tests/test_intent_router.py`, and `tests/test_promotion_policy.py`.
+- [x] Linked memory-recall follow-up safeguard: scored-empty evidence now remains `ask_for_clarification` on `memory_retrieval` (no silent downgrade to generic-knowledge path), with deterministic checks in `features/testbot/intent_grounding.feature`, `tests/test_intent_router.py`, and `tests/test_promotion_policy.py`.
 
 ## Verification
 
-- Command: `python -m behave features/intent_grounding.feature`
+- Command: `python -m behave features/testbot/intent_grounding.feature`
   - Expected: all intent-grounding scenarios pass consistently.
 - Command: `python -m pytest tests/test_intent_router.py tests/test_promotion_policy.py`
   - Expected: exits `0` with deterministic branch coverage.
