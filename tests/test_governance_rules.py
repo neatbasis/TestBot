@@ -134,3 +134,15 @@ def test_metadata_missing_issue_reference_requires_non_trivial_metadata() -> Non
     ) is True
     assert governance_rules.metadata_missing_issue_reference("[trivial] docs touchups") is False
     assert governance_rules.metadata_missing_issue_reference("Implements ISSUE-0001 policy checks for metadata") is False
+
+
+def test_contains_canonical_section_accepts_list_item_field_format() -> None:
+    issue_text = "- **Problem Statement:** some content"
+
+    assert governance_rules.contains_canonical_section(issue_text, "Problem Statement") is True
+
+
+def test_has_issue_reference_accepts_issue_id_without_issue_prefix() -> None:
+    body = "Summary: closes governance drift for ISSUE-0015 with deterministic checks"
+
+    assert governance_rules.has_issue_reference(body) is True

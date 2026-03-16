@@ -27,6 +27,8 @@ NO_USABLE_BASE_REF_NOTE: Final[str] = (
 )
 
 # Explicit ownership map for governance rule families used by validators.
+# This is the currently canonicalized subset of migrated rule families, not a
+# complete registry of every governance rule family in the repository.
 RULE_FAMILY_OWNERSHIP: Final[dict[str, dict[str, Any]]] = {
     "canonical_section_presence": {
         "owner": "Issue Governance Maintainers",
