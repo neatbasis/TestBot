@@ -32,6 +32,7 @@ dev = [
 
 [project.scripts]
 testbot = "testbot.sat_chatbot_memory_v2:main"
+seem-bot = "seem_bot.cli:main"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
