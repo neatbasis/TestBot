@@ -65,3 +65,107 @@ Other text.
 """
 
     assert validate_issues.parse_canonical_sections(policy) == governance_rules.parse_canonical_sections(policy)
+
+
+def _write_issue(tmp_path: Path, name: str, content: str) -> Path:
+    path = tmp_path / name
+    path.write_text(content, encoding="utf-8")
+    return path
+
+
+def test_validate_issue_files_accepts_triage_intake_minimal_schema(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    issue = _write_issue(
+        tmp_path,
+        "ISSUE-9998-triage-intake.md",
+        """
+**ID:** ISSUE-9998
+**Title:** Intake only
+**Issue State:** triage_intake
+**Status:** open
+**Problem:** Initial report
+**Owner:** Team
+**Severity:** amber
+**Next Action:** Reproduce and scope
+""",
+    )
+
+    monkeypatch.setattr(validate_issues, "REPO_ROOT", tmp_path)
+
+    failures: list[str] = []
+    validate_issues.validate_issue_files([issue], ["ID", "Title", "Status", "Issue State", "Severity", "Owner"], failures, ruleset=validate_issues.RULESET_STRICT)
+
+    assert failures == []
+
+
+def test_validate_issue_files_accepts_governed_execution_full_schema(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    issue = _write_issue(
+        tmp_path,
+        "ISSUE-9999-governed.md",
+        """
+**ID:** ISSUE-9999
+**Title:** Full issue
+**Status:** in_progress
+**Issue State:** governed_execution
+**Severity:** green
+**Owner:** Team
+**Created:** 2026-01-01
+**Target Sprint:** S1
+**Principle Alignment:** deterministic
+**Problem Statement:** Defined problem
+**Evidence:** Logs
+**Impact:** Delivery
+**Acceptance Criteria:** Tests pass
+**Work Plan:** Implement
+**Verification:** Run pytest
+**Closure Notes:** Pending
+""",
+    )
+
+    monkeypatch.setattr(validate_issues, "REPO_ROOT", tmp_path)
+
+    failures: list[str] = []
+    canonical = [
+        "ID",
+        "Title",
+        "Status",
+        "Issue State",
+        "Severity",
+        "Owner",
+        "Created",
+        "Target Sprint",
+        "Principle Alignment",
+        "Problem Statement",
+        "Evidence",
+        "Impact",
+        "Acceptance Criteria",
+        "Work Plan",
+        "Verification",
+        "Closure Notes",
+    ]
+    validate_issues.validate_issue_files([issue], canonical, failures, ruleset=validate_issues.RULESET_STRICT)
+
+    assert failures == []
+
+
+def test_validate_issue_files_rejects_triage_intake_in_progress_transition(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    issue = _write_issue(
+        tmp_path,
+        "ISSUE-7777-invalid-transition.md",
+        """
+**ID:** ISSUE-7777
+**Title:** Invalid transition
+**Issue State:** triage_intake
+**Status:** in_progress
+**Problem:** Initial report
+**Owner:** Team
+**Severity:** green
+**Next Action:** Promote schema
+""",
+    )
+
+    monkeypatch.setattr(validate_issues, "REPO_ROOT", tmp_path)
+
+    failures: list[str] = []
+    validate_issues.validate_issue_files([issue], ["ID", "Title", "Status", "Issue State"], failures, ruleset=validate_issues.RULESET_STRICT)
+
+    assert any("triage_intake issues must remain Status 'open'" in failure for failure in failures)

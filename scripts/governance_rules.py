@@ -43,7 +43,8 @@ def parse_canonical_sections(policy_text: str) -> list[str]:
     sections: list[str] = []
     capture = False
     for line in policy_text.splitlines():
-        if line.strip().lower().startswith("every issue file must include"):
+        lowered = line.strip().lower()
+        if lowered.startswith("every issue file") and "must include" in lowered:
             capture = True
             continue
         if not capture:
