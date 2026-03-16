@@ -4,6 +4,8 @@
 >
 > This workflow is now the default project standard for creating, tracking, prioritizing, and closing issues **inside the repository**.
 
+> **Governance freeze notice:** Temporary canonical freeze for coupled governance control surfaces is defined in `docs/issues/governance-control-surface-contract-freeze.md`. During freeze, that document is normative and takes precedence over older prose, examples, fixtures, and prior PR descriptions for validator rulesets, issue states, RED_TAG derivation, gate profiles, changed-path skip policy, manifest semantics, and triage routing.
+>
 ## Purpose
 
 This project tracks issues in-repo to keep governance, implementation context, and evidence in one auditable place.
