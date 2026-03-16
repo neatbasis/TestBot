@@ -83,6 +83,18 @@ Red-Tag handling requirements:
 - Must have an owner and target sprint before merge of related changes
 - Must include explicit rollback/mitigation in `Work Plan`
 
+Red-Tag index generation flow:
+
+- Treat `docs/issues/ISSUE-*.md` files as the source of truth.
+- Do not hand-edit `docs/issues/RED_TAG.md`.
+- Regenerate the index after issue status/severity updates:
+
+  ```bash
+  python scripts/generate_red_tag_index.py
+  ```
+
+- Validation compares committed `docs/issues/RED_TAG.md` to generated output and fails only when they differ.
+
 ## Measurability standards
 
 Each issue must define metrics where relevant, for example:
