@@ -243,6 +243,26 @@ def resolve_profile(explicit_profile: str | None) -> str:
 ISSUE_VALIDATOR_CHECKS = {"qa_validate_issue_links", "qa_validate_issues"}
 INVARIANT_SYNC_CHECKS = {"qa_validate_invariant_sync"}
 
+# Freeze-governed control surfaces that must force full governance checks when touched.
+GOVERNED_SURFACE_EXACT_PATHS = {
+    "scripts/all_green_gate.py",
+    "scripts/validate_issue_links.py",
+    "scripts/validate_issues.py",
+    "scripts/governance_rules.py",
+    "scripts/triage_router.py",
+    "tests/test_all_green_gate.py",
+    "tests/test_validate_issue_links.py",
+    "tests/test_validate_issues.py",
+    "docs/issues.md",
+    "docs/qa/triage-routing.yaml",
+}
+GOVERNED_SURFACE_PATH_PREFIXES = (
+    "docs/issues/",
+    "docs/directives/",
+    "docs/invariants/",
+    "artifacts/verification/",
+)
+
 ISSUE_VALIDATOR_PATH_PREFIXES = (
     "docs/issues/",
     "docs/governance/",
@@ -287,6 +307,17 @@ def _matches_path_scopes(path: str, *, exact_paths: set[str], prefixes: tuple[st
     return path in exact_paths or any(path.startswith(prefix) for prefix in prefixes)
 
 
+def _touches_governed_surface(changed_paths: set[str]) -> bool:
+    return any(
+        _matches_path_scopes(
+            path,
+            exact_paths=GOVERNED_SURFACE_EXACT_PATHS,
+            prefixes=GOVERNED_SURFACE_PATH_PREFIXES,
+        )
+        for path in changed_paths
+    )
+
+
 def apply_governance_skip_policy(
     checks: Sequence[GateCheck],
     *,
@@ -297,6 +328,10 @@ def apply_governance_skip_policy(
         return list(checks), ["--force-full-governance enabled: running all governance checks."]
     if changed_paths is None:
         return list(checks), []
+    if _touches_governed_surface(changed_paths):
+        return list(checks), [
+            "Freeze-governed control-surface change detected: running all governance checks."
+        ]
 
     run_issue_validators = any(
         _matches_path_scopes(

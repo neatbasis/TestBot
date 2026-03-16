@@ -416,6 +416,48 @@ def test_apply_governance_skip_policy_skips_issue_and_invariant_checks_when_irre
     assert any("Skipping qa_validate_issue_links" in note for note in notes)
 
 
+def test_apply_governance_skip_policy_runs_full_checks_for_governed_surface_change() -> None:
+    checks = all_green_gate.build_checks(base_ref="origin/main", kpi_guardrail_mode="optional", profile="readiness")
+
+    updated_checks, notes = all_green_gate.apply_governance_skip_policy(
+        checks,
+        changed_paths={"scripts/validate_issue_links.py"},
+        force_full_governance=False,
+    )
+
+    assert all(check.skip_reason is None for check in updated_checks)
+    assert notes == ["Freeze-governed control-surface change detected: running all governance checks."]
+
+
+def test_apply_governance_skip_policy_governed_surface_override_dominates_mixed_changes() -> None:
+    checks = all_green_gate.build_checks(base_ref="origin/main", kpi_guardrail_mode="optional", profile="readiness")
+
+    updated_checks, notes = all_green_gate.apply_governance_skip_policy(
+        checks,
+        changed_paths={"src/testbot/runtime.py", "tests/test_all_green_gate.py"},
+        force_full_governance=False,
+    )
+
+    assert all(check.skip_reason is None for check in updated_checks)
+    assert notes == ["Freeze-governed control-surface change detected: running all governance checks."]
+
+
+def test_apply_governance_skip_policy_feature_status_yaml_does_not_force_full_governance() -> None:
+    checks = all_green_gate.build_checks(base_ref="origin/main", kpi_guardrail_mode="optional", profile="readiness")
+
+    updated_checks, notes = all_green_gate.apply_governance_skip_policy(
+        checks,
+        changed_paths={"docs/qa/feature-status.yaml"},
+        force_full_governance=False,
+    )
+
+    skipped = {check.name: check.skip_reason for check in updated_checks if check.skip_reason}
+    assert "qa_validate_issue_links" not in skipped
+    assert "qa_validate_issues" not in skipped
+    assert "qa_validate_invariant_sync" in skipped
+    assert not any("Freeze-governed control-surface change detected" in note for note in notes)
+
+
 def test_apply_governance_skip_policy_respects_force_full_governance() -> None:
     checks = all_green_gate.build_checks(base_ref="origin/main", kpi_guardrail_mode="optional", profile="readiness")
 
