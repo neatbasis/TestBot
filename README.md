@@ -111,5 +111,15 @@ Use role-based guides instead of duplicated install/readiness instructions:
 - Setup/runtime: [docs/quickstart.md](docs/quickstart.md)
 - Validation/readiness: [docs/testing.md](docs/testing.md)
 
+Validation snippets:
+
+```bash
+# Local contributor triage (default local profile)
+python scripts/all_green_gate.py
+
+# Full merge/release readiness profile
+python scripts/all_green_gate.py --profile readiness
+```
+
 ## Contribute
 Use [CONTRIBUTING.md](CONTRIBUTING.md) as the single gateway for contribution workflow, standards, and checks.

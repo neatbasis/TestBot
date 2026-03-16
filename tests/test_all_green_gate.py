@@ -42,7 +42,7 @@ def test_main_fails_fast_when_behave_dependency_missing(monkeypatch: pytest.Monk
         continue_on_failure=False,
         base_ref="origin/main",
         json_output=None,
-        check_profile="fast",
+        profile="triage",
         kpi_guardrail_mode="optional",
     ))
     monkeypatch.setattr(all_green_gate.importlib.util, "find_spec", lambda _name: None)
@@ -85,7 +85,7 @@ def test_main_writes_behave_remediation_to_json_summary(
             continue_on_failure=False,
             base_ref="origin/main",
             json_output=summary_path,
-            check_profile="fast",
+            profile="readiness",
             kpi_guardrail_mode="optional",
         ),
     )
@@ -110,7 +110,7 @@ def test_resolve_base_ref_falls_back_when_origin_main_missing(monkeypatch: pytes
     assert any("This is expected in Codex task containers or shallow CI clones." in note for note in notes)
 
 
-def test_main_propagates_effective_base_ref_to_governance_checks(
+def test_main_propagates_effective_base_ref_to_governance_checks_in_readiness_profile(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
@@ -120,7 +120,7 @@ def test_main_propagates_effective_base_ref_to_governance_checks(
             continue_on_failure=False,
             base_ref="origin/main",
             json_output=None,
-            check_profile="fast",
+            profile="readiness",
             kpi_guardrail_mode="optional",
         ),
     )
@@ -146,7 +146,7 @@ def test_main_propagates_effective_base_ref_to_governance_checks(
 
 
 def test_build_checks_disables_turn_analytics_when_mode_off() -> None:
-    checks = all_green_gate.build_checks(base_ref="origin/main", kpi_guardrail_mode="off")
+    checks = all_green_gate.build_checks(base_ref="origin/main", kpi_guardrail_mode="off", profile="readiness")
 
     check_names = [check.name for check in checks]
     assert "qa_aggregate_turn_analytics" not in check_names
@@ -154,7 +154,7 @@ def test_build_checks_disables_turn_analytics_when_mode_off() -> None:
 
 
 def test_build_checks_adds_optional_turn_analytics_checks() -> None:
-    checks = all_green_gate.build_checks(base_ref="origin/main", kpi_guardrail_mode="optional")
+    checks = all_green_gate.build_checks(base_ref="origin/main", kpi_guardrail_mode="optional", profile="readiness")
 
     aggregate_check = next(check for check in checks if check.name == "qa_aggregate_turn_analytics")
     kpi_check = next(check for check in checks if check.name == "qa_validate_kpi_guardrails")
@@ -217,13 +217,13 @@ def test_run_gate_enforces_blocking_turn_analytics_checks(monkeypatch: pytest.Mo
 
 
 def test_build_checks_includes_pipeline_stage_conformance_validator() -> None:
-    checks = all_green_gate.build_checks(base_ref="origin/main", kpi_guardrail_mode="optional")
+    checks = all_green_gate.build_checks(base_ref="origin/main", kpi_guardrail_mode="optional", profile="readiness")
 
     check = next(check for check in checks if check.name == "safety_validate_pipeline_stage_conformance")
     assert check.command[1:] == ["scripts/validate_pipeline_stage_conformance.py"]
 
-def test_build_checks_default_profile_has_expected_check_names() -> None:
-    checks = all_green_gate.build_checks(base_ref="origin/main", kpi_guardrail_mode="optional")
+def test_build_checks_readiness_profile_has_expected_check_names() -> None:
+    checks = all_green_gate.build_checks(base_ref="origin/main", kpi_guardrail_mode="optional", profile="readiness")
 
     assert [check.name for check in checks] == [
         "product_behave",
@@ -240,21 +240,17 @@ def test_build_checks_default_profile_has_expected_check_names() -> None:
     ]
 
 
-def test_build_checks_exhaustive_profile_includes_targeted_overlap_checks() -> None:
-    checks = all_green_gate.build_checks(
-        base_ref="origin/main",
-        kpi_guardrail_mode="optional",
-        check_profile="exhaustive",
-    )
+def test_build_checks_triage_profile_excludes_governance_checks() -> None:
+    checks = all_green_gate.build_checks(base_ref="origin/main", kpi_guardrail_mode="optional", profile="triage")
 
     check_names = [check.name for check in checks]
-    assert "product_eval_runtime_parity" in check_names
-    assert "safety_behave_answer_contract_and_memory" in check_names
-    assert "qa_eval_fixtures_and_runtime_parity" in check_names
+    assert "qa_validate_issue_links" not in check_names
+    assert "qa_validate_issues" not in check_names
+    assert "qa_aggregate_turn_analytics" not in check_names
 
 
-def test_build_checks_default_profile_has_no_duplicate_pytest_file_payloads() -> None:
-    checks = all_green_gate.build_checks(base_ref="origin/main", kpi_guardrail_mode="optional")
+def test_build_checks_readiness_profile_has_no_duplicate_pytest_file_payloads() -> None:
+    checks = all_green_gate.build_checks(base_ref="origin/main", kpi_guardrail_mode="optional", profile="readiness")
 
     test_file_counts: dict[str, int] = {}
     for check in checks:
@@ -339,3 +335,31 @@ def test_summarize_includes_warning_reason_diagnostics() -> None:
         {"check": "qa_validate_kpi_guardrails", "reason_classification": "threshold_violation"}
     ]
     assert summary["stages"][0]["warning_reasons"] == ["threshold_violation"]
+
+
+def test_resolve_profile_defaults_to_triage_without_ci(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("CI", raising=False)
+    monkeypatch.delenv("GITHUB_ACTIONS", raising=False)
+    monkeypatch.delenv("BUILD_BUILDID", raising=False)
+    monkeypatch.delenv("TESTBOT_RELEASE_VALIDATION", raising=False)
+
+    assert all_green_gate.resolve_profile(None) == "triage"
+
+
+def test_resolve_profile_defaults_to_readiness_in_ci(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("CI", "true")
+
+    assert all_green_gate.resolve_profile(None) == "readiness"
+
+
+def test_summarize_groups_product_and_governance_failures() -> None:
+    summary = all_green_gate.summarize(
+        results=[
+            _result(name="product_eval_recall_topk4", command="eval", status="failed", exit_code=2, duration_s=0.2),
+            _result(name="qa_validate_issues", command="issues", status="failed", exit_code=3, duration_s=0.1),
+        ],
+        continue_on_failure=False,
+    )
+
+    assert [failure["name"] for failure in summary["product_failures"]] == ["product_eval_recall_topk4"]
+    assert [failure["name"] for failure in summary["governance_failures"]] == ["qa_validate_issues"]
