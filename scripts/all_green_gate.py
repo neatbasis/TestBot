@@ -17,6 +17,16 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Sequence
 
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+from governance_rules import (
+    git_ref_exists as governance_git_ref_exists,
+    resolve_base_ref as governance_resolve_base_ref,
+)
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 VERIFICATION_MANIFEST_DIR = REPO_ROOT / "artifacts" / "verification"
 VERIFICATION_MANIFEST_SCHEMA_VERSION = "1.0"
@@ -205,47 +215,11 @@ def extract_kpi_reason_classification(stdout: str) -> str | None:
 
 
 def git_ref_exists(ref: str) -> bool:
-    completed = subprocess.run(
-        ["git", "rev-parse", "--verify", "--quiet", ref],
-        cwd=REPO_ROOT,
-        capture_output=True,
-        text=True,
-    )
-    return completed.returncode == 0
+    return governance_git_ref_exists(ref, repo_root=REPO_ROOT)
 
 
 def resolve_base_ref(base_ref: str) -> tuple[str | None, list[str]]:
-    notes: list[str] = []
-    if git_ref_exists(base_ref):
-        return base_ref, notes
-
-    if base_ref != "origin/main":
-        return None, [
-            (
-                f"Base ref '{base_ref}' does not exist. "
-                "Use --base-ref with an available ref (for example origin/main, HEAD~1, or HEAD)."
-            )
-        ]
-
-    for fallback in ("HEAD~1", "HEAD"):
-        if git_ref_exists(fallback):
-            notes.append(
-                (
-                    f"Base ref 'origin/main' is unavailable; falling back to '{fallback}'.\n"
-                    "       This is expected in Codex task containers or shallow CI clones.\n"
-                    "       Governance diff checks are running against a reduced baseline.\n"
-                    "       For authoritative results, run locally with 'git fetch origin main' first. "
-                    "(Unless you are ChatGPT/Codex!)"
-                )
-            )
-            return fallback, notes
-
-    notes.append(
-        "Could not resolve origin/main or fallback refs (HEAD~1, HEAD). "
-        "Governance validators will run with --all-issue-files but commit-range linkage checks may be skipped. "
-        "Hint: fetch main history (git fetch origin main) or pass --base-ref HEAD explicitly."
-    )
-    return None, notes
+    return governance_resolve_base_ref(base_ref, ref_exists=git_ref_exists)
 
 
 def default_profile_for_environment() -> str:

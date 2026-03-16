@@ -23,23 +23,15 @@ validate_issue_links = _load_module("validate_issue_links_from_issues_test", _SC
 governance_rules = _load_module("governance_rules_from_issues_test", _SCRIPTS_DIR / "governance_rules.py")
 
 
-def test_resolve_base_ref_prefers_origin_main_when_present(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(validate_issues, "git_ref_exists", lambda ref: ref == "origin/main")
+def test_resolve_base_ref_uses_canonical_missing_origin_note(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(validate_issues, "git_ref_exists", lambda _ref: False)
 
     resolved, notes = validate_issues.resolve_base_ref("origin/main")
 
-    assert resolved == "origin/main"
-    assert notes == []
-
-
-def test_resolve_base_ref_falls_back_when_origin_main_missing(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(validate_issues, "git_ref_exists", lambda ref: ref == "HEAD~1")
-
-    resolved, notes = validate_issues.resolve_base_ref("origin/main")
-
-    assert resolved == "HEAD~1"
-    assert any("falling back to 'HEAD~1'" in note for note in notes)
-    assert any("This is expected in Codex task containers or shallow CI clones." in note for note in notes)
+    assert resolved is None
+    assert notes == [
+        "Could not resolve base ref 'origin/main' or fallbacks (HEAD~1, HEAD). Governance diff checks will run against a reduced baseline and all issue files may be validated."
+    ]
 
 
 def test_shared_fixture_parity_across_validators() -> None:

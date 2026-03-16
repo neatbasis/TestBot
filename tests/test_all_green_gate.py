@@ -125,6 +125,18 @@ def test_resolve_base_ref_falls_back_when_origin_main_missing(monkeypatch: pytes
     assert any("This is expected in Codex task containers or shallow CI clones." in note for note in notes)
 
 
+
+
+def test_resolve_base_ref_returns_canonical_note_when_no_refs_available(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(all_green_gate, "git_ref_exists", lambda _ref: False)
+
+    resolved, notes = all_green_gate.resolve_base_ref("origin/main")
+
+    assert resolved is None
+    assert notes == [
+        "Could not resolve base ref 'origin/main' or fallbacks (HEAD~1, HEAD). Governance diff checks will run against a reduced baseline and all issue files may be validated."
+    ]
+
 def test_main_propagates_effective_base_ref_to_governance_checks_in_readiness_profile(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
