@@ -16,10 +16,12 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 from governance_rules import (
+    git_ref_exists as governance_git_ref_exists,
     has_issue_reference,
     is_non_trivial_change,
     is_valid_issue_id,
     parse_canonical_sections,
+    resolve_base_ref as governance_resolve_base_ref,
 )
 from generate_red_tag_index import render_red_tag, list_red_open_issues
 
@@ -119,46 +121,11 @@ def run_git(args: list[str]) -> str:
 
 
 def git_ref_exists(ref: str) -> bool:
-    result = subprocess.run(
-        ["git", "rev-parse", "--verify", "--quiet", ref],
-        cwd=REPO_ROOT,
-        capture_output=True,
-        text=True,
-    )
-    return result.returncode == 0
+    return governance_git_ref_exists(ref, repo_root=REPO_ROOT)
 
 
 def resolve_base_ref(base_ref: str) -> tuple[str | None, list[str]]:
-    notes: list[str] = []
-    if git_ref_exists(base_ref):
-        return base_ref, notes
-
-    if base_ref != "origin/main":
-        return None, [
-            (
-                f"Base ref '{base_ref}' does not exist. "
-                "Provide a valid --base-ref (for example origin/main, HEAD~1, or HEAD)."
-            )
-        ]
-
-    for fallback in ("HEAD~1", "HEAD"):
-        if git_ref_exists(fallback):
-            notes.append(
-                (
-                    f"Base ref 'origin/main' is unavailable; falling back to '{fallback}'.\n"
-                    "       This is expected in Codex task containers or shallow CI clones.\n"
-                    "       Governance diff checks are running against a reduced baseline.\n"
-                    "       For authoritative results, run locally with 'git fetch origin main' first. "
-                    "(Unless you are ChatGPT/Codex!)"
-                )
-            )
-            return fallback, notes
-
-    notes.append(
-        "Could not resolve base ref 'origin/main' or fallbacks (HEAD~1, HEAD). "
-        "Commit-range checks will be skipped and all issue files will be validated."
-    )
-    return None, notes
+    return governance_resolve_base_ref(base_ref, ref_exists=git_ref_exists)
 
 
 def load_canonical_sections() -> list[str]:

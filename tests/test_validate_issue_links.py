@@ -171,32 +171,15 @@ def test_validate_red_tag_generated_content_accepts_match(
     assert failures == []
 
 
-def test_resolve_base_ref_prefers_requested_when_available(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(validate_issue_links, "git_ref_exists", lambda ref: ref == "origin/main")
+def test_resolve_base_ref_uses_canonical_missing_requested_note(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(validate_issue_links, "git_ref_exists", lambda _ref: False)
 
-    resolved, notes = validate_issue_links.resolve_base_ref("origin/main")
+    resolved, notes = validate_issue_links.resolve_base_ref("feature/base")
 
-    assert resolved == "origin/main"
-    assert notes == []
-
-
-def test_resolve_base_ref_falls_back_when_origin_main_missing(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(validate_issue_links, "git_ref_exists", lambda ref: ref == "HEAD~1")
-
-    resolved, notes = validate_issue_links.resolve_base_ref("origin/main")
-
-    assert resolved == "HEAD~1"
-    assert any("falling back to 'HEAD~1'" in note for note in notes)
-    assert any("This is expected in Codex task containers or shallow CI clones." in note for note in notes)
-
-
-def test_resolve_base_ref_falls_back_to_head_when_head1_missing(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(validate_issue_links, "git_ref_exists", lambda ref: ref == "HEAD")
-
-    resolved, notes = validate_issue_links.resolve_base_ref("origin/main")
-
-    assert resolved == "HEAD"
-    assert any("falling back to 'HEAD'" in note for note in notes)
+    assert resolved is None
+    assert notes == [
+        "Base ref 'feature/base' does not exist. Provide a valid --base-ref (for example origin/main, HEAD~1, or HEAD)."
+    ]
 
 
 def test_validate_issue_schema_accepts_verification_manifest_reference(

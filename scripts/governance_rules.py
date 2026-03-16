@@ -3,12 +3,28 @@
 from __future__ import annotations
 
 import re
-from typing import Final
+import subprocess
+from pathlib import Path
+from typing import Callable, Final
 
 ISSUE_ID_REGEX: Final[str] = r"\bISSUE-(\d{4})\b"
 ISSUE_ID_PATTERN: Final[re.Pattern[str]] = re.compile(ISSUE_ID_REGEX, re.IGNORECASE)
 SECTION_NUMBER_LINE: Final[re.Pattern[str]] = re.compile(r"^\s*\d+\.\s+`([^`]+)`")
 NON_TRIVIAL_WORD_PATTERN: Final[re.Pattern[str]] = re.compile(r"[A-Za-z0-9_-]+")
+MISSING_REQUESTED_BASE_REF_NOTE: Final[str] = (
+    "Base ref '{ref}' does not exist. Provide a valid --base-ref (for example origin/main, HEAD~1, or HEAD)."
+)
+ORIGIN_MAIN_FALLBACK_NOTE: Final[str] = (
+    "Base ref 'origin/main' is unavailable; falling back to '{fallback}'.\n"
+    "       This is expected in Codex task containers or shallow CI clones.\n"
+    "       Governance diff checks are running against a reduced baseline.\n"
+    "       For authoritative results, run locally with 'git fetch origin main' first. "
+    "(Unless you are ChatGPT/Codex!)"
+)
+NO_USABLE_BASE_REF_NOTE: Final[str] = (
+    "Could not resolve base ref 'origin/main' or fallbacks (HEAD~1, HEAD). "
+    "Governance diff checks will run against a reduced baseline and all issue files may be validated."
+)
 
 
 def is_non_trivial_change(text: str) -> bool:
@@ -65,3 +81,37 @@ def parse_canonical_sections(policy_text: str) -> list[str]:
         raise RuntimeError("Could not parse canonical sections from docs/issues.md")
 
     return sections
+
+
+def git_ref_exists(ref: str, *, repo_root: Path) -> bool:
+    """Return whether a Git ref exists in the given repository root."""
+    result = subprocess.run(
+        ["git", "rev-parse", "--verify", "--quiet", ref],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+    )
+    return result.returncode == 0
+
+
+def resolve_base_ref(
+    base_ref: str,
+    *,
+    ref_exists: Callable[[str], bool],
+) -> tuple[str | None, list[str]]:
+    """Resolve base ref using canonical fallback order and canonical note wording."""
+    notes: list[str] = []
+    if ref_exists(base_ref):
+        return base_ref, notes
+
+    if base_ref != "origin/main":
+        return None, [MISSING_REQUESTED_BASE_REF_NOTE.format(ref=base_ref)]
+
+    for fallback in ("HEAD~1", "HEAD"):
+        if ref_exists(fallback):
+            notes.append(ORIGIN_MAIN_FALLBACK_NOTE.format(fallback=fallback))
+            return fallback, notes
+
+    notes.append(NO_USABLE_BASE_REF_NOTE)
+    return None, notes
+
