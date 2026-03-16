@@ -33,7 +33,7 @@ def test_issue_matches_keyword_checks_id_title_stem_and_content(tmp_path: Path) 
     assert not report_feature_status.issue_matches_keyword(issue, "qa_validate_issue_links")
 
 
-def test_find_relevant_issues_prefers_explicit_open_issue_ids(tmp_path: Path) -> None:
+def test_find_relevant_issues_prefers_explicit_issue_ids_primary_linkage(tmp_path: Path) -> None:
     issue_path_9 = tmp_path / "docs" / "issues" / "ISSUE-0009-knowing-gap.md"
     issue_path_9.parent.mkdir(parents=True)
     issue_path_9.write_text("placeholder", encoding="utf-8")
@@ -58,15 +58,18 @@ def test_find_relevant_issues_prefers_explicit_open_issue_ids(tmp_path: Path) ->
     )
 
     capability = {
-        "open_issues": [" ISSUE-0010 "],
+        "issue_ids": [" ISSUE-0010 "],
+        "open_issues": ["ISSUE-0009"],
         "issue_keywords": ["ISSUE-0009", "knowing"],
     }
 
-    relevant = report_feature_status.find_relevant_issues(capability, [issue_9, issue_10])
-    assert [issue.issue_id for issue in relevant] == ["ISSUE-0010"]
+    linkage = report_feature_status.find_relevant_issues(capability, [issue_9, issue_10])
+    assert [issue.issue_id for issue in linkage.issues] == ["ISSUE-0010"]
+    assert linkage.used_keyword_fallback is False
+    assert linkage.warning is None
 
 
-def test_find_relevant_issues_falls_back_to_keywords_without_fan_in(tmp_path: Path) -> None:
+def test_find_relevant_issues_falls_back_to_keywords_and_warns(tmp_path: Path) -> None:
     issue_path_9 = tmp_path / "docs" / "issues" / "ISSUE-0009-knowing-gap.md"
     issue_path_9.parent.mkdir(parents=True)
     issue_path_9.write_text("placeholder", encoding="utf-8")
@@ -94,8 +97,130 @@ def test_find_relevant_issues_falls_back_to_keywords_without_fan_in(tmp_path: Pa
         "issue_keywords": ["ISSUE-0009", "knowing_grounded_answers"],
     }
 
-    relevant = report_feature_status.find_relevant_issues(capability, [issue_9, issue_13])
-    assert [issue.issue_id for issue in relevant] == ["ISSUE-0009"]
+    linkage = report_feature_status.find_relevant_issues(capability, [issue_9, issue_13])
+    assert [issue.issue_id for issue in linkage.issues] == ["ISSUE-0009"]
+    assert linkage.used_keyword_fallback is True
+    assert "deprecated issue_keywords" in (linkage.warning or "")
+
+
+def test_find_relevant_issues_without_issue_ids_or_keywords_has_no_warning(tmp_path: Path) -> None:
+    issue_path = tmp_path / "docs" / "issues" / "ISSUE-0020-example.md"
+    issue_path.parent.mkdir(parents=True)
+    issue_path.write_text("placeholder", encoding="utf-8")
+
+    issue = report_feature_status.OpenIssue(
+        issue_id="ISSUE-0020",
+        title="Example issue",
+        status="open",
+        path=issue_path,
+        content="placeholder",
+        content_lower="placeholder",
+    )
+
+    linkage = report_feature_status.find_relevant_issues({"capability_id": "no_links"}, [issue])
+    assert linkage.issues == []
+    assert linkage.used_keyword_fallback is False
+    assert linkage.warning is None
+
+
+def test_build_report_mixed_mode_uses_explicit_issue_ids_without_deprecation_warning(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(report_feature_status, "REPO_ROOT", tmp_path)
+
+    issue_path = tmp_path / "docs" / "issues" / "ISSUE-0030-mixed-mode.md"
+    issue_path.parent.mkdir(parents=True)
+    issue_path.write_text("placeholder", encoding="utf-8")
+
+    issue = report_feature_status.OpenIssue(
+        issue_id="ISSUE-0030",
+        title="Mixed mode linkage issue",
+        status="open",
+        path=issue_path,
+        content="placeholder",
+        content_lower="placeholder",
+    )
+
+    report_markdown, summary = report_feature_status.build_report(
+        contract={
+            "capabilities": [
+                {
+                    "capability_id": "mixed_mode",
+                    "capability_name": "Mixed mode",
+                    "current_status": "partial",
+                    "issue_ids": ["ISSUE-0030"],
+                    "issue_keywords": ["ISSUE-9999", "legacy"],
+                }
+            ]
+        },
+        gate_payload={},
+        gate_results={},
+        open_issues=[issue],
+        roadmap_priorities={},
+        scenario_traces=[],
+        generated_at_utc="2026-03-06T00:00:00Z",
+        input_paths={
+            "contract_path": "docs/qa/feature-status.yaml",
+            "gate_summary_path": "artifacts/all-green-gate-summary.json",
+            "issues_dir": "docs/issues",
+            "roadmap_dir": "docs/roadmap",
+            "features_dir": "features",
+        },
+        source_file_metadata={"contract": None, "gate_summary": None, "open_issues": []},
+        gate_stale_warning=None,
+    )
+
+    assert "open issues: ISSUE-0030" in report_markdown
+    capability = summary["capabilities"][0]
+    assert capability["issue_linkage_mode"] == "explicit"
+    assert not any("deprecated issue_keywords" in warning for warning in summary["warnings"])
+
+
+def test_build_report_warns_when_only_keyword_linkage_is_used(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(report_feature_status, "REPO_ROOT", tmp_path)
+
+    issue_path = tmp_path / "docs" / "issues" / "ISSUE-0040-keyword-only.md"
+    issue_path.parent.mkdir(parents=True)
+    issue_path.write_text("placeholder", encoding="utf-8")
+
+    issue = report_feature_status.OpenIssue(
+        issue_id="ISSUE-0040",
+        title="Keyword only linkage issue",
+        status="open",
+        path=issue_path,
+        content="placeholder",
+        content_lower="placeholder",
+    )
+
+    _, summary = report_feature_status.build_report(
+        contract={
+            "capabilities": [
+                {
+                    "capability_id": "keyword_only_capability",
+                    "capability_name": "Keyword only",
+                    "current_status": "partial",
+                    "issue_keywords": ["ISSUE-0040"],
+                }
+            ]
+        },
+        gate_payload={},
+        gate_results={},
+        open_issues=[issue],
+        roadmap_priorities={},
+        scenario_traces=[],
+        generated_at_utc="2026-03-06T00:00:00Z",
+        input_paths={
+            "contract_path": "docs/qa/feature-status.yaml",
+            "gate_summary_path": "artifacts/all-green-gate-summary.json",
+            "issues_dir": "docs/issues",
+            "roadmap_dir": "docs/roadmap",
+            "features_dir": "features",
+        },
+        source_file_metadata={"contract": None, "gate_summary": None, "open_issues": []},
+        gate_stale_warning=None,
+    )
+
+    capability = summary["capabilities"][0]
+    assert capability["issue_linkage_mode"] == "keyword_fallback"
+    assert any("deprecated issue_keywords" in warning for warning in summary["warnings"])
 
 
 def test_build_report_links_partial_capability_to_issue_via_id_keyword(tmp_path: Path, monkeypatch) -> None:

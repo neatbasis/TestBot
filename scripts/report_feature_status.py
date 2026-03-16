@@ -49,6 +49,13 @@ class FeatureScenarioTrace:
     ac_tags: list[str]
 
 
+@dataclass
+class IssueLinkageResult:
+    issues: list[OpenIssue]
+    used_keyword_fallback: bool
+    warning: str | None
+
+
 def collect_feature_scenario_traceability(features_dir: Path) -> list[FeatureScenarioTrace]:
     traces: list[FeatureScenarioTrace] = []
     issue_pattern = re.compile(r"@ISSUE-\d{4}\b", flags=re.IGNORECASE)
@@ -137,28 +144,39 @@ def issue_matches_keyword(issue: OpenIssue, keyword: str) -> bool:
     return any(normalized in field for field in searchable_fields)
 
 
-def find_relevant_issues(capability: dict[str, Any], open_issues: list[OpenIssue]) -> list[OpenIssue]:
+def find_relevant_issues(capability: dict[str, Any], open_issues: list[OpenIssue]) -> IssueLinkageResult:
     issue_by_id = {issue.issue_id.upper(): issue for issue in open_issues}
 
-    explicit_issue_ids = [str(issue_id).strip() for issue_id in capability.get("open_issues", [])]
+    explicit_issue_ids = [str(issue_id).strip() for issue_id in capability.get("issue_ids", [])]
+    if not explicit_issue_ids:
+        explicit_issue_ids = [str(issue_id).strip() for issue_id in capability.get("open_issues", [])]
     explicit_issue_ids = [issue_id for issue_id in explicit_issue_ids if issue_id]
     if explicit_issue_ids:
-        return [
-            issue_by_id[issue_id.upper()]
-            for issue_id in explicit_issue_ids
-            if issue_id.upper() in issue_by_id
-        ]
+        return IssueLinkageResult(
+            issues=[
+                issue_by_id[issue_id.upper()]
+                for issue_id in explicit_issue_ids
+                if issue_id.upper() in issue_by_id
+            ],
+            used_keyword_fallback=False,
+            warning=None,
+        )
 
     keywords = [str(keyword).strip().lower() for keyword in capability.get("issue_keywords", [])]
     keywords = [keyword for keyword in keywords if keyword]
     if not keywords:
-        return []
+        return IssueLinkageResult(issues=[], used_keyword_fallback=False, warning=None)
 
     relevant_issues: list[OpenIssue] = []
     for issue in open_issues:
         if any(issue_matches_keyword(issue, keyword) for keyword in keywords):
             relevant_issues.append(issue)
-    return relevant_issues
+
+    warning = (
+        f"Capability '{capability.get('capability_id', 'unknown')}' is linked to open issues via "
+        "deprecated issue_keywords matching only; add explicit issue_ids for primary linkage."
+    )
+    return IssueLinkageResult(issues=relevant_issues, used_keyword_fallback=True, warning=warning)
 
 
 def parse_args() -> argparse.Namespace:
@@ -323,6 +341,7 @@ def build_report(
     rows: list[dict[str, Any]] = []
     counts = {"implemented": 0, "partial": 0, "missing": 0}
     scenario_traceability_warnings: list[dict[str, str]] = []
+    issue_linkage_warnings: list[str] = []
     criteria_by_issue: dict[str, dict[str, IssueCriterion]] = {
         issue.issue_id.upper(): {
             criterion.criterion_id: criterion
@@ -339,7 +358,10 @@ def build_report(
         gate_checks = capability.get("gate_checks", [])
         failed_checks = [name for name in gate_checks if gate_results.get(name) == "failed"]
 
-        relevant_issues = find_relevant_issues(capability, open_issues)
+        issue_linkage = find_relevant_issues(capability, open_issues)
+        relevant_issues = issue_linkage.issues
+        if issue_linkage.warning:
+            issue_linkage_warnings.append(issue_linkage.warning)
 
         raw_criterion_refs = capability.get("criterion_refs", capability.get("criteria_refs", []))
         criterion_refs = [str(ref).strip().upper() for ref in raw_criterion_refs if str(ref).strip()]
@@ -415,6 +437,7 @@ def build_report(
                 "effective_status": status,
                 "declared_status": base_status,
                 "failed_gate_checks": failed_checks,
+                "issue_linkage_mode": "keyword_fallback" if issue_linkage.used_keyword_fallback else "explicit",
                 "relevant_open_issues": [
                     {
                         "id": issue.issue_id,
@@ -542,6 +565,7 @@ def build_report(
         warnings.append(
             "One or more acceptance-test scenarios are missing scenario-level traceability tags (@ISSUE-xxxx and/or @AC-xxxx-yy)."
         )
+    warnings.extend(issue_linkage_warnings)
 
     summary_payload = {
         "generated_at_utc": generated_at_utc,

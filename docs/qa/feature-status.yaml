@@ -32,6 +32,8 @@ capabilities:
   roadmap_priority_refs:
   - P2
   - P4
+  issue_ids:
+  - ISSUE-0009
   open_issues:
   - ISSUE-0009
   issue_keywords:
@@ -51,6 +53,8 @@ capabilities:
   current_status: implemented
   roadmap_priority_refs:
   - P3
+  issue_ids:
+  - ISSUE-0010
   open_issues:
   - ISSUE-0010
   issue_keywords:
@@ -70,6 +74,8 @@ capabilities:
   current_status: partial
   roadmap_priority_refs:
   - P3
+  issue_ids:
+  - ISSUE-0008
   open_issues:
   - ISSUE-0008
   issue_keywords:
@@ -140,6 +146,8 @@ capabilities:
   roadmap_priority_refs:
   - P3
   - P4
+  issue_ids:
+  - ISSUE-0013
   open_issues:
   - ISSUE-0013
   obligation_refs:
@@ -185,6 +193,8 @@ capabilities:
   roadmap_priority_refs:
   - P3
   - P4
+  issue_ids:
+  - ISSUE-0013
   open_issues:
   - ISSUE-0013
   obligation_refs:
@@ -228,6 +238,8 @@ capabilities:
   roadmap_priority_refs:
   - P4
   - P5
+  issue_ids:
+  - ISSUE-0013
   open_issues:
   - ISSUE-0013
   obligation_refs:
