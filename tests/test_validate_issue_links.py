@@ -133,37 +133,40 @@ TBD
     assert "section 'Closure Notes' is empty or placeholder" in messages
 
 
-def test_validate_red_severity_consistency_catches_owner_and_sprint_placeholders(
+def test_validate_red_tag_generated_content_detects_mismatch(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     issues_dir = tmp_path / "docs" / "issues"
     issues_dir.mkdir(parents=True)
     red_tag = issues_dir / "RED_TAG.md"
-    red_tag.write_text("# Red-Tag\n\n## Active\n- ISSUE-0020\n\n## Resolved\n", encoding="utf-8")
-
-    issue_file = issues_dir / "ISSUE-0020-example.md"
-    issue_file.write_text(
-        """# ISSUE-0020: Example
-
-- **ID:** ISSUE-0020
-- **Title:** Example
-- **Status:** open
-- **Severity:** red
-- **Owner:** none
-- **Created:** 2026-03-05
-- **Target Sprint:** n/a
-""",
-        encoding="utf-8",
-    )
+    red_tag.write_text("# stale\n", encoding="utf-8")
 
     monkeypatch.setattr(validate_issue_links, "RED_TAG_FILE", red_tag)
-    monkeypatch.setattr(validate_issue_links, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(validate_issue_links, "render_red_tag", lambda rows: "# fresh\n")
+    monkeypatch.setattr(validate_issue_links, "list_red_open_issues", lambda: [])
 
     failures: list[validate_issue_links.ValidationFailure] = []
-    validate_issue_links.validate_red_severity_consistency([issue_file], failures)
+    validate_issue_links.validate_red_tag_generated_content(failures)
 
-    assert any("concrete Owner" in f.message for f in failures)
-    assert any("concrete Target Sprint" in f.message for f in failures)
+    assert any("does not match generated red-tag index content" in f.message for f in failures)
+
+
+def test_validate_red_tag_generated_content_accepts_match(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    issues_dir = tmp_path / "docs" / "issues"
+    issues_dir.mkdir(parents=True)
+    red_tag = issues_dir / "RED_TAG.md"
+    red_tag.write_text("# fresh\n", encoding="utf-8")
+
+    monkeypatch.setattr(validate_issue_links, "RED_TAG_FILE", red_tag)
+    monkeypatch.setattr(validate_issue_links, "render_red_tag", lambda rows: "# fresh\n")
+    monkeypatch.setattr(validate_issue_links, "list_red_open_issues", lambda: [])
+
+    failures: list[validate_issue_links.ValidationFailure] = []
+    validate_issue_links.validate_red_tag_generated_content(failures)
+
+    assert failures == []
 
 
 def test_resolve_base_ref_prefers_requested_when_available(monkeypatch: pytest.MonkeyPatch) -> None:

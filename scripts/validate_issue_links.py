@@ -20,6 +20,7 @@ from governance_rules import (
     is_valid_issue_id,
     parse_canonical_sections,
 )
+from generate_red_tag_index import render_red_tag, list_red_open_issues
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 ISSUES_DIR = REPO_ROOT / "docs" / "issues"
@@ -27,7 +28,6 @@ ISSUES_POLICY = REPO_ROOT / "docs" / "issues.md"
 RED_TAG_FILE = ISSUES_DIR / "RED_TAG.md"
 
 FIELD_LINE_PATTERN = re.compile(r"^-\s+\*\*(.+?):\*\*\s*(.*)$")
-RED_TAG_ITEM_PATTERN = re.compile(r"\b(ISSUE-\d{4})\b")
 
 STATUS_OPENISH = {"open", "in_progress", "blocked"}
 STATUS_CLOSEDISH = {"resolved", "closed"}
@@ -343,116 +343,18 @@ def validate_issue_schema(
     return parsed
 
 
-def parse_red_tag_index() -> tuple[set[str], set[str]]:
-    text = RED_TAG_FILE.read_text(encoding="utf-8")
-    current_section = ""
-    active: set[str] = set()
-    resolved: set[str] = set()
+def validate_red_tag_generated_content(failures: list[ValidationFailure]) -> None:
+    expected = render_red_tag(list_red_open_issues())
+    current = RED_TAG_FILE.read_text(encoding="utf-8") if RED_TAG_FILE.exists() else ""
+    if current == expected:
+        return
 
-    for raw_line in text.splitlines():
-        line = raw_line.strip()
-        if line.lower().startswith("## "):
-            current_section = line[3:].strip().lower()
-            continue
-        match = RED_TAG_ITEM_PATTERN.search(line)
-        if not match:
-            continue
-        issue_id = match.group(1)
-        if current_section == "active":
-            active.add(issue_id)
-        elif current_section == "resolved":
-            resolved.add(issue_id)
-
-    return active, resolved
-
-
-def validate_red_severity_consistency(all_issue_files: list[Path], failures: list[ValidationFailure]) -> None:
-    active_ids, resolved_ids = parse_red_tag_index()
-    overlap = active_ids & resolved_ids
-    if overlap:
-        record_failure(
-            failures,
-            "RED_TAG",
-            f"docs/issues/RED_TAG.md: issue(s) appear in both Active and Resolved: {', '.join(sorted(overlap))}",
-            "Keep each ISSUE-XXXX in exactly one RED_TAG section that matches its lifecycle state.",
-        )
-
-    for issue_file in all_issue_files:
-        rel = issue_file.relative_to(REPO_ROOT)
-        text = issue_file.read_text(encoding="utf-8")
-        fields = parse_issue_fields(text)
-
-        issue_id = fields.get("ID", "")
-        severity = fields.get("Severity", "").strip().lower()
-        status = fields.get("Status", "").strip().lower()
-        owner = fields.get("Owner", "")
-        target_sprint = fields.get("Target Sprint", "")
-
-        if severity != "red":
-            continue
-
-        if not issue_id:
-            record_failure(
-                failures,
-                "RED_TAG",
-                f"{rel}: red-severity issue must include non-empty ID field.",
-                "Set the **ID** field to the issue identifier in ISSUE-XXXX format.",
-            )
-            continue
-
-        if is_placeholder(owner):
-            record_failure(
-                failures,
-                "RED_TAG",
-                f"{rel}: red-severity issue must include a concrete Owner (not placeholder).",
-                "Replace placeholder owner values with a responsible person/team.",
-            )
-        if is_placeholder(target_sprint):
-            record_failure(
-                failures,
-                "RED_TAG",
-                f"{rel}: red-severity issue must include a concrete Target Sprint (not placeholder).",
-                "Set **Target Sprint** to a planned sprint/milestone instead of TBD/none.",
-            )
-
-        in_active = issue_id in active_ids
-        in_resolved = issue_id in resolved_ids
-        if not in_active and not in_resolved:
-            record_failure(
-                failures,
-                "RED_TAG",
-                f"{rel}: red-severity issue must be listed in docs/issues/RED_TAG.md.",
-                "Add the ISSUE-XXXX entry to RED_TAG Active or Resolved, based on Status.",
-            )
-
-        if status in STATUS_OPENISH and not in_active:
-            record_failure(
-                failures,
-                "RED_TAG",
-                f"{rel}: status '{status}' requires membership in RED_TAG Active section.",
-                "Move/add the ISSUE-XXXX entry under the Active section in docs/issues/RED_TAG.md.",
-            )
-        if status in STATUS_CLOSEDISH and not in_resolved:
-            record_failure(
-                failures,
-                "RED_TAG",
-                f"{rel}: status '{status}' requires membership in RED_TAG Resolved section.",
-                "Move/add the ISSUE-XXXX entry under the Resolved section in docs/issues/RED_TAG.md.",
-            )
-        if status in STATUS_OPENISH and in_resolved:
-            record_failure(
-                failures,
-                "RED_TAG",
-                f"{rel}: status '{status}' is inconsistent with RED_TAG Resolved section.",
-                "Change Status to resolved/closed or move the entry from Resolved to Active.",
-            )
-        if status in STATUS_CLOSEDISH and in_active:
-            record_failure(
-                failures,
-                "RED_TAG",
-                f"{rel}: status '{status}' is inconsistent with RED_TAG Active section.",
-                "Change Status to open/in_progress/blocked or move the entry from Active to Resolved.",
-            )
+    record_failure(
+        failures,
+        "RED_TAG",
+        "docs/issues/RED_TAG.md does not match generated red-tag index content.",
+        "Run 'python scripts/generate_red_tag_index.py' and commit the updated RED_TAG.md.",
+    )
 
 
 def main() -> int:
@@ -487,7 +389,7 @@ def main() -> int:
 
     # Red-tag governance is strict-only; triage mode keeps checks lightweight.
     if args.ruleset == RULESET_STRICT:
-        validate_red_severity_consistency(list_all_issue_files(), failures)
+        validate_red_tag_generated_content(failures)
 
     if failures:
         print("Governance validation failed:", file=sys.stderr)
