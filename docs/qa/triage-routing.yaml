@@ -1,0 +1,55 @@
+defaults:
+  owner_role: qa_governance_owner
+  severity: amber
+
+check_routes:
+  product_behave:
+    owner_role: runtime_pipeline_owner
+    severity: amber
+  product_eval_recall_topk4:
+    owner_role: retrieval_quality_owner
+    severity: amber
+  safety_validate_log_schema:
+    owner_role: observability_owner
+    severity: red
+  safety_validate_pipeline_stage_conformance:
+    owner_role: runtime_pipeline_owner
+    severity: red
+  qa_pytest_not_live_smoke:
+    owner_role: qa_automation_owner
+    severity: amber
+  qa_validate_issue_links:
+    owner_role: governance_owner
+    severity: green
+  qa_validate_issues:
+    owner_role: governance_owner
+    severity: green
+  qa_validate_invariant_sync:
+    owner_role: policy_invariants_owner
+    severity: amber
+  qa_validate_markdown_paths:
+    owner_role: docs_owner
+    severity: green
+
+directory_routes:
+  - path_prefix: src/testbot/
+    owner_role: runtime_pipeline_owner
+    severity: amber
+  - path_prefix: features/
+    owner_role: behavior_spec_owner
+    severity: amber
+  - path_prefix: tests/
+    owner_role: qa_automation_owner
+    severity: amber
+  - path_prefix: scripts/
+    owner_role: release_tooling_owner
+    severity: amber
+  - path_prefix: docs/issues/
+    owner_role: governance_owner
+    severity: green
+  - path_prefix: docs/directives/
+    owner_role: policy_invariants_owner
+    severity: red
+  - path_prefix: docs/invariants.md
+    owner_role: policy_invariants_owner
+    severity: red

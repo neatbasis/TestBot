@@ -88,6 +88,26 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--post-triage-router",
+        action="store_true",
+        help=(
+            "Optionally run scripts/triage_router.py after writing --json-output summary. "
+            "Requires --json-output."
+        ),
+    )
+    parser.add_argument(
+        "--triage-routing-config",
+        type=Path,
+        default=Path("docs/qa/triage-routing.yaml"),
+        help="Routing config path used by --post-triage-router.",
+    )
+    parser.add_argument(
+        "--triage-output",
+        type=Path,
+        default=Path("artifacts/all-green-gate-triage.json"),
+        help="JSON output path for triage router recommendations.",
+    )
+    parser.add_argument(
         "--run-id",
         default=None,
         help=(
@@ -621,6 +641,49 @@ def summarize(results: Sequence[CheckResult], continue_on_failure: bool) -> dict
     }
 
 
+def maybe_run_triage_router(
+    *,
+    enabled: bool,
+    summary_path: Path | None,
+    routing_config: Path,
+    triage_output: Path,
+    base_ref: str,
+) -> None:
+    if not enabled:
+        return
+    if summary_path is None:
+        print("[WARN] --post-triage-router requires --json-output; skipping triage routing.")
+        return
+
+    router_cmd = [
+        sys.executable,
+        "scripts/triage_router.py",
+        "--summary",
+        str(summary_path),
+        "--routing-config",
+        str(routing_config),
+        "--base-ref",
+        base_ref,
+        "--output",
+        str(triage_output),
+    ]
+    print(f"[INFO] Running triage router: {shlex.join(router_cmd)}")
+    completed = subprocess.run(
+        router_cmd,
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+    )
+    if completed.stdout.strip():
+        print(completed.stdout.rstrip())
+    if completed.returncode != 0:
+        print(f"[WARN] triage router failed with exit code {completed.returncode}")
+        if completed.stderr.strip():
+            print(completed.stderr.rstrip())
+        return
+    print(f"[INFO] Triage recommendations written: {triage_output}")
+
+
 def main() -> int:
     args = parse_args()
     run_id = args.run_id or generate_run_id()
@@ -709,10 +772,28 @@ def main() -> int:
             "Promote with --kpi-guardrail-mode blocking once the criteria in docs/testing.md#kpi-guardrail-mode-policy-authoritative are met."
         )
 
+    summary_output_path: Path | None = None
     if args.json_output:
         out_path = args.json_output if args.json_output.is_absolute() else REPO_ROOT / args.json_output
         out_path.parent.mkdir(parents=True, exist_ok=True)
         out_path.write_text(summary_json + "\n", encoding="utf-8")
+        summary_output_path = out_path
+
+    triage_output = (
+        args.triage_output if args.triage_output.is_absolute() else REPO_ROOT / args.triage_output
+    )
+    triage_routing_config = (
+        args.triage_routing_config
+        if args.triage_routing_config.is_absolute()
+        else REPO_ROOT / args.triage_routing_config
+    )
+    maybe_run_triage_router(
+        enabled=args.post_triage_router,
+        summary_path=summary_output_path,
+        routing_config=triage_routing_config,
+        triage_output=triage_output,
+        base_ref=effective_base_ref or args.base_ref,
+    )
 
     manifest_path = write_verification_manifest(
         run_id=run_id,
