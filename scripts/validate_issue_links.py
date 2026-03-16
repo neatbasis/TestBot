@@ -20,6 +20,8 @@ from governance_rules import (
     has_issue_reference,
     is_non_trivial_change,
     is_valid_issue_id,
+    metadata_missing_issue_reference,
+    missing_canonical_sections,
     parse_canonical_sections,
     resolve_base_ref as governance_resolve_base_ref,
 )
@@ -185,12 +187,6 @@ def parse_section_bodies(issue_text: str) -> dict[str, str]:
     return sections
 
 
-def contains_schema_section(issue_text: str, section_name: str) -> bool:
-    label = re.compile(rf"^[-*]\s+\*\*{re.escape(section_name)}:\*\*\s*.+$", re.IGNORECASE | re.MULTILINE)
-    heading = re.compile(rf"^##\s+{re.escape(section_name)}\s*$", re.IGNORECASE | re.MULTILINE)
-    return bool(label.search(issue_text) or heading.search(issue_text))
-
-
 def is_placeholder(value: str) -> bool:
     return value.strip().lower() in PLACEHOLDER_VALUES
 
@@ -207,7 +203,7 @@ def validate_pr_and_commit_metadata(pr_body_file: Path | None, base_ref: str, fa
             )
         else:
             body = body_path.read_text(encoding="utf-8")
-            if is_non_trivial(body) and not has_issue_reference(body):
+            if metadata_missing_issue_reference(body):
                 record_failure(
                     failures,
                     "ISSUE_LINK",
@@ -236,7 +232,7 @@ def validate_pr_and_commit_metadata(pr_body_file: Path | None, base_ref: str, fa
 
     for commit_id in commit_ids:
         message = run_git(["show", "-s", "--format=%B", commit_id]).strip()
-        if is_non_trivial(message) and not has_issue_reference(message):
+        if metadata_missing_issue_reference(message):
             short = run_git(["show", "-s", "--format=%s", commit_id]).strip()
             record_failure(
                 failures,
@@ -257,7 +253,7 @@ def validate_issue_schema(
         sections = parse_section_bodies(text)
         parsed[issue_file.name] = fields
 
-        missing_sections = [s for s in canonical_sections if not contains_schema_section(text, s)]
+        missing_sections = missing_canonical_sections(text, canonical_sections)
         if missing_sections:
             record_failure(
                 failures,
