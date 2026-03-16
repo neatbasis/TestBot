@@ -82,14 +82,22 @@ This is the main working document for the stabilization effort. It records:
 
 ### 4. Completed initial inventory and multiple audit passes
 
-The checklist evidence log shows four stabilization passes so far:
+The checklist evidence log now includes implementation-reconciliation evidence after the initial audit sequence:
 
 - first-pass inventory,
 - changed-path skip-policy analysis,
 - manifest/reference ownership and call-path inspection,
-- shared-helper duplication inspection.
+- shared-helper duplication inspection,
+- post-merge reconciliation review of changed-path skip policy and manifest round-trip sufficiency on `main`.
 
 These passes have converted several earlier suspicions into concrete findings.
+
+### 5. Reconciled changed-path skip policy in code and tests
+
+Changed-path skip-policy reconciliation is now implemented on `main` and covered by deterministic tests:
+
+- `scripts/all_green_gate.py` now includes governed-surface override behavior for freeze-governed files,
+- `tests/test_all_green_gate.py` includes deterministic coverage for full-governance forcing when governed surfaces change.
 
 ## Current focus
 
@@ -97,15 +105,16 @@ The current focus is surface-by-surface stabilization under the active freeze.
 
 ### A. Verification manifest semantics
 
-This area now has a ratified analysis decision:
+This area now has a ratified analysis decision and reconciled contract evidence:
 
 - `scripts/all_green_gate.py` owns verification manifest production only,
 - `scripts/validate_issue_links.py` owns manifest reference integrity end-to-end,
-- `scripts/validate_issues.py` owns section/schema/state policy only and does not parse manifest payload semantics.
+- `scripts/validate_issues.py` owns section/schema/state policy only and does not parse manifest payload semantics,
+- existing tests provide producer→consumer round-trip proof for the current contract boundary.
 
-Current remaining risk in this area:
+Current focus in this area is maintenance, not net-new implementation:
 
-- there is no direct producer→consumer round-trip contract test yet.
+- keep producer/consumer contract assertions current as manifest schema and validator expectations evolve.
 
 ### B. Shared governance rules
 
@@ -132,28 +141,13 @@ The following areas are still open or only partially resolved:
 - issue-link / reference validation authority boundaries,
 - RED_TAG derivation,
 - gate profiles,
-- changed-path skip policy,
 - feature-status / issue linkage,
 - triage routing,
 - final integration proof selection.
 
 ## What we plan to do next
 
-### 1. Add a deterministic round-trip manifest contract test
-
-Planned direction:
-
-- generate a manifest via `write_verification_manifest()`,
-- reference that manifest from a verification body,
-- feed it through `validate_verification_manifest_reference()`,
-- assert success for the unmodified round trip,
-- then mutate a field and assert the expected failure.
-
-Purpose:
-
-- close the producer→consumer integration gap for manifest semantics.
-
-### 2. Centralize base-ref helpers
+### 1. Centralize base-ref helpers
 
 Planned direction:
 
@@ -171,15 +165,15 @@ Purpose:
 
 - remove duplicated shared logic and reduce drift pressure.
 
-### 3. Continue remaining checklist rows in order
+### 2. Continue remaining checklist rows in order
 
-Likely next stabilization targets after the two items above:
+Likely next stabilization targets:
 
-- ratify and reconcile changed-path skip policy,
-- define explicit validator ownership boundaries,
-- verify RED_TAG derivation end-to-end,
-- reconcile gate execution semantics,
-- choose and implement one main deterministic integration proof for the stabilized governance flow.
+- finalize validator ownership boundary cleanup between `validate_issues.py` and `validate_issue_links.py`,
+- verify RED_TAG and feature-status semantic alignment end-to-end,
+- tighten triage-router conformance to stabilized gate output,
+- complete final deterministic integration proof and freeze-exit evidence.
+
 
 ## Current working definition of done
 
@@ -229,9 +223,13 @@ We are now in controlled stabilization with:
 - ratified analysis decisions for:
   - verification manifest semantics,
   - shared base-ref helper consolidation,
+- changed-path skip policy reconciled in code (no longer analysis-only),
+- manifest round-trip proof already satisfied by existing tests,
 - and a bounded next-step plan focused on:
-  - manifest round-trip proof,
   - helper centralization,
-  - remaining surface reconciliation.
+  - ownership-boundary cleanup,
+  - RED_TAG/feature-status alignment,
+  - triage-router conformance,
+  - final integration proof.
 
 The repository is **in stabilization, not yet in verified convergence**.
