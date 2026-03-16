@@ -22,6 +22,8 @@ Use this checklist to run per-module reviews, prioritizing integration seams fir
 - [ ] Infrastructure adapters (DB, MQTT, HTTP) are behind an abstract interface (`Protocol` or `ABC`)
 - [ ] No "god module" imported by nearly everything — if one exists, it's flagged for decomposition
 - [ ] Third-party dependencies are wrapped at the boundary (for example, `from myapp.infra.es import ESClient`, not raw vendor imports everywhere)
+- [ ] No leaky abstractions — boundary interfaces do not expose vendor-, transport-, or storage-specific details unless explicitly intended
+- [ ] Imports are side-effect safe — importing a module does not perform network I/O, registration, or runtime mutation unless it is explicitly designated bootstrap code
 
 ---
 
@@ -32,6 +34,10 @@ Use this checklist to run per-module reviews, prioritizing integration seams fir
 - [ ] No `dict` or `Any` passing across module lines without a named schema
 - [ ] Pre/post-conditions or invariants are either in docstrings, `assert` statements, or `contracts.py`
 - [ ] Side effects are isolated and declared (no silent global state mutation in utility functions)
+- [ ] Public APIs match established package and boundary conventions; similar seams use similar shapes, names, and failure semantics
+- [ ] Boundary adapters and public entrypoints validate required inputs early and fail with specific, intentional errors
+- [ ] Boundary failures use specific exception types; broad catches are justified and translated intentionally
+- [ ] When re-raising across boundaries, exception chaining (`raise ... from e`) preserves provenance
 
 ---
 
@@ -62,6 +68,8 @@ Use this checklist to run per-module reviews, prioritizing integration seams fir
 - [ ] Contract tests exist for any external service integration (MQTT, ES, HTTP APIs)
 - [ ] Behaviour specs (`.feature` files) cover the primary domain flows end-to-end
 - [ ] CI enforces a minimum branch coverage threshold at boundary modules specifically
+- [ ] Boundary tests are independent, deterministic, and do not rely on execution order or shared mutable state
+- [ ] The same seam behavior is not redundantly asserted in multiple unrelated test files without a clear reason
 
 ---
 
@@ -72,6 +80,16 @@ Use this checklist to run per-module reviews, prioritizing integration seams fir
 - [ ] `pydeps` or `import-linter` rules are declared and enforced in CI
 - [ ] Pre-commit hooks cover formatting, type checking, and import ordering
 - [ ] A failing boundary test blocks merge — no bypass without a documented exception
+
+---
+
+
+### 8. Review Red Flags (Final Scan)
+
+- [ ] Shotgun surgery: one logical change requires edits in many unrelated places
+- [ ] Divergent change: one module is changing for multiple unrelated reasons
+- [ ] Fragile tests: seam tests fail due to unrelated internal refactors
+- [ ] Import side effects: module import triggers unexpected runtime work
 
 ---
 
