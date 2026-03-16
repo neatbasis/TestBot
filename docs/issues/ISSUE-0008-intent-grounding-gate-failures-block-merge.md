@@ -3,6 +3,7 @@
 - **ID:** ISSUE-0008
 - **Title:** Intent-grounding router remains partial for deterministic route confidence
 - **Status:** in_progress
+- **Issue State:** governed_execution
 - **Severity:** amber
 - **Owner:** platform-qa
 - **Created:** 2026-03-05

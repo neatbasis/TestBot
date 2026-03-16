@@ -3,6 +3,7 @@
 - **ID:** ISSUE-0012
 - **Title:** Canonical turn pipeline delivery plan requires staged implementation and mandatory code review checkpoints
 - **Status:** open
+- **Issue State:** governed_execution
 - **Severity:** amber
 - **Owner:** platform-qa
 - **Created:** 2026-03-07

@@ -3,6 +3,7 @@
 - **ID:** ISSUE-0006
 - **Title:** Operationalize `docs/issues/` and `docs/issues.md` as governed project infrastructure
 - **Status:** resolved
+- **Issue State:** governed_execution
 - **Severity:** red
 - **Owner:** Sebastian Mäki (@NeatBasis, Release Manager & Process Adoption Lead)
 - **Created:** 2026-03-04

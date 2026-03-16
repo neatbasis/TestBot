@@ -3,6 +3,7 @@
 - **ID:** ISSUE-0017
 - **Title:** Invariant boundary ambiguity permits answer-commit regressions under pending-lookup fallback paths
 - **Status:** open
+- **Issue State:** governed_execution
 - **Severity:** amber
 - **Owner:** runtime-pipeline
 - **Created:** 2026-03-09

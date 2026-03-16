@@ -3,6 +3,7 @@
 - **ID:** ISSUE-0007
 - **Title:** Governance readiness gate traceability is partial for capability-linked issue enforcement
 - **Status:** resolved
+- **Issue State:** governed_execution
 - **Severity:** red
 - **Owner:** platform-qa
 - **Created:** 2026-03-04

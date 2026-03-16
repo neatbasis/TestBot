@@ -3,6 +3,7 @@
 - **ID:** ISSUE-0002
 - **Title:** Repeated reminders to install `behave` and dev dependencies
 - **Status:** closed
+- **Issue State:** governed_execution
 - **Severity:** amber
 - **Owner:** Sebastian Mäki (@NeatBasis, QA Enablement)
 - **Created:** 2026-03-04

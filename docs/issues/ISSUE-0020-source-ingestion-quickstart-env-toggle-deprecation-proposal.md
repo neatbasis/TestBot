@@ -3,6 +3,7 @@
 - **ID:** ISSUE-0020
 - **Title:** Deprecate `SOURCE_INGEST_ENABLED` toggle requirement in quickstart source-ingestion flow
 - **Status:** open
+- **Issue State:** governed_execution
 - **Severity:** amber
 - **Owner:** runtime-pipeline
 - **Created:** 2026-03-10

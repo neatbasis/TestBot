@@ -3,6 +3,7 @@
 - **ID:** ISSUE-0019
 - **Title:** Channel-agnostic conversation engine with shared cross-channel history
 - **Status:** open
+- **Issue State:** governed_execution
 - **Severity:** amber
 - **Owner:** runtime-pipeline
 - **Created:** 2026-03-09

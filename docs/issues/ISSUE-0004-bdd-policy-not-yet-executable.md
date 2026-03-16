@@ -3,6 +3,7 @@
 - **ID:** ISSUE-0004
 - **Title:** BDD policy declared but not executable in repository
 - **Status:** resolved
+- **Issue State:** governed_execution
 - **Severity:** red
 - **Owner:** testbot-maintainers
 - **Created:** 2026-03-04

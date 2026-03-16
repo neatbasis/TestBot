@@ -3,6 +3,7 @@
 - **ID:** ISSUE-0009
 - **Title:** Knowing grounded answers remain partial due to provenance/recall gate debt
 - **Status:** open
+- **Issue State:** governed_execution
 - **Severity:** amber
 - **Owner:** platform-qa
 - **Created:** 2026-03-06

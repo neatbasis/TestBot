@@ -3,6 +3,7 @@
 - **ID:** ISSUE-0001
 - **Title:** Establish measurable and trackable in-repo issue governance
 - **Status:** resolved
+- **Issue State:** governed_execution
 - **Severity:** red
 - **Owner:** Sebastian Mäki (@NeatBasis, Engineering Manager & Docs Governance Lead)
 - **Created:** 2026-03-04

@@ -3,6 +3,7 @@
 - **ID:** ISSUE-0015
 - **Title:** Open-issue review identifies ISSUE-0014 quality/governance gaps that could permit partial-fix closure
 - **Status:** open
+- **Issue State:** governed_execution
 - **Severity:** red
 - **Owner:** platform-qa
 - **Created:** 2026-03-08

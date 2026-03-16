@@ -3,6 +3,7 @@
 - **ID:** ISSUE-0014
 - **Title:** CLI self-identity turns are stabilized structurally but semantically misrouted before memory retrieval and durable fact promotion
 - **Status:** open
+- **Issue State:** governed_execution
 - **Severity:** red
 - **Owner:** platform-qa
 - **Created:** 2026-03-08

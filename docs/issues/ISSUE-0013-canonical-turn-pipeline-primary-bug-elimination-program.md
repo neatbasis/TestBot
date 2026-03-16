@@ -3,6 +3,7 @@
 - **ID:** ISSUE-0013
 - **Title:** Implement canonical turn pipeline as the primary bug-elimination program
 - **Status:** open
+- **Issue State:** governed_execution
 - **Severity:** amber
 - **Owner:** platform-qa
 - **Created:** 2026-03-07
