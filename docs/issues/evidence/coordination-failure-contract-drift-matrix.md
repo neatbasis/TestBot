@@ -31,6 +31,10 @@ The table below turns the high-level concern into a concrete drift matrix so rev
 - **Order-sensitive merges**: several later PRs assume semantics established in earlier PRs, but those assumptions are not encoded as explicit dependency metadata.
 - **Duplicate-intent merge risk**: near-identical intent in separate PRs creates supersession ambiguity unless one canonical owner reconciles before merge.
 
+## Canonical freeze reference
+
+Temporary contract freeze and canonical precedence for the affected control surfaces are captured in: `docs/issues/governance-control-surface-contract-freeze.md`.
+
 ## Recommended sequencing model for future governance refactors
 
 Use this sequence as the default for similar work:
