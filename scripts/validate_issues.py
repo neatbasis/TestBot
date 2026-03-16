@@ -9,11 +9,22 @@ import subprocess
 import sys
 from pathlib import Path
 
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+from governance_rules import (
+    has_issue_reference,
+    is_non_trivial_change,
+    parse_canonical_sections,
+)
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 ISSUES_DIR = REPO_ROOT / "docs" / "issues"
 ISSUES_POLICY = REPO_ROOT / "docs" / "issues.md"
-ISSUE_ID_PATTERN = re.compile(r"\bISSUE-\d{4}\b", re.IGNORECASE)
-SECTION_NUMBER_LINE = re.compile(r"^\s*\d+\.\s+`([^`]+)`")
+
+RULESET_STRICT = "strict"
+RULESET_TRIAGE = "triage"
 
 
 def parse_args() -> argparse.Namespace:
@@ -37,34 +48,18 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Validate every issue file under docs/issues instead of only newly added files.",
     )
+    parser.add_argument(
+        "--ruleset",
+        choices=[RULESET_STRICT, RULESET_TRIAGE],
+        default=RULESET_STRICT,
+        help="Validation profile: strict (default) or triage (lightweight checks).",
+    )
     return parser.parse_args()
 
 
 def load_canonical_sections() -> list[str]:
     text = ISSUES_POLICY.read_text(encoding="utf-8")
-    sections: list[str] = []
-    capture = False
-    for line in text.splitlines():
-        if line.strip().lower().startswith("every issue file must include"):
-            capture = True
-            continue
-        if capture:
-            if not line.strip():
-                if sections:
-                    break
-                continue
-            match = SECTION_NUMBER_LINE.match(line)
-            if match:
-                sections.append(match.group(1).strip())
-            elif sections:
-                break
-
-    if not sections:
-        raise RuntimeError("Could not parse canonical sections from docs/issues.md")
-
-    return sections
-
-
+    return parse_canonical_sections(text)
 
 
 def git_ref_exists(ref: str) -> bool:
@@ -109,6 +104,7 @@ def resolve_base_ref(base_ref: str) -> tuple[str | None, list[str]]:
     )
     return None, notes
 
+
 def run_git_diff_for_added_files(base_ref: str) -> list[Path]:
     cmd = ["git", "diff", "--name-only", "--diff-filter=A", f"{base_ref}...HEAD", "--", "docs/issues/*.md"]
     result = subprocess.run(cmd, cwd=REPO_ROOT, capture_output=True, text=True)
@@ -132,18 +128,7 @@ def list_all_issue_files() -> list[Path]:
 
 
 def is_non_trivial_pr(pr_body: str) -> bool:
-    stripped = pr_body.strip()
-    if not stripped:
-        return False
-    lowered = stripped.lower()
-    if "#trivial" in lowered or "[trivial]" in lowered:
-        return False
-    words = re.findall(r"[A-Za-z0-9_-]+", stripped)
-    return len(words) >= 12
-
-
-def has_issue_reference(pr_body: str) -> bool:
-    return bool(ISSUE_ID_PATTERN.search(pr_body))
+    return is_non_trivial_change(pr_body)
 
 
 def contains_section(text: str, section_name: str) -> bool:
@@ -175,7 +160,7 @@ def validate_pr_body(pr_body_file: Path | None, failures: list[str]) -> None:
         failures.append("Non-trivial PR description must include at least one ISSUE-XXXX reference.")
 
 
-def validate_issue_files(issue_files: list[Path], canonical_sections: list[str], failures: list[str]) -> None:
+def validate_issue_files(issue_files: list[Path], canonical_sections: list[str], failures: list[str], ruleset: str) -> None:
     for issue_file in issue_files:
         text = issue_file.read_text(encoding="utf-8")
         rel = issue_file.relative_to(REPO_ROOT)
@@ -183,6 +168,9 @@ def validate_issue_files(issue_files: list[Path], canonical_sections: list[str],
         missing = [section for section in canonical_sections if not contains_section(text, section)]
         if missing:
             failures.append(f"{rel}: missing canonical sections: {', '.join(missing)}")
+
+        if ruleset == RULESET_TRIAGE:
+            continue
 
         severity = field_value(text, "Severity").lower()
         if severity == "red":
@@ -218,7 +206,7 @@ def main() -> int:
                 issue_files = list_all_issue_files()
 
     if issue_files:
-        validate_issue_files(issue_files, canonical_sections, failures)
+        validate_issue_files(issue_files, canonical_sections, failures, ruleset=args.ruleset)
     else:
         print("[INFO] No new issue files detected under docs/issues/.")
 

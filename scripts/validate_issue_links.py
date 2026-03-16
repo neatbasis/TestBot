@@ -10,14 +10,23 @@ import sys
 from pathlib import Path
 from typing import NamedTuple
 
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+from governance_rules import (
+    has_issue_reference,
+    is_non_trivial_change,
+    is_valid_issue_id,
+    parse_canonical_sections,
+)
+
 REPO_ROOT = Path(__file__).resolve().parents[1]
 ISSUES_DIR = REPO_ROOT / "docs" / "issues"
 ISSUES_POLICY = REPO_ROOT / "docs" / "issues.md"
 RED_TAG_FILE = ISSUES_DIR / "RED_TAG.md"
 
-ISSUE_ID_PATTERN = re.compile(r"\bISSUE-\d{4}\b")
 FIELD_LINE_PATTERN = re.compile(r"^-\s+\*\*(.+?):\*\*\s*(.*)$")
-SECTION_NUMBER_LINE = re.compile(r"^\s*\d+\.\s+`([^`]+)`")
 RED_TAG_ITEM_PATTERN = re.compile(r"\b(ISSUE-\d{4})\b")
 
 STATUS_OPENISH = {"open", "in_progress", "blocked"}
@@ -46,6 +55,9 @@ REQUIRED_SECTION_BODIES = [
     "Verification",
     "Closure Notes",
 ]
+
+RULESET_STRICT = "strict"
+RULESET_TRIAGE = "triage"
 
 
 class ValidationFailure(NamedTuple):
@@ -78,6 +90,12 @@ def parse_args() -> argparse.Namespace:
         "--all-issue-files",
         action="store_true",
         help="Validate every issue file under docs/issues instead of only newly added files.",
+    )
+    parser.add_argument(
+        "--ruleset",
+        choices=[RULESET_STRICT, RULESET_TRIAGE],
+        default=RULESET_STRICT,
+        help="Validation profile: strict (default) or triage (lightweight checks).",
     )
     return parser.parse_args()
 
@@ -134,27 +152,7 @@ def resolve_base_ref(base_ref: str) -> tuple[str | None, list[str]]:
 
 
 def load_canonical_sections() -> list[str]:
-    text = ISSUES_POLICY.read_text(encoding="utf-8")
-    sections: list[str] = []
-    capture = False
-    for line in text.splitlines():
-        if line.strip().lower().startswith("every issue file must include"):
-            capture = True
-            continue
-        if capture:
-            if not line.strip():
-                if sections:
-                    break
-                continue
-            match = SECTION_NUMBER_LINE.match(line)
-            if match:
-                sections.append(match.group(1).strip())
-            elif sections:
-                break
-
-    if not sections:
-        raise RuntimeError("Could not parse canonical sections from docs/issues.md")
-    return sections
+    return parse_canonical_sections(ISSUES_POLICY.read_text(encoding="utf-8"))
 
 
 def list_all_issue_files() -> list[Path]:
@@ -173,14 +171,7 @@ def list_new_issue_files(base_ref: str) -> list[Path]:
 
 
 def is_non_trivial(text: str) -> bool:
-    stripped = text.strip()
-    if not stripped:
-        return False
-    lowered = stripped.lower()
-    if "#trivial" in lowered or "[trivial]" in lowered:
-        return False
-    words = re.findall(r"[A-Za-z0-9_-]+", stripped)
-    return len(words) >= 12
+    return is_non_trivial_change(text)
 
 
 def parse_issue_fields(issue_text: str) -> dict[str, str]:
@@ -239,7 +230,7 @@ def validate_pr_and_commit_metadata(pr_body_file: Path | None, base_ref: str, fa
             )
         else:
             body = body_path.read_text(encoding="utf-8")
-            if is_non_trivial(body) and not ISSUE_ID_PATTERN.search(body):
+            if is_non_trivial(body) and not has_issue_reference(body):
                 record_failure(
                     failures,
                     "ISSUE_LINK",
@@ -262,14 +253,13 @@ def validate_pr_and_commit_metadata(pr_body_file: Path | None, base_ref: str, fa
     for line in rev_lines:
         parts = line.split()
         commit_id = parts[0]
-        parent_count = len(parts) - 1
-        if parent_count > 1:
+        if len(parts) - 1 > 1:
             continue
         commit_ids.append(commit_id)
 
     for commit_id in commit_ids:
         message = run_git(["show", "-s", "--format=%B", commit_id]).strip()
-        if is_non_trivial(message) and not ISSUE_ID_PATTERN.search(message):
+        if is_non_trivial(message) and not has_issue_reference(message):
             short = run_git(["show", "-s", "--format=%s", commit_id]).strip()
             record_failure(
                 failures,
@@ -280,7 +270,7 @@ def validate_pr_and_commit_metadata(pr_body_file: Path | None, base_ref: str, fa
 
 
 def validate_issue_schema(
-    issue_files: list[Path], canonical_sections: list[str], failures: list[ValidationFailure]
+    issue_files: list[Path], canonical_sections: list[str], failures: list[ValidationFailure], ruleset: str = RULESET_STRICT
 ) -> dict[str, dict[str, str]]:
     parsed: dict[str, dict[str, str]] = {}
     for issue_file in issue_files:
@@ -297,11 +287,33 @@ def validate_issue_schema(
                 "SCHEMA",
                 f"{rel}: missing canonical schema fields/sections: {', '.join(missing_sections)}",
                 "Update the issue document to include every required section from docs/issues.md.",
+            )
+
+        issue_id = fields.get("ID", "")
+        if issue_id and not is_valid_issue_id(issue_id):
+            record_failure(
+                failures,
+                "SCHEMA",
+                f"{rel}: ID field '{issue_id}' is not in ISSUE-XXXX format.",
+                "Set **ID** to an ISSUE-XXXX identifier.",
+            )
+
+        if issue_id:
+            expected_id = issue_file.name.split("-", maxsplit=2)
+            expected_issue = "-".join(expected_id[:2]) if len(expected_id) >= 2 else ""
+            if issue_id != expected_issue:
+                record_failure(
+                    failures,
+                    "SCHEMA",
+                    f"{rel}: ID field '{issue_id}' does not match filename issue id '{expected_issue}'.",
+                    "Rename the file or fix the **ID** field so both use the same ISSUE-XXXX value.",
                 )
 
+        if ruleset == RULESET_TRIAGE:
+            continue
+
         for field_name in REQUIRED_FIELD_VALUES:
-            value = fields.get(field_name, "")
-            if is_placeholder(value):
+            if is_placeholder(fields.get(field_name, "")):
                 record_failure(
                     failures,
                     "SCHEMA",
@@ -320,34 +332,13 @@ def validate_issue_schema(
                     f"Use one of: {', '.join(sorted(allowed_values))}.",
                 )
 
-        issue_id = fields.get("ID", "")
-        if issue_id and not ISSUE_ID_PATTERN.fullmatch(issue_id):
-            record_failure(
-                failures,
-                "SCHEMA",
-                f"{rel}: ID field '{issue_id}' is not in ISSUE-XXXX format.",
-                "Set **ID** to an ISSUE-XXXX identifier.",
-            )
-
         for section_name in REQUIRED_SECTION_BODIES:
-            body = sections.get(section_name, "")
-            if is_placeholder(body):
+            if is_placeholder(sections.get(section_name, "")):
                 record_failure(
                     failures,
                     "SCHEMA",
                     f"{rel}: section '{section_name}' is empty or placeholder.",
                     f"Add concrete content under ## {section_name}.",
-                )
-
-        if issue_id:
-            expected_id = issue_file.name.split("-", maxsplit=2)
-            expected_issue = "-".join(expected_id[:2]) if len(expected_id) >= 2 else ""
-            if issue_id != expected_issue:
-                record_failure(
-                    failures,
-                    "SCHEMA",
-                    f"{rel}: ID field '{issue_id}' does not match filename issue id '{expected_issue}'.",
-                    "Rename the file or fix the **ID** field so both use the same ISSUE-XXXX value.",
                 )
     return parsed
 
@@ -480,31 +471,28 @@ def main() -> int:
 
     if args.all_issue_files:
         issue_files = list_all_issue_files()
+    elif not effective_base_ref:
+        issue_files = list_all_issue_files()
     else:
-        if not effective_base_ref:
+        try:
+            issue_files = list_new_issue_files(effective_base_ref)
+        except RuntimeError as exc:
+            print(f"[WARN] Could not detect newly added issue files ({exc}); validating all issue files.")
             issue_files = list_all_issue_files()
-        else:
-            try:
-                issue_files = list_new_issue_files(effective_base_ref)
-            except RuntimeError as exc:
-                print(f"[WARN] Could not detect newly added issue files ({exc}); validating all issue files.")
-                issue_files = list_all_issue_files()
 
     if issue_files:
-        validate_issue_schema(issue_files, canonical_sections, failures)
+        validate_issue_schema(issue_files, canonical_sections, failures, ruleset=args.ruleset)
     else:
         print("[INFO] No new issue files detected under docs/issues/.")
 
-    # Red-tag governance must be checked against the full dataset for deterministic consistency.
-    validate_red_severity_consistency(list_all_issue_files(), failures)
+    # Red-tag governance is strict-only; triage mode keeps checks lightweight.
+    if args.ruleset == RULESET_STRICT:
+        validate_red_severity_consistency(list_all_issue_files(), failures)
 
     if failures:
         print("Governance validation failed:", file=sys.stderr)
         for failure in failures:
-            print(
-                f"- [{failure.category}] {failure.message}\n  Remediation: {failure.hint}",
-                file=sys.stderr,
-            )
+            print(f"- [{failure.category}] {failure.message}\n  Remediation: {failure.hint}", file=sys.stderr)
         return 1
 
     print("Governance validation passed.")
