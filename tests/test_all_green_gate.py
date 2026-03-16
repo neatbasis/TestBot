@@ -99,6 +99,9 @@ def test_main_writes_behave_remediation_to_json_summary(
             kpi_guardrail_mode="optional",
             force_full_governance=False,
             run_id=None,
+            post_triage_router=False,
+            triage_routing_config=Path("docs/qa/triage-routing.yaml"),
+            triage_output=Path("artifacts/all-green-gate-triage.json"),
         ),
     )
     monkeypatch.setattr(all_green_gate.importlib.util, "find_spec", lambda _name: None)
@@ -139,6 +142,9 @@ def test_main_propagates_effective_base_ref_to_governance_checks_in_readiness_pr
             kpi_guardrail_mode="optional",
             force_full_governance=False,
             run_id=None,
+            post_triage_router=False,
+            triage_routing_config=Path("docs/qa/triage-routing.yaml"),
+            triage_output=Path("artifacts/all-green-gate-triage.json"),
         ),
     )
     monkeypatch.setattr(all_green_gate.importlib.util, "find_spec", lambda _name: object())
@@ -495,3 +501,40 @@ def test_write_verification_manifest_writes_expected_payload(tmp_path: Path) -> 
     assert payload["gate"]["base_ref_effective"] == "HEAD~1"
     assert payload["summary"]["status"] == "passed"
     monkeypatch.undo()
+
+
+def test_parse_args_supports_post_triage_router_flags(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "all_green_gate.py",
+            "--json-output",
+            "--post-triage-router",
+            "--triage-routing-config",
+            "docs/qa/triage-routing.yaml",
+            "--triage-output",
+            "artifacts/triage.json",
+        ],
+    )
+
+    args = all_green_gate.parse_args()
+
+    assert args.post_triage_router is True
+    assert args.triage_routing_config == Path("docs/qa/triage-routing.yaml")
+    assert args.triage_output == Path("artifacts/triage.json")
+
+
+def test_maybe_run_triage_router_skips_without_summary_output(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    all_green_gate.maybe_run_triage_router(
+        enabled=True,
+        summary_path=None,
+        routing_config=Path("docs/qa/triage-routing.yaml"),
+        triage_output=Path("artifacts/all-green-gate-triage.json"),
+        base_ref="HEAD",
+    )
+
+    output = capsys.readouterr().out
+    assert "requires --json-output" in output

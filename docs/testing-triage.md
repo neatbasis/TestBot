@@ -33,3 +33,30 @@ For escalation and tracking:
 4. Record verification commands and closure evidence before moving issue status to `resolved`/`closed`.
 
 See [`docs/issues.md`](issues.md) for the authoritative lifecycle, red-tag policy, and PR issue-link requirements.
+
+## Automated triage routing from all-green gate summaries
+
+Use `scripts/triage_router.py` to convert failed checks from `artifacts/all-green-gate-summary.json` into owner/severity recommendations and a draft issue payload.
+
+```bash
+python scripts/triage_router.py \
+  --summary artifacts/all-green-gate-summary.json \
+  --routing-config docs/qa/triage-routing.yaml \
+  --output artifacts/all-green-gate-triage.json
+```
+
+### Optional post-gate integration
+
+When generating gate JSON, you can run triage routing automatically as a post-step:
+
+```bash
+python scripts/all_green_gate.py \
+  --json-output artifacts/all-green-gate-summary.json \
+  --post-triage-router
+```
+
+Optional overrides:
+- `--triage-routing-config <path>` to use a non-default owner map.
+- `--triage-output <path>` to write triage recommendations to a different artifact path.
+
+The default routing map is maintained in `docs/qa/triage-routing.yaml` and is intentionally lightweight so teams can tune owner role and severity suggestions without editing code.
