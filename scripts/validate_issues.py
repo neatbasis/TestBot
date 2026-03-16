@@ -27,6 +27,12 @@ RULESET_STRICT = "strict"
 RULESET_TRIAGE = "triage"
 
 
+TRIAGE_INTAKE_SECTIONS = ["ID", "Title", "Problem", "Owner", "Severity", "Next Action"]
+
+ISSUE_STATE_TRIAGE_INTAKE = "triage_intake"
+ISSUE_STATE_GOVERNED_EXECUTION = "governed_execution"
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -165,9 +171,27 @@ def validate_issue_files(issue_files: list[Path], canonical_sections: list[str],
         text = issue_file.read_text(encoding="utf-8")
         rel = issue_file.relative_to(REPO_ROOT)
 
-        missing = [section for section in canonical_sections if not contains_section(text, section)]
-        if missing:
-            failures.append(f"{rel}: missing canonical sections: {', '.join(missing)}")
+        issue_state = field_value(text, "Issue State").lower()
+        status = field_value(text, "Status").lower()
+
+        if issue_state == ISSUE_STATE_TRIAGE_INTAKE:
+            missing = [section for section in TRIAGE_INTAKE_SECTIONS if not contains_section(text, section)]
+            if missing:
+                failures.append(f"{rel}: triage_intake missing required fields: {', '.join(missing)}")
+
+            if status and status != "open":
+                failures.append(
+                    f"{rel}: triage_intake issues must remain Status 'open' and be promoted to governed_execution before '{status}'."
+                )
+            if not status:
+                failures.append(
+                    f"{rel}: triage_intake issues must declare Status 'open' to enforce promotion SLA before in_progress."
+                )
+
+        else:
+            missing = [section for section in canonical_sections if not contains_section(text, section)]
+            if missing:
+                failures.append(f"{rel}: missing canonical sections: {', '.join(missing)}")
 
         if ruleset == RULESET_TRIAGE:
             continue
@@ -178,7 +202,7 @@ def validate_issue_files(issue_files: list[Path], canonical_sections: list[str],
             sprint = field_value(text, "Target Sprint")
             if not owner:
                 failures.append(f"{rel}: red-tag issue must include a non-empty Owner.")
-            if not sprint:
+            if issue_state != ISSUE_STATE_TRIAGE_INTAKE and not sprint:
                 failures.append(f"{rel}: red-tag issue must include a non-empty Target Sprint.")
 
 

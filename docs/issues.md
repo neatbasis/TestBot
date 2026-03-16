@@ -22,23 +22,46 @@ This project tracks issues in-repo to keep governance, implementation context, a
 
 ## Canonical issue record format
 
-Every issue file MUST include the following sections:
+Issue files support two governance states:
+
+### 1) `triage_intake` (minimal intake schema)
+
+Use this only for rapid intake when the issue has not yet been accepted into active execution planning.
+
+Required fields:
+
+1. `ID`
+2. `Title`
+3. `Problem`
+4. `Owner`
+5. `Severity`
+6. `Next Action`
+
+SLA and transition rule:
+
+- Any issue in `triage_intake` MUST be promoted to `governed_execution` **before** `Status` moves to `in_progress`.
+- `triage_intake` is therefore valid only while `Status: open`.
+
+### 2) `governed_execution` (full canonical schema)
+
+Every issue file in `governed_execution` MUST include the following sections:
 
 1. `ID`
 2. `Title`
 3. `Status` (`open`, `in_progress`, `blocked`, `resolved`, `closed`)
-4. `Severity` (`red`, `amber`, `green`)
-5. `Owner`
-6. `Created`
-7. `Target Sprint`
-8. `Principle Alignment`
-9. `Problem Statement`
-10. `Evidence`
-11. `Impact`
-12. `Acceptance Criteria` (measurable)
-13. `Work Plan`
-14. `Verification`
-15. `Closure Notes`
+4. `Issue State` (`triage_intake`, `governed_execution`)
+5. `Severity` (`red`, `amber`, `green`)
+6. `Owner`
+7. `Created`
+8. `Target Sprint`
+9. `Principle Alignment`
+10. `Problem Statement`
+11. `Evidence`
+12. `Impact`
+13. `Acceptance Criteria` (measurable)
+14. `Work Plan`
+15. `Verification`
+16. `Closure Notes`
 
 Recommended metadata extension for linked issue streams:
 
