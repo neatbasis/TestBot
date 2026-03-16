@@ -6,12 +6,22 @@ from pathlib import Path
 
 import pytest
 
-_VALIDATE_ISSUES_PATH = Path(__file__).resolve().parents[1] / "scripts" / "validate_issue_links.py"
-_spec = importlib.util.spec_from_file_location("validate_issue_links", _VALIDATE_ISSUES_PATH)
-assert _spec and _spec.loader
-validate_issue_links = importlib.util.module_from_spec(_spec)
-sys.modules[_spec.name] = validate_issue_links
-_spec.loader.exec_module(validate_issue_links)
+_SCRIPTS_DIR = Path(__file__).resolve().parents[1] / "scripts"
+
+
+def _load_module(module_name: str, path: Path):
+    spec = importlib.util.spec_from_file_location(module_name, path)
+    assert spec and spec.loader
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+validate_issue_links = _load_module("validate_issue_links", _SCRIPTS_DIR / "validate_issue_links.py")
+validate_issues = _load_module("validate_issues_from_links_test", _SCRIPTS_DIR / "validate_issues.py")
+
+governance_rules = _load_module("governance_rules_from_links_test", _SCRIPTS_DIR / "governance_rules.py")
 
 CANONICAL_SECTIONS = [
     "ID",
@@ -31,6 +41,15 @@ CANONICAL_SECTIONS = [
     "Closure Notes",
 ]
 
+
+def test_shared_rule_parity_for_non_trivial_and_issue_references() -> None:
+    fixture = "Implement deterministic governance checks across pipelines for ISSUE-0042 readiness evidence"
+
+    assert validate_issue_links.is_non_trivial(fixture) == validate_issues.is_non_trivial_pr(fixture)
+    assert validate_issues.has_issue_reference(fixture) == governance_rules.has_issue_reference(fixture)
+
+
+# existing coverage
 
 def test_validate_pr_and_commit_metadata_requires_issue_reference(monkeypatch: pytest.MonkeyPatch) -> None:
     failures: list[validate_issue_links.ValidationFailure] = []
