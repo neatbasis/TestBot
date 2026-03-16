@@ -28,6 +28,7 @@ class GateCheck:
     name: str
     command: list[str]
     blocking: bool = True
+    skip_reason: str | None = None
 
 
 @dataclass
@@ -82,6 +83,14 @@ def parse_args() -> argparse.Namespace:
         help=(
             "Gate execution profile. 'triage' runs runtime/schema/core deterministic checks; "
             "'readiness' runs the full merge/release gate. Defaults to triage locally and readiness in CI/release environments."
+        ),
+    )
+    parser.add_argument(
+        "--force-full-governance",
+        action="store_true",
+        help=(
+            "Always run all governance checks in readiness profile, even when changed-path "
+            "detection would otherwise skip a subset."
         ),
     )
     parser.add_argument(
@@ -181,6 +190,108 @@ def default_profile_for_environment() -> str:
 
 def resolve_profile(explicit_profile: str | None) -> str:
     return explicit_profile or default_profile_for_environment()
+
+
+ISSUE_VALIDATOR_CHECKS = {"qa_validate_issue_links", "qa_validate_issues"}
+INVARIANT_SYNC_CHECKS = {"qa_validate_invariant_sync"}
+
+ISSUE_VALIDATOR_PATH_PREFIXES = (
+    "docs/issues/",
+    "docs/governance/",
+    "docs/releases/",
+    "docs/qa/",
+)
+ISSUE_VALIDATOR_EXACT_PATHS = {
+    "docs/issues.md",
+}
+
+INVARIANT_PATH_PREFIXES = (
+    "docs/directives/",
+    "docs/invariants/",
+)
+INVARIANT_EXACT_PATHS = {
+    "docs/invariants.md",
+}
+
+
+def detect_changed_paths(base_ref: str) -> tuple[set[str] | None, list[str]]:
+    completed = subprocess.run(
+        ["git", "diff", "--name-only", f"{base_ref}...HEAD"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+    )
+    if completed.returncode != 0:
+        reason = completed.stderr.strip() or completed.stdout.strip() or "unknown git diff failure"
+        return None, [
+            (
+                f"Changed-path detection failed for base ref '{base_ref}'. "
+                f"Running full governance checks for safety. Details: {reason}"
+            )
+        ]
+    changed_paths = {
+        line.strip() for line in completed.stdout.splitlines() if line.strip()
+    }
+    return changed_paths, []
+
+
+def _matches_path_scopes(path: str, *, exact_paths: set[str], prefixes: tuple[str, ...]) -> bool:
+    return path in exact_paths or any(path.startswith(prefix) for prefix in prefixes)
+
+
+def apply_governance_skip_policy(
+    checks: Sequence[GateCheck],
+    *,
+    changed_paths: set[str] | None,
+    force_full_governance: bool,
+) -> tuple[list[GateCheck], list[str]]:
+    if force_full_governance:
+        return list(checks), ["--force-full-governance enabled: running all governance checks."]
+    if changed_paths is None:
+        return list(checks), []
+
+    run_issue_validators = any(
+        _matches_path_scopes(
+            path,
+            exact_paths=ISSUE_VALIDATOR_EXACT_PATHS,
+            prefixes=ISSUE_VALIDATOR_PATH_PREFIXES,
+        )
+        for path in changed_paths
+    )
+    run_invariant_sync = any(
+        _matches_path_scopes(
+            path,
+            exact_paths=INVARIANT_EXACT_PATHS,
+            prefixes=INVARIANT_PATH_PREFIXES,
+        )
+        for path in changed_paths
+    )
+
+    updated_checks: list[GateCheck] = []
+    skip_notes: list[str] = []
+    for check in checks:
+        skip_reason: str | None = None
+        if check.name in ISSUE_VALIDATOR_CHECKS and not run_issue_validators:
+            skip_reason = (
+                "No docs/issues, release metadata, or governance docs changed "
+                f"against base ref; detected {len(changed_paths)} changed paths."
+            )
+        if check.name in INVARIANT_SYNC_CHECKS and not run_invariant_sync:
+            skip_reason = (
+                "No invariant/directive files changed against base ref; "
+                f"detected {len(changed_paths)} changed paths."
+            )
+        updated_checks.append(
+            GateCheck(
+                name=check.name,
+                command=check.command,
+                blocking=check.blocking,
+                skip_reason=skip_reason,
+            )
+        )
+        if skip_reason:
+            skip_notes.append(f"Skipping {check.name}: {skip_reason}")
+    return updated_checks, skip_notes
 
 def build_checks(
     *,
@@ -311,6 +422,21 @@ def run_check(check: GateCheck) -> CheckResult:
 def run_gate(checks: Sequence[GateCheck], continue_on_failure: bool) -> tuple[list[CheckResult], int]:
     results: list[CheckResult] = []
     for idx, check in enumerate(checks):
+        if check.skip_reason:
+            print(f"[SKIP] {check.name}: {check.skip_reason}")
+            results.append(
+                CheckResult(
+                    name=check.name,
+                    stage=stage_name_for_check(check.name),
+                    command=shlex.join(check.command),
+                    status="skipped",
+                    exit_code=None,
+                    duration_s=0.0,
+                    artifact_path=extract_artifact_path(check.command),
+                    diagnostic_reason=check.skip_reason,
+                )
+            )
+            continue
         result = run_check(check)
         if result.status == "failed" and not check.blocking:
             result.status = "warning"
@@ -422,6 +548,11 @@ def summarize(results: Sequence[CheckResult], continue_on_failure: bool) -> dict
         for result in results
         if result.status == "failed" and result.stage == "qa"
     ]
+    skipped_checks = [
+        {"check": result.name, "reason": result.diagnostic_reason}
+        for result in results
+        if result.status == "skipped"
+    ]
     return {
         "status": "failed" if has_failure else "passed",
         "exit_code": 1 if has_failure else 0,
@@ -430,6 +561,7 @@ def summarize(results: Sequence[CheckResult], continue_on_failure: bool) -> dict
         "warning_diagnostics": warning_diagnostics,
         "product_failures": product_failures,
         "governance_failures": governance_failures,
+        "skipped_checks": skipped_checks,
         "stages": stage_summaries,
         "checks": [asdict(result) for result in results],
     }
@@ -469,8 +601,33 @@ def main() -> int:
         kpi_guardrail_mode=args.kpi_guardrail_mode,
         profile=profile,
     )
+    governance_skip_notes: list[str] = []
+    if profile == "readiness":
+        changed_paths: set[str] | None = None
+        if effective_base_ref is None:
+            print("[WARN] Base ref unavailable; running full governance checks to preserve safety.")
+        else:
+            changed_paths, changed_path_notes = detect_changed_paths(effective_base_ref)
+            for note in changed_path_notes:
+                print(f"[WARN] {note}")
+            if changed_paths is not None:
+                print(
+                    f"[INFO] Changed-path detection against '{effective_base_ref}' found "
+                    f"{len(changed_paths)} changed paths."
+                )
+
+        checks, governance_skip_notes = apply_governance_skip_policy(
+            checks,
+            changed_paths=changed_paths,
+            force_full_governance=args.force_full_governance,
+        )
+        for note in governance_skip_notes:
+            print(f"[INFO] {note}")
+
     results, exit_code = run_gate(checks=checks, continue_on_failure=args.continue_on_failure)
     summary = summarize(results=results, continue_on_failure=args.continue_on_failure)
+    if governance_skip_notes:
+        summary["governance_skip_notes"] = governance_skip_notes
 
     print_stage_summary(summary["stages"])
     print()

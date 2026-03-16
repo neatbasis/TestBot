@@ -44,6 +44,7 @@ def test_main_fails_fast_when_behave_dependency_missing(monkeypatch: pytest.Monk
         json_output=None,
         profile="triage",
         kpi_guardrail_mode="optional",
+        force_full_governance=False,
     ))
     monkeypatch.setattr(all_green_gate.importlib.util, "find_spec", lambda _name: None)
 
@@ -87,6 +88,7 @@ def test_main_writes_behave_remediation_to_json_summary(
             json_output=summary_path,
             profile="readiness",
             kpi_guardrail_mode="optional",
+            force_full_governance=False,
         ),
     )
     monkeypatch.setattr(all_green_gate.importlib.util, "find_spec", lambda _name: None)
@@ -122,6 +124,7 @@ def test_main_propagates_effective_base_ref_to_governance_checks_in_readiness_pr
             json_output=None,
             profile="readiness",
             kpi_guardrail_mode="optional",
+            force_full_governance=False,
         ),
     )
     monkeypatch.setattr(all_green_gate.importlib.util, "find_spec", lambda _name: object())
@@ -363,3 +366,76 @@ def test_summarize_groups_product_and_governance_failures() -> None:
 
     assert [failure["name"] for failure in summary["product_failures"]] == ["product_eval_recall_topk4"]
     assert [failure["name"] for failure in summary["governance_failures"]] == ["qa_validate_issues"]
+
+
+def test_apply_governance_skip_policy_skips_issue_and_invariant_checks_when_irrelevant_changes() -> None:
+    checks = all_green_gate.build_checks(base_ref="origin/main", kpi_guardrail_mode="optional", profile="readiness")
+
+    updated_checks, notes = all_green_gate.apply_governance_skip_policy(
+        checks,
+        changed_paths={"src/testbot/runtime.py"},
+        force_full_governance=False,
+    )
+
+    skipped = {check.name: check.skip_reason for check in updated_checks if check.skip_reason}
+    assert "qa_validate_issue_links" in skipped
+    assert "qa_validate_issues" in skipped
+    assert "qa_validate_invariant_sync" in skipped
+    assert any("Skipping qa_validate_issue_links" in note for note in notes)
+
+
+def test_apply_governance_skip_policy_respects_force_full_governance() -> None:
+    checks = all_green_gate.build_checks(base_ref="origin/main", kpi_guardrail_mode="optional", profile="readiness")
+
+    updated_checks, notes = all_green_gate.apply_governance_skip_policy(
+        checks,
+        changed_paths={"src/testbot/runtime.py"},
+        force_full_governance=True,
+    )
+
+    assert all(check.skip_reason is None for check in updated_checks)
+    assert notes == ["--force-full-governance enabled: running all governance checks."]
+
+
+def test_run_gate_marks_skipped_checks_with_reason() -> None:
+    checks = [
+        all_green_gate.GateCheck(
+            name="qa_validate_issues",
+            command=["validate"],
+            skip_reason="No governance files changed.",
+        )
+    ]
+
+    results, exit_code = all_green_gate.run_gate(checks=checks, continue_on_failure=False)
+
+    assert exit_code == 0
+    assert results[0].status == "skipped"
+    assert results[0].diagnostic_reason == "No governance files changed."
+
+
+def test_summarize_includes_skipped_check_reasons() -> None:
+    summary = all_green_gate.summarize(
+        results=[
+            _result(
+                name="qa_validate_issues",
+                command="issues",
+                status="skipped",
+                exit_code=None,
+                duration_s=0.0,
+                diagnostic_reason="No governance files changed.",
+            )
+        ],
+        continue_on_failure=False,
+    )
+
+    assert summary["skipped_checks"] == [
+        {"check": "qa_validate_issues", "reason": "No governance files changed."}
+    ]
+
+
+def test_parse_args_supports_force_full_governance_flag(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(sys, "argv", ["all_green_gate.py", "--force-full-governance"])
+
+    args = all_green_gate.parse_args()
+
+    assert args.force_full_governance is True
