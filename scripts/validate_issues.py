@@ -12,7 +12,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 ISSUES_DIR = REPO_ROOT / "docs" / "issues"
 ISSUES_POLICY = REPO_ROOT / "docs" / "issues.md"
-ISSUE_REF_PATTERN = re.compile(r"\bIssue:\s*ISSUE-\d{4}\b", re.IGNORECASE)
+ISSUE_ID_PATTERN = re.compile(r"\bISSUE-\d{4}\b", re.IGNORECASE)
 SECTION_NUMBER_LINE = re.compile(r"^\s*\d+\.\s+`([^`]+)`")
 
 
@@ -135,14 +135,15 @@ def is_non_trivial_pr(pr_body: str) -> bool:
     stripped = pr_body.strip()
     if not stripped:
         return False
-    if "#trivial" in stripped.lower():
+    lowered = stripped.lower()
+    if "#trivial" in lowered or "[trivial]" in lowered:
         return False
     words = re.findall(r"[A-Za-z0-9_-]+", stripped)
-    return len(words) >= 15
+    return len(words) >= 12
 
 
 def has_issue_reference(pr_body: str) -> bool:
-    return bool(ISSUE_REF_PATTERN.search(pr_body))
+    return bool(ISSUE_ID_PATTERN.search(pr_body))
 
 
 def contains_section(text: str, section_name: str) -> bool:
@@ -171,7 +172,7 @@ def validate_pr_body(pr_body_file: Path | None, failures: list[str]) -> None:
 
     body = body_path.read_text(encoding="utf-8")
     if is_non_trivial_pr(body) and not has_issue_reference(body):
-        failures.append("Non-trivial PR description must include 'Issue: ISSUE-XXXX'.")
+        failures.append("Non-trivial PR description must include at least one ISSUE-XXXX reference.")
 
 
 def validate_issue_files(issue_files: list[Path], canonical_sections: list[str], failures: list[str]) -> None:
