@@ -17,6 +17,8 @@ from governance_rules import (
     git_ref_exists as governance_git_ref_exists,
     has_issue_reference,
     is_non_trivial_change,
+    metadata_missing_issue_reference,
+    missing_canonical_sections,
     parse_canonical_sections,
     resolve_base_ref as governance_resolve_base_ref,
 )
@@ -104,12 +106,6 @@ def is_non_trivial_pr(pr_body: str) -> bool:
     return is_non_trivial_change(pr_body)
 
 
-def contains_section(text: str, section_name: str) -> bool:
-    heading = re.compile(rf"^##\s+{re.escape(section_name)}\s*$", re.IGNORECASE | re.MULTILINE)
-    label = re.compile(rf"\*\*{re.escape(section_name)}:\*\*", re.IGNORECASE)
-    return bool(heading.search(text) or label.search(text))
-
-
 def field_value(text: str, field_name: str) -> str:
     pattern = re.compile(rf"\*\*{re.escape(field_name)}:\*\*\s*(.+)")
     match = pattern.search(text)
@@ -129,7 +125,7 @@ def validate_pr_body(pr_body_file: Path | None, failures: list[str]) -> None:
         return
 
     body = body_path.read_text(encoding="utf-8")
-    if is_non_trivial_pr(body) and not has_issue_reference(body):
+    if metadata_missing_issue_reference(body):
         failures.append("Non-trivial PR description must include at least one ISSUE-XXXX reference.")
 
 
@@ -142,7 +138,7 @@ def validate_issue_files(issue_files: list[Path], canonical_sections: list[str],
         status = field_value(text, "Status").lower()
 
         if issue_state == ISSUE_STATE_TRIAGE_INTAKE:
-            missing = [section for section in TRIAGE_INTAKE_SECTIONS if not contains_section(text, section)]
+            missing = missing_canonical_sections(text, TRIAGE_INTAKE_SECTIONS)
             if missing:
                 failures.append(f"{rel}: triage_intake missing required fields: {', '.join(missing)}")
 
@@ -156,7 +152,7 @@ def validate_issue_files(issue_files: list[Path], canonical_sections: list[str],
                 )
 
         else:
-            missing = [section for section in canonical_sections if not contains_section(text, section)]
+            missing = missing_canonical_sections(text, canonical_sections)
             if missing:
                 failures.append(f"{rel}: missing canonical sections: {', '.join(missing)}")
 

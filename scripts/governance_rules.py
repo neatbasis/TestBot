@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 import subprocess
 from pathlib import Path
-from typing import Callable, Final
+from typing import Any, Callable, Final
 
 ISSUE_ID_REGEX: Final[str] = r"\bISSUE-(\d{4})\b"
 ISSUE_ID_PATTERN: Final[re.Pattern[str]] = re.compile(ISSUE_ID_REGEX, re.IGNORECASE)
@@ -25,6 +25,22 @@ NO_USABLE_BASE_REF_NOTE: Final[str] = (
     "Could not resolve base ref 'origin/main' or fallbacks (HEAD~1, HEAD). "
     "Governance diff checks will run against a reduced baseline and all issue files may be validated."
 )
+
+# Explicit ownership map for governance rule families used by validators.
+# This is the currently canonicalized subset of migrated rule families, not a
+# complete registry of every governance rule family in the repository.
+RULE_FAMILY_OWNERSHIP: Final[dict[str, dict[str, Any]]] = {
+    "canonical_section_presence": {
+        "owner": "Issue Governance Maintainers",
+        "description": "Issue documents must include all required canonical sections/fields.",
+        "consumers": ["scripts/validate_issues.py", "scripts/validate_issue_links.py"],
+    },
+    "metadata_issue_reference": {
+        "owner": "Issue Governance Maintainers",
+        "description": "Non-trivial PR/commit metadata must include ISSUE-XXXX linkage.",
+        "consumers": ["scripts/validate_issues.py", "scripts/validate_issue_links.py"],
+    },
+}
 
 
 def is_non_trivial_change(text: str) -> bool:
@@ -83,6 +99,23 @@ def parse_canonical_sections(policy_text: str) -> list[str]:
     return sections
 
 
+def contains_canonical_section(issue_text: str, section_name: str) -> bool:
+    """Return whether an issue text includes section content via heading or schema bullet label."""
+    label = re.compile(rf"\*\*{re.escape(section_name)}:\*\*\s*.+", re.IGNORECASE)
+    heading = re.compile(rf"^##\s+{re.escape(section_name)}\s*$", re.IGNORECASE | re.MULTILINE)
+    return bool(label.search(issue_text) or heading.search(issue_text))
+
+
+def missing_canonical_sections(issue_text: str, canonical_sections: list[str]) -> list[str]:
+    """Return canonical sections missing from an issue text."""
+    return [section for section in canonical_sections if not contains_canonical_section(issue_text, section)]
+
+
+def metadata_missing_issue_reference(text: str) -> bool:
+    """Return whether metadata is non-trivial yet missing ISSUE-XXXX linkage."""
+    return is_non_trivial_change(text) and not has_issue_reference(text)
+
+
 def git_ref_exists(ref: str, *, repo_root: Path) -> bool:
     """Return whether a Git ref exists in the given repository root."""
     result = subprocess.run(
@@ -114,4 +147,3 @@ def resolve_base_ref(
 
     notes.append(NO_USABLE_BASE_REF_NOTE)
     return None, notes
-

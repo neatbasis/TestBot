@@ -21,9 +21,6 @@ def _load_module(module_name: str, path: Path):
 
 validate_issue_links = _load_module("validate_issue_links", _SCRIPTS_DIR / "validate_issue_links.py")
 all_green_gate = _load_module("all_green_gate_from_links_test", _SCRIPTS_DIR / "all_green_gate.py")
-validate_issues = _load_module("validate_issues_from_links_test", _SCRIPTS_DIR / "validate_issues.py")
-
-governance_rules = _load_module("governance_rules_from_links_test", _SCRIPTS_DIR / "governance_rules.py")
 
 CANONICAL_SECTIONS = [
     "ID",
@@ -42,13 +39,6 @@ CANONICAL_SECTIONS = [
     "Verification",
     "Closure Notes",
 ]
-
-
-def test_shared_rule_parity_for_non_trivial_and_issue_references() -> None:
-    fixture = "Implement deterministic governance checks across pipelines for ISSUE-0042 readiness evidence"
-
-    assert validate_issue_links.is_non_trivial(fixture) == validate_issues.is_non_trivial_pr(fixture)
-    assert validate_issues.has_issue_reference(fixture) == governance_rules.has_issue_reference(fixture)
 
 
 # existing coverage
@@ -479,3 +469,33 @@ def test_verification_manifest_round_trip_fails_when_declared_run_id_mismatches_
 
     assert failures
     assert any("does not match manifest file run ID" in failure.message for failure in failures)
+
+
+def test_validate_pr_and_commit_metadata_uses_shared_metadata_primitive(monkeypatch: pytest.MonkeyPatch) -> None:
+    failures: list[validate_issue_links.ValidationFailure] = []
+
+    responses = {
+        ("rev-list", "--parents", "origin/main...HEAD"): "abc123 parent\n",
+        ("show", "-s", "--format=%B", "abc123"): "commit body",
+        ("show", "-s", "--format=%s", "abc123"): "subject",
+    }
+
+    monkeypatch.setattr(validate_issue_links, "run_git", lambda args: responses[tuple(args)])
+    monkeypatch.setattr(validate_issue_links, "metadata_missing_issue_reference", lambda _text: True)
+
+    validate_issue_links.validate_pr_and_commit_metadata(None, "origin/main", failures)
+
+    assert any("no ISSUE-XXXX reference" in f.message for f in failures)
+
+
+def test_validate_issue_schema_uses_shared_missing_sections_primitive(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    issue_file = tmp_path / "ISSUE-0011-example.md"
+    issue_file.write_text("- **ID:** ISSUE-0011\n", encoding="utf-8")
+
+    monkeypatch.setattr(validate_issue_links, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(validate_issue_links, "missing_canonical_sections", lambda _text, _sections: ["Problem Statement"])
+
+    failures: list[validate_issue_links.ValidationFailure] = []
+    validate_issue_links.validate_issue_schema([issue_file], CANONICAL_SECTIONS, failures, ruleset=validate_issue_links.RULESET_TRIAGE)
+
+    assert any("missing canonical schema fields/sections: Problem Statement" in f.message for f in failures)

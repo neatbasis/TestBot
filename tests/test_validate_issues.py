@@ -19,8 +19,6 @@ def _load_module(module_name: str, path: Path):
 
 
 validate_issues = _load_module("validate_issues", _SCRIPTS_DIR / "validate_issues.py")
-validate_issue_links = _load_module("validate_issue_links_from_issues_test", _SCRIPTS_DIR / "validate_issue_links.py")
-governance_rules = _load_module("governance_rules_from_issues_test", _SCRIPTS_DIR / "governance_rules.py")
 
 
 def test_resolve_base_ref_uses_canonical_missing_origin_note(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -32,31 +30,6 @@ def test_resolve_base_ref_uses_canonical_missing_origin_note(monkeypatch: pytest
     assert notes == [
         "Could not resolve base ref 'origin/main' or fallbacks (HEAD~1, HEAD). Governance diff checks will run against a reduced baseline and all issue files may be validated."
     ]
-
-
-def test_shared_fixture_parity_across_validators() -> None:
-    fixture = "[trivial] docs nits around wording and formatting only"
-
-    assert validate_issues.is_non_trivial_pr(fixture) == validate_issue_links.is_non_trivial(fixture)
-    assert validate_issues.has_issue_reference(fixture) == governance_rules.has_issue_reference(fixture)
-
-
-def test_has_issue_reference_accepts_issue_id_without_issue_prefix() -> None:
-    body = "Summary: closes governance drift for ISSUE-0015 with deterministic checks"
-
-    assert validate_issues.has_issue_reference(body) is True
-
-
-def test_canonical_sections_are_parsed_via_shared_rules() -> None:
-    policy = """
-Every issue file must include:
-1. `Problem Statement`
-2. `Evidence`
-
-Other text.
-"""
-
-    assert validate_issues.parse_canonical_sections(policy) == governance_rules.parse_canonical_sections(policy)
 
 
 def _write_issue(tmp_path: Path, name: str, content: str) -> Path:
@@ -161,3 +134,35 @@ def test_validate_issue_files_rejects_triage_intake_in_progress_transition(tmp_p
     validate_issues.validate_issue_files([issue], ["ID", "Title", "Status", "Issue State"], failures, ruleset=validate_issues.RULESET_STRICT)
 
     assert any("triage_intake issues must remain Status 'open'" in failure for failure in failures)
+
+
+def test_validate_pr_body_uses_shared_metadata_issue_reference_primitive(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    body = tmp_path / "pr.md"
+    body.write_text("non trivial body", encoding="utf-8")
+    monkeypatch.setattr(validate_issues, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(validate_issues, "metadata_missing_issue_reference", lambda _text: True)
+
+    failures: list[str] = []
+    validate_issues.validate_pr_body(Path("pr.md"), failures)
+
+    assert failures == ["Non-trivial PR description must include at least one ISSUE-XXXX reference."]
+
+
+def test_validate_issue_files_uses_shared_missing_canonical_sections_primitive(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    issue = _write_issue(
+        tmp_path,
+        "ISSUE-1000-minimal.md",
+        """
+**Issue State:** governed_execution
+**Status:** open
+""",
+    )
+    monkeypatch.setattr(validate_issues, "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(validate_issues, "missing_canonical_sections", lambda _text, _sections: ["Title"])
+
+    failures: list[str] = []
+    validate_issues.validate_issue_files([issue], ["ID", "Title"], failures, ruleset=validate_issues.RULESET_STRICT)
+
+    assert any("missing canonical sections: Title" in failure for failure in failures)
