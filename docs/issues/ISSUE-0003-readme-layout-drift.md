@@ -3,6 +3,7 @@
 - **ID:** ISSUE-0003
 - **Title:** README repository layout drift vs actual tree
 - **Status:** resolved
+- **Issue State:** governed_execution
 - **Severity:** amber
 - **Owner:** Sebastian Mäki (@NeatBasis, Documentation Maintainer)
 - **Created:** 2026-03-04

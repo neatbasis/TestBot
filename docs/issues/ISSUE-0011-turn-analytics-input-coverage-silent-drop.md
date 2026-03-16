@@ -3,6 +3,7 @@
 - **ID:** ISSUE-0011
 - **Title:** Turn analytics aggregation silently drops non-analytics session events without operator coverage diagnostics
 - **Status:** open
+- **Issue State:** governed_execution
 - **Severity:** amber
 - **Owner:** platform-qa
 - **Created:** 2026-03-06

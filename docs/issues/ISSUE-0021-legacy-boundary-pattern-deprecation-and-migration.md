@@ -3,6 +3,7 @@
 - **ID:** ISSUE-0021
 - **Title:** Legacy boundary-pattern deprecation and migration
 - **Status:** open
+- **Issue State:** governed_execution
 - **Severity:** amber
 - **Owner:** runtime-pipeline
 - **Created:** 2026-03-15

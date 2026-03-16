@@ -3,6 +3,7 @@
 - **ID:** ISSUE-0018
 - **Title:** Dual-trigger event loop for proactive ingestion lifecycle (user + system initiated processing)
 - **Status:** open
+- **Issue State:** governed_execution
 - **Severity:** amber
 - **Owner:** runtime-pipeline
 - **Created:** 2026-03-09

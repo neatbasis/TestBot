@@ -3,6 +3,7 @@
 - **ID:** ISSUE-0005
 - **Title:** Time-aware memory ranking parity remains partial across recall gate
 - **Status:** closed
+- **Issue State:** governed_execution
 - **Severity:** amber
 - **Owner:** Sebastian Mäki (@NeatBasis, Runtime Quality Lead)
 - **Created:** 2026-03-04

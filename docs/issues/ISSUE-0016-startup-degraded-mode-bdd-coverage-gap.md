@@ -3,6 +3,7 @@
 - **ID:** ISSUE-0016
 - **Title:** Startup degraded-mode user messaging lacks explicit BDD coverage
 - **Status:** closed
+- **Issue State:** governed_execution
 - **Severity:** amber
 - **Owner:** platform-qa
 - **Created:** 2026-03-09

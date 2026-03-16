@@ -3,6 +3,7 @@
 - **ID:** ISSUE-0010
 - **Title:** Unknowing safe fallback remains partial for explicit uncertainty contract completeness
 - **Status:** open
+- **Issue State:** governed_execution
 - **Severity:** amber
 - **Owner:** platform-qa
 - **Created:** 2026-03-06
