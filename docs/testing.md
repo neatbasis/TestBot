@@ -138,10 +138,12 @@ For non-live changes, this is the expected offline/deterministic contributor gat
 
 `pip install -e .[dev]` is the canonical contributor install command and includes runtime dependencies plus development/validation tooling.
 
-`scripts/all_green_gate.py` is the only authoritative command sequence for merge readiness. By default it runs a **fast** profile that preserves category coverage while avoiding redundant targeted checks already covered by broader suites (for example, `pytest -m "not live_smoke"` and full `behave`).
-BDD execution is a hard prerequisite for interpreting feature-status evidence as behavior confidence; if BDD cannot run, treat capability status as not confidence-ready until `behave` is restored via `pip install -e .[dev]`.
+`scripts/all_green_gate.py` is the only authoritative command sequence for merge readiness. It now supports explicit staged profiles:
 
-Use `--check-profile exhaustive` to include overlapping targeted checks (for example, focused parity and subset-behave invocations) when you need deeper diagnostics.
+- `triage`: runtime correctness + schema + core deterministic tests (default for local contributor runs).
+- `readiness`: full merge/release obligations, including governance validators and KPI rollups (default in CI/release environments).
+
+BDD execution is a hard prerequisite for interpreting feature-status evidence as behavior confidence; if BDD cannot run, treat capability status as not confidence-ready until `behave` is restored via `pip install -e .[dev]`.
 
 Default behavior is fail-closed (stop on first failure). Use `--continue-on-failure` to run every check and still exit non-zero if any check fails.
 
@@ -201,10 +203,11 @@ When KPI warnings persist in `optional` mode, repository policy requires issue l
 
 | Test layer | Canonical command | Runtime dependency | CI gate level | Expected runtime | Pass criteria |
 | --- | --- | --- | --- | --- | --- |
-| Single merge/readiness gate (fast profile) | `python scripts/all_green_gate.py` | Python dev extras (`behave`, `pytest`) plus local docs/issues/fixtures and git metadata | **Required (canonical gate)** | ~30-150s depending on test volume | Exit code `0`; category-level blocking checks pass (BDD, deterministic pytest, recall eval, governance + invariant mirror/path/schema + pipeline-stage conformance validators) without redundant targeted overlap commands. **Interpret feature-status evidence as behavior confidence only when this gate includes a successful BDD run.** |
+| Local triage gate (default local profile) | `python scripts/all_green_gate.py` | Python dev extras (`behave`, `pytest`) plus local fixtures | **Required for local iteration** | ~20-90s depending on test volume | Exit code `0`; runtime correctness + schema + core deterministic checks pass (BDD, recall eval, log/schema + pipeline-stage conformance, deterministic `pytest -m "not live_smoke"`). |
+| Merge/readiness gate (full profile) | `python scripts/all_green_gate.py --profile readiness` | Python dev extras (`behave`, `pytest`) plus local docs/issues/fixtures and git metadata | **Required (canonical merge/release gate)** | ~30-150s depending on test volume | Exit code `0`; all triage checks plus governance/invariant/markdown-path validators and KPI guardrail checks (mode-dependent) pass. **Interpret feature-status evidence as behavior confidence only when this gate includes a successful BDD run.** |
 | BDD acceptance (`behave`) | `python -m behave` _(requires `pip install -e .[dev]` first)_ | Python dev extras (`behave`) and local deterministic fixtures | **Executed by canonical gate (component check)** | ~10-60s for current feature set | Exit code `0`; no failed/undefined steps; acceptance scenarios for changed behavior pass. |
 | Deterministic unit/component (`pytest`) | `python -m pytest -m "not live_smoke"` | Python dev extras (`pytest`); no network or external services | **Executed by canonical gate (component check)** | ~5-30s for fast deterministic scope | Exit code `0`; no flaky network-bound failures; logic and wiring tests for changed code pass. |
-| Eval/runtime parity check (`pytest`) | `python -m pytest tests/test_eval_runtime_parity.py` | Python dev extras (`pytest`) and fixed fixtures (`eval/cases.jsonl`, `tests/fixtures/candidate_sets.jsonl`) | **Executed by canonical gate in `--check-profile exhaustive`** | ~1-5s | Exit code `0`; runtime path scoring and eval adapter path stay aligned for ordering, top-1, and fallback intent decisions. |
+| Eval/runtime parity check (`pytest`) | `python -m pytest tests/test_eval_runtime_parity.py` | Python dev extras (`pytest`) and fixed fixtures (`eval/cases.jsonl`, `tests/fixtures/candidate_sets.jsonl`) | **Targeted diagnostic check (run manually when parity drift is suspected)** | ~1-5s | Exit code `0`; runtime path scoring and eval adapter path stay aligned for ordering, top-1, and fallback intent decisions. |
 | Governance / issue linkage checks | `python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main` | Local git metadata + docs/issues files | **Executed by canonical gate (component check)** | ~1-5s | Exit code `0`; non-trivial PR/commit metadata include `ISSUE-XXXX`; canonical fields are non-placeholder; required issue section bodies are non-empty; red-severity ownership/sprint/status and RED_TAG consistency checks pass. |
 | Policy compatibility checks | `python scripts/validate_issues.py --all-issue-files --base-ref origin/main` | Local git metadata + docs/issues files | **Executed by canonical gate (component check)** | ~1-5s | Exit code `0`; compatibility validator reports no missing canonical sections and no red-tag owner/sprint gaps. |
 | Optional live smoke profile | `pytest -m live_smoke` | Reachable Home Assistant + Ollama endpoints and any required env vars/secrets | **Optional (post-merge/manual gate)** | ~1-5 min depending on services | Exit code `0`; no infra/auth/connectivity errors; end-to-end smoke assertions pass. |
@@ -230,22 +233,22 @@ Do not treat missing `behave` as an acceptable skip for canonical validation.
 
 ### Canonical command snippets
 
-Run canonical merge/release gate:
+Run local triage gate (default local profile):
 
 ```bash
 python scripts/all_green_gate.py
+```
+
+Run full merge/release readiness gate:
+
+```bash
+python scripts/all_green_gate.py --profile readiness
 ```
 
 Run gate in run-all mode (returns non-zero if any check failed):
 
 ```bash
 python scripts/all_green_gate.py --continue-on-failure
-```
-
-Run canonical gate with exhaustive overlap checks:
-
-```bash
-python scripts/all_green_gate.py --check-profile exhaustive
 ```
 
 Write gate results to a JSON artifact (for CI/log processing):
@@ -421,10 +424,10 @@ git add <resolved-files>
 git rebase --continue
 ```
 
-### Step 2: Run the canonical full gate
+### Step 2: Run the canonical full readiness gate
 
 ```bash
-python scripts/all_green_gate.py --json-output artifacts/all-green-gate-summary.json
+python scripts/all_green_gate.py --profile readiness --json-output artifacts/all-green-gate-summary.json
 ```
 
 ### Step 3: Run stakeholder-obligation checks explicitly

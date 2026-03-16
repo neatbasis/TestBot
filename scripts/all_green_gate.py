@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import json
+import os
 import shlex
 import subprocess
 import sys
@@ -75,13 +76,12 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
-        "--check-profile",
-        choices=("fast", "exhaustive"),
-        default="fast",
+        "--profile",
+        choices=("triage", "readiness"),
+        default=None,
         help=(
-            "Check composition profile for canonical gate execution. "
-            "'fast' removes targeted checks already covered by broader suites; "
-            "'exhaustive' runs both broad and targeted commands."
+            "Gate execution profile. 'triage' runs runtime/schema/core deterministic checks; "
+            "'readiness' runs the full merge/release gate. Defaults to triage locally and readiness in CI/release environments."
         ),
     )
     parser.add_argument(
@@ -164,11 +164,29 @@ def resolve_base_ref(base_ref: str) -> tuple[str | None, list[str]]:
     )
     return None, notes
 
+
+def default_profile_for_environment() -> str:
+    if any(
+        os.getenv(flag)
+        for flag in (
+            "CI",
+            "GITHUB_ACTIONS",
+            "BUILD_BUILDID",
+            "TESTBOT_RELEASE_VALIDATION",
+        )
+    ):
+        return "readiness"
+    return "triage"
+
+
+def resolve_profile(explicit_profile: str | None) -> str:
+    return explicit_profile or default_profile_for_environment()
+
 def build_checks(
     *,
     base_ref: str | None,
     kpi_guardrail_mode: str = "optional",
-    check_profile: str = "fast",
+    profile: str = "triage",
 ) -> list[GateCheck]:
     checks = [
         GateCheck(name="product_behave", command=[sys.executable, "-m", "behave"]),
@@ -188,85 +206,43 @@ def build_checks(
             name="qa_pytest_not_live_smoke",
             command=[sys.executable, "-m", "pytest", "-m", "not live_smoke"],
         ),
-        GateCheck(
-            name="qa_validate_issue_links",
-            command=[
-                sys.executable,
-                "scripts/validate_issue_links.py",
-                "--all-issue-files",
-                "--base-ref",
-                base_ref or "HEAD",
-            ],
-        ),
-        GateCheck(
-            name="qa_validate_issues",
-            command=[
-                sys.executable,
-                "scripts/validate_issues.py",
-                "--all-issue-files",
-                "--base-ref",
-                base_ref or "HEAD",
-            ],
-        ),
-        GateCheck(
-            name="qa_validate_invariant_sync",
-            command=[sys.executable, "scripts/sync_invariants_mirror.py", "--check"],
-        ),
-        GateCheck(
-            name="qa_validate_markdown_paths",
-            command=[sys.executable, "scripts/validate_markdown_paths.py"],
-        ),
     ]
 
-    if check_profile == "exhaustive":
-        checks[2:2] = [
-            GateCheck(
-                name="product_eval_runtime_parity",
-                command=[sys.executable, "-m", "pytest", "tests/test_eval_runtime_parity.py"],
-            ),
-            GateCheck(
-                name="safety_behave_answer_contract_and_memory",
-                command=[
-                    sys.executable,
-                    "-m",
-                    "behave",
-                    "features/testbot/answer_contract.feature",
-                    "features/testbot/memory_recall.feature",
-                ],
-            ),
-            GateCheck(
-                name="safety_reflection_and_runtime_logging_pytests",
-                command=[
-                    sys.executable,
-                    "-m",
-                    "pytest",
-                    "tests/test_reflection_policy.py",
-                    "tests/test_runtime_logging_events.py",
-                ],
-            ),
-            GateCheck(
-                name="ops_runtime_modes_and_startup_status",
-                command=[
-                    sys.executable,
-                    "-m",
-                    "pytest",
-                    "tests/test_runtime_modes.py",
-                    "tests/test_startup_status.py",
-                ],
-            ),
-            GateCheck(
-                name="qa_eval_fixtures_and_runtime_parity",
-                command=[
-                    sys.executable,
-                    "-m",
-                    "pytest",
-                    "tests/test_eval_fixtures.py",
-                    "tests/test_eval_runtime_parity.py",
-                ],
-            ),
-        ]
+    if profile == "readiness":
+        checks.extend(
+            [
+                GateCheck(
+                    name="qa_validate_issue_links",
+                    command=[
+                        sys.executable,
+                        "scripts/validate_issue_links.py",
+                        "--all-issue-files",
+                        "--base-ref",
+                        base_ref or "HEAD",
+                    ],
+                ),
+                GateCheck(
+                    name="qa_validate_issues",
+                    command=[
+                        sys.executable,
+                        "scripts/validate_issues.py",
+                        "--all-issue-files",
+                        "--base-ref",
+                        base_ref or "HEAD",
+                    ],
+                ),
+                GateCheck(
+                    name="qa_validate_invariant_sync",
+                    command=[sys.executable, "scripts/sync_invariants_mirror.py", "--check"],
+                ),
+                GateCheck(
+                    name="qa_validate_markdown_paths",
+                    command=[sys.executable, "scripts/validate_markdown_paths.py"],
+                ),
+            ]
+        )
 
-    if kpi_guardrail_mode != "off":
+    if profile == "readiness" and kpi_guardrail_mode != "off":
         kpi_blocking = kpi_guardrail_mode == "blocking"
         checks.extend(
             [
@@ -436,12 +412,24 @@ def summarize(results: Sequence[CheckResult], continue_on_failure: bool) -> dict
         for result in results
         if result.status == "warning"
     ]
+    product_failures = [
+        asdict(result)
+        for result in results
+        if result.status == "failed" and result.stage in {"product", "safety", "ops"}
+    ]
+    governance_failures = [
+        asdict(result)
+        for result in results
+        if result.status == "failed" and result.stage == "qa"
+    ]
     return {
         "status": "failed" if has_failure else "passed",
         "exit_code": 1 if has_failure else 0,
         "continue_on_failure": continue_on_failure,
         "warning_count": warning_count,
         "warning_diagnostics": warning_diagnostics,
+        "product_failures": product_failures,
+        "governance_failures": governance_failures,
         "stages": stage_summaries,
         "checks": [asdict(result) for result in results],
     }
@@ -473,10 +461,13 @@ def main() -> int:
             f"origin/main -> HEAD~1 -> HEAD (using {effective_base_ref!r})."
         )
 
+    profile = resolve_profile(args.profile)
+    print(f"[INFO] Running all-green profile: {profile}")
+
     checks = build_checks(
         base_ref=effective_base_ref,
         kpi_guardrail_mode=args.kpi_guardrail_mode,
-        check_profile=args.check_profile,
+        profile=profile,
     )
     results, exit_code = run_gate(checks=checks, continue_on_failure=args.continue_on_failure)
     summary = summarize(results=results, continue_on_failure=args.continue_on_failure)
