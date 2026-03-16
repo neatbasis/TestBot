@@ -175,7 +175,7 @@ Key observed indicators in evidence include:
 
 ## Work Plan
 
-- Add/extend feature scenarios in `features/memory_recall.feature` and `features/intent_grounding.feature` for identity declaration + recall continuity.
+- Add/extend feature scenarios in `features/testbot/memory_recall.feature` and `features/testbot/intent_grounding.feature` for identity declaration + recall continuity.
 - Add deterministic regression tests covering rewrite invariance, intent routing, retrieval branch selection, and commit receipt promotion fields.
 - Tighten decisioning logic so self-reference identity turns cannot bypass retrieval solely via rewrite-drifted phrasing.
 - Re-run canonical gates and regenerate status artifacts after behavior is corrected.
@@ -183,7 +183,7 @@ Key observed indicators in evidence include:
 
 ## Verification
 
-- Command: `python -m behave features/memory_recall.feature features/intent_grounding.feature`
+- Command: `python -m behave features/testbot/memory_recall.feature features/testbot/intent_grounding.feature`
   - Expected: identity declaration + recall continuity scenarios pass.
 - Command: `python -m pytest -m "not live_smoke"`
   - Expected: regression tests for rewrite/intent/retrieval/commit continuity pass.
@@ -207,7 +207,7 @@ Deterministic suite evidence is attached and reproducible CLI identity-continuit
 1. **Identity semantic preservation (rewrite/intent contract).**
    - Required trace artifact path: `docs/issues/evidence/2026-03-09-issue-0014-cli-identity-semantic-preservation-trace.md`.
    - Deterministic reproduction steps:
-     1. `python -m behave features/memory_recall.feature features/intent_grounding.feature`
+     1. `python -m behave features/testbot/memory_recall.feature features/testbot/intent_grounding.feature`
      2. `python -m pytest tests/test_pipeline_semantic_contracts.py tests/test_canonical_turn_orchestrator.py tests/test_intent_router.py`
      3. Run CLI reproducer turn pair in a clean local session and attach trace showing rewrite output preserves `user_identity_declaration` semantics for `Hi! I'm sebastian`.
 2. **Retrieval activation on self-reference recall (routing/retrieval contract).**
@@ -332,7 +332,7 @@ Issue validation passed.
     - `python -m pytest tests/test_pipeline_semantic_contracts.py::test_resolve_turn_intent_matches_canonical_intent_resolution_for_identity_followup`
 
 - 2026-03-10: Phase 1 deterministic verification snapshot for ISSUE-0014/0013 refreshed from canonical gate artifact.
-  - Pass evidence: `python -m behave features/memory_recall.feature features/intent_grounding.feature` and focused regression suites (`tests/test_pipeline_semantic_contracts.py`, `tests/test_canonical_turn_orchestrator.py`, `tests/test_intent_router.py`).
+  - Pass evidence: `python -m behave features/testbot/memory_recall.feature features/testbot/intent_grounding.feature` and focused regression suites (`tests/test_pipeline_semantic_contracts.py`, `tests/test_canonical_turn_orchestrator.py`, `tests/test_intent_router.py`).
   - Gate evidence (`2026-03-10T21:36:04Z`): canonical gate reports **passed** with optional KPI guardrail warning `qa_validate_kpi_guardrails`; only non-zero stage is `qa` with first failing command `qa -> /root/.pyenv/versions/3.11.14/bin/python scripts/validate_kpi_guardrails.py --summary logs/turn_analytics_summary.json --config config/kpi_guardrails.json`.
   - Dependency-state language: ISSUE-0014 remains **open/blocked pending evidence** for AC-0013-11 sequencing; lifecycle wording stays synchronized across ISSUE-0013/0014/0015/RED_TAG with blocker/dependent/parallel stream labels and the shared closure condition.
   - Evidence artifacts: `docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md`, `docs/issues/evidence/2026-03-09-issue-0014-0013-behave.log`, `docs/issues/evidence/2026-03-09-issue-0014-0013-focused-pytests.log`, `docs/issues/evidence/2026-03-09-issue-0014-0013-all-green-gate.log`, `artifacts/all-green-gate-summary.json`.

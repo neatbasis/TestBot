@@ -265,7 +265,7 @@ def main() -> int:
         )
         print(
             "Inspect intermediate signals first: scored_candidates, near_tie_candidates, "
-            "ambiguity_detected (tests/test_eval_runtime_parity.py and features/steps/memory_steps.py)."
+            "ambiguity_detected (tests/test_eval_runtime_parity.py and features/steps/testbot_memory_steps.py)."
         )
         print(
             "Likely boundaries: scripts/eval_recall.py <-> testbot.rerank and "

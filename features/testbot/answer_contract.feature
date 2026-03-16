@@ -1,4 +1,4 @@
-@Rule:AnswerContract @Rule:FallbackSemantics @Role:Resident @Priority:High @fast
+@Owner:testbot @Rule:AnswerContract @Rule:FallbackSemantics @Role:Resident @Priority:High @fast
 Feature: Answer citation contract enforcement
   In order to prevent unsupported factual claims
   As a resident

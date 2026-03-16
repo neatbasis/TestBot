@@ -1,4 +1,4 @@
-@Rule:StartupStatus @Role:Ops @Priority:High @fast
+@Owner:testbot @Rule:StartupStatus @Role:Ops @Priority:High @fast
 Feature: Startup degraded-mode messaging
   In order to trust degraded startup behavior
   As an operations stakeholder

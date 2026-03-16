@@ -9,6 +9,20 @@ This guide defines how TestBot uses **Gherkin** to connect:
 - **Human-facing intent** (why stakeholders care), and
 - **Software-facing acceptance criteria** (what automated tests must verify).
 
+## Ownership layout and migration policy
+
+The `features/` tree is ownership-scoped and should be kept aligned with runtime package boundaries:
+
+- `features/testbot/` is for behavior owned by `src/testbot`.
+- `features/seem_bot/` is reserved for behavior owned by `src/seem_bot`.
+- `features/integration/` is reserved for true cross-package behavior only.
+
+Step modules remain under `features/steps/`, and step filenames must be ownership-prefixed (for example, `testbot_*_steps.py`) so step ownership is explicit during review.
+
+Traceability metadata in feature files is mandatory and must be preserved during moves/renames, including `@ISSUE-*`, `@AC-*`, `@Rule:*`, `@Role:*`, `@Priority:*`, and `@fast`. Ownership tags (for example, `@Owner:testbot`) are additive and do not replace existing structured tags.
+
+When migrating feature/step paths, update repository references to the new paths while leaving `docs/issues/evidence/` untouched so evidence records remain immutable.
+
 Primary syntax reference: Behave Gherkin docs.
 
 - https://behave.readthedocs.io/en/stable/gherkin/

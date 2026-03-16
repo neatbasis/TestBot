@@ -1,4 +1,4 @@
-@Rule:IntentGrounding @Role:Resident @Priority:High @fast
+@Owner:testbot @Rule:IntentGrounding @Role:Resident @Priority:High @fast
 Feature: Intent-specific grounding and provenance behavior
   In order to keep non-memory responses trustworthy
   As a resident

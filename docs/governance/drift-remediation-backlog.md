@@ -12,8 +12,8 @@ This backlog converts currently documented drift signals into sprintable remedia
   - `src/testbot/intent_resolution.py`
   - `src/testbot/policy_decision.py`
   - `src/testbot/answer_commit.py`
-  - `features/intent_grounding.feature`
-  - `features/memory_recall.feature`
+  - `features/testbot/intent_grounding.feature`
+  - `features/testbot/memory_recall.feature`
   - `tests/test_intent_router.py`
   - `tests/test_answer_commit_identity_promotion.py`
 - **Acceptance criteria:**
@@ -106,7 +106,7 @@ This backlog converts currently documented drift signals into sprintable remedia
 - **Affected paths:**
   - `src/testbot/answer_validate.py`
   - `src/testbot/answer_render.py`
-  - `features/answer_contract.feature`
+  - `features/testbot/answer_contract.feature`
   - `tests/test_eval_runtime_parity.py`
 - **Acceptance criteria:**
   1. Canonical `answer.validate` enforces citation/provenance checks for factual outputs.
@@ -127,7 +127,7 @@ This backlog converts currently documented drift signals into sprintable remedia
   - `src/testbot/reflection_policy.py`
   - `src/testbot/policy_decision.py`
   - `src/testbot/answer_render.py`
-  - `features/answer_contract.feature`
+  - `features/testbot/answer_contract.feature`
   - `tests/test_reflection_policy.py`
 - **Acceptance criteria:**
   1. Weak/conflicting evidence deterministically yields explicit uncertainty + safe fallback.
@@ -166,7 +166,7 @@ This backlog converts currently documented drift signals into sprintable remedia
 - **Issue ID:** ISSUE-0016
 - **Problem statement:** Startup degraded-mode behavior is tested in pytest but lacks explicit feature-level BDD articulation, creating readability and traceability lag.
 - **Affected paths:**
-  - `features/capabilities.feature` (or new startup-focused feature file)
+  - `features/testbot/capabilities.feature` (or new startup-focused feature file)
   - `features/steps/`
   - `tests/test_startup_status.py`
   - `tests/test_runtime_modes.py`

@@ -105,7 +105,7 @@ Pipeline adoption focus for this priority set:
 
 - Goal: harden connector abstractions and ingestion flow so source evidence is fetched, normalized, and persisted deterministically.
 - Value: unlocks reliable grounding inputs for all downstream knowing decisions.
-- Exit: `features/source_ingestion.feature` plus connector/ingestion pytest coverage stay green with deterministic fixture-backed outputs.
+- Exit: `features/testbot/source_ingestion.feature` plus connector/ingestion pytest coverage stay green with deterministic fixture-backed outputs.
 
 ### P2 — Evidence normalization/ranking for mixed sources
 
