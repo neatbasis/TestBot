@@ -551,7 +551,7 @@ def test_write_verification_manifest_writes_expected_payload(tmp_path: Path) -> 
     assert payload["schema_version"] == all_green_gate.VERIFICATION_MANIFEST_SCHEMA_VERSION
     assert payload["run_id"] == "20260316T181500Z-1a2b3c4d"
     assert payload["manifest_path"] == "artifacts/verification/20260316T181500Z-1a2b3c4d.json"
-    assert payload["required_checks"] == all_green_gate.REQUIRED_VERIFICATION_CHECKS
+    assert payload["required_checks"] == list(all_green_gate.REQUIRED_VERIFICATION_CHECKS)
     assert payload["gate"]["base_ref_effective"] == "HEAD~1"
     assert payload["summary"]["status"] == "passed"
     monkeypatch.undo()

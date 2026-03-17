@@ -26,6 +26,7 @@ from governance_rules import (
     resolve_base_ref as governance_resolve_base_ref,
 )
 from generate_red_tag_index import render_red_tag, list_red_open_issues
+from verification_manifest_contract import REQUIRED_VERIFICATION_CHECKS, missing_required_checks
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 ISSUES_DIR = REPO_ROOT / "docs" / "issues"
@@ -60,13 +61,6 @@ REQUIRED_SECTION_BODIES = [
     "Verification",
     "Closure Notes",
 ]
-VERIFICATION_REQUIRED_CHECKS = {
-    "product_behave",
-    "product_eval_recall_topk4",
-    "safety_validate_log_schema",
-    "safety_validate_pipeline_stage_conformance",
-    "qa_pytest_not_live_smoke",
-}
 VERIFICATION_MANIFEST_PATH_PATTERN = re.compile(r"artifacts/verification/([A-Za-z0-9_.-]+)\.json")
 VERIFICATION_RUN_ID_PATTERN = re.compile(r"(?:^|\b)run(?:[\s_-]?id)\s*[:=]\s*`?([A-Za-z0-9_.-]+)`?", re.IGNORECASE)
 
@@ -378,23 +372,21 @@ def validate_verification_manifest_reference(
             "Reference the correct manifest file or update the Run ID declaration.",
         )
 
-    checks = payload.get("checks")
-    if not isinstance(checks, list):
+    missing_checks = missing_required_checks(payload)
+    if missing_checks is None:
         record_failure(
             failures,
             "VERIFICATION",
-            f"{issue_rel_path}: verification manifest {manifest_rel} is missing a 'checks' list.",
-            "Regenerate the verification manifest with scripts/all_green_gate.py.",
+            f"{issue_rel_path}: verification manifest {manifest_rel} has missing or malformed authoritative 'required_checks'.",
+            "Regenerate the verification manifest with scripts/all_green_gate.py; required_checks must be a list of canonical check names.",
         )
         return
 
-    check_names = {row.get("name") for row in checks if isinstance(row, dict) and isinstance(row.get("name"), str)}
-    missing_checks = sorted(VERIFICATION_REQUIRED_CHECKS - check_names)
     if missing_checks:
         record_failure(
             failures,
             "VERIFICATION",
-            f"{issue_rel_path}: verification manifest {manifest_rel} is missing required checks: {', '.join(missing_checks)}",
+            f"{issue_rel_path}: verification manifest {manifest_rel} is missing authoritative required checks: {', '.join(missing_checks)}",
             "Rerun scripts/all_green_gate.py and reference a manifest from a canonical gate run.",
         )
 
