@@ -15,6 +15,8 @@ Parent context: stabilization effort after governance drift in PRs #481–#489.
   - Follow-on PRs reviewed completion criteria and synchronized checklist claims against implementation status.
 - **#506–#510 (2026-03-17): targeted corrective slices.**
   - Shared governance rule primitives/test shape, strict triage cross-validator matrix coverage, feature-status linkage normalization, and explicit verification-manifest contract semantics were landed in narrower slices.
+- **post-#510 follow-up (2026-03-17): commit-traceability fallback semantics tightened.**
+  - `validate_issue_links.py` now treats commit-history ISSUE-link checks as fail-closed when the requested base ref degrades to fallback mode, with explicit opt-in for degraded container checks.
 
 ## Code-quality and governance-quality evaluation
 
@@ -26,10 +28,10 @@ Parent context: stabilization effort after governance drift in PRs #481–#489.
 
 ### Remaining concerns
 
-- **Shared helper centralization and policy separation are not complete in production code paths.**
-  - `git_ref_exists` and `resolve_base_ref` are still duplicated in `all_green_gate.py`, `validate_issue_links.py`, and `validate_issues.py`.
+- **Shared helper centralization is still incomplete in production code paths.**
+  - `git_ref_exists` and `resolve_base_ref` remain duplicated in `all_green_gate.py`, `validate_issue_links.py`, and `validate_issues.py`.
   - The checklist correctly keeps this surface at `decision made`, not reconciled.
-  - The remaining issue is not only duplicate code removal: caller-specific safety requirements for degraded base-ref fallback are not yet explicitly separated. The `HEAD~1` incident showed that fallback semantics acceptable for diff-oriented checks may be unsafe for commit-traceability validation.
+  - However, policy-semantics separation for the truth-critical consumer has now been tightened: `validate_issue_links.py` fail-closes commit-history traceability on base-ref fallback unless degraded mode is explicitly allowed. Remaining work is to finish shared-boundary deduplication without collapsing that consumer distinction.
 - **Several ownership-boundary surfaces remain inventory-level.**
   - Issue schema/state, issue-link validator boundary, RED_TAG derivation audit, gate-profile consistency, feature linkage fallback precedence, triage routing consumer contract, and deterministic integration proof selection are not closed.
 - **Freeze exit is still not ready.**
@@ -43,7 +45,7 @@ Parent context: stabilization effort after governance drift in PRs #481–#489.
 
 - The storyline is still best described as **diagnosis -> freeze -> partial reconciliation -> open enforcement/exit**.
 - The prior assessment is correct that **manifest semantics** and **changed-path skip policy** are the two strongest closed/reconciled surfaces.
-- The prior assessment is correct that broader governance ownership/enforcement closure is still incomplete.
+- The prior assessment is correct that broader governance ownership/enforcement closure is still incomplete, even after the commit-traceability fallback tightening landed.
 
 ### Adjustments recommended
 
@@ -57,4 +59,4 @@ Parent context: stabilization effort after governance drift in PRs #481–#489.
 ## Recommended concise status line
 
 **Current repo perspective (2026-03-17):**
-Manifest contract semantics are **verified**, changed-path skip policy is **reconciled**, and corrective sequencing quality improved; however, shared-helper centralization and caller-specific fallback-policy separation remain incomplete, several validator ownership surfaces remain at **inventory complete**, and freeze exit is still not ready.
+Manifest contract semantics are **verified**, changed-path skip policy is **reconciled**, and commit-traceability fallback semantics are now explicitly tightened for the issue-link validator; however, shared-helper centralization across governance consumers remains incomplete, several validator ownership surfaces remain at **inventory complete**, and freeze exit is still not ready.

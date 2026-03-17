@@ -44,7 +44,7 @@ CANONICAL_SECTIONS = [
 
 # existing coverage
 
-def test_validate_pr_and_commit_metadata_requires_issue_reference(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_validate_commit_metadata_requires_issue_reference(monkeypatch: pytest.MonkeyPatch) -> None:
     failures: list[validate_issue_links.ValidationFailure] = []
 
     responses = {
@@ -63,7 +63,7 @@ def test_validate_pr_and_commit_metadata_requires_issue_reference(monkeypatch: p
 
     monkeypatch.setattr(validate_issue_links, "run_git", fake_run_git)
 
-    validate_issue_links.validate_pr_and_commit_metadata(None, "origin/main", failures)
+    validate_issue_links.validate_commit_metadata("origin/main", failures)
 
     assert any(f.category == "ISSUE_LINK" and "no ISSUE-XXXX" in f.message for f in failures)
 
@@ -469,7 +469,7 @@ def test_verification_manifest_round_trip_generation_and_consumption_contract(
 
 
 
-def test_validate_pr_and_commit_metadata_uses_shared_metadata_primitive(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_validate_commit_metadata_uses_shared_metadata_primitive(monkeypatch: pytest.MonkeyPatch) -> None:
     failures: list[validate_issue_links.ValidationFailure] = []
 
     responses = {
@@ -481,7 +481,7 @@ def test_validate_pr_and_commit_metadata_uses_shared_metadata_primitive(monkeypa
     monkeypatch.setattr(validate_issue_links, "run_git", lambda args: responses[tuple(args)])
     monkeypatch.setattr(validate_issue_links, "metadata_missing_issue_reference", lambda _text: True)
 
-    validate_issue_links.validate_pr_and_commit_metadata(None, "origin/main", failures)
+    validate_issue_links.validate_commit_metadata("origin/main", failures)
 
     assert any("no ISSUE-XXXX reference" in f.message for f in failures)
 
@@ -497,3 +497,31 @@ def test_validate_issue_schema_uses_shared_missing_sections_primitive(monkeypatc
     validate_issue_links.validate_issue_schema([issue_file], CANONICAL_SECTIONS, failures, ruleset=validate_issue_links.RULESET_TRIAGE)
 
     assert any("missing canonical schema fields/sections: Problem Statement" in f.message for f in failures)
+
+
+def test_commit_traceability_fails_closed_when_fallback_ref_is_used() -> None:
+    failures: list[validate_issue_links.ValidationFailure] = []
+
+    allowed = validate_issue_links.commit_traceability_requires_exact_base_ref(
+        "origin/main",
+        "HEAD~1",
+        allow_degraded_commit_traceability=False,
+        failures=failures,
+    )
+
+    assert allowed is False
+    assert any("fail closed" in failure.message for failure in failures)
+
+
+def test_commit_traceability_can_opt_in_to_degraded_mode() -> None:
+    failures: list[validate_issue_links.ValidationFailure] = []
+
+    allowed = validate_issue_links.commit_traceability_requires_exact_base_ref(
+        "origin/main",
+        "HEAD~1",
+        allow_degraded_commit_traceability=True,
+        failures=failures,
+    )
+
+    assert allowed is True
+    assert failures == []

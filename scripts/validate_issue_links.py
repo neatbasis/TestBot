@@ -95,6 +95,15 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--allow-degraded-commit-traceability",
+        action="store_true",
+        help=(
+            "Allow commit-history ISSUE-XXXX checks to run against fallback refs when --base-ref "
+            "cannot be resolved exactly. By default, commit traceability checks fail closed when "
+            "the requested base ref cannot be used."
+        ),
+    )
+    parser.add_argument(
         "--all-issue-files",
         action="store_true",
         help="Validate every issue file under docs/issues instead of only newly added files.",
@@ -185,7 +194,7 @@ def is_placeholder(value: str) -> bool:
     return value.strip().lower() in PLACEHOLDER_VALUES
 
 
-def validate_pr_and_commit_metadata(pr_body_file: Path | None, base_ref: str, failures: list[ValidationFailure]) -> None:
+def validate_pr_metadata(pr_body_file: Path | None, failures: list[ValidationFailure]) -> None:
     if pr_body_file:
         body_path = pr_body_file if pr_body_file.is_absolute() else REPO_ROOT / pr_body_file
         if not body_path.exists():
@@ -205,6 +214,8 @@ def validate_pr_and_commit_metadata(pr_body_file: Path | None, base_ref: str, fa
                     "Add an ISSUE-XXXX reference to the PR description (for example in Summary or Motivation).",
                 )
 
+
+def validate_commit_metadata(base_ref: str, failures: list[ValidationFailure]) -> None:
     try:
         rev_lines = [line.strip() for line in run_git(["rev-list", "--parents", f"{base_ref}...HEAD"]).splitlines() if line.strip()]
     except RuntimeError as exc:
@@ -234,6 +245,37 @@ def validate_pr_and_commit_metadata(pr_body_file: Path | None, base_ref: str, fa
                 f"Commit {commit_id[:10]} has non-trivial metadata but no ISSUE-XXXX reference: {short!r}",
                 "Amend the commit message to include an ISSUE-XXXX reference.",
             )
+
+
+def commit_traceability_requires_exact_base_ref(
+    requested_base_ref: str,
+    effective_base_ref: str | None,
+    *,
+    allow_degraded_commit_traceability: bool,
+    failures: list[ValidationFailure],
+) -> bool:
+    if effective_base_ref is None:
+        record_failure(
+            failures,
+            "ISSUE_LINK",
+            f"Commit-history ISSUE linkage requires a resolvable base ref; could not resolve '{requested_base_ref}'.",
+            "Fetch the canonical base ref (for example 'git fetch origin main') and rerun the validator.",
+        )
+        return False
+
+    if requested_base_ref == effective_base_ref or allow_degraded_commit_traceability:
+        return True
+
+    record_failure(
+        failures,
+        "ISSUE_LINK",
+        "Commit-history ISSUE linkage checks fail closed when running against a fallback base ref.",
+        (
+            f"Requested '{requested_base_ref}' but resolved '{effective_base_ref}'. Fetch the requested ref or rerun with "
+            "--allow-degraded-commit-traceability for non-authoritative container checks."
+        ),
+    )
+    return False
 
 
 def validate_issue_schema(
@@ -420,10 +462,15 @@ def main() -> int:
     for note in resolution_notes:
         print(f"[WARN] {note}")
 
-    if effective_base_ref:
-        validate_pr_and_commit_metadata(args.pr_body_file, effective_base_ref, failures)
-    else:
-        print("[INFO] Skipping commit-range metadata inspection because no base ref could be resolved.")
+    validate_pr_metadata(args.pr_body_file, failures)
+
+    if commit_traceability_requires_exact_base_ref(
+        args.base_ref,
+        effective_base_ref,
+        allow_degraded_commit_traceability=args.allow_degraded_commit_traceability,
+        failures=failures,
+    ):
+        validate_commit_metadata(effective_base_ref, failures)
 
     canonical_sections = load_canonical_sections()
 
