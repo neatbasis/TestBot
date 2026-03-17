@@ -111,6 +111,54 @@ The authoritative issue-state model remains:
 - Manifest references remain optional unless another canonical policy document is updated to require them.
 - A referenced manifest that is missing, malformed, or inconsistent with required linkage is a validation failure, not an advisory warning.
 
+## Ownership matrix for frozen governance validators
+
+This matrix codifies the canonical decision for the open **Issue-link / reference validation** stabilization surface while restating (not redefining) the already-established verification-manifest boundary in this freeze contract.
+
+### `scripts/validate_issue_links.py`
+
+#### Canonical owner
+
+Canonical owner of cross-artifact issue traceability and reference validation.
+
+#### In scope
+
+- ISSUE reference presence in PRs/commits.
+- Issue ID ↔ filename linkage checks.
+- Verification-manifest reference checks (manifest path, run ID, payload contract semantics).
+- RED_TAG generated-content parity checks.
+
+#### Explicitly out of scope
+
+- Canonical issue-document section/schema validation.
+- Issue state vocabulary validation.
+- Issue state transition semantics.
+
+### `scripts/validate_issues.py`
+
+#### Canonical owner
+
+Canonical owner of issue-document schema and workflow-state validation.
+
+#### In scope
+
+- Canonical section presence by ruleset.
+- Issue-file structural schema checks.
+- Issue status/state vocabulary validation.
+- Issue state transition semantics.
+
+#### Explicitly out of scope
+
+- PR/commit ISSUE reference presence checks.
+- Issue ID ↔ filename linkage checks owned by `scripts/validate_issue_links.py`.
+- Verification-manifest payload semantics.
+
+### Non-ownership and non-reimplementation clauses
+
+- Neither validator may re-implement or infer rules canonically owned by the other validator.
+- `scripts/validate_issues.py` MUST NOT parse, interpret, or enforce verification-manifest payload semantics.
+- `scripts/validate_issue_links.py` MUST NOT re-implement canonical issue-document section/schema/state validation owned by `scripts/validate_issues.py`.
+
 ### 7) Triage routing
 
 - Triage routing consumes stabilized gate outputs and issue/RED_TAG signals; routing must not reinterpret upstream semantics implicitly.

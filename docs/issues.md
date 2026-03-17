@@ -212,6 +212,8 @@ python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main
 python scripts/validate_issues.py --all-issue-files --base-ref origin/main
 ```
 
+During governance freeze, canonical validator ownership and boundary rules are defined in `docs/issues/governance-control-surface-contract-freeze.md`.
+
 If needed, force an explicit detached-friendly base ref:
 
 ```bash
