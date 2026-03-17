@@ -36,6 +36,24 @@ TRIAGE_INTAKE_SECTIONS = ["ID", "Title", "Problem", "Owner", "Severity", "Next A
 ISSUE_STATE_TRIAGE_INTAKE = "triage_intake"
 ISSUE_STATE_GOVERNED_EXECUTION = "governed_execution"
 
+ALLOWED_ISSUE_STATES = {
+    ISSUE_STATE_TRIAGE_INTAKE,
+    ISSUE_STATE_GOVERNED_EXECUTION,
+}
+
+ALLOWED_STATUS_VALUES = {
+    "open",
+    "in_progress",
+    "blocked",
+    "resolved",
+    "closed",
+}
+
+ALLOWED_STATE_STATUS_TRANSITIONS = {
+    ISSUE_STATE_TRIAGE_INTAKE: {"open"},
+    ISSUE_STATE_GOVERNED_EXECUTION: ALLOWED_STATUS_VALUES,
+}
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -142,15 +160,18 @@ def validate_issue_files(issue_files: list[Path], canonical_sections: list[str],
         issue_state = field_value(text, "Issue State").lower()
         status = field_value(text, "Status").lower()
 
+        if issue_state and issue_state not in ALLOWED_ISSUE_STATES:
+            allowed = ", ".join(sorted(ALLOWED_ISSUE_STATES))
+            failures.append(f"{rel}: invalid Issue State '{issue_state}'. Allowed values: {allowed}.")
+
+        if status and status not in ALLOWED_STATUS_VALUES:
+            allowed = ", ".join(sorted(ALLOWED_STATUS_VALUES))
+            failures.append(f"{rel}: invalid Status '{status}'. Allowed values: {allowed}.")
+
         if issue_state == ISSUE_STATE_TRIAGE_INTAKE:
             missing = missing_canonical_sections(text, TRIAGE_INTAKE_SECTIONS)
             if missing:
                 failures.append(f"{rel}: triage_intake missing required fields: {', '.join(missing)}")
-
-            if status and status != "open":
-                failures.append(
-                    f"{rel}: triage_intake issues must remain Status 'open' and be promoted to governed_execution before '{status}'."
-                )
             if not status:
                 failures.append(
                     f"{rel}: triage_intake issues must declare Status 'open' to enforce promotion SLA before in_progress."
@@ -160,6 +181,15 @@ def validate_issue_files(issue_files: list[Path], canonical_sections: list[str],
             missing = missing_canonical_sections(text, canonical_sections)
             if missing:
                 failures.append(f"{rel}: missing canonical sections: {', '.join(missing)}")
+
+        if issue_state in ALLOWED_STATE_STATUS_TRANSITIONS and status in ALLOWED_STATUS_VALUES:
+            allowed_state_statuses = ALLOWED_STATE_STATUS_TRANSITIONS[issue_state]
+            if status not in allowed_state_statuses:
+                allowed = ", ".join(sorted(allowed_state_statuses))
+                failures.append(
+                    f"{rel}: invalid state/status transition Issue State '{issue_state}' with Status '{status}'. "
+                    f"Allowed statuses for this state: {allowed}."
+                )
 
         if ruleset == RULESET_TRIAGE:
             continue
