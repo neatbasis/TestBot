@@ -489,6 +489,22 @@ Use the matrix as the authoritative map from stakeholder obligations to required
 | **Ops** | Startup capability degradations are explicit and deterministic (auto-mode fallback to CLI when HA is unavailable, startup status reports degraded vs active capability). | `src/testbot/sat_chatbot_memory_v2.py` (`_resolve_mode`, `_print_startup_status`), `tests/test_runtime_modes.py`, `tests/test_startup_status.py`. | `python -m pytest tests/test_runtime_modes.py tests/test_startup_status.py` |
 | **QA** | Deterministic test gates and fixtures stay stable, synchronized, and traceable to canonical eval data. | `tests/test_eval_fixtures.py`, `tests/test_eval_runtime_parity.py`, `tests/fixtures/candidate_sets.jsonl`, `eval/cases.jsonl`, `scripts/validate_issue_links.py`, `scripts/validate_invariant_sync.py`, `scripts/validate_markdown_paths.py`. | `python -m pytest -m "not live_smoke"`; `python -m pytest tests/test_eval_fixtures.py tests/test_eval_runtime_parity.py`; `python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main`; `python scripts/validate_invariant_sync.py`; `python scripts/validate_markdown_paths.py` |
 
+### Roadmap snapshot consistency hygiene
+
+To keep roadmap readiness narratives aligned with generated evidence, run the roadmap consistency validator after refreshing gate/report artifacts:
+
+```bash
+python scripts/validate_roadmap_consistency.py
+```
+
+This check warns/fails when any of the following drift conditions appear:
+
+- `docs/roadmap/current-status-and-next-5-priorities.md` snapshot timestamp is older than the configured freshness threshold versus `artifacts/all-green-gate-summary.json` artifact mtime.
+- Roadmap gate status field does not match the gate summary JSON top-level `status`.
+- Roadmap capability summary line does not match the summary block in `docs/qa/feature-status-report.md`.
+
+Use `--max-staleness-seconds <N>` to tune freshness policy (default `86400`). For stale output, follow the script's exact refresh commands and then update the roadmap snapshot fields in-place.
+
 ### Uncovered obligations and added checks
 
 The Ops obligation previously lacked a deterministic assertion that degraded startup messaging explicitly documents CLI fallback behavior and continuity messaging. This is now covered by `test_startup_status_prints_degraded_cli_fallback_note_and_continuity_message` in `tests/test_startup_status.py`.
