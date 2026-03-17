@@ -26,9 +26,10 @@ Parent context: stabilization effort after governance drift in PRs #481–#489.
 
 ### Remaining concerns
 
-- **Shared helper centralization is not complete in production code paths.**
+- **Shared helper centralization and policy separation are not complete in production code paths.**
   - `git_ref_exists` and `resolve_base_ref` are still duplicated in `all_green_gate.py`, `validate_issue_links.py`, and `validate_issues.py`.
   - The checklist correctly keeps this surface at `decision made`, not reconciled.
+  - The remaining issue is not only duplicate code removal: caller-specific safety requirements for degraded base-ref fallback are not yet explicitly separated. The `HEAD~1` incident showed that fallback semantics acceptable for diff-oriented checks may be unsafe for commit-traceability validation.
 - **Several ownership-boundary surfaces remain inventory-level.**
   - Issue schema/state, issue-link validator boundary, RED_TAG derivation audit, gate-profile consistency, feature linkage fallback precedence, triage routing consumer contract, and deterministic integration proof selection are not closed.
 - **Freeze exit is still not ready.**
@@ -56,4 +57,4 @@ Parent context: stabilization effort after governance drift in PRs #481–#489.
 ## Recommended concise status line
 
 **Current repo perspective (2026-03-17):**
-Manifest contract semantics are **verified**, changed-path skip policy is **reconciled**, and corrective sequencing quality improved; however, shared-helper centralization remains at **decision made**, several validator ownership surfaces remain at **inventory complete**, and freeze exit is still not ready.
+Manifest contract semantics are **verified**, changed-path skip policy is **reconciled**, and corrective sequencing quality improved; however, shared-helper centralization and caller-specific fallback-policy separation remain incomplete, several validator ownership surfaces remain at **inventory complete**, and freeze exit is still not ready.
