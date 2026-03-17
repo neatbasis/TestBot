@@ -206,12 +206,17 @@ def extract_kpi_reason_classification(stdout: str) -> str | None:
     return reason if isinstance(reason, str) else None
 
 
-def git_ref_exists(ref: str) -> bool:
-    return governance_git_ref_exists(ref, repo_root=REPO_ROOT)
+def resolve_best_effort_diff_base_ref(base_ref: str) -> tuple[str | None, list[str]]:
+    """Resolve base refs for diff-oriented checks that can run on fallback history."""
+    return governance_resolve_base_ref(
+        base_ref,
+        ref_exists=lambda ref: governance_git_ref_exists(ref, repo_root=REPO_ROOT),
+    )
 
 
 def resolve_base_ref(base_ref: str) -> tuple[str | None, list[str]]:
-    return governance_resolve_base_ref(base_ref, ref_exists=git_ref_exists)
+    """Backward-compatible alias for diff-oriented base-ref resolution."""
+    return resolve_best_effort_diff_base_ref(base_ref)
 
 
 def default_profile_for_environment() -> str:
@@ -711,7 +716,7 @@ def main() -> int:
         print(f"[INFO] Verification manifest written: {manifest_path.relative_to(REPO_ROOT)}")
         return 1
 
-    effective_base_ref, base_ref_notes = resolve_base_ref(args.base_ref)
+    effective_base_ref, base_ref_notes = resolve_best_effort_diff_base_ref(args.base_ref)
     for note in base_ref_notes:
         print(f"[WARN] {note}")
     if args.base_ref == "origin/main" and effective_base_ref in {"HEAD~1", "HEAD"}:

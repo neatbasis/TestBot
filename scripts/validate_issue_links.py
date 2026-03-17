@@ -125,12 +125,17 @@ def run_git(args: list[str]) -> str:
     return result.stdout
 
 
-def git_ref_exists(ref: str) -> bool:
-    return governance_git_ref_exists(ref, repo_root=REPO_ROOT)
+def resolve_exact_commit_traceability_base_ref(base_ref: str) -> tuple[str | None, list[str]]:
+    """Resolve base refs for commit-traceability checks that fail closed on degradation."""
+    return governance_resolve_base_ref(
+        base_ref,
+        ref_exists=lambda ref: governance_git_ref_exists(ref, repo_root=REPO_ROOT),
+    )
 
 
 def resolve_base_ref(base_ref: str) -> tuple[str | None, list[str]]:
-    return governance_resolve_base_ref(base_ref, ref_exists=git_ref_exists)
+    """Backward-compatible alias for commit-traceability base-ref resolution."""
+    return resolve_exact_commit_traceability_base_ref(base_ref)
 
 
 def load_canonical_sections() -> list[str]:
@@ -458,7 +463,7 @@ def validate_red_tag_generated_content(failures: list[ValidationFailure]) -> Non
 def main() -> int:
     args = parse_args()
     failures: list[ValidationFailure] = []
-    effective_base_ref, resolution_notes = resolve_base_ref(args.base_ref)
+    effective_base_ref, resolution_notes = resolve_exact_commit_traceability_base_ref(args.base_ref)
     for note in resolution_notes:
         print(f"[WARN] {note}")
 
