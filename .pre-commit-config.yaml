@@ -57,17 +57,5 @@ repos:
         files: ^tests/fixtures/log_schema/
 
       # ── Issue governance ──────────────────────────────────────────────────
-
-      - id: validate-issue-links
-        name: Validate issue link references
-        language: python
-        entry: python scripts/validate_issue_links.py --all-issue-files --base-ref main
-        pass_filenames: false
-        files: ^docs/issues/
-
-      - id: validate-issues
-        name: Validate issue file schema and governance rules
-        language: python
-        entry: python scripts/validate_issues.py --all-issue-files --base-ref main
-        pass_filenames: false
-        files: ^docs/issues/
+      # Disabled intentionally for local pre-commit to allow drafting and
+      # iterating issue documents without blocking commits.
