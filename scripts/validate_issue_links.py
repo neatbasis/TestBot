@@ -16,6 +16,7 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 from governance_rules import (
+    EPHEMERAL_ORIGIN_MAIN_REF,
     git_ref_exists as governance_git_ref_exists,
     has_issue_reference,
     is_non_trivial_change,
@@ -90,8 +91,9 @@ def parse_args() -> argparse.Namespace:
         default="origin/main",
         help=(
             "Git base ref used to inspect commit metadata (default: origin/main). "
-            "If origin/main is unavailable (for example in shallow/detached environments), "
-            "the validator automatically falls back to HEAD~1, then HEAD."
+            "If origin/main is unavailable, the validator first attempts recovered ref "
+            "refs/codex/origin-main (when ALLOW_REMOTE_BASE_REF_RECOVERY=true and GIT_ORIGIN_URL is set), "
+            "then falls back to HEAD~1, then HEAD."
         ),
     )
     parser.add_argument(
@@ -130,6 +132,7 @@ def resolve_exact_commit_traceability_base_ref(base_ref: str) -> tuple[str | Non
     return governance_resolve_base_ref(
         base_ref,
         ref_exists=lambda ref: governance_git_ref_exists(ref, repo_root=REPO_ROOT),
+        repo_root=REPO_ROOT,
     )
 
 
@@ -269,6 +272,9 @@ def commit_traceability_requires_exact_base_ref(
         return False
 
     if requested_base_ref == effective_base_ref or allow_degraded_commit_traceability:
+        return True
+
+    if requested_base_ref == "origin/main" and effective_base_ref == EPHEMERAL_ORIGIN_MAIN_REF:
         return True
 
     record_failure(

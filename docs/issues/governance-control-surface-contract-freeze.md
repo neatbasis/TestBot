@@ -73,7 +73,8 @@ For each affected control surface, the repo must converge on:
 - Governance rule primitives are centralized and reused; validators must not fork equivalent logic in ad-hoc form.
 - `scripts/validate_issue_links.py` validates issue-link integrity, including verification manifest references when present.
 - `scripts/validate_issues.py` validates canonical issue schema/state integrity and policy conformance.
-- Base-ref fallback behavior remains: `origin/main` -> `HEAD~1` -> `HEAD`, with explicit warnings in fallback modes.
+- Base-ref resolution policy is canonicalized in `scripts/governance_rules.py`: prefer requested `origin/main`; when unavailable, optionally recover into `refs/codex/origin-main` (requires `ALLOW_REMOTE_BASE_REF_RECOVERY=true` and `GIT_ORIGIN_URL`), then fall back to `HEAD~1` -> `HEAD` with explicit warnings.
+- `scripts/validate_issue_links.py` commit-traceability checks may accept recovered `refs/codex/origin-main`, but must continue to fail closed for degraded `HEAD~1`/`HEAD` unless degraded mode is explicitly allowed.
 
 ### 2) Issue states (canonical model)
 
@@ -136,3 +137,4 @@ Freeze may be lifted only when all are true:
 - a reviewed canonical contract revision is merged,
 - validators/gate/tests align with the revised contract,
 - no unresolved drift remains across rulesets, issue states, RED_TAG derivation, gate profiles, skip policy, manifest semantics, and triage routing.
+

@@ -115,6 +115,21 @@ def test_main_writes_behave_remediation_to_json_summary(
     assert payload["remediation"] == [all_green_gate.BEHAVE_REMEDIATION_MESSAGE]
 
 
+
+
+def test_resolve_base_ref_uses_recovered_ref_when_available(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        all_green_gate,
+        "governance_git_ref_exists",
+        lambda ref, *, repo_root: ref == all_green_gate.EPHEMERAL_ORIGIN_MAIN_REF,
+    )
+
+    resolved, notes = all_green_gate.resolve_best_effort_diff_base_ref("origin/main")
+
+    assert resolved == all_green_gate.EPHEMERAL_ORIGIN_MAIN_REF
+    assert any("using existing recovered ref 'refs/codex/origin-main'" in note for note in notes)
+
+
 def test_resolve_base_ref_falls_back_when_origin_main_missing(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(all_green_gate, "governance_git_ref_exists", lambda ref, *, repo_root: ref == "HEAD~1")
 

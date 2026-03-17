@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 import subprocess
 from pathlib import Path
@@ -25,6 +26,13 @@ ORIGIN_MAIN_FALLBACK_NOTE: Final[str] = (
 NO_USABLE_BASE_REF_NOTE: Final[str] = (
     "Could not resolve base ref 'origin/main' or fallbacks (HEAD~1, HEAD). "
     "Governance diff checks will run against a reduced baseline and all issue files may be validated."
+)
+EPHEMERAL_ORIGIN_MAIN_REF: Final[str] = "refs/codex/origin-main"
+ORIGIN_MAIN_RECOVERY_REUSED_NOTE: Final[str] = (
+    "Base ref 'origin/main' is unavailable; using existing recovered ref 'refs/codex/origin-main'."
+)
+ORIGIN_MAIN_RECOVERY_FETCHED_NOTE: Final[str] = (
+    "Base ref 'origin/main' is unavailable; recovered from GIT_ORIGIN_URL into 'refs/codex/origin-main'."
 )
 
 # Explicit ownership map for governance rule families used by validators.
@@ -128,10 +136,27 @@ def git_ref_exists(ref: str, *, repo_root: Path) -> bool:
     return result.returncode == 0
 
 
+def allow_remote_base_ref_recovery() -> bool:
+    """Return whether remote base-ref recovery is enabled by environment policy."""
+    return os.getenv("ALLOW_REMOTE_BASE_REF_RECOVERY", "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def fetch_origin_main_recovery_ref(*, repo_root: Path, origin_url: str) -> bool:
+    """Attempt to fetch origin main into a local ephemeral recovery ref."""
+    result = subprocess.run(
+        ["git", "fetch", "--no-tags", origin_url, f"main:{EPHEMERAL_ORIGIN_MAIN_REF}"],
+        cwd=repo_root,
+        capture_output=True,
+        text=True,
+    )
+    return result.returncode == 0
+
+
 def resolve_base_ref(
     base_ref: str,
     *,
     ref_exists: Callable[[str], bool],
+    repo_root: Path | None = None,
 ) -> tuple[str | None, list[str]]:
     """Resolve base ref using canonical fallback order and canonical note wording."""
     notes: list[str] = []
@@ -140,6 +165,15 @@ def resolve_base_ref(
 
     if base_ref != "origin/main":
         return None, [MISSING_REQUESTED_BASE_REF_NOTE.format(ref=base_ref)]
+
+    if ref_exists(EPHEMERAL_ORIGIN_MAIN_REF):
+        return EPHEMERAL_ORIGIN_MAIN_REF, [ORIGIN_MAIN_RECOVERY_REUSED_NOTE]
+
+    if repo_root is not None and allow_remote_base_ref_recovery():
+        origin_url = os.getenv("GIT_ORIGIN_URL", "").strip()
+        if origin_url and fetch_origin_main_recovery_ref(repo_root=repo_root, origin_url=origin_url):
+            if ref_exists(EPHEMERAL_ORIGIN_MAIN_REF):
+                return EPHEMERAL_ORIGIN_MAIN_REF, [ORIGIN_MAIN_RECOVERY_FETCHED_NOTE]
 
     for fallback in ("HEAD~1", "HEAD"):
         if ref_exists(fallback):

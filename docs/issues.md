@@ -201,9 +201,10 @@ Example:
 When running governance validators from shallow or detached environments, use this supported flow:
 
 1. Run validators with default base ref (`origin/main`).
-2. If `origin/main` is unavailable, validators automatically fall back to `HEAD~1`, then `HEAD`.
-3. In fallback mode, warnings are intentionally explicit (Codex/shallow-clone expected behavior, reduced diff baseline, and `git fetch origin main` guidance) to avoid false-alarm triage.
-4. For explicit control, pass `--base-ref <ref>`.
+2. If `origin/main` is unavailable, validators first try recovered `refs/codex/origin-main` when `ALLOW_REMOTE_BASE_REF_RECOVERY=true` and `GIT_ORIGIN_URL` is set.
+3. If recovery is unavailable, validators fall back to `HEAD~1`, then `HEAD`.
+4. Fallback/recovery warnings are intentionally explicit (Codex/shallow-clone expected behavior, reduced diff baseline, and `git fetch origin main` guidance) to avoid false-alarm triage.
+5. For explicit control, pass `--base-ref <ref>`.
 
 Canonical commands:
 
