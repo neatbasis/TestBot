@@ -380,75 +380,87 @@ def test_summarize_groups_product_and_governance_failures() -> None:
     assert [failure["name"] for failure in summary["governance_failures"]] == ["qa_validate_issues"]
 
 
-def test_apply_governance_skip_policy_skips_issue_and_invariant_checks_when_irrelevant_changes() -> None:
+@pytest.fixture
+def governance_skip_policy_path_sets() -> dict[str, set[str]]:
+    return {
+        "non_governance_only": {"src/testbot/runtime.py"},
+        "freeze_governed_only": {"scripts/validate_issue_links.py"},
+        "mixed_with_governed_override": {
+            "src/testbot/runtime.py",
+            "tests/test_all_green_gate.py",
+        },
+        "feature_status_report_only": {
+            "docs/qa/feature-status.yaml",
+            "docs/qa/feature-status-report.json",
+        },
+        "force_override_mixed": {
+            "src/testbot/runtime.py",
+            "scripts/validate_issue_links.py",
+        },
+    }
+
+
+@pytest.mark.parametrize(
+    ("path_set_name", "force_full_governance", "expected_skipped_checks", "expected_notes"),
+    [
+        (
+            "non_governance_only",
+            False,
+            {"qa_validate_issue_links", "qa_validate_issues", "qa_validate_invariant_sync"},
+            [
+                "Skipping qa_validate_issue_links: No docs/issues, release metadata, or governance docs changed against base ref; detected 1 changed paths.",
+                "Skipping qa_validate_issues: No docs/issues, release metadata, or governance docs changed against base ref; detected 1 changed paths.",
+                "Skipping qa_validate_invariant_sync: No invariant/directive files changed against base ref; detected 1 changed paths.",
+            ],
+        ),
+        (
+            "freeze_governed_only",
+            False,
+            set(),
+            ["Freeze-governed control-surface change detected: running all governance checks."],
+        ),
+        (
+            "mixed_with_governed_override",
+            False,
+            set(),
+            ["Freeze-governed control-surface change detected: running all governance checks."],
+        ),
+        (
+            "feature_status_report_only",
+            False,
+            {"qa_validate_invariant_sync"},
+            [
+                "Skipping qa_validate_invariant_sync: No invariant/directive files changed against base ref; detected 2 changed paths.",
+            ],
+        ),
+        (
+            "force_override_mixed",
+            True,
+            set(),
+            ["--force-full-governance enabled: running all governance checks."],
+        ),
+    ],
+)
+def test_apply_governance_skip_policy_matrix(
+    path_set_name: str,
+    force_full_governance: bool,
+    expected_skipped_checks: set[str],
+    expected_notes: list[str],
+    governance_skip_policy_path_sets: dict[str, set[str]],
+) -> None:
     checks = all_green_gate.build_checks(base_ref="origin/main", kpi_guardrail_mode="optional", profile="readiness")
+    changed_paths = governance_skip_policy_path_sets[path_set_name]
 
     updated_checks, notes = all_green_gate.apply_governance_skip_policy(
         checks,
-        changed_paths={"src/testbot/runtime.py"},
-        force_full_governance=False,
+        changed_paths=changed_paths,
+        force_full_governance=force_full_governance,
     )
 
-    skipped = {check.name: check.skip_reason for check in updated_checks if check.skip_reason}
-    assert "qa_validate_issue_links" in skipped
-    assert "qa_validate_issues" in skipped
-    assert "qa_validate_invariant_sync" in skipped
-    assert any("Skipping qa_validate_issue_links" in note for note in notes)
+    skipped_checks = {check.name for check in updated_checks if check.skip_reason}
 
-
-def test_apply_governance_skip_policy_runs_full_checks_for_governed_surface_change() -> None:
-    checks = all_green_gate.build_checks(base_ref="origin/main", kpi_guardrail_mode="optional", profile="readiness")
-
-    updated_checks, notes = all_green_gate.apply_governance_skip_policy(
-        checks,
-        changed_paths={"scripts/validate_issue_links.py"},
-        force_full_governance=False,
-    )
-
-    assert all(check.skip_reason is None for check in updated_checks)
-    assert notes == ["Freeze-governed control-surface change detected: running all governance checks."]
-
-
-def test_apply_governance_skip_policy_governed_surface_override_dominates_mixed_changes() -> None:
-    checks = all_green_gate.build_checks(base_ref="origin/main", kpi_guardrail_mode="optional", profile="readiness")
-
-    updated_checks, notes = all_green_gate.apply_governance_skip_policy(
-        checks,
-        changed_paths={"src/testbot/runtime.py", "tests/test_all_green_gate.py"},
-        force_full_governance=False,
-    )
-
-    assert all(check.skip_reason is None for check in updated_checks)
-    assert notes == ["Freeze-governed control-surface change detected: running all governance checks."]
-
-
-def test_apply_governance_skip_policy_feature_status_yaml_does_not_force_full_governance() -> None:
-    checks = all_green_gate.build_checks(base_ref="origin/main", kpi_guardrail_mode="optional", profile="readiness")
-
-    updated_checks, notes = all_green_gate.apply_governance_skip_policy(
-        checks,
-        changed_paths={"docs/qa/feature-status.yaml"},
-        force_full_governance=False,
-    )
-
-    skipped = {check.name: check.skip_reason for check in updated_checks if check.skip_reason}
-    assert "qa_validate_issue_links" not in skipped
-    assert "qa_validate_issues" not in skipped
-    assert "qa_validate_invariant_sync" in skipped
-    assert not any("Freeze-governed control-surface change detected" in note for note in notes)
-
-
-def test_apply_governance_skip_policy_respects_force_full_governance() -> None:
-    checks = all_green_gate.build_checks(base_ref="origin/main", kpi_guardrail_mode="optional", profile="readiness")
-
-    updated_checks, notes = all_green_gate.apply_governance_skip_policy(
-        checks,
-        changed_paths={"src/testbot/runtime.py"},
-        force_full_governance=True,
-    )
-
-    assert all(check.skip_reason is None for check in updated_checks)
-    assert notes == ["--force-full-governance enabled: running all governance checks."]
+    assert skipped_checks == expected_skipped_checks
+    assert notes == expected_notes
 
 
 def test_run_gate_marks_skipped_checks_with_reason() -> None:
