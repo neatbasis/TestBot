@@ -1,5 +1,5 @@
 contract_version: 1
-last_updated: 2026-03-09
+last_updated: 2026-03-17
 report:
   canonical_generated_report: docs/qa/feature-status-report.md
   default_gate_summary: artifacts/all-green-gate-summary.json
@@ -12,6 +12,11 @@ report:
     or open issue files.
   - Capability obligation_refs/criteria entries are canonical issue acceptance-criterion
     IDs only; criterion text and completion state remain authoritative in issue records.
+  linkage_contract:
+  - Every capability must declare explicit issue_ids linkage.
+  - open_issues is a legacy alias and should be treated as migration-only.
+  - issue_keywords fallback is migration-only and is disabled by default in reporting unless
+    explicitly enabled.
 capabilities:
 - capability_id: knowing_grounded_answers
   capability_name: Knowing-mode grounded answer with provenance
@@ -34,10 +39,6 @@ capabilities:
   - P4
   issue_ids:
   - ISSUE-0009
-  open_issues:
-  - ISSUE-0009
-  issue_keywords:
-  - ISSUE-0009
 - capability_id: unknowing_safe_fallback
   capability_name: Unknowing-mode explicit uncertainty and safe fallback
   owner_module: src/testbot/reflection_policy.py
@@ -54,10 +55,6 @@ capabilities:
   roadmap_priority_refs:
   - P3
   issue_ids:
-  - ISSUE-0010
-  open_issues:
-  - ISSUE-0010
-  issue_keywords:
   - ISSUE-0010
 - capability_id: intent_grounding_router
   capability_name: Deterministic intent grounding and route selection
@@ -76,10 +73,6 @@ capabilities:
   - P3
   issue_ids:
   - ISSUE-0008
-  open_issues:
-  - ISSUE-0008
-  issue_keywords:
-  - ISSUE-0008
 - capability_id: time_aware_memory_ranking
   capability_name: Time-aware memory retrieval and reranking
   owner_module: src/testbot/rerank.py
@@ -97,9 +90,8 @@ capabilities:
   roadmap_priority_refs:
   - P2
   - P5
-  issue_keywords:
+  issue_ids:
   - ISSUE-0005
-  - time_aware_memory_ranking
 - capability_id: external_source_ingestion
   capability_name: External source ingestion connectors for grounding
   owner_module: src/testbot/source_connectors.py
@@ -120,9 +112,9 @@ capabilities:
   roadmap_priority_refs:
   - P1
   - P2
-  issue_keywords:
-  - source
-  - ingestion
+  issue_ids:
+  - ISSUE-0018
+  - ISSUE-0020
 - capability_id: canonical_turn_pipeline_foundation
   capability_name: Canonical turn pipeline foundation (observe/encode/stabilize)
   owner_module: src/testbot/turn_observation.py|src/testbot/candidate_encoding.py|src/testbot/stabilization.py
@@ -148,8 +140,6 @@ capabilities:
   - P4
   issue_ids:
   - ISSUE-0013
-  open_issues:
-  - ISSUE-0013
   obligation_refs:
   - issue_id: ISSUE-0013
     criteria:
@@ -166,8 +156,6 @@ capabilities:
   - AC-0013-05
   - AC-0013-06
   - AC-0013-07
-  issue_keywords:
-  - ISSUE-0013
 - capability_id: canonical_turn_pipeline_decisioning
   capability_name: Canonical turn pipeline decisioning (context/intent/retrieve/policy)
   owner_module: src/testbot/context_resolution.py|src/testbot/intent_resolution.py|src/testbot/evidence_retrieval.py|src/testbot/policy_decision.py
@@ -195,8 +183,6 @@ capabilities:
   - P4
   issue_ids:
   - ISSUE-0013
-  open_issues:
-  - ISSUE-0013
   obligation_refs:
   - issue_id: ISSUE-0013
     criteria:
@@ -213,8 +199,6 @@ capabilities:
   - AC-0013-05
   - AC-0013-08
   - AC-0013-10
-  issue_keywords:
-  - ISSUE-0013
 - capability_id: canonical_turn_pipeline_commit_and_audit
   capability_name: Canonical turn pipeline commit and auditability (assemble/validate/render/commit)
   owner_module: src/testbot/answer_assembly.py|src/testbot/answer_validation.py|src/testbot/answer_rendering.py|src/testbot/answer_commit.py
@@ -240,8 +224,6 @@ capabilities:
   - P5
   issue_ids:
   - ISSUE-0013
-  open_issues:
-  - ISSUE-0013
   obligation_refs:
   - issue_id: ISSUE-0013
     criteria:
@@ -252,8 +234,6 @@ capabilities:
   - AC-0013-02
   - AC-0013-09
   - AC-0013-11
-  issue_keywords:
-  - ISSUE-0013
 - capability_id: governance_readiness_gate
   capability_name: Canonical all-green merge gate and issue governance checks
   owner_module: scripts/all_green_gate.py
@@ -271,6 +251,5 @@ capabilities:
   current_status: implemented
   roadmap_priority_refs:
   - P5
-  issue_keywords:
+  issue_ids:
   - ISSUE-0007
-  - governance_readiness_gate
