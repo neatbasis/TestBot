@@ -525,3 +525,19 @@ def test_commit_traceability_can_opt_in_to_degraded_mode() -> None:
 
     assert allowed is True
     assert failures == []
+
+
+def test_commit_traceability_failure_message_mentions_requested_and_effective_refs() -> None:
+    failures: list[validate_issue_links.ValidationFailure] = []
+
+    allowed = validate_issue_links.commit_traceability_requires_exact_base_ref(
+        "origin/main",
+        "HEAD~1",
+        allow_degraded_commit_traceability=False,
+        failures=failures,
+    )
+
+    assert allowed is False
+    assert failures
+    assert "Requested 'origin/main' but resolved 'HEAD~1'" in failures[0].hint
+    assert "--allow-degraded-commit-traceability" in failures[0].hint
