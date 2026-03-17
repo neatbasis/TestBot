@@ -2,38 +2,26 @@
 
 from __future__ import annotations
 
-import os
 import re
-import subprocess
-from pathlib import Path
-from typing import Any, Callable, Final
+from typing import Any, Final
+
+from governance_base_ref import (
+    EPHEMERAL_ORIGIN_MAIN_REF,
+    MISSING_REQUESTED_BASE_REF_NOTE,
+    NO_USABLE_BASE_REF_NOTE,
+    ORIGIN_MAIN_FALLBACK_NOTE,
+    ORIGIN_MAIN_RECOVERY_FETCHED_NOTE,
+    ORIGIN_MAIN_RECOVERY_REUSED_NOTE,
+    allow_remote_base_ref_recovery,
+    fetch_origin_main_recovery_ref,
+    git_ref_exists,
+    resolve_base_ref,
+)
 
 ISSUE_ID_REGEX: Final[str] = r"\bISSUE-(\d{4})\b"
 ISSUE_ID_PATTERN: Final[re.Pattern[str]] = re.compile(ISSUE_ID_REGEX, re.IGNORECASE)
 SECTION_NUMBER_LINE: Final[re.Pattern[str]] = re.compile(r"^\s*\d+\.\s+`([^`]+)`")
 NON_TRIVIAL_WORD_PATTERN: Final[re.Pattern[str]] = re.compile(r"[A-Za-z0-9_-]+")
-MISSING_REQUESTED_BASE_REF_NOTE: Final[str] = (
-    "Base ref '{ref}' does not exist. Provide a valid --base-ref (for example origin/main, HEAD~1, or HEAD)."
-)
-ORIGIN_MAIN_FALLBACK_NOTE: Final[str] = (
-    "Base ref 'origin/main' is unavailable; falling back to '{fallback}'.\n"
-    "       This is expected in Codex task containers or shallow CI clones.\n"
-    "       Governance diff checks are running against a reduced baseline.\n"
-    "       Commit-traceability checks may still fail closed unless degraded mode is explicitly allowed.\n"
-    "       For authoritative results, run locally with 'git fetch origin main' first. "
-    "(Unless you are ChatGPT/Codex!)"
-)
-NO_USABLE_BASE_REF_NOTE: Final[str] = (
-    "Could not resolve base ref 'origin/main' or fallbacks (HEAD~1, HEAD). "
-    "Governance diff checks will run against a reduced baseline and all issue files may be validated."
-)
-EPHEMERAL_ORIGIN_MAIN_REF: Final[str] = "refs/codex/origin-main"
-ORIGIN_MAIN_RECOVERY_REUSED_NOTE: Final[str] = (
-    "Base ref 'origin/main' is unavailable; using existing recovered ref 'refs/codex/origin-main'."
-)
-ORIGIN_MAIN_RECOVERY_FETCHED_NOTE: Final[str] = (
-    "Base ref 'origin/main' is unavailable; recovered from GIT_ORIGIN_URL into 'refs/codex/origin-main'."
-)
 
 # Explicit ownership map for governance rule families used by validators.
 # This is the currently canonicalized subset of migrated rule families, not a
@@ -110,7 +98,7 @@ def parse_canonical_sections(policy_text: str) -> list[str]:
 
 def contains_canonical_section(issue_text: str, section_name: str) -> bool:
     """Return whether an issue text includes section content via heading or schema bullet label."""
-    label = re.compile(rf"\*\*{re.escape(section_name)}:\*\*\s*.+", re.IGNORECASE)
+    label = re.compile(rf"\*\*{re.escape(section_name)}:\\*\*\s*.+", re.IGNORECASE)
     heading = re.compile(rf"^##\s+{re.escape(section_name)}\s*$", re.IGNORECASE | re.MULTILINE)
     return bool(label.search(issue_text) or heading.search(issue_text))
 
@@ -123,62 +111,3 @@ def missing_canonical_sections(issue_text: str, canonical_sections: list[str]) -
 def metadata_missing_issue_reference(text: str) -> bool:
     """Return whether metadata is non-trivial yet missing ISSUE-XXXX linkage."""
     return is_non_trivial_change(text) and not has_issue_reference(text)
-
-
-def git_ref_exists(ref: str, *, repo_root: Path) -> bool:
-    """Return whether a Git ref exists in the given repository root."""
-    result = subprocess.run(
-        ["git", "rev-parse", "--verify", "--quiet", ref],
-        cwd=repo_root,
-        capture_output=True,
-        text=True,
-    )
-    return result.returncode == 0
-
-
-def allow_remote_base_ref_recovery() -> bool:
-    """Return whether remote base-ref recovery is enabled by environment policy."""
-    return os.getenv("ALLOW_REMOTE_BASE_REF_RECOVERY", "").strip().lower() in {"1", "true", "yes", "on"}
-
-
-def fetch_origin_main_recovery_ref(*, repo_root: Path, origin_url: str) -> bool:
-    """Attempt to fetch origin main into a local ephemeral recovery ref."""
-    result = subprocess.run(
-        ["git", "fetch", "--no-tags", origin_url, f"main:{EPHEMERAL_ORIGIN_MAIN_REF}"],
-        cwd=repo_root,
-        capture_output=True,
-        text=True,
-    )
-    return result.returncode == 0
-
-
-def resolve_base_ref(
-    base_ref: str,
-    *,
-    ref_exists: Callable[[str], bool],
-    repo_root: Path | None = None,
-) -> tuple[str | None, list[str]]:
-    """Resolve base ref using canonical fallback order and canonical note wording."""
-    notes: list[str] = []
-    if ref_exists(base_ref):
-        return base_ref, notes
-
-    if base_ref != "origin/main":
-        return None, [MISSING_REQUESTED_BASE_REF_NOTE.format(ref=base_ref)]
-
-    if ref_exists(EPHEMERAL_ORIGIN_MAIN_REF):
-        return EPHEMERAL_ORIGIN_MAIN_REF, [ORIGIN_MAIN_RECOVERY_REUSED_NOTE]
-
-    if repo_root is not None and allow_remote_base_ref_recovery():
-        origin_url = os.getenv("GIT_ORIGIN_URL", "").strip()
-        if origin_url and fetch_origin_main_recovery_ref(repo_root=repo_root, origin_url=origin_url):
-            if ref_exists(EPHEMERAL_ORIGIN_MAIN_REF):
-                return EPHEMERAL_ORIGIN_MAIN_REF, [ORIGIN_MAIN_RECOVERY_FETCHED_NOTE]
-
-    for fallback in ("HEAD~1", "HEAD"):
-        if ref_exists(fallback):
-            notes.append(ORIGIN_MAIN_FALLBACK_NOTE.format(fallback=fallback))
-            return fallback, notes
-
-    notes.append(NO_USABLE_BASE_REF_NOTE)
-    return None, notes

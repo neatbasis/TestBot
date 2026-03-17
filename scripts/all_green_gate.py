@@ -22,7 +22,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from governance_rules import (
+from governance_base_ref import (
     EPHEMERAL_ORIGIN_MAIN_REF,
     git_ref_exists as governance_git_ref_exists,
     resolve_base_ref as governance_resolve_base_ref,
