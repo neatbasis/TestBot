@@ -26,17 +26,14 @@ from governance_rules import (
     git_ref_exists as governance_git_ref_exists,
     resolve_base_ref as governance_resolve_base_ref,
 )
+from verification_manifest_contract import (
+    REQUIRED_VERIFICATION_CHECKS,
+    VERIFICATION_MANIFEST_SCHEMA_VERSION,
+    build_verification_manifest_payload,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 VERIFICATION_MANIFEST_DIR = REPO_ROOT / "artifacts" / "verification"
-VERIFICATION_MANIFEST_SCHEMA_VERSION = "1.0"
-REQUIRED_VERIFICATION_CHECKS = [
-    "product_behave",
-    "product_eval_recall_topk4",
-    "safety_validate_log_schema",
-    "safety_validate_pipeline_stage_conformance",
-    "qa_pytest_not_live_smoke",
-]
 BEHAVE_PREFLIGHT_CHECK_NAME = "preflight_bdd_dependencies"
 BEHAVE_REMEDIATION_MESSAGE = (
     "Missing required BDD dependency 'behave'. Install development dependencies before running "
@@ -169,22 +166,17 @@ def write_verification_manifest(
 ) -> Path:
     VERIFICATION_MANIFEST_DIR.mkdir(parents=True, exist_ok=True)
     manifest_path = VERIFICATION_MANIFEST_DIR / f"{run_id}.json"
-    payload = {
-        "schema_version": VERIFICATION_MANIFEST_SCHEMA_VERSION,
-        "run_id": run_id,
-        "generated_at_utc": dt.datetime.now(dt.timezone.utc).isoformat(),
-        "manifest_path": str(manifest_path.relative_to(REPO_ROOT)),
-        "required_checks": REQUIRED_VERIFICATION_CHECKS,
-        "gate": {
-            "base_ref_requested": args.base_ref,
-            "base_ref_effective": effective_base_ref,
-            "continue_on_failure": args.continue_on_failure,
-            "profile": profile,
-            "kpi_guardrail_mode": args.kpi_guardrail_mode,
-        },
-        "summary": summary,
-        "checks": summary.get("checks", []),
-    }
+    payload = build_verification_manifest_payload(
+        run_id=run_id,
+        generated_at_utc=dt.datetime.now(dt.timezone.utc).isoformat(),
+        manifest_path=str(manifest_path.relative_to(REPO_ROOT)),
+        base_ref_requested=args.base_ref,
+        base_ref_effective=effective_base_ref,
+        continue_on_failure=args.continue_on_failure,
+        profile=profile,
+        kpi_guardrail_mode=args.kpi_guardrail_mode,
+        summary=summary,
+    )
     manifest_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
     return manifest_path
 

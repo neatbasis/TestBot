@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import importlib.util
 import sys
 from pathlib import Path
@@ -183,6 +184,13 @@ def test_validate_issue_schema_accepts_verification_manifest_reference(
     manifest_path.write_text(
         """{
   "run_id": "20260316T181500Z-1a2b3c4d",
+  "required_checks": [
+    "product_behave",
+    "product_eval_recall_topk4",
+    "safety_validate_log_schema",
+    "safety_validate_pipeline_stage_conformance",
+    "qa_pytest_not_live_smoke"
+  ],
   "checks": [
     {"name": "product_behave"},
     {"name": "product_eval_recall_topk4"},
@@ -259,6 +267,13 @@ def test_validate_issue_schema_fails_when_verification_manifest_missing_required
     (manifest_dir / f"{run_id}.json").write_text(
         """{
   "run_id": "20260316T181500Z-deadbeef",
+  "required_checks": [
+    "product_behave",
+    "product_eval_recall_topk4",
+    "safety_validate_log_schema",
+    "safety_validate_pipeline_stage_conformance",
+    "qa_pytest_not_live_smoke"
+  ],
   "checks": [
     {"name": "product_behave"},
     {"name": "qa_pytest_not_live_smoke"}
@@ -332,6 +347,13 @@ def test_validate_issue_schema_fails_when_verification_manifest_run_id_mismatch(
     (manifest_dir / "20260316T181500Z-1a2b3c4d.json").write_text(
         """{
   "run_id": "20260316T181500Z-1a2b3c4d",
+  "required_checks": [
+    "product_behave",
+    "product_eval_recall_topk4",
+    "safety_validate_log_schema",
+    "safety_validate_pipeline_stage_conformance",
+    "qa_pytest_not_live_smoke"
+  ],
   "checks": []
 }
 """,
@@ -393,7 +415,7 @@ ready
     assert "does not match manifest file run ID" in messages
 
 
-def test_verification_manifest_round_trip_generated_manifest_is_accepted(
+def test_verification_manifest_round_trip_generation_and_consumption_contract(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
     run_id = "20260316T181500Z-1a2b3c4d"
@@ -421,54 +443,30 @@ def test_verification_manifest_round_trip_generated_manifest_is_accepted(
         f"- Run ID: `{run_id}`"
     )
 
-    failures: list[validate_issue_links.ValidationFailure] = []
+    accepted_failures: list[validate_issue_links.ValidationFailure] = []
     validate_issue_links.validate_verification_manifest_reference(
         verification_body,
         Path("docs/issues/ISSUE-9999.md"),
-        failures,
+        accepted_failures,
     )
 
     assert manifest_path.exists()
-    assert failures == []
+    assert accepted_failures == []
 
+    broken_payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    broken_payload["checks"] = [{"name": "product_behave"}]
+    manifest_path.write_text(json.dumps(broken_payload), encoding="utf-8")
 
-def test_verification_manifest_round_trip_fails_when_declared_run_id_mismatches_filename(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
-    run_id = "20260316T181500Z-1a2b3c4d"
-    repo_root = tmp_path
-    manifest_dir = repo_root / "artifacts" / "verification"
-
-    monkeypatch.setattr(all_green_gate, "REPO_ROOT", repo_root)
-    monkeypatch.setattr(all_green_gate, "VERIFICATION_MANIFEST_DIR", manifest_dir)
-    monkeypatch.setattr(validate_issue_links, "REPO_ROOT", repo_root)
-
-    args = argparse.Namespace(base_ref="origin/main", continue_on_failure=False, kpi_guardrail_mode="optional")
-    summary = {
-        "checks": [{"name": check_name} for check_name in all_green_gate.REQUIRED_VERIFICATION_CHECKS],
-    }
-    all_green_gate.write_verification_manifest(
-        run_id=run_id,
-        args=args,
-        effective_base_ref="origin/main",
-        profile="full",
-        summary=summary,
-    )
-
-    verification_body = (
-        f"- Verification manifest: `artifacts/verification/{run_id}.json`\n"
-        "- Run ID: `20260316T181500Z-deadbeef`"
-    )
-
-    failures: list[validate_issue_links.ValidationFailure] = []
+    rejected_failures: list[validate_issue_links.ValidationFailure] = []
     validate_issue_links.validate_verification_manifest_reference(
         verification_body,
         Path("docs/issues/ISSUE-9999.md"),
-        failures,
+        rejected_failures,
     )
 
-    assert failures
-    assert any("does not match manifest file run ID" in failure.message for failure in failures)
+    assert rejected_failures
+    assert any("missing required checks" in failure.message for failure in rejected_failures)
+
 
 
 def test_validate_pr_and_commit_metadata_uses_shared_metadata_primitive(monkeypatch: pytest.MonkeyPatch) -> None:
