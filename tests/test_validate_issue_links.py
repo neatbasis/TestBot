@@ -513,6 +513,21 @@ def test_commit_traceability_fails_closed_when_fallback_ref_is_used() -> None:
     assert any("fail closed" in failure.message for failure in failures)
 
 
+
+
+def test_commit_traceability_accepts_recovered_origin_main_ref() -> None:
+    failures: list[validate_issue_links.ValidationFailure] = []
+
+    allowed = validate_issue_links.commit_traceability_requires_exact_base_ref(
+        "origin/main",
+        validate_issue_links.EPHEMERAL_ORIGIN_MAIN_REF,
+        allow_degraded_commit_traceability=False,
+        failures=failures,
+    )
+
+    assert allowed is True
+    assert failures == []
+
 def test_commit_traceability_can_opt_in_to_degraded_mode() -> None:
     failures: list[validate_issue_links.ValidationFailure] = []
 

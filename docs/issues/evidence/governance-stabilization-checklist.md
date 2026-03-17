@@ -141,3 +141,5 @@ Mark ready only when all rows above are either `verified` or explicitly deferred
 
 - [ ] Ready to recommend freeze lift
 - [x] Not ready
+
+- 2026-03-17 surface update: canonical base-ref resolution now includes optional remote recovery to `refs/codex/origin-main` via `ALLOW_REMOTE_BASE_REF_RECOVERY` + `GIT_ORIGIN_URL` before `HEAD~1`/`HEAD` fallback; strict commit-traceability remains fail-closed for `HEAD~1`/`HEAD` degradation.

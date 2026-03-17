@@ -401,9 +401,10 @@ python scripts/validate_issues.py --all-issue-files --base-ref origin/main
 Canonical base-ref policy for governance validation in this repository:
 
 - Default `--base-ref` is `origin/main`.
-- If `origin/main` is unavailable (for example, shallow/detached clones), fall back in order to `HEAD~1`, then `HEAD`.
-- Validators now emit a multi-line explanatory warning in fallback mode clarifying this is expected in Codex task containers/shallow clones and that authoritative diffs require `git fetch origin main` locally.
-- This fallback behavior is by design (contracted), and the gate emits a warning note when fallback is used.
+- If `origin/main` is unavailable, first attempt optional recovery to `refs/codex/origin-main` when `ALLOW_REMOTE_BASE_REF_RECOVERY=true` and `GIT_ORIGIN_URL` is configured.
+- If recovery is unavailable, fall back in order to `HEAD~1`, then `HEAD`.
+- Validators emit explanatory warnings for recovery/fallback mode clarifying Codex task container/shallow-clone expectations and that authoritative diffs require `git fetch origin main` locally.
+- This recovery/fallback behavior is by design (contracted), and the gate emits a note when non-default resolution is used.
 - You can still override explicitly with `--base-ref <ref>` when validating against a different branch point.
 
 ## Runbook: conflicted PR recovery (PR #78-class re-qualification)
@@ -437,7 +438,7 @@ python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main
 python scripts/validate_issues.py --all-issue-files --base-ref origin/main
 ```
 
-If `origin/main` is not present locally (common in shallow CI clones), follow the canonical policy (automatic fallback to `HEAD~1`, then `HEAD`) or fetch explicitly:
+If `origin/main` is not present locally (common in shallow CI clones), follow the canonical policy (optional recovery to `refs/codex/origin-main` when enabled, otherwise fallback to `HEAD~1` then `HEAD`) or fetch explicitly:
 
 ```bash
 git fetch origin main
@@ -468,7 +469,7 @@ python scripts/validate_issues.py --all-issue-files --base-ref origin/main | tee
 
 1. Rebase completes with no remaining conflict markers and branch is linear on top of `origin/main` when available.
 2. `python scripts/all_green_gate.py --json-output artifacts/all-green-gate-summary.json` exits `0`.
-3. Governance validators exit `0` under canonical base-ref policy (`origin/main` default; fallback `HEAD~1` then `HEAD` when unavailable).
+3. Governance validators exit `0` under canonical base-ref policy (`origin/main` default; optional recovery to `refs/codex/origin-main` when enabled; fallback `HEAD~1` then `HEAD` when unavailable).
 4. PR body contains evidence artifact paths and references the run generated after conflict resolution.
 
 

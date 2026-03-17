@@ -23,6 +23,7 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 from governance_rules import (
+    EPHEMERAL_ORIGIN_MAIN_REF,
     git_ref_exists as governance_git_ref_exists,
     resolve_base_ref as governance_resolve_base_ref,
 )
@@ -80,8 +81,9 @@ def parse_args() -> argparse.Namespace:
         default="origin/main",
         help=(
             "Git base ref passed to governance validators (default: origin/main). "
-            "If origin/main is unavailable in shallow/detached environments, "
-            "the gate falls back to HEAD~1, then HEAD. Override with --base-ref."
+            "If origin/main is unavailable, the gate first attempts recovered ref "
+            "refs/codex/origin-main (when ALLOW_REMOTE_BASE_REF_RECOVERY=true and GIT_ORIGIN_URL is set), "
+            "then falls back to HEAD~1, then HEAD. Override with --base-ref."
         ),
     )
     parser.add_argument(
@@ -211,6 +213,7 @@ def resolve_best_effort_diff_base_ref(base_ref: str) -> tuple[str | None, list[s
     return governance_resolve_base_ref(
         base_ref,
         ref_exists=lambda ref: governance_git_ref_exists(ref, repo_root=REPO_ROOT),
+        repo_root=REPO_ROOT,
     )
 
 
@@ -719,10 +722,15 @@ def main() -> int:
     effective_base_ref, base_ref_notes = resolve_best_effort_diff_base_ref(args.base_ref)
     for note in base_ref_notes:
         print(f"[WARN] {note}")
-    if args.base_ref == "origin/main" and effective_base_ref in {"HEAD~1", "HEAD"}:
+    if args.base_ref == "origin/main" and effective_base_ref == EPHEMERAL_ORIGIN_MAIN_REF:
+        print(
+            "[INFO] Base-ref recovery is active by canonical policy: "
+            "origin/main -> refs/codex/origin-main."
+        )
+    elif args.base_ref == "origin/main" and effective_base_ref in {"HEAD~1", "HEAD"}:
         print(
             f"[INFO] Base-ref fallback is active by canonical policy: "
-            f"origin/main -> HEAD~1 -> HEAD (using {effective_base_ref!r})."
+            f"origin/main -> refs/codex/origin-main -> HEAD~1 -> HEAD (using {effective_base_ref!r})."
         )
 
     profile = resolve_profile(args.profile)

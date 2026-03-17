@@ -67,8 +67,9 @@ def parse_args() -> argparse.Namespace:
         default="origin/main",
         help=(
             "Git base ref used to detect newly added issue files (default: origin/main). "
-            "If origin/main is unavailable (for example in shallow/detached environments), "
-            "the validator automatically falls back to HEAD~1, then HEAD."
+            "If origin/main is unavailable, the validator first attempts recovered ref "
+            "refs/codex/origin-main (when ALLOW_REMOTE_BASE_REF_RECOVERY=true and GIT_ORIGIN_URL is set), "
+            "then falls back to HEAD~1, then HEAD."
         ),
     )
     parser.add_argument(
@@ -95,6 +96,7 @@ def resolve_safe_changed_path_base_ref(base_ref: str) -> tuple[str | None, list[
     return governance_resolve_base_ref(
         base_ref,
         ref_exists=lambda ref: governance_git_ref_exists(ref, repo_root=REPO_ROOT),
+        repo_root=REPO_ROOT,
     )
 
 
