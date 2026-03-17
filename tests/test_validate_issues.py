@@ -22,9 +22,9 @@ validate_issues = _load_module("validate_issues", _SCRIPTS_DIR / "validate_issue
 
 
 def test_resolve_base_ref_uses_canonical_missing_origin_note(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(validate_issues, "git_ref_exists", lambda _ref: False)
+    monkeypatch.setattr(validate_issues, "governance_git_ref_exists", lambda _ref, *, repo_root: False)
 
-    resolved, notes = validate_issues.resolve_base_ref("origin/main")
+    resolved, notes = validate_issues.resolve_safe_changed_path_base_ref("origin/main")
 
     assert resolved is None
     assert notes == [

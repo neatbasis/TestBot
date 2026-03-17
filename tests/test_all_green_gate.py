@@ -116,9 +116,9 @@ def test_main_writes_behave_remediation_to_json_summary(
 
 
 def test_resolve_base_ref_falls_back_when_origin_main_missing(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(all_green_gate, "git_ref_exists", lambda ref: ref == "HEAD~1")
+    monkeypatch.setattr(all_green_gate, "governance_git_ref_exists", lambda ref, *, repo_root: ref == "HEAD~1")
 
-    resolved, notes = all_green_gate.resolve_base_ref("origin/main")
+    resolved, notes = all_green_gate.resolve_best_effort_diff_base_ref("origin/main")
 
     assert resolved == "HEAD~1"
     assert any("falling back to 'HEAD~1'" in note for note in notes)
@@ -128,9 +128,9 @@ def test_resolve_base_ref_falls_back_when_origin_main_missing(monkeypatch: pytes
 
 
 def test_resolve_base_ref_returns_canonical_note_when_no_refs_available(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(all_green_gate, "git_ref_exists", lambda _ref: False)
+    monkeypatch.setattr(all_green_gate, "governance_git_ref_exists", lambda _ref, *, repo_root: False)
 
-    resolved, notes = all_green_gate.resolve_base_ref("origin/main")
+    resolved, notes = all_green_gate.resolve_best_effort_diff_base_ref("origin/main")
 
     assert resolved is None
     assert notes == [
@@ -160,7 +160,7 @@ def test_main_propagates_effective_base_ref_to_governance_checks_in_readiness_pr
         ),
     )
     monkeypatch.setattr(all_green_gate.importlib.util, "find_spec", lambda _name: object())
-    monkeypatch.setattr(all_green_gate, "resolve_base_ref", lambda _ref: ("HEAD~1", []))
+    monkeypatch.setattr(all_green_gate, "resolve_best_effort_diff_base_ref", lambda _ref: ("HEAD~1", []))
 
     captured_checks: list[all_green_gate.GateCheck] = []
 

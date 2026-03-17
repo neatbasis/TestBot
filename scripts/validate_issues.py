@@ -72,12 +72,17 @@ def load_canonical_sections() -> list[str]:
     return parse_canonical_sections(text)
 
 
-def git_ref_exists(ref: str) -> bool:
-    return governance_git_ref_exists(ref, repo_root=REPO_ROOT)
+def resolve_safe_changed_path_base_ref(base_ref: str) -> tuple[str | None, list[str]]:
+    """Resolve base refs for changed-path discovery with safe full-check fallback."""
+    return governance_resolve_base_ref(
+        base_ref,
+        ref_exists=lambda ref: governance_git_ref_exists(ref, repo_root=REPO_ROOT),
+    )
 
 
 def resolve_base_ref(base_ref: str) -> tuple[str | None, list[str]]:
-    return governance_resolve_base_ref(base_ref, ref_exists=git_ref_exists)
+    """Backward-compatible alias for changed-path base-ref resolution."""
+    return resolve_safe_changed_path_base_ref(base_ref)
 
 
 def run_git_diff_for_added_files(base_ref: str) -> list[Path]:
@@ -175,7 +180,7 @@ def main() -> int:
 
     validate_pr_body(args.pr_body_file, failures)
 
-    effective_base_ref, resolution_notes = resolve_base_ref(args.base_ref)
+    effective_base_ref, resolution_notes = resolve_safe_changed_path_base_ref(args.base_ref)
     for note in resolution_notes:
         print(f"[WARN] {note}")
 

@@ -163,9 +163,9 @@ def test_validate_red_tag_generated_content_accepts_match(
 
 
 def test_resolve_base_ref_uses_canonical_missing_requested_note(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(validate_issue_links, "git_ref_exists", lambda _ref: False)
+    monkeypatch.setattr(validate_issue_links, "governance_git_ref_exists", lambda _ref, *, repo_root: False)
 
-    resolved, notes = validate_issue_links.resolve_base_ref("feature/base")
+    resolved, notes = validate_issue_links.resolve_exact_commit_traceability_base_ref("feature/base")
 
     assert resolved is None
     assert notes == [
