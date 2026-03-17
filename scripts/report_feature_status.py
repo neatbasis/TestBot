@@ -144,12 +144,30 @@ def issue_matches_keyword(issue: OpenIssue, keyword: str) -> bool:
     return any(normalized in field for field in searchable_fields)
 
 
-def find_relevant_issues(capability: dict[str, Any], open_issues: list[OpenIssue]) -> IssueLinkageResult:
+def find_relevant_issues(
+    capability: dict[str, Any],
+    open_issues: list[OpenIssue],
+    *,
+    allow_legacy_keyword_fallback: bool,
+) -> IssueLinkageResult:
     issue_by_id = {issue.issue_id.upper(): issue for issue in open_issues}
 
     explicit_issue_ids = [str(issue_id).strip() for issue_id in capability.get("issue_ids", [])]
     if not explicit_issue_ids:
         explicit_issue_ids = [str(issue_id).strip() for issue_id in capability.get("open_issues", [])]
+        if explicit_issue_ids:
+            return IssueLinkageResult(
+                issues=[
+                    issue_by_id[issue_id.upper()]
+                    for issue_id in explicit_issue_ids
+                    if issue_id.upper() in issue_by_id
+                ],
+                used_keyword_fallback=False,
+                warning=(
+                    f"Capability '{capability.get('capability_id', 'unknown')}' uses legacy open_issues alias; "
+                    "migrate to issue_ids."
+                ),
+            )
     explicit_issue_ids = [issue_id for issue_id in explicit_issue_ids if issue_id]
     if explicit_issue_ids:
         return IssueLinkageResult(
@@ -165,7 +183,25 @@ def find_relevant_issues(capability: dict[str, Any], open_issues: list[OpenIssue
     keywords = [str(keyword).strip().lower() for keyword in capability.get("issue_keywords", [])]
     keywords = [keyword for keyword in keywords if keyword]
     if not keywords:
-        return IssueLinkageResult(issues=[], used_keyword_fallback=False, warning=None)
+        return IssueLinkageResult(
+            issues=[],
+            used_keyword_fallback=False,
+            warning=(
+                f"Capability '{capability.get('capability_id', 'unknown')}' is missing explicit issue linkage; "
+                "add issue_ids."
+            ),
+        )
+
+    if not allow_legacy_keyword_fallback:
+        return IssueLinkageResult(
+            issues=[],
+            used_keyword_fallback=False,
+            warning=(
+                f"Capability '{capability.get('capability_id', 'unknown')}' uses issue_keywords only, but "
+                "keyword fallback is disabled; add issue_ids or rerun with --allow-legacy-keyword-fallback "
+                "for migration-only behavior."
+            ),
+        )
 
     relevant_issues: list[OpenIssue] = []
     for issue in open_issues:
@@ -210,6 +246,14 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=Path("features"),
         help="Directory containing feature files used for scenario-level traceability checks.",
+    )
+    parser.add_argument(
+        "--allow-legacy-keyword-fallback",
+        action="store_true",
+        help=(
+            "Enable deprecated issue_keywords linkage fallback for migration. "
+            "Without this flag, keyword-only linkage is ignored and reported as a warning."
+        ),
     )
     parser.add_argument(
         "--output",
@@ -335,6 +379,7 @@ def build_report(
     input_paths: dict[str, str],
     source_file_metadata: dict[str, Any],
     gate_stale_warning: str | None,
+    allow_legacy_keyword_fallback: bool = False,
 ) -> tuple[str, dict[str, Any]]:
     capabilities = contract.get("capabilities", [])
 
@@ -358,7 +403,11 @@ def build_report(
         gate_checks = capability.get("gate_checks", [])
         failed_checks = [name for name in gate_checks if gate_results.get(name) == "failed"]
 
-        issue_linkage = find_relevant_issues(capability, open_issues)
+        issue_linkage = find_relevant_issues(
+            capability,
+            open_issues,
+            allow_legacy_keyword_fallback=allow_legacy_keyword_fallback,
+        )
         relevant_issues = issue_linkage.issues
         if issue_linkage.warning:
             issue_linkage_warnings.append(issue_linkage.warning)
@@ -642,6 +691,7 @@ def main() -> int:
         input_paths=input_paths,
         source_file_metadata=source_file_metadata,
         gate_stale_warning=gate_stale_warning,
+        allow_legacy_keyword_fallback=getattr(args, "allow_legacy_keyword_fallback", False),
     )
 
     print(report_text)

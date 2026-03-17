@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-03-14T18:29:03Z",
+  "generated_at_utc": "2026-03-17T00:23:56Z",
   "inputs": {
     "contract_path": "docs/qa/feature-status.yaml",
     "gate_summary_path": "artifacts/all-green-gate-summary.json",
@@ -10,160 +10,123 @@
   "source_file_metadata": {
     "contract": {
       "path": "docs/qa/feature-status.yaml",
-      "size_bytes": 8191,
-      "mtime_utc": "2026-03-14T16:36:23Z",
-      "sha256": "3d6d081eb09c8e69bdc45a71c64e7c54099767c27a645a89db4dbe51c35c3039"
+      "size_bytes": 8281,
+      "mtime_utc": "2026-03-17T00:22:54Z",
+      "sha256": "d223c2ea7cb819c48eeed3e7a9a372bf7a5338671f39dd5f7e599d84155e5546"
     },
     "gate_summary": {
       "path": "artifacts/all-green-gate-summary.json",
       "size_bytes": 4643,
-      "mtime_utc": "2026-03-14T18:27:04Z",
+      "mtime_utc": "2026-03-16T21:49:40Z",
       "sha256": "195b9333460e95da40a07b77c95052096ef31b073729857523dc311ced8e7041"
     },
     "open_issues": [
       {
         "path": "docs/issues/ISSUE-0008-intent-grounding-gate-failures-block-merge.md",
-        "size_bytes": 3717,
-        "mtime_utc": "2026-03-14T16:36:23Z",
-        "sha256": "fb9bd028f62b8366bdd3ad23a1b2f0423838592c3f71164206a56e2edbaf96f3"
+        "size_bytes": 3787,
+        "mtime_utc": "2026-03-16T21:49:40Z",
+        "sha256": "41edbea623103b86fc57667d6804c193b39f8595d79ab760c1720521e2c263e0"
       },
       {
         "path": "docs/issues/ISSUE-0009-knowing-grounded-answers-partial-provenance-gap.md",
-        "size_bytes": 7997,
-        "mtime_utc": "2026-03-14T16:36:23Z",
-        "sha256": "89bb1bfad9ff4e9b4bec3cc286e30c9934cc1b7cf328ba519ef675b890544e18"
+        "size_bytes": 8075,
+        "mtime_utc": "2026-03-16T21:49:40Z",
+        "sha256": "4a6105e38a11113118cb1cca218cfdea22cde4b6dbb44f14ca0cdcb2c4958b5a"
       },
       {
         "path": "docs/issues/ISSUE-0010-unknowing-safe-fallback-partial-contract-gap.md",
-        "size_bytes": 8136,
-        "mtime_utc": "2026-03-14T16:36:23Z",
-        "sha256": "620a4d070d3c120d8aacaa3be7d7cb4c58e2b36ca1a8e05440b93cde54a87ee3"
+        "size_bytes": 8206,
+        "mtime_utc": "2026-03-16T21:49:40Z",
+        "sha256": "aa0387a59591e9b9b3a92d592eb7dec2703e9813c33aaca4a1291c70e99ecbbc"
       },
       {
         "path": "docs/issues/ISSUE-0011-turn-analytics-input-coverage-silent-drop.md",
-        "size_bytes": 7199,
-        "mtime_utc": "2026-03-14T16:36:23Z",
-        "sha256": "fa0ee9c1cd50f502384bcd774d4fc32680e0ea5452359df0b5fa50d8666b4123"
+        "size_bytes": 7237,
+        "mtime_utc": "2026-03-16T21:49:40Z",
+        "sha256": "4c3524bf235ef0b99792c60064318a31237960a8d5d4de91a62a870fef828466"
       },
       {
         "path": "docs/issues/ISSUE-0012-canonical-turn-pipeline-delivery-plan.md",
-        "size_bytes": 8646,
-        "mtime_utc": "2026-03-14T18:25:05Z",
-        "sha256": "87cf62900f4ec1f0b5401656a985a9c07f11bc9dfa4e07fde7b1b7faf005b3b1"
+        "size_bytes": 8684,
+        "mtime_utc": "2026-03-16T21:49:40Z",
+        "sha256": "1a4764a383bbc5bf1085470e0d2e833898895647f60380c639b368036499870b"
       },
       {
         "path": "docs/issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md",
-        "size_bytes": 47549,
-        "mtime_utc": "2026-03-14T18:25:05Z",
-        "sha256": "c99ca3ef37be868d46c873cdf172edafb143fb6fe1f0833a6ebe6f2ea9637c07"
+        "size_bytes": 48573,
+        "mtime_utc": "2026-03-16T21:49:40Z",
+        "sha256": "856ce9aa946a095f76e89a45328e5cdf6bfaa67a2dfd7c04b26264d364c05c9e"
       },
       {
         "path": "docs/issues/ISSUE-0014-cli-self-identity-semantic-routing-regression.md",
-        "size_bytes": 30672,
-        "mtime_utc": "2026-03-14T18:25:05Z",
-        "sha256": "b6ffca2f60268835d256bca720462409bca90194bb213b67020e4901f6cb6a9a"
+        "size_bytes": 30774,
+        "mtime_utc": "2026-03-16T21:49:40Z",
+        "sha256": "39bb4fa3ae5c958ae5e5d50f20607732ce3971cf5ef768dd73bd999b25f0a7bf"
       },
       {
         "path": "docs/issues/ISSUE-0015-open-issue-review-and-issue-0014-quality-governance-hardening.md",
-        "size_bytes": 20664,
-        "mtime_utc": "2026-03-14T18:25:05Z",
-        "sha256": "a4ddfbb7f00f9bb0716d81d11c3420180306756da5d32676c4a961dd0ea0691f"
+        "size_bytes": 20702,
+        "mtime_utc": "2026-03-16T21:49:40Z",
+        "sha256": "d8c0aad8aa053a69386ab3c00d7764b1f51ce4fdecb08cc7ee717e5b08cb8a7e"
       },
       {
         "path": "docs/issues/ISSUE-0017-invariant-boundary-ambiguity-answer-commit-regression.md",
-        "size_bytes": 8697,
-        "mtime_utc": "2026-03-14T18:25:05Z",
-        "sha256": "4f7a1f84824279cbc91b250cb4f6bd93e5e76119bc5cd5406d8b8b28340ea548"
+        "size_bytes": 8735,
+        "mtime_utc": "2026-03-16T21:49:40Z",
+        "sha256": "6af0ed43927852bd8c44be12c5267e78cbcf202852a9f0c5bfb04c9189e83a24"
       },
       {
         "path": "docs/issues/ISSUE-0018-dual-trigger-event-loop-for-proactive-ingestion-lifecycle.md",
-        "size_bytes": 8566,
-        "mtime_utc": "2026-03-14T18:25:05Z",
-        "sha256": "f4b93efe63e8b41e0abf77b5e610e96e998a468e0e83b150aa03844b60cf3c3d"
+        "size_bytes": 8636,
+        "mtime_utc": "2026-03-16T21:49:40Z",
+        "sha256": "c31581fb31ebb80f3f5dfa1df17e3b31aac0d5ecab301c56d0fe060000fa1dd3"
       },
       {
         "path": "docs/issues/ISSUE-0019-channel-agnostic-conversation-engine-and-shared-history.md",
-        "size_bytes": 7782,
-        "mtime_utc": "2026-03-14T18:25:05Z",
-        "sha256": "29f49daecc7f24528dae1d09f226e909be59537245c5d050928731f0c1ec137a"
+        "size_bytes": 7820,
+        "mtime_utc": "2026-03-16T21:49:40Z",
+        "sha256": "6e2984bed2b5867842d812c8cfcbd1bf60e4592d54c3a9eb14aae32228c0e11a"
       },
       {
         "path": "docs/issues/ISSUE-0020-source-ingestion-quickstart-env-toggle-deprecation-proposal.md",
-        "size_bytes": 6162,
-        "mtime_utc": "2026-03-14T18:25:05Z",
-        "sha256": "81cc8310b9e08bf0683ec93331486a0e74dcef0a79a0db5d9249228e64fc2b81"
+        "size_bytes": 6200,
+        "mtime_utc": "2026-03-16T21:49:40Z",
+        "sha256": "f9fdc2563a124fc3cf1d34619869afc09ce3ccdc82ccda34cb2e8b427b439802"
+      },
+      {
+        "path": "docs/issues/ISSUE-0021-legacy-boundary-pattern-deprecation-and-migration.md",
+        "size_bytes": 3515,
+        "mtime_utc": "2026-03-16T21:49:40Z",
+        "sha256": "f5118f241da8a404df6253e128b956c3c56845f3bc76e85da3c269843fdf893b"
       }
     ],
     "roadmap_files": [
       {
         "path": "docs/roadmap/alignment-drift-technical-debt-2026-03-05.md",
         "size_bytes": 5622,
-        "mtime_utc": "2026-03-14T16:36:23Z",
+        "mtime_utc": "2026-03-16T21:49:40Z",
         "sha256": "02618bdff7d1b35cdbe05736f9e42202981edf2d1204d7d7ef3232899575c530"
       },
       {
         "path": "docs/roadmap/current-status-and-next-5-priorities.md",
-        "size_bytes": 8647,
-        "mtime_utc": "2026-03-14T18:27:54Z",
-        "sha256": "b224b0a880b7a6adcfa485abb7864e3aaedaefcb6e515ce5d786ae1425b437cf"
+        "size_bytes": 8655,
+        "mtime_utc": "2026-03-16T21:49:40Z",
+        "sha256": "e165d04c017110d6b1dac5cc283efbf625bd6a29ee57e98b6c9fe28a7a8cbc57"
       },
       {
         "path": "docs/roadmap/next-4-sprints-grounded-knowing.md",
-        "size_bytes": 13756,
-        "mtime_utc": "2026-03-14T16:36:23Z",
-        "sha256": "a725406dcffd4aa1da3a269fe78806032b8360ae64e64c7f879eb277712d4a3c"
+        "size_bytes": 13836,
+        "mtime_utc": "2026-03-16T21:49:40Z",
+        "sha256": "71afaed5d8cb4022f22aeafa2ec0f20717a43c419cf0ccf630efbaf28309dfe0"
       },
       {
         "path": "docs/roadmap/reflective-milestone-10-sprints.md",
         "size_bytes": 9579,
-        "mtime_utc": "2026-03-14T16:36:23Z",
+        "mtime_utc": "2026-03-16T21:49:40Z",
         "sha256": "f8b41b80b9e06c2144db690373aee3bfcd1910999904b5ad086fe63576252da0"
       }
     ],
-    "feature_files": [
-      {
-        "path": "features/testbot/answer_contract.feature",
-        "size_bytes": 8319,
-        "mtime_utc": "2026-03-14T16:36:23Z",
-        "sha256": "2226367d32ba3fa2329717619902786f986ffde904d7f4ee84f5e6430235d230"
-      },
-      {
-        "path": "features/testbot/capabilities.feature",
-        "size_bytes": 2458,
-        "mtime_utc": "2026-03-14T16:36:23Z",
-        "sha256": "6608161e934565904ae180017080c8334d200147d54368dff39375ea1dd19333"
-      },
-      {
-        "path": "features/testbot/intent_grounding.feature",
-        "size_bytes": 18941,
-        "mtime_utc": "2026-03-14T16:36:23Z",
-        "sha256": "18ffd3878f1f389c42fdadd0c5ab43a3d0a2b4a7621f918bd75d0be413396752"
-      },
-      {
-        "path": "features/testbot/memory_recall.feature",
-        "size_bytes": 6683,
-        "mtime_utc": "2026-03-14T16:36:23Z",
-        "sha256": "823f16f1ab8ad58cfd69855ee4b25f28455fa3c9d8e97b3f548f7779c29ff001"
-      },
-      {
-        "path": "features/testbot/source_ingestion.feature",
-        "size_bytes": 2845,
-        "mtime_utc": "2026-03-14T16:36:23Z",
-        "sha256": "b577b0f355190f87aab2317c7d8fed2836288d7a5d8dd39ea2b47ec30eb6b3f2"
-      },
-      {
-        "path": "features/testbot/startup_status.feature",
-        "size_bytes": 1024,
-        "mtime_utc": "2026-03-14T16:36:23Z",
-        "sha256": "0853a90425e87ba6bee2763ff6816b55b40e46f595489b4fc57912db39196165"
-      },
-      {
-        "path": "features/testbot/time_awareness.feature",
-        "size_bytes": 774,
-        "mtime_utc": "2026-03-14T16:36:23Z",
-        "sha256": "6631272d9f1869d2c8f0a28756f2e2cedfc7232e4798fd244a605f12c1c953c2"
-      }
-    ]
+    "feature_files": []
   },
   "warnings": [
     "Gate summary appears older than one or more source files (contract, open issue records, or roadmap files); regenerate gate evidence for freshest status. Hint: run `python scripts/all_green_gate.py --continue-on-failure --json-output artifacts/all-green-gate-summary.json` to refresh `artifacts/all-green-gate-summary.json`."
@@ -181,6 +144,7 @@
       "effective_status": "partial",
       "declared_status": "implemented",
       "failed_gate_checks": [],
+      "issue_linkage_mode": "explicit",
       "relevant_open_issues": [
         {
           "id": "ISSUE-0009",
@@ -230,6 +194,7 @@
       "effective_status": "partial",
       "declared_status": "implemented",
       "failed_gate_checks": [],
+      "issue_linkage_mode": "explicit",
       "relevant_open_issues": [
         {
           "id": "ISSUE-0010",
@@ -273,6 +238,7 @@
       "failed_gate_checks": [
         "qa_pytest_not_live_smoke"
       ],
+      "issue_linkage_mode": "explicit",
       "relevant_open_issues": [
         {
           "id": "ISSUE-0008",
@@ -316,6 +282,7 @@
       "failed_gate_checks": [
         "qa_pytest_not_live_smoke"
       ],
+      "issue_linkage_mode": "explicit",
       "relevant_open_issues": [],
       "roadmap_priority_refs": [
         "P2",
@@ -360,6 +327,7 @@
       "failed_gate_checks": [
         "qa_pytest_not_live_smoke"
       ],
+      "issue_linkage_mode": "explicit",
       "relevant_open_issues": [
         {
           "id": "ISSUE-0018",
@@ -420,6 +388,7 @@
       "failed_gate_checks": [
         "qa_pytest_not_live_smoke"
       ],
+      "issue_linkage_mode": "explicit",
       "relevant_open_issues": [
         {
           "id": "ISSUE-0013",
@@ -514,6 +483,7 @@
       "failed_gate_checks": [
         "qa_pytest_not_live_smoke"
       ],
+      "issue_linkage_mode": "explicit",
       "relevant_open_issues": [
         {
           "id": "ISSUE-0013",
@@ -607,6 +577,7 @@
       "failed_gate_checks": [
         "qa_pytest_not_live_smoke"
       ],
+      "issue_linkage_mode": "explicit",
       "relevant_open_issues": [
         {
           "id": "ISSUE-0013",
@@ -678,6 +649,7 @@
       "failed_gate_checks": [
         "qa_validate_issue_links"
       ],
+      "issue_linkage_mode": "explicit",
       "relevant_open_issues": [],
       "roadmap_priority_refs": [
         "P5"
@@ -707,7 +679,7 @@
       "unmapped_scenarios": []
     }
   ],
-  "open_issue_count": 12,
+  "open_issue_count": 13,
   "gate_checks_seen": 11,
   "unmapped_scenarios": []
 }
