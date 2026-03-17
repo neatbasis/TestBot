@@ -418,3 +418,10 @@ Progress discipline for each `TASK-CX-*` slice:
   - Boundary enforcement/tests added: `docs/architecture-boundaries.md`, `tests/architecture/test_import_boundaries.py`.
   - Canonical stage contract matrix tests added under `tests/pipeline/` for `intent.resolve`, `retrieve.evidence`, `policy.decide`, `answer.validate`, `answer.commit`, and pipeline metrics contracts.
   - Follow-up requirement: track migration/deprecation closure for remaining legacy boundary violations under ISSUE-0021 before declaring canonical direction complete.
+
+- 2026-03-17: Decisioning continuity hardening added deterministic temporal follow-up promotion to avoid knowledge-question fallback drift after memory recall continuity anchors.
+  - Capability slice: canonical_turn_pipeline_decisioning (`context/intent/retrieve/policy`).
+  - Runtime changes: temporal follow-up utterances (`when was that again?`, `what time was that?`, `how long ago was that?`) now promote `knowledge_question -> time_query` when memory continuity artifacts are present (`src/testbot/intent_resolution.py`), and retrieval routing now treats `time_query` as retrieval-required (`src/testbot/retrieval_routing.py`).
+  - BDD/spec updates: `features/testbot/intent_grounding.feature` + `features/steps/testbot_intent_grounding_steps.py` include explicit continuity scenario for temporal follow-up promotion.
+  - Deterministic test updates: `tests/test_decisioning_stages.py`, `tests/test_runtime_modes.py`, and `tests/test_retrieval_routing.py` include failure-mode/fix-path assertions for temporal follow-up continuity and routing.
+  - Evidence: `docs/issues/evidence/2026-03-17-issue-0013-decisioning-temporal-followup-continuity.md`.

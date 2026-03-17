@@ -910,6 +910,33 @@ def step_then_memory_followup_no_downgrade(context) -> None:
     assert context.memory_followup_decision.retrieval_branch == "memory_retrieval"
     assert context.memory_followup_decision.reasoning.get("empty_vs_scored") == "scored_empty"
 
+
+
+@when("a temporal follow-up references prior memory recall continuity")
+def step_when_temporal_followup_references_memory_continuity(context) -> None:
+    prior_state = PipelineState(
+        user_input="Who am I?",
+        final_answer="You are Sam.",
+        resolved_intent=IntentType.MEMORY_RECALL.value,
+        prior_unresolved_intent=IntentType.MEMORY_RECALL.value,
+        commit_receipt={"confirmed_user_facts": ["name=Sam"]},
+    )
+
+    followup_context = resolve_context(utterance="when was that again?", prior_pipeline_state=prior_state)
+    context.temporal_followup_resolution = resolve_intent(
+        resolution_input=IntentResolutionInput(
+            stabilized_turn_state=_stabilized_turn_state_for_bdd("when was that again?"),
+            context=followup_context,
+            fallback_utterance="when was that again?",
+        )
+    )
+
+
+@then("the resolved follow-up intent should preserve time-query continuity instead of knowledge-question fallback")
+def step_then_temporal_followup_preserves_time_query(context) -> None:
+    assert context.temporal_followup_resolution.classified_intent is IntentType.KNOWLEDGE_QUESTION
+    assert context.temporal_followup_resolution.resolved_intent is IntentType.TIME_QUERY
+
 @when("intent continuity is evaluated for affirmative and non-affirmative follow-ups")
 def step_when_intent_continuity_evaluated_for_followups(context) -> None:
     prior_state = PipelineState(

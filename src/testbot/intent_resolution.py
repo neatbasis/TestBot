@@ -14,6 +14,12 @@ _SELF_REFERENTIAL_MEMORY_PATTERNS = (
     re.compile(r"\bremind\s+me\s+(?:what\s+)?my\s+name\s+is\b", re.IGNORECASE),
 )
 
+_TEMPORAL_FOLLOWUP_PATTERNS = (
+    re.compile(r"\bwhen\s+was\s+that\b", re.IGNORECASE),
+    re.compile(r"\bwhat\s+time\s+was\s+that\b", re.IGNORECASE),
+    re.compile(r"\bhow\s+long\s+ago\s+was\s+that\b", re.IGNORECASE),
+)
+
 
 @dataclass(frozen=True)
 class ResolvedIntent:
@@ -53,6 +59,19 @@ def _has_repair_offer_continuity(context: ResolvedContext) -> bool:
     return "commit.pending_repair_state:repair_offered_to_user" in context.history_anchors
 
 
+def _has_memory_recall_continuity(context: ResolvedContext) -> bool:
+    if context.prior_intent in {IntentType.MEMORY_RECALL, IntentType.TIME_QUERY}:
+        return True
+    return any(anchor.startswith("commit.confirmed_user_facts:") for anchor in context.history_anchors)
+
+
+def _is_temporal_memory_followup(utterance: str) -> bool:
+    normalized = (utterance or "").strip()
+    if not normalized:
+        return False
+    return any(pattern.search(normalized) for pattern in _TEMPORAL_FOLLOWUP_PATTERNS)
+
+
 def resolve(*, resolution_input: IntentResolutionInput) -> ResolvedIntent:
     context = resolution_input.context
     stabilized_utterance = _stabilized_utterance_hint(resolution_input.stabilized_turn_state)
@@ -75,6 +94,17 @@ def resolve(*, resolution_input: IntentResolutionInput) -> ResolvedIntent:
             classified_intent=IntentType.MEMORY_RECALL,
             resolved_intent=IntentType.MEMORY_RECALL,
             rationale="self-referential follow-up promoted to memory recall using committed continuity artifacts",
+        )
+
+    if (
+        classified_intent is IntentType.KNOWLEDGE_QUESTION
+        and _has_memory_recall_continuity(context)
+        and _is_temporal_memory_followup(classifier_input)
+    ):
+        return ResolvedIntent(
+            classified_intent=classified_intent,
+            resolved_intent=IntentType.TIME_QUERY,
+            rationale="temporal follow-up promoted to time_query using memory continuity anchors",
         )
 
     if (

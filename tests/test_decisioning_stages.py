@@ -179,3 +179,33 @@ def test_capabilities_help_followup_policy_decision_does_not_map_to_general_know
     )
 
     assert decision.decision_class is DecisionClass.ASK_FOR_CLARIFICATION
+
+
+def test_temporal_followup_after_memory_recall_promotes_to_time_query_and_memory_retrieval() -> None:
+    prior_state = PipelineState(
+        user_input="Who am I?",
+        final_answer="You are Sam.",
+        resolved_intent=IntentType.MEMORY_RECALL.value,
+        prior_unresolved_intent=IntentType.MEMORY_RECALL.value,
+        commit_receipt={"confirmed_user_facts": ["name=Sam"]},
+    )
+
+    context = resolve_context(utterance="when was that again?", prior_pipeline_state=prior_state)
+    resolved = resolve_intent(
+        resolution_input=IntentResolutionInput(
+            stabilized_turn_state=_stabilized("when was that again?"),
+            context=context,
+            fallback_utterance="when was that again?",
+        )
+    )
+    policy = decide(
+        utterance="when was that again?",
+        intent=resolved.resolved_intent,
+        retrieval_candidates_considered=0,
+        hit_count=0,
+    )
+
+    assert resolved.classified_intent is IntentType.KNOWLEDGE_QUESTION
+    assert resolved.resolved_intent is IntentType.TIME_QUERY
+    assert policy.retrieval_branch == "memory_retrieval"
+    assert policy.evidence_posture is EvidencePosture.EMPTY_EVIDENCE

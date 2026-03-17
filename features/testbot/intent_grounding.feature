@@ -185,6 +185,13 @@ Feature: Intent-specific grounding and provenance behavior
     When intent continuity is evaluated for affirmative and non-affirmative follow-ups
     Then continuity routing should preserve prior intent only for affirmative clarification follow-ups
 
+  @ISSUE-0013 @AC-0013-10
+  Scenario: temporal follow-up after memory recall preserves time-query continuity
+    Given an intent response harness
+    When a temporal follow-up references prior memory recall continuity
+    Then the resolved follow-up intent should preserve time-query continuity instead of knowledge-question fallback
+
+
   @ISSUE-0008 @AC-0008-21
   Scenario: encode candidates retain multiple plausible intents before routing
     Given an intent response harness

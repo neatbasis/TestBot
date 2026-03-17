@@ -10,6 +10,14 @@ def test_retrieval_routing_memory_recall_queries_require_retrieval() -> None:
     assert decision.requires_retrieval is True
 
 
+
+
+def test_retrieval_routing_time_query_queries_require_retrieval() -> None:
+    decision = decide_retrieval_routing(utterance="when was that again?", intent=IntentType.TIME_QUERY)
+
+    assert decision.retrieval_branch == "memory_retrieval"
+    assert decision.requires_retrieval is True
+
 def test_retrieval_routing_definitional_knowledge_queries_require_retrieval() -> None:
     decision = decide_retrieval_routing(utterance="what is ontology?", intent=IntentType.KNOWLEDGE_QUESTION)
 
