@@ -24,6 +24,7 @@ def classify_text(text: str) -> UserAct:
     clarification_tokens = {"what", "mean", "clarify", "confused"}
     summary_tokens = {"summarize", "summarise", "summary", "recap"}
     recall_tokens = {"asked", "ask", "said", "tell", "told"}
+    ordinal_recall_tokens = {"first", "earliest", "initial", "start", "beginning"}
     generation_verbs = {"write", "generate", "draft", "create", "compose", "build"}
     analysis_verbs = {"fix", "debug", "explain", "review", "analyze", "analyse", "inspect"}
 
@@ -41,6 +42,14 @@ def classify_text(text: str) -> UserAct:
 
     if token_set.intersection(summary_tokens) and token_set.intersection({"i", "me", "my"}) and token_set.intersection(recall_tokens):
         return {"act_type": "summary_request", "confidence": 0.9}
+
+    if (
+        has_question_mark
+        and token_set.intersection(ordinal_recall_tokens)
+        and token_set.intersection(recall_tokens)
+        and token_set.intersection({"i", "me", "my"})
+    ):
+        return {"act_type": "summary_request", "confidence": 0.88}
 
     if tokens and tokens[0] in generation_verbs:
         return {"act_type": "generation_request", "confidence": 0.85}

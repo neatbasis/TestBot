@@ -1,5 +1,6 @@
 from seem_bot.assistant_acts import declare_assistant_act, update_focus_from_declared_act
 from seem_bot.focus_state import expire_focus
+from seem_bot.reply_renderer import render_reply
 from seem_bot.referent_resolution import resolve_referent
 from seem_bot.response_planner import plan_response_node
 from seem_bot.user_act_classifier import classify_text
@@ -90,6 +91,57 @@ def test_summary_request_maps_to_summary_mode():
 
     plan = plan_response_node(state)["response_plan"]
     assert plan["mode"] == "summarize_user_queries"
+
+
+def test_first_thing_i_said_maps_to_summary_mode():
+    act = classify_text("what's the first thing i said?")
+    assert act["act_type"] == "summary_request"
+
+
+def test_summary_mode_can_report_first_user_message():
+    result = render_reply(
+        {
+            "response_plan": {
+                "mode": "summarize_user_queries",
+                "needs_clarification": False,
+                "should_render": True,
+            },
+            "render_context": {"latest_user_text": "what's the first thing i said?"},
+            "passages": [
+                {
+                    "passage_id": "passage-1",
+                    "kind": "observation",
+                    "observed_at": "2025-01-01T00:00:00+00:00",
+                    "sequence_index": 0,
+                    "source_message_ids": ["msg-1"],
+                    "canonical_text": "human: howyall doin",
+                    "metadata": {},
+                },
+                {
+                    "passage_id": "passage-2",
+                    "kind": "response",
+                    "observed_at": "2025-01-01T00:00:01+00:00",
+                    "sequence_index": 1,
+                    "source_message_ids": ["msg-2"],
+                    "canonical_text": "ai: Not bad, thanks for askin!",
+                    "metadata": {},
+                },
+                {
+                    "passage_id": "passage-3",
+                    "kind": "observation",
+                    "observed_at": "2025-01-01T00:00:02+00:00",
+                    "sequence_index": 2,
+                    "source_message_ids": ["msg-3"],
+                    "canonical_text": "human: what's the first thing i said?",
+                    "metadata": {},
+                },
+            ],
+        }
+    )
+
+    reply = result["messages"][0].content
+    assert "The first thing you said was" in reply
+    assert "howyall doin" in reply
 
 
 def test_question_act_does_not_create_new_focus_by_default():

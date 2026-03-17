@@ -37,9 +37,18 @@ def _format_summary(state: State) -> str:
             text = passage["canonical_text"]
             if text.lower().startswith("human:"):
                 items.append(text[len("human:") :].strip())
+    latest_user_text = ""
+    render_context = state.get("render_context", {})
+    if isinstance(render_context, dict):
+        latest_user_text = str(render_context.get("latest_user_text", "")).lower()
+
     items = items[:-1] if items else []
     if not items:
         return "I don't have enough prior messages to summarize yet."
+
+    if any(token in latest_user_text for token in {"first", "earliest", "initial"}):
+        return f"The first thing you said was: \"{items[0]}\""
+
     return "You asked about:\n" + "\n".join(f"- {item}" for item in items[-5:])
 
 
