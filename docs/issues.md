@@ -70,6 +70,15 @@ Recommended metadata extension for linked issue streams:
 - `Canonical Cross-Reference` (optional but recommended when linked planning/implementation issues exist; use issue filename, e.g., `ISSUE-0012-canonical-turn-pipeline-delivery-plan.md`).
 
 
+### Status/state enforcement matrix (canonical vs validator)
+
+| Issue State | Allowed `Status` values (canonical) | Transition/enforcement rule | Rejection cases (enforced by `scripts/validate_issues.py`) |
+| --- | --- | --- | --- |
+| `triage_intake` | `open` only | Must be promoted to `governed_execution` before any execution statuses (`in_progress`, `blocked`, `resolved`, `closed`). | Reject missing `Status`; reject any non-`open` status; reject invalid status values; reject invalid issue-state values. |
+| `governed_execution` | `open`, `in_progress`, `blocked`, `resolved`, `closed` | Full canonical schema applies; status must be one of the canonical lifecycle values. | Reject invalid status values (for example `paused`); reject invalid issue-state values. |
+
+Canonical reconciliation decision: **`docs/issues.md` is authoritative for status/state vocabulary and transition semantics; `scripts/validate_issues.py` and `tests/test_validate_issues.py` must enforce this table exactly.**
+
 ## Severity and Red-Tag area
 
 A **Red-Tag** issue is any issue with severity `red` and one or more of:
