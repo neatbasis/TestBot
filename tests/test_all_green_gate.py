@@ -528,6 +528,7 @@ def test_write_verification_manifest_writes_expected_payload(tmp_path: Path) -> 
     monkeypatch.setattr(all_green_gate, "REPO_ROOT", tmp_path)
     monkeypatch.setattr(all_green_gate, "VERIFICATION_MANIFEST_DIR", tmp_path / "artifacts" / "verification")
 
+    run_id = "20260316T181500Z-1a2b3c4d"
     summary = {
         "status": "passed",
         "checks": [{"name": "product_behave", "status": "passed"}],
@@ -539,21 +540,45 @@ def test_write_verification_manifest_writes_expected_payload(tmp_path: Path) -> 
     )
 
     manifest_path = all_green_gate.write_verification_manifest(
-        run_id="20260316T181500Z-1a2b3c4d",
+        run_id=run_id,
         args=args,
         effective_base_ref="HEAD~1",
         profile="readiness",
         summary=summary,
     )
 
-    assert manifest_path == tmp_path / "artifacts" / "verification" / "20260316T181500Z-1a2b3c4d.json"
+    assert manifest_path == tmp_path / "artifacts" / "verification" / f"{run_id}.json"
     payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+
+    assert set(payload) == {
+        "schema_version",
+        "run_id",
+        "generated_at_utc",
+        "manifest_path",
+        "required_checks",
+        "gate",
+        "summary",
+        "checks",
+    }
     assert payload["schema_version"] == all_green_gate.VERIFICATION_MANIFEST_SCHEMA_VERSION
-    assert payload["run_id"] == "20260316T181500Z-1a2b3c4d"
-    assert payload["manifest_path"] == "artifacts/verification/20260316T181500Z-1a2b3c4d.json"
+    assert payload["run_id"] == run_id
+    assert payload["manifest_path"] == f"artifacts/verification/{run_id}.json"
     assert payload["required_checks"] == all_green_gate.REQUIRED_VERIFICATION_CHECKS
     assert payload["gate"]["base_ref_effective"] == "HEAD~1"
     assert payload["summary"]["status"] == "passed"
+
+    expected_payload = all_green_gate.build_verification_manifest_payload(
+        run_id=run_id,
+        generated_at_utc=payload["generated_at_utc"],
+        manifest_path=f"artifacts/verification/{run_id}.json",
+        base_ref_requested="origin/main",
+        base_ref_effective="HEAD~1",
+        continue_on_failure=False,
+        profile="readiness",
+        kpi_guardrail_mode="optional",
+        summary=summary,
+    )
+    assert payload == expected_payload
     monkeypatch.undo()
 
 
