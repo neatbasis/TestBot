@@ -730,7 +730,7 @@ def main() -> int:
     elif args.base_ref == "origin/main" and effective_base_ref in {"HEAD~1", "HEAD"}:
         print(
             f"[INFO] Base-ref fallback is active by canonical policy: "
-            f"origin/main -> refs/codex/origin-main -> HEAD~1 -> HEAD (using {effective_base_ref!r})."
+            f"origin/main -> (optional refs/codex/origin-main recovery) -> HEAD~1 -> HEAD (using {effective_base_ref!r})."
         )
 
     profile = resolve_profile(args.profile)
