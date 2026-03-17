@@ -4,8 +4,8 @@
 # The canonical all-systems-green gate (scripts/all_green_gate.py) remains
 # a separate local/CI step and is intentionally excluded here.
 #
-# Base-ref note: governance validators default to origin/main with automatic
-# fallback to HEAD~1 then HEAD when origin/main is unavailable (expected in
+# Base-ref note: governance validators default to main with automatic
+# fallback to HEAD~1 then HEAD when main is unavailable (expected in
 # Codex task containers and shallow CI clones). This is documented behaviour
 # and does not indicate a misconfiguration.
 
@@ -61,13 +61,13 @@ repos:
       - id: validate-issue-links
         name: Validate issue link references
         language: python
-        entry: python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main
+        entry: python scripts/validate_issue_links.py --all-issue-files --base-ref main
         pass_filenames: false
         files: ^docs/issues/
 
       - id: validate-issues
         name: Validate issue file schema and governance rules
         language: python
-        entry: python scripts/validate_issues.py --all-issue-files --base-ref origin/main
+        entry: python scripts/validate_issues.py --all-issue-files --base-ref main
         pass_filenames: false
         files: ^docs/issues/
