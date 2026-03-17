@@ -26,6 +26,7 @@ from governance_rules import (
     resolve_base_ref as governance_resolve_base_ref,
 )
 from generate_red_tag_index import render_red_tag, list_red_open_issues
+from verification_manifest_contract import validate_manifest_payload_contract
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 ISSUES_DIR = REPO_ROOT / "docs" / "issues"
@@ -60,13 +61,6 @@ REQUIRED_SECTION_BODIES = [
     "Verification",
     "Closure Notes",
 ]
-VERIFICATION_REQUIRED_CHECKS = {
-    "product_behave",
-    "product_eval_recall_topk4",
-    "safety_validate_log_schema",
-    "safety_validate_pipeline_stage_conformance",
-    "qa_pytest_not_live_smoke",
-}
 VERIFICATION_MANIFEST_PATH_PATTERN = re.compile(r"artifacts/verification/([A-Za-z0-9_.-]+)\.json")
 VERIFICATION_RUN_ID_PATTERN = re.compile(r"(?:^|\b)run(?:[\s_-]?id)\s*[:=]\s*`?([A-Za-z0-9_.-]+)`?", re.IGNORECASE)
 
@@ -369,17 +363,25 @@ def validate_verification_manifest_reference(
         )
         return
 
-    manifest_run_id = payload.get("run_id")
-    if manifest_run_id != declared_run_id:
+    contract = validate_manifest_payload_contract(payload, declared_run_id=declared_run_id)
+    if not contract.run_id_matches:
         record_failure(
             failures,
             "VERIFICATION",
-            f"{issue_rel_path}: manifest run_id '{manifest_run_id}' does not match declared run ID '{declared_run_id}'.",
+            f"{issue_rel_path}: manifest run_id '{payload.get('run_id')}' does not match declared run ID '{declared_run_id}'.",
             "Reference the correct manifest file or update the Run ID declaration.",
         )
 
-    checks = payload.get("checks")
-    if not isinstance(checks, list):
+    if not contract.required_checks_valid:
+        record_failure(
+            failures,
+            "VERIFICATION",
+            f"{issue_rel_path}: verification manifest {manifest_rel} has malformed or non-canonical 'required_checks'.",
+            "Regenerate the verification manifest with scripts/all_green_gate.py.",
+        )
+        return
+
+    if not contract.checks_valid:
         record_failure(
             failures,
             "VERIFICATION",
@@ -388,13 +390,11 @@ def validate_verification_manifest_reference(
         )
         return
 
-    check_names = {row.get("name") for row in checks if isinstance(row, dict) and isinstance(row.get("name"), str)}
-    missing_checks = sorted(VERIFICATION_REQUIRED_CHECKS - check_names)
-    if missing_checks:
+    if contract.missing_required_checks:
         record_failure(
             failures,
             "VERIFICATION",
-            f"{issue_rel_path}: verification manifest {manifest_rel} is missing required checks: {', '.join(missing_checks)}",
+            f"{issue_rel_path}: verification manifest {manifest_rel} is missing required checks: {', '.join(contract.missing_required_checks)}",
             "Rerun scripts/all_green_gate.py and reference a manifest from a canonical gate run.",
         )
 
