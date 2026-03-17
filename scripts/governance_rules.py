@@ -18,6 +18,7 @@ ORIGIN_MAIN_FALLBACK_NOTE: Final[str] = (
     "Base ref 'origin/main' is unavailable; falling back to '{fallback}'.\n"
     "       This is expected in Codex task containers or shallow CI clones.\n"
     "       Governance diff checks are running against a reduced baseline.\n"
+    "       Commit-traceability checks may still fail closed unless degraded mode is explicitly allowed.\n"
     "       For authoritative results, run locally with 'git fetch origin main' first. "
     "(Unless you are ChatGPT/Codex!)"
 )
