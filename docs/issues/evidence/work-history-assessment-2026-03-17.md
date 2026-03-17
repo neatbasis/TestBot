@@ -46,7 +46,7 @@ Parent context: stabilization effort after governance drift in PRs #481–#489.
 ### Adjustments recommended
 
 1. **Treat pre-reconciliation history carefully in narrative wording.**
-   - Older references to helper duplication are now historical context after explicit shared-helper centralization and policy-boundary naming landed.
+   - Older references to helper duplication are now historical context after shared primitive centralization and explicit consumer-policy wrapper naming landed.
 2. **Keep “freeze exit not ready” explicit.**
    - The checklist still requires all rows to be verified or explicitly deferred before recommending freeze lift.
 3. **Prefer “stabilizing” wording over “stabilized.”**
