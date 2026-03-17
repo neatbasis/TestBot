@@ -30,11 +30,11 @@ def decide_retrieval_routing(
             reason="identity_continuity_guard_requires_memory_retrieval",
         )
 
-    if intent == IntentType.MEMORY_RECALL:
+    if intent in {IntentType.MEMORY_RECALL, IntentType.TIME_QUERY}:
         return RetrievalRoutingDecision(
             retrieval_branch="memory_retrieval",
             requires_retrieval=True,
-            reason="resolved_memory_recall_intent",
+            reason="resolved_memory_or_time_query_intent",
         )
 
     if intent == IntentType.KNOWLEDGE_QUESTION and is_definitional_query_form(utterance):

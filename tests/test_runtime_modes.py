@@ -807,6 +807,21 @@ def test_resolve_turn_intent_non_affirmation_does_not_preserve_prior_intent() ->
     assert resolved.value == "control"
 
 
+def test_resolve_turn_intent_temporal_followup_after_memory_recall_avoids_knowledge_question_fallback() -> None:
+    prior_state = runtime.PipelineState(
+        user_input="Who am I?",
+        resolved_intent="memory_recall",
+        prior_unresolved_intent="memory_recall",
+        final_answer="You are Sam.",
+        commit_receipt={"confirmed_user_facts": ["name=Sam"]},
+    )
+
+    classified, resolved = resolve_turn_intent(utterance="when was that again?", prior_pipeline_state=prior_state)
+
+    assert classified.value == "knowledge_question"
+    assert resolved.value == "time_query"
+
+
 def test_execute_source_ingestion_returns_failed_payload(monkeypatch) -> None:
     class _FailingIngestor:
         def __init__(self, *args, **kwargs):

@@ -1,18 +1,16 @@
 {
-  "status": "failed",
-  "exit_code": 1,
+  "status": "passed",
+  "exit_code": 0,
   "continue_on_failure": true,
-  "warning_count": 1,
-  "warning_diagnostics": [
-    {
-      "check": "qa_validate_kpi_guardrails",
-      "reason_classification": "threshold_violation"
-    }
-  ],
+  "warning_count": 0,
+  "warning_diagnostics": [],
+  "product_failures": [],
+  "governance_failures": [],
+  "skipped_checks": [],
   "stages": [
     {
       "stage": "product",
-      "duration_s": 5.819,
+      "duration_s": 3.978,
       "exit_code": 0,
       "first_failing_command": null,
       "artifact_path": null,
@@ -20,7 +18,7 @@
     },
     {
       "stage": "safety",
-      "duration_s": 0.218,
+      "duration_s": 0.199,
       "exit_code": 0,
       "first_failing_command": null,
       "artifact_path": null,
@@ -28,13 +26,11 @@
     },
     {
       "stage": "qa",
-      "duration_s": 17.71,
-      "exit_code": 1,
-      "first_failing_command": "/root/.pyenv/versions/3.11.14/bin/python -m pytest -m 'not live_smoke'",
-      "artifact_path": "logs/turn_analytics.jsonl",
-      "warning_reasons": [
-        "threshold_violation"
-      ]
+      "duration_s": 13.195,
+      "exit_code": 0,
+      "first_failing_command": null,
+      "artifact_path": null,
+      "warning_reasons": []
     }
   ],
   "checks": [
@@ -44,7 +40,7 @@
       "command": "/root/.pyenv/versions/3.11.14/bin/python -m behave",
       "status": "passed",
       "exit_code": 0,
-      "duration_s": 4.141,
+      "duration_s": 2.52,
       "artifact_path": null,
       "diagnostic_reason": null
     },
@@ -54,7 +50,7 @@
       "command": "/root/.pyenv/versions/3.11.14/bin/python scripts/eval_recall.py --top-k 4",
       "status": "passed",
       "exit_code": 0,
-      "duration_s": 1.678,
+      "duration_s": 1.458,
       "artifact_path": null,
       "diagnostic_reason": null
     },
@@ -64,7 +60,7 @@
       "command": "/root/.pyenv/versions/3.11.14/bin/python scripts/validate_log_schema.py",
       "status": "passed",
       "exit_code": 0,
-      "duration_s": 0.105,
+      "duration_s": 0.082,
       "artifact_path": null,
       "diagnostic_reason": null
     },
@@ -74,7 +70,7 @@
       "command": "/root/.pyenv/versions/3.11.14/bin/python scripts/validate_pipeline_stage_conformance.py",
       "status": "passed",
       "exit_code": 0,
-      "duration_s": 0.113,
+      "duration_s": 0.117,
       "artifact_path": null,
       "diagnostic_reason": null
     },
@@ -82,71 +78,11 @@
       "name": "qa_pytest_not_live_smoke",
       "stage": "qa",
       "command": "/root/.pyenv/versions/3.11.14/bin/python -m pytest -m 'not live_smoke'",
-      "status": "failed",
-      "exit_code": 1,
-      "duration_s": 16.765,
-      "artifact_path": null,
-      "diagnostic_reason": null
-    },
-    {
-      "name": "qa_validate_issue_links",
-      "stage": "qa",
-      "command": "/root/.pyenv/versions/3.11.14/bin/python scripts/validate_issue_links.py --all-issue-files --base-ref 'HEAD~1'",
-      "status": "failed",
-      "exit_code": 1,
-      "duration_s": 0.248,
-      "artifact_path": null,
-      "diagnostic_reason": null
-    },
-    {
-      "name": "qa_validate_issues",
-      "stage": "qa",
-      "command": "/root/.pyenv/versions/3.11.14/bin/python scripts/validate_issues.py --all-issue-files --base-ref 'HEAD~1'",
       "status": "passed",
       "exit_code": 0,
-      "duration_s": 0.156,
+      "duration_s": 13.195,
       "artifact_path": null,
       "diagnostic_reason": null
-    },
-    {
-      "name": "qa_validate_invariant_sync",
-      "stage": "qa",
-      "command": "/root/.pyenv/versions/3.11.14/bin/python scripts/sync_invariants_mirror.py --check",
-      "status": "passed",
-      "exit_code": 0,
-      "duration_s": 0.115,
-      "artifact_path": null,
-      "diagnostic_reason": null
-    },
-    {
-      "name": "qa_validate_markdown_paths",
-      "stage": "qa",
-      "command": "/root/.pyenv/versions/3.11.14/bin/python scripts/validate_markdown_paths.py",
-      "status": "passed",
-      "exit_code": 0,
-      "duration_s": 0.114,
-      "artifact_path": null,
-      "diagnostic_reason": null
-    },
-    {
-      "name": "qa_aggregate_turn_analytics",
-      "stage": "qa",
-      "command": "/root/.pyenv/versions/3.11.14/bin/python scripts/aggregate_turn_analytics.py --input logs/session.jsonl --output logs/turn_analytics.jsonl --summary-output logs/turn_analytics_summary.json",
-      "status": "passed",
-      "exit_code": 0,
-      "duration_s": 0.135,
-      "artifact_path": "logs/turn_analytics.jsonl",
-      "diagnostic_reason": null
-    },
-    {
-      "name": "qa_validate_kpi_guardrails",
-      "stage": "qa",
-      "command": "/root/.pyenv/versions/3.11.14/bin/python scripts/validate_kpi_guardrails.py --summary logs/turn_analytics_summary.json --config config/kpi_guardrails.json",
-      "status": "warning",
-      "exit_code": 1,
-      "duration_s": 0.177,
-      "artifact_path": null,
-      "diagnostic_reason": "threshold_violation"
     }
   ]
 }
