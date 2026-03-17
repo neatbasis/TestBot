@@ -41,17 +41,6 @@ def _load_module(module_name: str, path: Path):
 validate_issues = _load_module("validate_issues", _SCRIPTS_DIR / "validate_issues.py")
 
 
-def test_resolve_base_ref_uses_canonical_missing_origin_note(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(validate_issues, "governance_git_ref_exists", lambda _ref, *, repo_root: False)
-
-    resolved, notes = validate_issues.resolve_safe_changed_path_base_ref("origin/main")
-
-    assert resolved is None
-    assert notes == [
-        "Could not resolve base ref 'origin/main' or fallbacks (HEAD~1, HEAD). Governance diff checks will run against a reduced baseline and all issue files may be validated."
-    ]
-
-
 def _write_issue(tmp_path: Path, name: str, content: str) -> Path:
     path = tmp_path / name
     path.write_text(content, encoding="utf-8")
@@ -207,3 +196,11 @@ def test_validate_issue_files_uses_shared_missing_canonical_sections_primitive(
     validate_issues.validate_issue_files([issue], ["ID", "Title"], failures, ruleset=validate_issues.RULESET_STRICT)
 
     assert any("missing canonical sections: Title" in failure for failure in failures)
+
+def test_resolve_base_ref_wrapper_uses_shared_helper(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(validate_issues, "governance_resolve_base_ref", lambda *_args, **_kwargs: ("HEAD", ["note"]))
+
+    resolved, notes = validate_issues.resolve_safe_changed_path_base_ref("origin/main")
+
+    assert resolved == "HEAD"
+    assert notes == ["note"]

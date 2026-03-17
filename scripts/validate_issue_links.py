@@ -15,16 +15,18 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from governance_rules import (
-    EPHEMERAL_ORIGIN_MAIN_REF,
+from governance_base_ref import (
+    commit_traceability_failure,
     git_ref_exists as governance_git_ref_exists,
+    resolve_base_ref as governance_resolve_base_ref,
+)
+from governance_rules import (
     has_issue_reference,
     is_non_trivial_change,
     is_valid_issue_id,
     metadata_missing_issue_reference,
     missing_canonical_sections,
     parse_canonical_sections,
-    resolve_base_ref as governance_resolve_base_ref,
 )
 from generate_red_tag_index import render_red_tag, list_red_open_issues
 from verification_manifest_contract import validate_manifest_payload_contract
@@ -262,30 +264,16 @@ def commit_traceability_requires_exact_base_ref(
     allow_degraded_commit_traceability: bool,
     failures: list[ValidationFailure],
 ) -> bool:
-    if effective_base_ref is None:
-        record_failure(
-            failures,
-            "ISSUE_LINK",
-            f"Commit-history ISSUE linkage requires a resolvable base ref; could not resolve '{requested_base_ref}'.",
-            "Fetch the canonical base ref (for example 'git fetch origin main') and rerun the validator.",
-        )
-        return False
-
-    if requested_base_ref == effective_base_ref or allow_degraded_commit_traceability:
-        return True
-
-    if requested_base_ref == "origin/main" and effective_base_ref == EPHEMERAL_ORIGIN_MAIN_REF:
-        return True
-
-    record_failure(
-        failures,
-        "ISSUE_LINK",
-        "Commit-history ISSUE linkage checks fail closed when running against a fallback base ref.",
-        (
-            f"Requested '{requested_base_ref}' but resolved '{effective_base_ref}'. Fetch the requested ref or rerun with "
-            "--allow-degraded-commit-traceability for non-authoritative container checks."
-        ),
+    failure = commit_traceability_failure(
+        requested_base_ref=requested_base_ref,
+        effective_base_ref=effective_base_ref,
+        allow_degraded_commit_traceability=allow_degraded_commit_traceability,
     )
+    if failure is None:
+        return True
+
+    message, hint = failure
+    record_failure(failures, "ISSUE_LINK", message, hint)
     return False
 
 

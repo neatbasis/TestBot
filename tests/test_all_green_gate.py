@@ -117,41 +117,6 @@ def test_main_writes_behave_remediation_to_json_summary(
 
 
 
-def test_resolve_base_ref_uses_recovered_ref_when_available(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(
-        all_green_gate,
-        "governance_git_ref_exists",
-        lambda ref, *, repo_root: ref == all_green_gate.EPHEMERAL_ORIGIN_MAIN_REF,
-    )
-
-    resolved, notes = all_green_gate.resolve_best_effort_diff_base_ref("origin/main")
-
-    assert resolved == all_green_gate.EPHEMERAL_ORIGIN_MAIN_REF
-    assert any("using existing recovered ref 'refs/codex/origin-main'" in note for note in notes)
-
-
-def test_resolve_base_ref_falls_back_when_origin_main_missing(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(all_green_gate, "governance_git_ref_exists", lambda ref, *, repo_root: ref == "HEAD~1")
-
-    resolved, notes = all_green_gate.resolve_best_effort_diff_base_ref("origin/main")
-
-    assert resolved == "HEAD~1"
-    assert any("falling back to 'HEAD~1'" in note for note in notes)
-    assert any("This is expected in Codex task containers or shallow CI clones." in note for note in notes)
-
-
-
-
-def test_resolve_base_ref_returns_canonical_note_when_no_refs_available(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(all_green_gate, "governance_git_ref_exists", lambda _ref, *, repo_root: False)
-
-    resolved, notes = all_green_gate.resolve_best_effort_diff_base_ref("origin/main")
-
-    assert resolved is None
-    assert notes == [
-        "Could not resolve base ref 'origin/main' or fallbacks (HEAD~1, HEAD). Governance diff checks will run against a reduced baseline and all issue files may be validated."
-    ]
-
 def test_main_propagates_effective_base_ref_to_governance_checks_in_readiness_profile(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -632,3 +597,11 @@ def test_maybe_run_triage_router_skips_without_summary_output(
 
     output = capsys.readouterr().out
     assert "requires --json-output" in output
+
+def test_resolve_base_ref_wrapper_uses_shared_helper(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(all_green_gate, "governance_resolve_base_ref", lambda *_args, **_kwargs: ("HEAD~1", ["note"]))
+
+    resolved, notes = all_green_gate.resolve_best_effort_diff_base_ref("origin/main")
+
+    assert resolved == "HEAD~1"
+    assert notes == ["note"]

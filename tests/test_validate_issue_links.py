@@ -162,17 +162,6 @@ def test_validate_red_tag_generated_content_accepts_match(
     assert failures == []
 
 
-def test_resolve_base_ref_uses_canonical_missing_requested_note(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(validate_issue_links, "governance_git_ref_exists", lambda _ref, *, repo_root: False)
-
-    resolved, notes = validate_issue_links.resolve_exact_commit_traceability_base_ref("feature/base")
-
-    assert resolved is None
-    assert notes == [
-        "Base ref 'feature/base' does not exist. Provide a valid --base-ref (for example origin/main, HEAD~1, or HEAD)."
-    ]
-
-
 def test_validate_issue_schema_accepts_verification_manifest_reference(
     tmp_path: Path,
 ) -> None:
@@ -499,8 +488,14 @@ def test_validate_issue_schema_uses_shared_missing_sections_primitive(monkeypatc
     assert any("missing canonical schema fields/sections: Problem Statement" in f.message for f in failures)
 
 
-def test_commit_traceability_fails_closed_when_fallback_ref_is_used() -> None:
+
+def test_commit_traceability_wrapper_uses_shared_failure_message(monkeypatch: pytest.MonkeyPatch) -> None:
     failures: list[validate_issue_links.ValidationFailure] = []
+    monkeypatch.setattr(
+        validate_issue_links,
+        "commit_traceability_failure",
+        lambda **_kwargs: ("shared-message", "shared-hint"),
+    )
 
     allowed = validate_issue_links.commit_traceability_requires_exact_base_ref(
         "origin/main",
@@ -510,49 +505,5 @@ def test_commit_traceability_fails_closed_when_fallback_ref_is_used() -> None:
     )
 
     assert allowed is False
-    assert any("fail closed" in failure.message for failure in failures)
-
-
-
-
-def test_commit_traceability_accepts_recovered_origin_main_ref() -> None:
-    failures: list[validate_issue_links.ValidationFailure] = []
-
-    allowed = validate_issue_links.commit_traceability_requires_exact_base_ref(
-        "origin/main",
-        validate_issue_links.EPHEMERAL_ORIGIN_MAIN_REF,
-        allow_degraded_commit_traceability=False,
-        failures=failures,
-    )
-
-    assert allowed is True
-    assert failures == []
-
-def test_commit_traceability_can_opt_in_to_degraded_mode() -> None:
-    failures: list[validate_issue_links.ValidationFailure] = []
-
-    allowed = validate_issue_links.commit_traceability_requires_exact_base_ref(
-        "origin/main",
-        "HEAD~1",
-        allow_degraded_commit_traceability=True,
-        failures=failures,
-    )
-
-    assert allowed is True
-    assert failures == []
-
-
-def test_commit_traceability_failure_message_mentions_requested_and_effective_refs() -> None:
-    failures: list[validate_issue_links.ValidationFailure] = []
-
-    allowed = validate_issue_links.commit_traceability_requires_exact_base_ref(
-        "origin/main",
-        "HEAD~1",
-        allow_degraded_commit_traceability=False,
-        failures=failures,
-    )
-
-    assert allowed is False
-    assert failures
-    assert "Requested 'origin/main' but resolved 'HEAD~1'" in failures[0].hint
-    assert "--allow-degraded-commit-traceability" in failures[0].hint
+    assert failures[0].message == "shared-message"
+    assert failures[0].hint == "shared-hint"
