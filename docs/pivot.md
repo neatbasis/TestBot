@@ -209,7 +209,52 @@ Boundary rules:
 4. **`ISSUE-0013-D`**: add ports (`MemoryRepository`, `VectorStore`, `LanguageModel`, `SourceConnector`) and contract tests.
 5. **`ISSUE-0013-E`**: add import-boundary checks enforcing dependency direction.
 
+### Pivot deliverables checklist
+
+- [ ] **`ISSUE-0013-E` complete**: dependency contracts are CI-enforced with owners, failure semantics, and readiness-blocking behavior documented.
+
 This converts the pivot from abstract scaffolding into a scored, TestBot-specific reorganization backlog.
+
+---
+
+## 6.1) Dependency contracts (CI-enforced)
+
+This section defines implementation-level dependency contracts and their explicit CI ownership as part of **`ISSUE-0013-E`**.
+
+### Contract catalog
+
+| Contract ID | Rule text | Source module(s) | Forbidden / allowed module(s) | CI job owner |
+| --- | --- | --- | --- | --- |
+| `CR-001` | `domain` must remain pure and cannot import orchestration or infrastructure layers. | `src/testbot/domain/**` | **Forbidden:** `application`, `adapters`, `entrypoints`, `observability`, `runtime`. **Allowed:** standard library + intra-`domain` only. | Architecture Owners (`ci-architecture-boundaries`) |
+| `CR-002` | `logic` may depend on `domain` only (plus stdlib); cross-layer imports are prohibited. | `src/testbot/logic/**` | **Forbidden:** `application`, `adapters`, `entrypoints`, `observability`, `runtime`, `policies` (unless explicitly promoted). **Allowed:** `domain` + intra-`logic`. | Runtime Platform (`ci-architecture-boundaries`) |
+| `CR-003` | `scripts` may import only documented public package entrypoints and governance helpers. | `scripts/**` | **Forbidden:** internal deep imports such as `src/testbot/**` private modules. **Allowed:** public package entrypoints (`testbot.entrypoints.*`, CLI-facing APIs), `scripts/*` helpers, stdlib/approved tooling libs. | DevEx / Release Engineering (`ci-readiness-gate`) |
+
+### Explicit contract examples
+
+1. **Domain isolation contract**  
+   `domain` is forbidden from depending on both `adapters` and `application` (enforced by `CR-001`).
+2. **Logic narrowing contract**  
+   `logic` only depends on `domain` (and stdlib), with all other module dependencies rejected (`CR-002`).
+3. **Scripts public-surface contract**  
+   `scripts` are restricted to public package entrypoints rather than private/internal module paths (`CR-003`).
+
+### Intended CI enforcement points
+
+- **Import graph contracts (`import-linter`)**  
+  Define and version the contracts in either:
+  - repository root `.importlinter`, or
+  - `pyproject.toml` `[tool.importlinter]` section.
+- **Lint/type boundary checks**
+  - `ruff` import rules to forbid illegal cross-layer imports (including scripts deep-import violations).
+  - `mypy` strict boundary checks to ensure typed interfaces align with allowed dependency directions.
+- **Readiness gate integration**
+  - wire contract checks into `python scripts/all_green_gate.py` so boundary validation is part of canonical readiness evidence.
+
+### Failure semantics
+
+- Any dependency contract violation is classified as a **defect**, not advisory debt.
+- A violation **fails CI** for the owning boundary job and **blocks readiness/merge** until resolved or formally re-baselined via approved issue workflow.
+- Contract waivers, if ever granted, must be time-boxed and tracked under **`ISSUE-0013-E`** with explicit owner and expiry.
 
 ---
 
