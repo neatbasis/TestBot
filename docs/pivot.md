@@ -213,6 +213,65 @@ Boundary rules:
 
 - [ ] **`ISSUE-0013-E` complete**: dependency contracts are CI-enforced with owners, failure semantics, and readiness-blocking behavior documented.
 
+## 6.D) Port extraction done criteria (`ISSUE-0013-D`)
+
+This section defines the completion criteria for each boundary extracted under **`ISSUE-0013-D`**.
+
+### Required port characteristics (`src/testbot/ports/`)
+
+Each new port must be represented as a `typing.Protocol` interface with stable DTO contracts at the boundary:
+
+- `MemoryRepository`
+- `VectorStore`
+- `LanguageModel`
+- `SourceConnector`
+
+Required properties per port:
+
+1. **Protocol-first interface**
+   - Declare behavior using `typing.Protocol` in `src/testbot/ports/`.
+   - Keep protocols behavioral and dependency-light (no adapter imports).
+2. **Stable DTO inputs/outputs**
+   - Use explicit typed DTOs for method inputs/outputs.
+   - Avoid leaking backend/provider-native objects across the port boundary.
+3. **Deterministic contract shape**
+   - Method signatures are versioned by intent and remain stable across adapter swaps.
+   - Breaking DTO/signature changes require issue-linked migration notes and matching test updates.
+
+### Boundary public API declaration rules
+
+Boundary-facing modules must declare explicit public surfaces:
+
+- Include `__all__` in each boundary-facing module/package.
+- Export only intentionally supported symbols (protocols, DTOs, boundary errors, factory entrypoints as applicable).
+- Avoid implicit wildcard exports and private symbol leakage as accidental API.
+
+### Typed-package policy (`py.typed`)
+
+For cross-module strict typing guarantees:
+
+- Treat the package as typed and include/retain `py.typed` per PEP 561 policy.
+- New boundary DTO/protocol modules must type-check under strict settings used by readiness checks.
+- Port consumers/adapters must not degrade to untyped fallback at module boundaries.
+
+### Port migration checklist template (per component)
+
+Use this checklist for each migrated component touching a boundary contract:
+
+- [ ] imports obey direction
+- [ ] port protocol exists
+- [ ] adapter implements protocol
+- [ ] contract tests added under `tests/architecture` or `tests/*_contracts`
+
+### Current P1/P2 hotspot cross-links
+
+Apply this done-criteria section to the currently ranked hotspot modules during migration planning and review:
+
+- `src/testbot/pipeline_state.py`
+- `src/testbot/stabilization.py`
+- `src/testbot/evidence_retrieval.py`
+- `src/testbot/answer_commit.py`
+
 This converts the pivot from abstract scaffolding into a scored, TestBot-specific reorganization backlog.
 
 ---
