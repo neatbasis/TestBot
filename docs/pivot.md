@@ -48,6 +48,7 @@ Priority bands:
 | `external_systems` | External services touched directly | `none`, `ollama`, `elasticsearch`, `home_assistant`, `filesystem`, etc. |
 | `test_tier` | Primary expected test tier | `unit`, `service`, `integration`, `smoke`, `bdd` |
 | `boundary_risk` | Most important architecture risk | e.g., `infra leakage`, `policy+adapter coupling`, `orchestration bloat` |
+| `current_test_locations` | Existing deterministic/behavioral coverage anchors | List concrete paths like `tests/...`, `features/...` |
 | `migration_action` | Minimal next step | `label-only`, `extract port`, `move pure logic`, `split adapter`, `thin entrypoint` |
 | `owner` | Responsible team/person | Use real owner alias |
 | `issue_link` | Tracking issue | `ISSUE-XXXX` |
@@ -58,30 +59,48 @@ Priority bands:
 
 > Note: "depends_on" summarizes significant internal dependencies, not every single import.
 
-| component | current_role | target_module | depends_on | dep_direction_ok | external_systems | test_tier | coupling | blast | test_cost | score | boundary_risk | migration_action |
-| --- | --- | --- | --- | --- | --- | --- | ---:| ---:| ---:| ---:| --- | --- |
-| `sat_chatbot_memory_v2.py` | monolithic runtime entrypoint + orchestration + infra wiring | `entrypoints` (+ composition root) | ~32 internal modules across pipeline/policy/storage/rendering | **no** | home_assistant (`ha_ask`), llm/runtime libs, filesystem/runtime | smoke/service | 3 | 3 | 3 | **9** | orchestration bloat + infra leakage | split into thin entrypoint + app service wiring |
-| `pipeline_state.py` | canonical turn state and cross-stage data contract | `domain` | currently imports `memory_cards` | **no** | filesystem/json helpers | unit | 2 | 3 | 2 | **7** | domain depending on memory infra shape | extract pure state model from memory adapter concerns |
-| `stabilization.py` | pre-route stabilization and candidate/durable fact handling | `logic` | `candidate_encoding`, `pipeline_state`, `memory_cards`, `vector_store` | **no** | vector/memory infra via `vector_store` | unit/service | 3 | 2 | 2 | **7** | logic layer coupled to adapter/storage | split pure stabilizer from store-backed lookup |
-| `evidence_retrieval.py` | retrieval-stage evidence assembly for pipeline | `logic` + `ports` | `pipeline_state`, `stabilization` (+ `langchain_core`) | **no** | embedding/document infra (`langchain_core`) | service | 3 | 2 | 2 | **7** | retrieval policy mixed with provider types | add retrieval port + adapter DTO mapper |
-| `answer_commit.py` | answer commit orchestration and provenance write-through | `application` | `answer_assembly`, `answer_rendering`, `answer_validation`, `pipeline_state` | **no** | persistence/runtime side effects | service | 2 | 2 | 3 | **7** | commit orchestration mixed with rendering/validation pipeline | separate commit service from answer formatting/validation |
-| `policy_decision.py` | action-class decisioning from intent/evidence | `policies` | `intent_router`, `retrieval_routing`, `evidence_retrieval` | **partial/no** | none direct | unit | 2 | 2 | 2 | 6 | policy coupled to retrieval structures | move policy inputs to normalized domain DTO |
-| `source_ingest.py` | source ingestion workflow and store writes | `application` + `adapters` | `source_connectors`, `vector_store` | **no** | connectors + vector persistence | integration/service | 2 | 1 | 3 | 6 | use-case orchestration fused with adapter calls | introduce ingest service + connector/store ports |
-| `vector_store.py` | concrete vector + memory backend access | `adapters` | none internal | **yes** | `elasticsearch`, `langchain_core` | integration | 1 | 2 | 3 | 6 | backend-specific data contracts leaking upward | keep adapter, expose protocol in `ports/` |
-| `source_connectors.py` | concrete source connector loading/normalization | `adapters` | none internal | **yes** | dynamic loading/filesystem/importlib | integration | 2 | 1 | 2 | 5 | dynamic connector behavior hard to contract-test | define connector contract tests per connector type |
-| `intent_router.py` | intent enums/routes and route tokens | `domain` or `policies` | none internal | **yes** | none | unit | 1 | 3 | 1 | 5 | wide fan-in contract; accidental constants drift | freeze as stable contract module |
-| `answer_validation.py` | semantic/provenance validation checks | `logic` | `answer_assembly`, `pipeline_state` | **partial/no** | none direct | unit | 2 | 2 | 1 | 5 | validation depends on assembly shape | define validation input DTO and decouple assembly internals |
-| `canonical_turn_orchestrator.py` | turn-stage orchestration wrapper | `application` | `pipeline_state` | **yes** | none | service | 1 | 1 | 1 | 3 | thin now; risk of future bloating | keep thin and enforce boundary tests |
+| component | current_role | target_module | depends_on | dep_direction_ok | external_systems | test_tier | coupling | blast | test_cost | score | boundary_risk | current_test_locations | migration_action |
+| --- | --- | --- | --- | --- | --- | --- | ---:| ---:| ---:| ---:| --- | --- | --- |
+| `sat_chatbot_memory_v2.py` | monolithic runtime entrypoint + orchestration + infra wiring | `entrypoints` (+ composition root) | ~32 internal modules across pipeline/policy/storage/rendering | **no** | home_assistant (`ha_ask`), llm/runtime libs, filesystem/runtime | smoke/service | 3 | 3 | 3 | **9** | orchestration bloat + infra leakage | `features/` runtime scenarios; `tests/` entrypoint/orchestration regressions | split into thin entrypoint + app service wiring |
+| `pipeline_state.py` | canonical turn state and cross-stage data contract | `domain` | currently imports `memory_cards` | **no** | filesystem/json helpers | unit | 2 | 3 | 2 | **7** | domain depending on memory infra shape | `tests/` state/parity checks; `features/steps/` turn-state assertions | extract pure state model from memory adapter concerns |
+| `stabilization.py` | pre-route stabilization and candidate/durable fact handling | `logic` | `candidate_encoding`, `pipeline_state`, `memory_cards`, `vector_store` | **no** | vector/memory infra via `vector_store` | unit/service | 3 | 2 | 2 | **7** | logic layer coupled to adapter/storage | `tests/` stabilization and runtime-path checks | split pure stabilizer from store-backed lookup |
+| `evidence_retrieval.py` | retrieval-stage evidence assembly for pipeline | `logic` + `ports` | `pipeline_state`, `stabilization` (+ `langchain_core`) | **no** | embedding/document infra (`langchain_core`) | service | 3 | 2 | 2 | **7** | retrieval policy mixed with provider types | `tests/` retrieval and runtime-parity checks | add retrieval port + adapter DTO mapper |
+| `answer_commit.py` | answer commit orchestration and provenance write-through | `application` | `answer_assembly`, `answer_rendering`, `answer_validation`, `pipeline_state` | **no** | persistence/runtime side effects | service | 2 | 2 | 3 | **7** | commit orchestration mixed with rendering/validation pipeline | `tests/` answer pipeline regressions; `features/steps/` provenance steps | separate commit service from answer formatting/validation |
+| `policy_decision.py` | action-class decisioning from intent/evidence | `policies` | `intent_router`, `retrieval_routing`, `evidence_retrieval` | **partial/no** | none direct | unit | 2 | 2 | 2 | 6 | policy coupled to retrieval structures | `tests/` policy/intent decision coverage | move policy inputs to normalized domain DTO |
+| `source_ingest.py` | source ingestion workflow and store writes | `application` + `adapters` | `source_connectors`, `vector_store` | **no** | connectors + vector persistence | integration/service | 2 | 1 | 3 | 6 | use-case orchestration fused with adapter calls | `tests/` ingest/integration coverage | introduce ingest service + connector/store ports |
+| `vector_store.py` | concrete vector + memory backend access | `adapters` | none internal | **yes** | `elasticsearch`, `langchain_core` | integration | 1 | 2 | 3 | 6 | backend-specific data contracts leaking upward | `tests/` vector backend integration coverage | keep adapter, expose protocol in `ports/` |
+| `source_connectors.py` | concrete source connector loading/normalization | `adapters` | none internal | **yes** | dynamic loading/filesystem/importlib | integration | 2 | 1 | 2 | 5 | dynamic connector behavior hard to contract-test | `tests/` connector adapter coverage | define connector contract tests per connector type |
+| `intent_router.py` | intent enums/routes and route tokens | `domain` or `policies` | none internal | **yes** | none | unit | 1 | 3 | 1 | 5 | wide fan-in contract; accidental constants drift | `tests/` route token/intent mapping checks | freeze as stable contract module |
+| `answer_validation.py` | semantic/provenance validation checks | `logic` | `answer_assembly`, `pipeline_state` | **partial/no** | none direct | unit | 2 | 2 | 1 | 5 | validation depends on assembly shape | `tests/` validation behavior checks | define validation input DTO and decouple assembly internals |
+| `canonical_turn_orchestrator.py` | turn-stage orchestration wrapper | `application` | `pipeline_state` | **yes** | none | service | 1 | 1 | 1 | 3 | thin now; risk of future bloating | `tests/` orchestrator service checks | keep thin and enforce boundary tests |
+
+### Executed census pass — extended scope
+
+The following table extends the executed census beyond `src/testbot/*.py` as an explicit inventory. These rows are **not** used for P-band priority unless they are scored at file-level granularity.
+
+| component | current_role | target_module | depends_on | dep_direction_ok | external_systems | test_tier | coupling | blast | test_cost | score | boundary_risk | current_test_locations | migration_action |
+| --- | --- | --- | --- | --- | --- | --- | ---:| ---:| ---:| ---:| --- | --- | --- |
+| `src/testbot/pipeline/*.py` | pipeline stage orchestration, telemetry flow, and stage contracts | `application` + `observability` + `logic` | `pipeline_state`, runtime orchestration modules, metrics emitters | **pending (not file-scored yet)** | filesystem/runtime metrics sinks | service/integration | — | — | — | **TBD** | cannot claim risk rank until per-file evidence is scored | `tests/pipeline/`, `tests/architecture/` | run file-level census for `src/testbot/pipeline/*.py`; do not include in P-bands until complete |
+| `src/seem_bot/*.py` | adjacent runtime and cross-runtime integration surface | `entrypoints` + `application` + `adapters` | shared runtime conventions and integration boundaries with `testbot` | **pending (not file-scored yet)** | external runtime integrations (varies by module) | service/smoke | — | — | — | **TBD** | hidden cross-runtime coupling may exist but is not yet measured | `tests/seem_bot/`, `features/seem_bot/` | run companion file-level census and codify cross-runtime port contracts |
+| `tests/architecture/` | architecture boundary enforcement and direction checks | `governance_tooling` + `tests` | import-boundary rules, package-map constraints | **yes** | none | unit/service | 1 | 3 | 1 | 5 | gaps between policy and enforceable checks | `tests/architecture/` | map each correspondence rule to deterministic test IDs |
+| `tests/seem_bot/` | deterministic regression and behavior guardrails for seem_bot runtime | `tests` | seem_bot runtime modules and shared fixtures | **yes** | none | unit/service/integration | 1 | 2 | 2 | 5 | adjacent runtime changes can bypass pivot confidence signals | `tests/seem_bot/` | align test tiers and add runtime-parity markers where needed |
+| `features/steps/` | BDD step implementations for stakeholder-visible behavior | `governance_tooling` + `tests` | runtime entrypoints, step helper adapters, fixtures | **partial/no** | filesystem/test harness | bdd | 2 | 3 | 2 | **7** | behavioral coverage can drift from module boundaries | `features/steps/` | add traceability from BDD scenarios to scoped pivot components |
+| `scripts/` controls | readiness gate, issue/policy validators, quality control scripts | `governance_tooling` | repo metadata, test runners, issue/governance records | **yes** | filesystem/CLI/process execution | integration | 2 | 3 | 2 | **7** | controls are critical but not versioned as explicit control inventory | `scripts/all_green_gate.py`, `scripts/validate_*.py` | maintain controls register with owner, cadence, and output schema |
+| `config/` | governance/runtime configuration and policy knobs | `policies` + `governance_tooling` | runtime modules, scripts, docs controls | **partial/no** | none direct | unit/integration | 2 | 2 | 2 | 6 | config drift can silently alter control behavior | `config/` | define config schema + ownership and validate in gate |
+| `eval/` | evaluation fixtures and runtime parity evidence assets | `governance_tooling` + `tests` | eval harness, runtime outputs, scoring checks | **yes** | filesystem | integration | 1 | 2 | 2 | 5 | evaluation drift without explicit change controls | `eval/`, `tests/test_eval_runtime_parity.py` | add parity/eval manifest checks in canonical gate |
+| `artifacts/` evidence outputs | generated gate/test/eval evidence and readiness artifacts | `governance_tooling` + `observability` | scripts/all_green_gate outputs, evaluation reports | **yes** | filesystem | integration/smoke | 1 | 3 | 1 | 5 | evidence format/version instability harms auditability | `artifacts/` | define authoritative artifact schema + retention/version rules |
 
 ### Key findings from completed pass
 
-1. **Primary hotspot is `sat_chatbot_memory_v2.py` (score 9).**
+1. **Primary hotspot remains `sat_chatbot_memory_v2.py` (score 9).**
    - This is the clearest single-file architectural bottleneck and should be split first.
 2. **Four P1 modules score 7 and are boundary-violating now:**
    - `pipeline_state.py`, `stabilization.py`, `evidence_retrieval.py`, `answer_commit.py`.
-3. **Policy and validation are close to pure but still shape-coupled:**
+3. **Extended-scope inventory is now explicit, but `src/testbot/pipeline/*.py` is intentionally not risk-ranked yet.**
+   - It is marked `score=TBD` until file-level census scoring is completed.
+4. **Policy and validation are close to pure but still shape-coupled:**
    - `policy_decision.py`, `answer_validation.py` should consume stable DTOs rather than adapter/assembly shapes.
-4. **Adapters exist but ports are not explicit enough:**
+5. **Adapters exist but ports are not explicit enough:**
    - `vector_store.py` and `source_connectors.py` are identifiable adapters; they need corresponding formal ports.
 
 ---
@@ -94,6 +113,8 @@ Priority bands:
    - `entrypoints/chatbot_runtime.py` (argparse / runtime boot only),
    - `application/services/turn_service.py` (orchestration),
    - explicit adapter wiring module.
+2. **`src/testbot/pipeline/*.py` (deferred P-band assignment):**
+   - explicitly deferred until file-level coupling/blast/test_cost rows are produced; current surface-group inventory is not sufficient to prioritize as P0/P1.
 
 ### P1 (score 7)
 
@@ -194,25 +215,37 @@ This converts the pivot from abstract scaffolding into a scored, TestBot-specifi
 
 ## 7) Scope gap analysis: what is currently out of scope of this pivot
 
-The executed census in Section 2 is strong for high-risk runtime modules, but it is still a **partial scope** for full reorganization control. Current scope is effectively:
+The executed census in Section 2 now includes the primary runtime/governance-critical surfaces. Remaining scope gaps are implementation-depth gaps (traceability, control formalization), not directory omissions. Current scope is effectively:
 
 - selected flat modules in `src/testbot/*.py` (primarily turn pipeline runtime hotspots),
+- extended architecture/governance surfaces (`src/testbot/pipeline`, `src/seem_bot`, `tests/architecture`, `tests/seem_bot`, `features/steps`, `scripts`, `config`, `eval`, `artifacts`),
 - migration direction for package targets,
 - boundary-test proposal tied to those hotspots.
 
-The following repository areas are currently out of scope and should be brought into scope for the pivot to be complete and auditable.
+### Scope coverage summary (authoritative)
 
-| Out-of-scope path | Why this is out of scope today | Why it must be in scope | Bring-into-scope action |
+| Granularity class | Count | Interpretation |
+| --- | ---:| --- |
+| Individually file-scored components | 12 | These rows have explicit coupling/blast/test_cost evidence and can be ranked into P0/P1/P2/P3. |
+| Surface-group inventory rows | 9 | These rows establish scope inclusion only; they are not equivalent to file-level risk evidence. |
+| Surface groups with deferred score (`TBD`) | 2 | `src/testbot/pipeline/*.py`, `src/seem_bot/*.py` require file-level census before priority ranking. |
+| **Total entries in Section 2 census** | **21** | Mixed granularity by design; only file-scored rows drive migration priority. |
+
+The table above is the fixed review anchor for future deltas. Keep the title string exact (`Scope coverage summary (authoritative)`) so diffs remain searchable across revisions.
+
+The following repository areas are in scope but still need deeper control-definition detail for the pivot to be complete and auditable.
+
+Scope-decision application note: each surface-group inventory row above is in scope because it satisfies at least one rule in the Section 7 decision criteria (runtime coupling, readiness controls, governance records, or evaluation/evidence role).
+
+| In-scope path needing deeper definition | Why scope inclusion is now explicit | Why additional depth is still needed | Next hardening action |
 | --- | --- | --- | --- |
-| `src/testbot/pipeline/` | Not represented in the executed census table. | Holds pipeline-specific telemetry/metrics contracts that affect analyzability and reliability. | Add module-level census rows and enforce dependency-direction scoring. |
-| `src/seem_bot/` | Not included in target package map or scored list. | Cross-runtime boundaries can reintroduce hidden coupling and break modularity claims. | Run a companion census and declare whether it is in the same architecture description or explicitly excluded with rationale. |
-| `features/seem_bot/` and `tests/seem_bot/` | Not referenced in pivot migration order. | Behavioral and deterministic evidence for adjacent runtime surfaces is required for blast-radius confidence. | Extend boundary/readiness evidence matrix to include these suites or mark as intentionally separate product scope. |
-| `tests/architecture/` and `tests/pipeline/` | Test directories are proposed generically but not reconciled to existing layout. | Needed to prove refactors preserve architecture constraints and stage conformance. | Map existing tests to target tiers (`unit/service/integration/smoke`) and add gap list for missing boundary tests. |
-| `scripts/` (gate + validators) | Mentioned as enforcement mechanism, not censused as first-class controls. | Mandatory controls depend on these scripts for objective evidence. | Add a controls inventory for `all_green_gate`, conformance validators, and issue/governance validators. |
-| `config/` | Not present in pivot scope text. | Guardrails/configuration are governance-critical for repeatable controls. | Enumerate governance and KPI config files as controlled artifacts with owners. |
-| `docs/governance/` and `docs/issues/` | Governance docs are referenced indirectly but not integrated into pivot scope. | Needed for ISO/IEC 42001 auditable AI management controls and improvement loop evidence. | Add explicit governance workstream under pivot with policy→risk→control→monitoring traceability. |
-| `eval/` | Not covered in current migration sequencing. | Supports validity/reliability and runtime-parity evidence for AI behavior quality controls. | Add evaluation parity and drift controls as a scoped verification package. |
-| `artifacts/` | Output evidence location is not named as pivot-controlled asset set. | 29119-style evidence requires durable, structured completion artifacts. | Define artifact schema/versioning and retention expectations in pivot deliverables. |
+| `src/testbot/pipeline/` | Included as an extended-scope census surface. | Stage-level module granularity still needs per-file rows. | Add per-module rows and explicit dependency-direction checks by file. |
+| `src/seem_bot/` | Included as cross-runtime census surface. | Cross-runtime contract boundaries are still implicit. | Define explicit ports/contracts and ownership at package boundary. |
+| `tests/architecture/` and `tests/seem_bot/` | Included as scored evidence surfaces. | Tier mapping and gap inventory are not yet complete. | Publish tier map and missing-test backlog tied to scored risks. |
+| `features/steps/` | Included as stakeholder-behavior evidence surface. | Scenario→component traceability is not yet explicit. | Add traceability matrix from scenarios/steps to pivot components. |
+| `scripts/` controls | Included as governance-control surface. | Control catalog and output schema are not yet formalized. | Create controls register (owner/cadence/input/output/failure mode). |
+| `config/` | Included as governance/runtime control surface. | Schema and ownership controls remain underspecified. | Add schema validation + ownership metadata checks in gate. |
+| `eval/` and `artifacts/` | Included as quality/evidence surfaces. | Artifact schema, versioning, and retention controls are still partial. | Define authoritative evidence schema and retention policy checks. |
 
 ### Scope decision rule for next pass
 
@@ -240,6 +273,16 @@ This section extends the pivot from module decomposition to control completeness
 | NIST AI RMF 1.0 | MAP/MEASURE/MANAGE controls for AI context, trustworthiness, and monitoring. | **Partial** | Existing invariants/directives and gate scripts are present but not RMF-tagged. | Add AI system context profile (inputs, model behavior, failure modes) and map invariants/gates to RMF functions with owners and cadence. |
 | ISO/IEC 42001:2023 | AIMS lifecycle: policy, risk assessment, operational controls, monitoring, continual improvement, supplier oversight. | **Partial** | Governance docs and issue workflow exist; separation direction exists in this pivot. | Publish an AIMS crosswalk linking current docs to 42001 clauses, identify missing artifacts (formal risk register, supplier oversight checklist, management review log). |
 | ISO/IEC/IEEE 29119 | Test process + auditable test completion evidence/reporting. | **Partial** | Canonical gate script and testing docs define checks and pass/fail operation. | Emit structured completion report artifact (objectives, deviations, recommendation, pass/fail rationale) per gate run. |
+
+### P0/P1 baseline: current test locations (from executed census)
+
+| Component | Priority band | current_test_locations |
+| --- | --- | --- |
+| `sat_chatbot_memory_v2.py` | P0 | `features/` runtime scenarios; `tests/` entrypoint/orchestration regressions |
+| `pipeline_state.py` | P1 | `tests/` state/parity checks; `features/steps/` turn-state assertions |
+| `stabilization.py` | P1 | `tests/` stabilization and runtime-path checks |
+| `evidence_retrieval.py` | P1 | `tests/` retrieval and runtime-parity checks |
+| `answer_commit.py` | P1 | `tests/` answer pipeline regressions; `features/steps/` provenance steps |
 
 ### Additional mandatory controls to add to pivot backlog
 
