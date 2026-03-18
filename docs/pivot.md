@@ -469,3 +469,129 @@ This section extends the pivot from module decomposition to control completeness
 - **`ISSUE-0013-I`**: 29119-compatible gate completion report artifact and artifact-retention policy.
 
 These additions keep the current pivot direction intact while making scope, controls, and audit evidence explicit.
+
+## 9) Readiness evidence contract
+
+This section defines the mandatory evidence artifact contract for every canonical readiness gate execution (`python scripts/all_green_gate.py`). The contract is normative for implementers and reviewers and is intended to remove ambiguity in audit trails and issue closure decisions.
+
+### 9.1 Mandatory artifact fields for each gate run
+
+Every gate run must emit one machine-readable JSON artifact containing, at minimum, the following top-level fields:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `schema_version` | string | yes | Artifact schema version (for compatibility and migration). |
+| `artifact_type` | string | yes | Must be `readiness_evidence`. |
+| `gate_profile` | string | yes | Gate mode/profile executed (for example `default`, `continue_on_failure`, or other named profile). |
+| `generated_at_utc` | string (ISO 8601) | yes | UTC generation timestamp. |
+| `repository` | object | yes | Repository identity and revision context (see nested fields). |
+| `checks` | array | yes | Ordered list of checks executed in the run. |
+| `summary` | object | yes | Aggregate pass/fail counts and final recommendation. |
+| `blocked_by_rule_ids` | array[string] | yes | Unique rule/control IDs currently blocking readiness (empty array if none). |
+| `issue_links` | array[string] | yes | Issue IDs or canonical issue URIs associated with this run/release decision. |
+| `traceability` | object | yes | Mapping to release/closure context and evidence lineage. |
+
+Required nested fields:
+
+- `repository.commit_sha` (full Git commit SHA evaluated by the gate),
+- `repository.branch` (branch name at run time),
+- `checks[*].check_id` (stable ID),
+- `checks[*].description`,
+- `checks[*].status` (`pass` / `fail` / `skip` / `blocked`),
+- `checks[*].duration_ms`,
+- `checks[*].evidence_refs` (paths/URIs to detailed outputs where applicable),
+- `summary.final_status` (`pass` or `fail`),
+- `summary.total_checks`, `summary.passed`, `summary.failed`, `summary.skipped`, `summary.blocked`,
+- `traceability.related_issue_ids`,
+- `traceability.closure_decision` (`ready`, `not_ready`, or `conditional`),
+- `traceability.supersedes_artifact_ids` (if replacing prior evidence).
+
+### 9.2 Storage location, naming, and versioning under `artifacts/`
+
+Evidence artifacts are stored under the repository-local evidence tree:
+
+- Root: `artifacts/readiness/`
+- Per-run path pattern: `artifacts/readiness/YYYY/MM/DD/<gate_profile>/<timestamp>_<short_sha>.json`
+- Optional stable pointer for latest run by profile: `artifacts/readiness/latest_<gate_profile>.json` (copy, not move)
+
+Versioning requirements:
+
+1. `schema_version` follows semantic versioning (`MAJOR.MINOR.PATCH`).
+2. Backward-incompatible changes require MAJOR bump and migration note in the linked issue record.
+3. New additive fields require MINOR bump.
+4. Editorial/non-structural clarifications require PATCH bump.
+5. Gate implementations must reject unknown major versions unless an explicit compatibility adapter exists.
+
+### 9.3 Retention and traceability requirements
+
+Retention minimums:
+
+1. Keep all readiness evidence artifacts for **at least 18 months** from `generated_at_utc`.
+2. Keep all artifacts linked to open issues or red-tag incidents until issue closure + 18 months, whichever is later.
+3. Do not delete artifacts referenced by release notes, post-incident reports, or governance review records.
+
+Traceability rules:
+
+1. Each issue closure record must reference at least one evidence artifact ID/path proving the closure decision.
+2. Each evidence artifact must include `traceability.related_issue_ids` for issues it supports.
+3. If a new run supersedes a prior failure/conditional run, record prior IDs in `traceability.supersedes_artifact_ids`.
+4. Release/readiness decisions must be reconstructable from (`commit_sha`, `issue_links`, `blocked_by_rule_ids`, `summary.final_status`).
+
+### 9.4 Standards-claim mapping for artifact fields
+
+The following mapping connects required fields to standards claims already listed in Section 8:
+
+| Artifact field(s) | Standards claim supported | Rationale |
+| --- | --- | --- |
+| `checks[*]`, `summary.*`, `blocked_by_rule_ids` | ISO/IEC/IEEE 29119 | Provides auditable test/gate completion evidence and explicit pass/fail/block rationale. |
+| `gate_profile`, `checks[*].check_id`, `blocked_by_rule_ids` | ISO/IEC/IEEE 42010 | Supports correspondence-rule traceability and verifiable architecture/control constraint enforcement. |
+| `summary.*`, `checks[*].status`, `traceability.closure_decision` | ISO/IEC 25010 | Preserves quality-characteristic evidence needed for maintainability/testability readiness judgments. |
+| `issue_links`, `traceability.related_issue_ids`, `traceability.supersedes_artifact_ids` | ISO/IEC 42001 | Enables lifecycle governance, operational control tracking, and continual-improvement history. |
+| `generated_at_utc`, `repository.commit_sha`, `checks[*].evidence_refs`, `blocked_by_rule_ids` | NIST AI RMF 1.0 | Supports MEASURE/MANAGE monitoring provenance and accountable decision records over time. |
+
+### 9.5 Example minimal JSON schema (implementation baseline)
+
+```json
+{
+  "schema_version": "1.0.0",
+  "artifact_type": "readiness_evidence",
+  "artifact_id": "readiness-2026-03-18T12:34:56Z-a1b2c3d",
+  "gate_profile": "default",
+  "generated_at_utc": "2026-03-18T12:34:56Z",
+  "repository": {
+    "name": "TestBot",
+    "branch": "feature/example",
+    "commit_sha": "a1b2c3d4e5f678901234567890abcdef12345678"
+  },
+  "checks": [
+    {
+      "check_id": "gate.behave",
+      "description": "BDD behavioral suite",
+      "status": "pass",
+      "duration_ms": 12450,
+      "evidence_refs": [
+        "artifacts/test/behave-2026-03-18.log"
+      ]
+    }
+  ],
+  "summary": {
+    "total_checks": 1,
+    "passed": 1,
+    "failed": 0,
+    "skipped": 0,
+    "blocked": 0,
+    "final_status": "pass"
+  },
+  "blocked_by_rule_ids": [],
+  "issue_links": [
+    "ISSUE-0013-I"
+  ],
+  "traceability": {
+    "related_issue_ids": [
+      "ISSUE-0013-I"
+    ],
+    "closure_decision": "ready",
+    "supersedes_artifact_ids": []
+  }
+}
+```
