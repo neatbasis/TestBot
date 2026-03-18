@@ -258,6 +258,66 @@ This section defines implementation-level dependency contracts and their explici
 
 ---
 
+## 6.2) `scripts/` boundary rules and allowed import surfaces
+
+This subsection operationalizes `CR-003` as an explicit scripts boundary contract.
+
+### Scripts import-surface policy table
+
+| Script path pattern | Allowed package surface | Forbidden internal modules | Rationale |
+| --- | --- | --- | --- |
+| `scripts/all_green_gate.py` | `scripts.*` helper modules, `testbot.entrypoints.*` public CLI/runtime entrypoints, stdlib, approved dev tooling libs | `testbot.adapters.*`, `testbot.logic.*`, `testbot.application.*`, `testbot.pipeline.*`, direct imports from `src/testbot/**` implementation files | Canonical gate must validate behavior through public boundaries and remain stable when internals are reorganized. |
+| `scripts/validate_*.py` | `scripts.*` shared validators, `testbot.entrypoints.*` (if needed), stdlib, approved tooling libs (`json`, `pathlib`, `subprocess`, etc.) | `testbot.adapters.*`, `testbot.runtime.*`, `testbot.observability.*`, any deep internal module not declared public API | Governance validators should not couple to runtime implementation details or storage adapters. |
+| `scripts/eval_*.py` | Public evaluation-facing APIs (promoted package exports), `testbot.entrypoints.*`, stdlib, approved eval dependencies | `testbot.adapters.*`, `testbot.pipeline.*`, private utility modules imported only by file path conventions | Eval tooling must exercise supported public surfaces to preserve runtime/eval parity under refactors. |
+| `scripts/*.py` (default catch-all) | `python -m`-resolvable package entrypoints, `scripts.*` helpers, stdlib, approved third-party CLI libs | Any deep import below allowed surfaces; all `testbot.adapters.*` imports unless explicit whitelist is documented under `CR-003` waiver metadata | Keeps scripts as thin orchestration/control-plane code, not alternate runtime entrypoints. |
+
+### Allowed execution model (normative)
+
+1. **Prefer module execution via package entrypoints:** use `python -m testbot.<entrypoint>` when invoking runtime behavior from scripts.
+2. **Prohibit `sys.path` manipulation for internal imports:** scripts must not mutate `sys.path` to reach internal modules.
+3. **Prefer explicit public API imports:** if direct imports are needed, import from documented public package surfaces only.
+
+### Deep-import contract rule (`CR-003-S1`)
+
+- `scripts/*` **must not import deep internal modules**, including `testbot.adapters.*`, `testbot.application.*`, `testbot.logic.*`, and `testbot.pipeline.*`.
+- Exception path: only explicitly whitelisted modules are allowed, and each whitelist entry must include:
+  - an issue reference,
+  - an owner,
+  - an expiry date,
+  - and a migration removal plan.
+- Any unapproved deep import is treated as a contract violation and is readiness-blocking under the canonical gate.
+
+### Planned verification hooks in canonical gate
+
+`python scripts/all_green_gate.py` should include scripted boundary verification checks, initially as optional/staged checks and then promoted to mandatory readiness blockers.
+
+Planned hook sequence:
+
+1. **`scripts_surface_check` (optional mode initially):** detect deep imports from `scripts/*.py` into disallowed `testbot.*` internals.
+2. **`scripts_sys_path_check` (optional mode initially):** detect `sys.path` mutation patterns used for internal import reach-through.
+3. **`scripts_entrypoint_execution_check` (optional mode initially):** verify runtime invocation patterns prefer `python -m testbot.<entrypoint>`.
+
+Promotion policy:
+
+- Stage 1: report-only in optional mode (`--continue-on-failure` and/or JSON summary output).
+- Stage 2: warning-class failures in default mode.
+- Stage 3: hard-fail readiness blockers in default mode once migration notes below are closed.
+
+### Migration notes for existing scripts (current known violations)
+
+1. **`sys.path` manipulation currently present and must be removed**
+   - `scripts/all_green_gate.py`
+   - `scripts/validate_issue_links.py`
+   - `scripts/validate_issues.py`
+   - Migration target: package the shared helper surface so these scripts can import without `sys.path.insert(...)`.
+2. **Deep runtime module imports currently present and should be promoted or wrapped**
+   - `scripts/aggregate_turn_analytics.py` imports `testbot.turn_analytics_diagnostics`.
+   - `scripts/eval_recall.py` imports `testbot.eval_fixtures`, `testbot.rerank`, and `testbot.time_parse`.
+   - Migration target: promote stable evaluation/analytics entrypoints (or a narrow public API module) and switch scripts to those surfaces.
+3. **Temporary compatibility path**
+   - Existing violating scripts may run behind staged checks while migration PRs land.
+   - Each temporary allowance must be explicitly tracked under `ISSUE-0013-E` sub-items with owner + expiry.
+
 ## 7) Scope gap analysis: what is currently out of scope of this pivot
 
 The executed census in Section 2 now includes the primary runtime/governance-critical surfaces. Remaining scope gaps are implementation-depth gaps (traceability, control formalization), not directory omissions. Current scope is effectively:
