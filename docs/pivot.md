@@ -189,3 +189,76 @@ Boundary rules:
 5. **`ISSUE-0013-E`**: add import-boundary checks enforcing dependency direction.
 
 This converts the pivot from abstract scaffolding into a scored, TestBot-specific reorganization backlog.
+
+---
+
+## 7) Scope gap analysis: what is currently out of scope of this pivot
+
+The executed census in Section 2 is strong for high-risk runtime modules, but it is still a **partial scope** for full reorganization control. Current scope is effectively:
+
+- selected flat modules in `src/testbot/*.py` (primarily turn pipeline runtime hotspots),
+- migration direction for package targets,
+- boundary-test proposal tied to those hotspots.
+
+The following repository areas are currently out of scope and should be brought into scope for the pivot to be complete and auditable.
+
+| Out-of-scope path | Why this is out of scope today | Why it must be in scope | Bring-into-scope action |
+| --- | --- | --- | --- |
+| `src/testbot/pipeline/` | Not represented in the executed census table. | Holds pipeline-specific telemetry/metrics contracts that affect analyzability and reliability. | Add module-level census rows and enforce dependency-direction scoring. |
+| `src/seem_bot/` | Not included in target package map or scored list. | Cross-runtime boundaries can reintroduce hidden coupling and break modularity claims. | Run a companion census and declare whether it is in the same architecture description or explicitly excluded with rationale. |
+| `features/seem_bot/` and `tests/seem_bot/` | Not referenced in pivot migration order. | Behavioral and deterministic evidence for adjacent runtime surfaces is required for blast-radius confidence. | Extend boundary/readiness evidence matrix to include these suites or mark as intentionally separate product scope. |
+| `tests/architecture/` and `tests/pipeline/` | Test directories are proposed generically but not reconciled to existing layout. | Needed to prove refactors preserve architecture constraints and stage conformance. | Map existing tests to target tiers (`unit/service/integration/smoke`) and add gap list for missing boundary tests. |
+| `scripts/` (gate + validators) | Mentioned as enforcement mechanism, not censused as first-class controls. | Mandatory controls depend on these scripts for objective evidence. | Add a controls inventory for `all_green_gate`, conformance validators, and issue/governance validators. |
+| `config/` | Not present in pivot scope text. | Guardrails/configuration are governance-critical for repeatable controls. | Enumerate governance and KPI config files as controlled artifacts with owners. |
+| `docs/governance/` and `docs/issues/` | Governance docs are referenced indirectly but not integrated into pivot scope. | Needed for ISO/IEC 42001 auditable AI management controls and improvement loop evidence. | Add explicit governance workstream under pivot with policy→risk→control→monitoring traceability. |
+| `eval/` | Not covered in current migration sequencing. | Supports validity/reliability and runtime-parity evidence for AI behavior quality controls. | Add evaluation parity and drift controls as a scoped verification package. |
+| `artifacts/` | Output evidence location is not named as pivot-controlled asset set. | 29119-style evidence requires durable, structured completion artifacts. | Define artifact schema/versioning and retention expectations in pivot deliverables. |
+
+### Scope decision rule for next pass
+
+A directory must be in pivot scope if **any** of the following are true:
+
+1. It contains runtime code with coupling into turn execution.
+2. It provides gate/check logic used as readiness evidence.
+3. It contains policy, invariants, or issue/governance records that justify controls.
+4. It stores evaluation fixtures or generated evidence used to assert quality/trustworthiness.
+
+---
+
+## 8) Mandatory controls assessment against applicable standards
+
+This section extends the pivot from module decomposition to control completeness. Status values:
+
+- **Implemented**: control exists and has an obvious enforcing artifact.
+- **Partial**: control exists but lacks full scope, structure, or auditable output.
+- **Missing**: no explicit control artifact found in current pivot/governance flow.
+
+| Standard | Mandatory control theme | Current status | Evidence anchor (current repo) | Gap to close in pivot |
+| --- | --- | --- | --- | --- |
+| ISO/IEC 25010:2023 | Quality scoring must trace to maintainability/testability characteristics. | **Partial** | Current census scoring in this document, Sections 0–3. | Add explicit per-component mapping fields: `modularity`, `modifiability`, `analyzability`, `testability` and keep score derivation reproducible. |
+| ISO/IEC/IEEE 42010:2022 | Architecture correspondence rules with verifiable constraints and stakeholder concerns. | **Partial** | Dependency direction policy in Section 4; CI enforcement intent in Section 6E. | Add stakeholder/concern/viewpoint table and correspondence-rule IDs tied to concrete import-boundary tests. |
+| NIST AI RMF 1.0 | MAP/MEASURE/MANAGE controls for AI context, trustworthiness, and monitoring. | **Partial** | Existing invariants/directives and gate scripts are present but not RMF-tagged. | Add AI system context profile (inputs, model behavior, failure modes) and map invariants/gates to RMF functions with owners and cadence. |
+| ISO/IEC 42001:2023 | AIMS lifecycle: policy, risk assessment, operational controls, monitoring, continual improvement, supplier oversight. | **Partial** | Governance docs and issue workflow exist; separation direction exists in this pivot. | Publish an AIMS crosswalk linking current docs to 42001 clauses, identify missing artifacts (formal risk register, supplier oversight checklist, management review log). |
+| ISO/IEC/IEEE 29119 | Test process + auditable test completion evidence/reporting. | **Partial** | Canonical gate script and testing docs define checks and pass/fail operation. | Emit structured completion report artifact (objectives, deviations, recommendation, pass/fail rationale) per gate run. |
+
+### Additional mandatory controls to add to pivot backlog
+
+1. **Architecture correspondence control set (42010):**
+   - Define rule IDs (e.g., `CR-001 domain_no_internal_deps`) and map each to specific automated checks.
+2. **AI system context and trustworthiness profile (NIST AI RMF MAP):**
+   - Document TestBot boundaries, data categories, model providers, and high-priority trustworthiness characteristics.
+3. **AIMS crosswalk package (42001):**
+   - Build policy→risk→control→monitoring→improvement matrix, with named owners and review cadence.
+4. **Test completion evidence schema (29119-3):**
+   - Extend gate output to include objective coverage, deviations, blocker summary, and release recommendation.
+5. **Supplier oversight controls (42001 + RMF MANAGE):**
+   - Add explicit dependency risk controls for Ollama, Elasticsearch, and Home Assistant adapters/ports.
+
+### Recommended issue slicing to bring out-of-scope assets into scope
+
+- **`ISSUE-0013-F`**: full repository scope census (`src/testbot/pipeline`, `src/seem_bot`, tests/features alignment).
+- **`ISSUE-0013-G`**: architecture correspondence rule catalog + import-boundary enforcement mapping.
+- **`ISSUE-0013-H`**: AI RMF/42001 governance crosswalk and supplier oversight controls.
+- **`ISSUE-0013-I`**: 29119-compatible gate completion report artifact and artifact-retention policy.
+
+These additions keep the current pivot direction intact while making scope, controls, and audit evidence explicit.
