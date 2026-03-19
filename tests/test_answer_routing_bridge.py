@@ -3,7 +3,7 @@ from __future__ import annotations
 import pytest
 
 from testbot.policy_decision import DecisionClass, DecisionObject
-from testbot.sat_chatbot_memory_v2 import _resolve_answer_routing_from_decision_object
+from testbot.sat_chatbot_memory_v2 import resolve_answer_routing_from_decision_object
 
 
 @pytest.mark.parametrize(
@@ -33,7 +33,7 @@ def test_resolve_answer_routing_from_decision_object_covers_all_current_decision
         rationale="test",
     )
 
-    routing = _resolve_answer_routing_from_decision_object(decision, capability_status="ask_unavailable")
+    routing = resolve_answer_routing_from_decision_object(decision, capability_status="ask_unavailable")
 
     assert routing.fallback_action == expected_action
     assert routing.canonical_response_token == expected_token
@@ -48,4 +48,4 @@ def test_resolve_answer_routing_from_decision_object_raises_for_unsupported_deci
     )
 
     with pytest.raises(ValueError, match="Unsupported DecisionClass"):
-        _resolve_answer_routing_from_decision_object(decision, capability_status="ask_unavailable")
+        resolve_answer_routing_from_decision_object(decision, capability_status="ask_unavailable")

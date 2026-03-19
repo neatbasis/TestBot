@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from testbot.sat_chatbot_memory_v2 import CapabilitySnapshot, RuntimeCapabilityStatus, _print_startup_status
+from testbot.sat_chatbot_memory_v2 import CapabilitySnapshot, RuntimeCapabilityStatus, print_startup_status
 
 
 def _snapshot(*, effective_mode: str | None, ha_error: str | None, ollama_error: str | None, fallback_reason: str | None = None, memory_backend: str = "in_memory", debug_enabled: bool = False, debug_verbose: bool = False) -> CapabilitySnapshot:
@@ -39,7 +39,7 @@ def _snapshot(*, effective_mode: str | None, ha_error: str | None, ollama_error:
 
 
 def test_startup_status_prints_yellow_install_warning_when_ha_unavailable(capsys) -> None:
-    _print_startup_status(
+    print_startup_status(
         snapshot=_snapshot(
             effective_mode="cli",
             ha_error="Missing HA_API_SECRET",
@@ -53,7 +53,7 @@ def test_startup_status_prints_yellow_install_warning_when_ha_unavailable(capsys
 
 
 def test_startup_status_prints_green_install_warning_when_ha_available(capsys) -> None:
-    _print_startup_status(
+    print_startup_status(
         snapshot=_snapshot(
             effective_mode="satellite",
             ha_error=None,
@@ -66,7 +66,7 @@ def test_startup_status_prints_green_install_warning_when_ha_available(capsys) -
 
 
 def test_startup_status_prints_degraded_cli_fallback_note_and_continuity_message(capsys) -> None:
-    _print_startup_status(
+    print_startup_status(
         snapshot=_snapshot(
             effective_mode="cli",
             ha_error="Missing HA_API_SECRET",
@@ -111,14 +111,14 @@ def test_startup_status_includes_requested_and_effective_modes_for_fallback(caps
         ),
     )
 
-    _print_startup_status(snapshot=snapshot)
+    print_startup_status(snapshot=snapshot)
 
     output = capsys.readouterr().out
     assert "Selected mode: cli (requested=satellite, fallback reason=satellite connection is unavailable, daemon=False)" in output
 
 
 def test_startup_status_prints_active_memory_backend(capsys) -> None:
-    _print_startup_status(
+    print_startup_status(
         snapshot=_snapshot(
             effective_mode="cli",
             ha_error="Missing HA_API_SECRET",
@@ -133,7 +133,7 @@ def test_startup_status_prints_active_memory_backend(capsys) -> None:
 
 
 def test_startup_status_prints_ollama_unavailable_guidance(capsys) -> None:
-    _print_startup_status(
+    print_startup_status(
         snapshot=_snapshot(
             effective_mode="unavailable",
             ha_error=None,
@@ -148,7 +148,7 @@ def test_startup_status_prints_ollama_unavailable_guidance(capsys) -> None:
 
 
 def test_startup_status_reports_verbose_debug_toggle_state(capsys) -> None:
-    _print_startup_status(
+    print_startup_status(
         snapshot=_snapshot(
             effective_mode="cli",
             ha_error="Missing HA_API_SECRET",

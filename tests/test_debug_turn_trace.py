@@ -3,7 +3,7 @@ from __future__ import annotations
 from langchain_core.documents import Document
 
 from testbot.pipeline_state import PipelineState
-from testbot.sat_chatbot_memory_v2 import _format_debug_turn_trace
+from testbot.sat_chatbot_memory_v2 import format_debug_turn_trace
 
 
 def test_format_debug_turn_trace_reports_ambiguous_memory_blocker_reason() -> None:
@@ -14,7 +14,7 @@ def test_format_debug_turn_trace_reports_ambiguous_memory_blocker_reason() -> No
         invariant_decisions={"answer_mode": "clarify", "fallback_action": "ASK_CLARIFYING_QUESTION"},
     )
 
-    trace = _format_debug_turn_trace(state=state, intent_label="memory_recall", hits=[])
+    trace = format_debug_turn_trace(state=state, intent_label="memory_recall", hits=[])
 
     assert "intent=memory_recall" in trace
     assert "answer_mode=clarify" in trace
@@ -32,7 +32,7 @@ def test_format_debug_turn_trace_reports_low_confidence_assist_reason() -> None:
         invariant_decisions={"answer_mode": "assist", "fallback_action": "OFFER_CAPABILITY_ALTERNATIVES"},
     )
 
-    trace = _format_debug_turn_trace(state=state, intent_label="non_memory", hits=[])
+    trace = format_debug_turn_trace(state=state, intent_label="non_memory", hits=[])
 
     assert "answer_mode=assist" in trace
     assert "fallback_action=OFFER_CAPABILITY_ALTERNATIVES" in trace
@@ -59,7 +59,7 @@ def test_format_debug_turn_trace_reports_contract_rejection_assist_reason() -> N
         },
     )
 
-    trace = _format_debug_turn_trace(
+    trace = format_debug_turn_trace(
         state=state,
         intent_label="memory_recall",
         hits=[Document(page_content="fragment", metadata={"doc_id": "doc-1"})],
@@ -84,7 +84,7 @@ def test_format_debug_turn_trace_reports_direct_answer_branch() -> None:
         invariant_decisions={"answer_mode": "assist", "fallback_action": "ANSWER_GENERAL_KNOWLEDGE"},
     )
 
-    trace = _format_debug_turn_trace(state=state, intent_label="non_memory", hits=[])
+    trace = format_debug_turn_trace(state=state, intent_label="non_memory", hits=[])
 
     assert "intent=non_memory" in trace
     assert "retrieval_branch=direct_answer" in trace
@@ -98,7 +98,7 @@ def test_format_debug_turn_trace_non_memory_no_ambiguity_does_not_report_clarify
         invariant_decisions={"answer_mode": "memory-grounded", "fallback_action": "ANSWER_GENERAL_KNOWLEDGE"},
     )
 
-    trace = _format_debug_turn_trace(state=state, intent_label="non_memory", hits=[])
+    trace = format_debug_turn_trace(state=state, intent_label="non_memory", hits=[])
 
     assert "intent=non_memory" in trace
     assert "ambiguity_detected=False" in trace
@@ -113,7 +113,7 @@ def test_format_debug_turn_trace_defaults_to_non_verbose_format() -> None:
         invariant_decisions={"answer_mode": "assist", "fallback_action": "ANSWER_GENERAL_KNOWLEDGE"},
     )
 
-    trace = _format_debug_turn_trace(state=state, intent_label="non_memory", hits=[])
+    trace = format_debug_turn_trace(state=state, intent_label="non_memory", hits=[])
 
     assert trace.startswith("[debug] intent=")
     assert "debug.intent" not in trace
@@ -139,7 +139,7 @@ def test_format_debug_turn_trace_compact_trace_includes_gate_scalars_when_candid
         },
     )
 
-    trace = _format_debug_turn_trace(state=state, intent_label="memory_recall", hits=[])
+    trace = format_debug_turn_trace(state=state, intent_label="memory_recall", hits=[])
 
     assert "top1=0.880<0.900" in trace
     assert "context_conf=0.200<1.000" in trace
@@ -155,7 +155,7 @@ def test_format_debug_turn_trace_verbose_opt_in_emits_json_payload() -> None:
         invariant_decisions={"answer_mode": "assist", "fallback_action": "ANSWER_GENERAL_KNOWLEDGE"},
     )
 
-    trace = _format_debug_turn_trace(state=state, intent_label="non_memory", hits=[], verbose=True)
+    trace = format_debug_turn_trace(state=state, intent_label="non_memory", hits=[], verbose=True)
 
     assert trace.startswith("[debug] {")
     assert '"debug.intent"' in trace

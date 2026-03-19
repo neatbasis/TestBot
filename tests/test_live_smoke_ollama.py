@@ -6,7 +6,7 @@ import pytest
 
 from tests.live_smoke_support import require_live_smoke_config
 
-from testbot.sat_chatbot_memory_v2 import _read_runtime_env
+from testbot.sat_chatbot_memory_v2 import read_runtime_env
 
 langchain_ollama = pytest.importorskip(
     "langchain_ollama",
@@ -42,7 +42,7 @@ def test_live_smoke_chat_ollama_invoke_returns_non_empty_response() -> None:
     _require_env("OLLAMA_MODEL")
     _require_env("X_OLLAMA_KEY")
 
-    runtime = _read_runtime_env()
+    runtime = read_runtime_env()
     llm = ChatOllama(
         model=str(runtime["ollama_model"]),
         base_url=str(runtime["ollama_base_url"]),
@@ -60,7 +60,7 @@ def test_live_smoke_ollama_embeddings_returns_non_empty_vector() -> None:
     _require_env("OLLAMA_EMBEDDING_MODEL")
     _require_env("X_OLLAMA_KEY")
 
-    runtime = _read_runtime_env()
+    runtime = read_runtime_env()
     embeddings = OllamaEmbeddings(
         model=str(runtime["ollama_embedding_model"]),
         base_url=str(runtime["ollama_base_url"]),

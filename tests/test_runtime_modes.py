@@ -9,7 +9,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from urllib.error import HTTPError
 
-from testbot.sat_chatbot_memory_v2 import CLARIFY_ANSWER, _parse_args, _resolve_mode, resolve_turn_intent
+from testbot.sat_chatbot_memory_v2 import CLARIFY_ANSWER, parse_args, resolve_mode, resolve_turn_intent
 from testbot import sat_chatbot_memory_v2 as runtime
 
 
@@ -56,13 +56,13 @@ def test_run_satellite_mode_uses_single_ask_prompt(monkeypatch) -> None:
     ]
 
 def test_parse_args_defaults() -> None:
-    args = _parse_args([])
+    args = parse_args([])
     assert args.mode == "auto"
     assert args.daemon is False
 
 
 def test_parse_args_satellite_daemon() -> None:
-    args = _parse_args(["--mode", "satellite", "--daemon"])
+    args = parse_args(["--mode", "satellite", "--daemon"])
     assert args.mode == "satellite"
     assert args.daemon is True
 
@@ -70,17 +70,17 @@ def test_parse_args_satellite_daemon() -> None:
 
 
 def test_parse_args_debug_verbose_defaults_to_none() -> None:
-    args = _parse_args([])
+    args = parse_args([])
     assert args.debug_verbose is None
 
 
 def test_parse_args_debug_verbose_opt_in() -> None:
-    args = _parse_args(["--debug-verbose"])
+    args = parse_args(["--debug-verbose"])
     assert args.debug_verbose is True
 
 
 def test_parse_args_debug_verbose_opt_out() -> None:
-    args = _parse_args(["--no-debug-verbose"])
+    args = parse_args(["--no-debug-verbose"])
     assert args.debug_verbose is False
 
 
@@ -171,12 +171,12 @@ def test_build_capability_snapshot_passes_x_ollama_key_to_connectivity_probe(mon
     assert captured["x_ollama_key"] == "probe-key"
 
 def test_resolve_mode_prefers_satellite_when_ha_available() -> None:
-    assert _resolve_mode("auto", None) == "satellite"
+    assert resolve_mode("auto", None) == "satellite"
 
 
 def test_resolve_mode_falls_back_to_cli_when_ha_unavailable() -> None:
-    assert _resolve_mode("auto", "auth failed") == "cli"
-    assert _resolve_mode("cli", "auth failed") == "cli"
+    assert resolve_mode("auto", "auth failed") == "cli"
+    assert resolve_mode("cli", "auth failed") == "cli"
 
 
 

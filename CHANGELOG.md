@@ -23,3 +23,17 @@ For each changelog entry, answer these three questions explicitly:
 
 ### 3) Why this step was taken in this order?
 - Centralizing call sites onto the canonical retrieval-routing helper first removes ambiguity and drift risk before any further routing or intent-confidence refactors.
+
+### Entry 2
+
+#### 1) What moved, and where did it land?
+- **Old path/symbol:** implicit/accidental export surface in `src/testbot/sat_chatbot_memory_v2.py` with several test imports reaching underscored internals (for example `_parse_args`, `_read_runtime_env`, `_resolve_answer_routing_from_decision_object`, `_build_debug_turn_payload`).
+- **New path/symbol:** explicit module export contract via `__all__` plus stable façade exports (`parse_args`, `read_runtime_env`, `resolve_mode`, `print_startup_status`, `run_source_ingestion`, `run_chat_loop`, `resolve_answer_routing_from_decision_object`, `build_debug_turn_payload`, `format_debug_turn_trace`, `format_debug_turn_trace_payload`, etc.) in the same module.
+- **Delegation shim:** internal underscored implementations remain and are delegated to by public façade functions for compatibility and extraction safety.
+
+#### 2) What did not change?
+- Runtime behavior of parsing, mode resolution, routing, chat loop execution, and debug payload formatting did not intentionally change; this step is API-surface stabilization and caller cleanup.
+- Canonical runtime entrypoints (`run_canonical_answer_stage_flow`, `run_answer_stage_flow`, `answer_assemble`) and session-log schema semantics were preserved.
+
+#### 3) Why this step was taken in this order?
+- Freezing and documenting the supported export surface before further extraction reduces accidental coupling and allows follow-on moves to preserve compatibility by contract rather than by incidental imports.
