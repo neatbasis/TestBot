@@ -15,7 +15,7 @@ Commands used:
 - `for c in ...; git show --name-only ...`
 - `rg -n "CANONICAL_STAGE_SEQUENCE|run_answer_stage_flow|..." ...`
 - `wc -l src/testbot/sat_chatbot_memory_v2.py`
-- `rg -n "[project.scripts]|testbot = \"testbot.sat_chatbot_memory_v2:main\"" pyproject.toml`
+- `rg -n "[project.scripts]|testbot = \"testbot.entrypoints.sat_cli:main\"" pyproject.toml`
 
 Evidence confidence policy used in this audit:
 - **High confidence:** major code-moving commits with symbol-level verification at `HEAD`.
@@ -167,8 +167,8 @@ The strongest claims are now explicitly graded:
 
 - **High-confidence confirmed progression:** `51450639`, `ca9d775f`, `3e9424bc` (typed ports/contracts, canonical stage routing consolidation, explicit sequence + entrypoint extraction).
 - **Medium-confidence ledger classifications:** remaining commits in the 28-entry list are classified from commit message + touched-file evidence; they should not be read as equally deep symbol-level verification.
-- **Operational non-closure evidence at `HEAD`:**
-  - package script still boots through monolith surface: `testbot = "testbot.sat_chatbot_memory_v2:main"` in `pyproject.toml`;
+- **Operational non-closure evidence at `HEAD` (historical audit snapshot, later updates may differ):**
+  - package script boot mapping at audit time: `testbot = "testbot.sat_chatbot_memory_v2:main"` in `pyproject.toml`;
   - `sat_chatbot_memory_v2.py` remains large (`3806` lines at audit time).
 
 This means the day shows substantial progress, but not architectural closure.

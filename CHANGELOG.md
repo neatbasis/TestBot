@@ -251,3 +251,18 @@ For each changelog entry, answer these three questions explicitly:
 
 #### 3) Why this step was taken in this order?
 - Establishing explicit sequence ownership and extracting entrypoint/decision helpers first reduces monolith authority while preserving stable runtime symbols for incremental migration.
+
+### Entry 15
+
+#### 1) What moved, and where did it land?
+- **Old path/symbol:** package script authority in `pyproject.toml` bound `testbot` to monolith startup (`testbot.sat_chatbot_memory_v2:main`).
+- **New path/symbol:** package script authority now binds `testbot` to extracted entrypoint module (`testbot.entrypoints.sat_cli:main`) in `[project.scripts]`.
+- **Delegation shim:** the monolith `main(...)` symbol still exists for compatibility, but it is no longer the installer-authoritative package script target.
+- **Governance/doc updates:** directive traceability and architecture audit evidence lines were updated to reflect that the installer mapping changed now, while preserving historical “at audit time” context where needed.
+
+#### 2) What did not change?
+- The extracted entrypoint module itself is **not new in this change**; `testbot.entrypoints.sat_cli` already existed and already delegated into established runtime flow.
+- Canonical turn pipeline behavior, stage ordering, and session-log contract were intentionally unchanged; this step changes packaging binding authority rather than runtime policy logic.
+
+#### 3) Why this step was taken in this order?
+- Moving package-script authority only after entrypoint extraction exists and is exercised reduces migration risk by switching installers to an already-established boot surface instead of introducing a brand-new runtime path.
