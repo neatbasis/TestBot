@@ -31,7 +31,7 @@ This checklist captures unresolved delivery obligations grouped by Workstream Aâ
 
 ## Workstream H â€” Executable evidence and governance
 - [ ] Produce auditable readiness/governance artifacts (schema-versioned gate outputs, check/rule IDs, traceability links, retention/version policy, standards crosswalk evidence); **owner module(s):** `scripts/all_green_gate.py`, `docs/`, `artifacts/` schemas; **required evidence (test/script/doc):** gate artifact schema validation + issue/traceability validators + governance doc updates; **done signal:** `all_green_gate` emits machine-validated evidence artifacts that map controls to owners, checks, and blocking status.
-- [~] Current status note: verification manifest output is now schema-versioned (`VERIFICATION_MANIFEST_SCHEMA_VERSION = \"1.0\"`) and validated by contract, but full rule-ID level governance closure remains in progress.
+- [~] Current status note: verification manifest output is now schema-versioned (`VERIFICATION_MANIFEST_SCHEMA_VERSION = "1.0"`) and validated by contract, but full rule-ID level governance closure remains in progress.
 
 ## Do-not-claim-yet
 - [~] **Architecture-as-document only:** do not mark A/B complete until typed contracts and canonical orchestration are executable and covered by deterministic tests (not prose-only architecture alignment).
