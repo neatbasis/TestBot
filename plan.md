@@ -335,6 +335,8 @@ Your priority ordering already points in the right direction. In practice, the s
 
 ### Phase 1: Create the canonical contracts without changing too much behavior
 
+**Status (2026-03-19): Substantially started.** Typed DTOs were introduced, stage interfaces are partially defined, and compatibility shims exist. Remaining work is to complete the five semantic distinction types and type the remaining dict blobs.
+
 * introduce typed DTOs and enums
 * define canonical stage interfaces
 * add `PolicyDecision`, `ValidationResult`, evidence DTOs
@@ -343,6 +345,8 @@ Your priority ordering already points in the right direction. In practice, the s
 
 ### Phase 2: Split orchestration and authority
 
+**Status (2026-03-19): In progress.** `turn_service.py` was created, orchestration was partially extracted, and boot/wiring separation has started. Remaining work is to eliminate closure capture of `stage_runtime` and complete authority extraction from `sat_chatbot_memory_v2.py`.
+
 * thin out `sat_chatbot_memory_v2.py`
 * create `turn_service` or equivalent application orchestrator
 * move boot/wiring to entrypoints
@@ -350,11 +354,15 @@ Your priority ordering already points in the right direction. In practice, the s
 
 ### Phase 3: Separate pure logic from ports/adapters
 
+**Status (2026-03-19): Partially started.** Port protocols exist, but `Document` leakage remains in `evidence_retrieval.py`, and direct timestamp calls remain in runtime/connectors. Remaining work is to seal the `evidence_retrieval` boundary and audit all remaining direct backend imports between `intent.resolve` and `answer.commit`.
+
 * extract memory, retrieval, model, connector protocols
 * move Elasticsearch/LangChain/Home Assistant logic into adapters
 * remove backend-native object leakage from logic/policy layers
 
 ### Phase 4: Enforce validation and commit semantics
+
+**Status (2026-03-19): Partially started.** Hard validation gating exists in the canonical service path, but legacy paths remain unresolved. Remaining work is to eliminate or gate legacy paths and complete `answer_commit.py` decomposition with a tracked issue.
 
 * add answer validation gate
 * enforce degraded fallback only on failed validation
@@ -363,11 +371,15 @@ Your priority ordering already points in the right direction. In practice, the s
 
 ### Phase 5: Enforce dependency direction and script boundaries
 
+**Status (2026-03-19): Not started.** Import-linter configuration is not yet present.
+
 * add import-linter / boundary tests
 * remove deep imports and `sys.path` hacks
 * promote public package surfaces for scripts and eval tooling
 
 ### Phase 6: Complete governance evidence
+
+**Status (2026-03-19): Not started.** Gate artifact schema, blocking/traceability metadata, and retention policy are not yet implemented.
 
 * readiness artifacts
 * schema versioning
@@ -528,6 +540,11 @@ Then the adapters are still infecting the logic layer.
 
 Behavior tests say one thing; imports and runtime control surfaces say another.
 
+### Risk 7: Changelog describes intent, not evidence
+
+Entries record planned or partial work without clearly distinguishing “interface was defined” from “extraction complete and all callers updated.”  
+**Guard:** every changelog entry must state the current patch/import target for each moved symbol, verified by grep rather than inspection of the new file alone.
+
 Your own document is already aware of these risks. The implementation work must keep them front and center.
 
 ## 16. The minimum concrete backlog to make this real
@@ -536,33 +553,49 @@ If I compress the whole thing into the smallest serious implementation program, 
 
 ### Workstream A — Canonical types and stage interfaces
 
+**Current status (2026-03-19): Partial.** `EvidencePosture` is typed and several stage DTOs exist. Core dict blobs remain (`pending_repair_state`, `reasoning`, artifact maps). The five semantic distinctions are only partially type-enforced; the remainder still relies on string keys.
+
 Create all state/DTO types and stage contracts.
 
 ### Workstream B — Thin orchestration path
+
+**Current status (2026-03-19): Partial.** `turn_service.py` exists and stages are module-level functions. Orchestration still wires lambdas that capture `stage_runtime`. `sat_chatbot_memory_v2.py` is reduced to 3970 lines (from 4614), but authority concentration remains high. `run_answer_stage_flow` is a documented deprecated alias; legacy seeded-runner status still needs explicit verification in this workstream.
 
 Replace monolithic entrypoint behavior with a `turn_service` that executes the canonical sequence.
 
 ### Workstream C — Stabilization and discourse state
 
+**Current status (2026-03-19): Minimal.** Stabilization logic/persistence split exists, but candidate facts still collapse without durable per-candidate IDs. `AssistantOfferAnchor`, `FocusAnchor`, and `UnresolvedObligation` do not yet exist as typed objects.
+
 Implement candidate preservation, fact candidate persistence, pending repair/clarification modeling.
 
 ### Workstream D — Intent resolution and retrieval contracts
+
+**Current status (2026-03-19): Partial.** Two-stage intent modeling exists (`classified_intent` + `resolved_intent`), and `EvidencePosture` explicit states exist. `langchain_core` `Document` still crosses `evidence_retrieval.py` boundaries. `PolicyDecision` exists but still lacks typed `expected_answer_mode`, `evidence_sufficiency`, and `fallback_continuation` fields.
 
 Add classifier vs resolved intent split, normalized evidence DTOs, retrieval empty-state semantics.
 
 ### Workstream E — Decision/validation/commit chain
 
+**Current status (2026-03-19): Partial.** Validation is hard-gated in the canonical service path. Legacy paths can still proceed through contract objects without the same gate semantics. `answer_commit.py` full decomposition remains incomplete and is currently documented as partial.
+
 Implement `PolicyDecision`, validation gating, degraded fallback, committed next-turn state.
 
 ### Workstream F — Ports and adapters
+
+**Current status (2026-03-19): Partial.** All four named protocols exist and integration contract tests exist. `SnapshotTimeProvider` exists for pipeline snapshots, but direct `arrow.utcnow()` timestamp calls remain in runtime/connectors.
 
 Introduce `MemoryRepository`, `VectorStore`, `LanguageModel`, `SourceConnector` with contract tests.
 
 ### Workstream G — Boundary enforcement
 
+**Current status (2026-03-19): Not started in code.** `append_session_log` definition and test patch targets remain in `sat_chatbot_memory_v2.py`. No `import-linter` configuration exists yet.
+
 Import-linter, script surface rules, public API declarations, typed-package enforcement.
 
 ### Workstream H — Executable evidence and governance
+
+**Current status (2026-03-19): Not started.** Gate output still lacks required readiness-evidence fields such as `schema_version`, blocking rule IDs, and traceability metadata. Standards mappings are documented as target state rather than enforcement artifacts, and retention policy is not implemented.
 
 Readiness artifact schema, gate outputs, rule IDs, traceability, retention/versioning, standards crosswalk.
 

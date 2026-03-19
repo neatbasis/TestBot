@@ -163,3 +163,17 @@ For each changelog entry, answer these three questions explicitly:
   1. repository search returns zero non-test call sites importing/calling `run_answer_stage_flow(...)`;
   2. CI includes a delegation-contract test proving alias passthrough to `run_canonical_answer_stage_flow(...)` while shim exists;
   3. changelog + architecture audit record the explicit removal date/release for the alias.
+
+### Entry 11
+
+#### 1) What moved, and where did it land?
+- **Old path/symbol:** `plan.md` Phase and Workstream sections described all major tracks as future-state work without current completion status.
+- **New path/symbol:** `plan.md` now includes explicit status annotations in Section 10 (Phases 1–6), status-prefixed lines for each Section 16 Workstream (A–H), and a new Section 15 risk entry (`Risk 7: Changelog describes intent, not evidence`).
+- **Delegation shim:** not applicable (documentation/state-layer update only).
+
+#### 2) What did not change?
+- The four-category framing, phase sequence ordering, workstream labels, Section 17 “done” definition, and existing six risk descriptions were intentionally preserved.
+- This step does not claim code extraction completion; it records current partial status to avoid rework drift and parallel-implementation risk.
+
+#### 3) Why this step was taken in this order?
+- Correcting the plan’s status layer before additional extraction work prevents agents from redoing partially completed refactors from scratch and preserves receiver-first migration discipline.
