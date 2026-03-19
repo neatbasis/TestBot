@@ -51,15 +51,15 @@ def _commit_continuity_anchors(prior_pipeline_state: PipelineState | None) -> tu
     if prior_pipeline_state is None:
         return ()
 
-    commit_receipt = prior_pipeline_state.commit_receipt.to_dict()
+    commit_receipt = prior_pipeline_state.commit_receipt
     anchors: list[str] = []
 
-    for fact in commit_receipt.get("confirmed_user_facts", []):
+    for fact in commit_receipt.confirmed_user_facts:
         normalized = str(fact).strip()
         if normalized:
             anchors.append(f"commit.confirmed_user_facts:{normalized}")
 
-    pending_repair_state = commit_receipt.get("pending_repair_state", {})
+    pending_repair_state = commit_receipt.pending_repair_state
     if isinstance(pending_repair_state, dict) and pending_repair_state.get("repair_offered_to_user"):
         anchors.append("commit.pending_repair_state:repair_offered_to_user")
         followup_route = str(pending_repair_state.get("followup_route") or "").strip()
@@ -69,11 +69,11 @@ def _commit_continuity_anchors(prior_pipeline_state: PipelineState | None) -> tu
         if offer_type:
             anchors.append(f"commit.assistant_offer_anchor:offer_type={offer_type}")
 
-    pending_ingestion_request_id = str(commit_receipt.get("pending_ingestion_request_id") or "").strip()
+    pending_ingestion_request_id = str(commit_receipt.pending_ingestion_request_id or "").strip()
     if pending_ingestion_request_id:
         anchors.append(f"commit.pending_ingestion_request_id:{pending_ingestion_request_id}")
 
-    for obligation in commit_receipt.get("remaining_obligations", []):
+    for obligation in commit_receipt.remaining_obligations:
         normalized = str(obligation).strip()
         if normalized:
             anchors.append(f"commit.remaining_obligations:{normalized}")

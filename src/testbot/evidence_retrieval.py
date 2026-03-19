@@ -88,24 +88,24 @@ def continuity_evidence_from_prior_state(prior_pipeline_state: PipelineState | N
     if prior_pipeline_state is None:
         return ()
 
-    commit_receipt = prior_pipeline_state.commit_receipt.to_dict()
+    commit_receipt = prior_pipeline_state.commit_receipt
     anchors: list[str] = []
 
-    for fact in commit_receipt.get("confirmed_user_facts", []):
+    for fact in commit_receipt.confirmed_user_facts:
         normalized = str(fact).strip()
         if normalized:
             anchors.append(f"commit.confirmed_user_facts:{normalized}")
 
-    pending_ingestion_request_id = str(commit_receipt.get("pending_ingestion_request_id") or "").strip()
+    pending_ingestion_request_id = str(commit_receipt.pending_ingestion_request_id or "").strip()
     if pending_ingestion_request_id:
         anchors.append(f"commit.pending_ingestion_request_id:{pending_ingestion_request_id}")
 
-    for obligation in commit_receipt.get("remaining_obligations", []):
+    for obligation in commit_receipt.remaining_obligations:
         normalized = str(obligation).strip()
         if normalized:
             anchors.append(f"commit.remaining_obligations:{normalized}")
 
-    pending_repair_state = commit_receipt.get("pending_repair_state", {})
+    pending_repair_state = commit_receipt.pending_repair_state
     if isinstance(pending_repair_state, dict) and pending_repair_state.get("repair_offered_to_user"):
         anchors.append("commit.pending_repair_state:repair_offered_to_user")
 
@@ -282,6 +282,8 @@ def retrieval_result(
         reasoning={
             "empty_evidence": posture is EvidencePosture.EMPTY_EVIDENCE,
             "scored_empty": posture is EvidencePosture.SCORED_EMPTY,
+            "retrieval_candidates_considered": considered,
+            "hit_count": max(0, hits),
             "policy_records_total": len(evidence_bundle.records_for_policy()),
             "channel_sizes": {
                 "structured_facts": len(evidence_bundle.structured_facts),

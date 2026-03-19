@@ -1,6 +1,6 @@
 import pytest
 
-from testbot.pipeline_state import AlignmentDecision, CommitReceiptArtifact, ConfidenceDecision
+from testbot.pipeline_state import AlignmentDecision, CandidateFactsArtifact, CommitReceiptArtifact, ConfidenceDecision
 
 
 def test_confidence_decision_required_scored_candidates_key_raises() -> None:
@@ -30,3 +30,8 @@ def test_alignment_decision_dimension_inputs_type_is_enforced() -> None:
 def test_commit_receipt_contract_types_are_enforced() -> None:
     with pytest.raises(TypeError, match="resolved_obligations must be a list"):
         CommitReceiptArtifact.from_mapping({"resolved_obligations": {"bad": True}})
+
+
+def test_candidate_facts_artifact_facts_type_is_enforced() -> None:
+    with pytest.raises(TypeError, match="facts must be a list"):
+        CandidateFactsArtifact.from_mapping({"facts": {"key": "not-a-list"}})
