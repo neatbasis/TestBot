@@ -14,8 +14,8 @@ from testbot.canonical_turn_orchestrator import CanonicalStage, CanonicalTurnCon
 from testbot.clock import Clock
 from testbot.evidence_retrieval import (
     EvidenceBundle,
-    build_evidence_bundle_from_docs_and_scores,
-    build_evidence_bundle_from_hits,
+    RetrievalInputRecord,
+    build_evidence_bundle_from_input_records,
     continuity_evidence_from_prior_state,
     retrieval_result,
 )
@@ -70,6 +70,16 @@ CANONICAL_STAGE_SEQUENCE: tuple[str, ...] = (
     "answer.render",
     "answer.commit",
 )
+
+
+def _to_input_record(doc: Document, score: float) -> RetrievalInputRecord:
+    metadata = doc.metadata if isinstance(doc.metadata, dict) else {}
+    return RetrievalInputRecord(
+        ref_id=str(doc.id or metadata.get("doc_id") or ""),
+        score=float(score),
+        content=str(doc.page_content or ""),
+        metadata=metadata,
+    )
 
 @dataclass(frozen=True)
 class TurnPipelineDependencies:
@@ -429,7 +439,7 @@ def retrieve_evidence_stage(ctx: CanonicalTurnContext, stage: TurnPipelineStageR
 
         ctx.artifacts["docs_and_scores"] = docs_and_scores
         considered = int(ctx.state.confidence_decision.get("retrieval_candidates_considered", len(docs_and_scores)) or 0)
-        prerank_bundle = build_evidence_bundle_from_docs_and_scores(docs_and_scores)
+        prerank_bundle = build_evidence_bundle_from_input_records([_to_input_record(doc, score) for doc, score in docs_and_scores])
         ctx.artifacts["pre_rerank_evidence_bundle"] = prerank_bundle
         ctx.artifacts["retrieval_result"] = retrieval_result(evidence_bundle=prerank_bundle, retrieval_candidates_considered=considered, hit_count=0)
         stage.deps.append_session_log(
@@ -498,7 +508,7 @@ def policy_decide_stage(ctx: CanonicalTurnContext, stage: TurnPipelineStageRunti
             guard_forced_memory_retrieval=bool(ctx.artifacts.get("guard_forced_memory_retrieval", False)),
         )
         ctx.artifacts["policy_decision"] = policy_decision
-        finalized_bundle = build_evidence_bundle_from_hits(hits)
+        finalized_bundle = build_evidence_bundle_from_input_records([_to_input_record(doc, 1.0) for doc in hits])
         ctx.artifacts["retrieval_result"] = retrieval_result(
             evidence_bundle=finalized_bundle,
             retrieval_candidates_considered=considered,

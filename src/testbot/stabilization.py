@@ -14,6 +14,24 @@ from testbot.vector_store import MemoryStore
 
 
 @dataclass(frozen=True)
+class PendingClarification:
+    obligation_id: str
+    question: str
+    source_anchor: str
+    focus: str = ""
+    carry_forward: bool = True
+
+
+@dataclass(frozen=True)
+class PendingRepair:
+    obligation_id: str
+    reason: str
+    followup_route: str
+    source_anchor: str
+    carry_forward: bool = True
+
+
+@dataclass(frozen=True)
 class StabilizedTurnState:
     turn_id: str
     utterance_card: str
@@ -28,6 +46,8 @@ class StabilizedTurnState:
     candidate_speech_acts: list[SpeechActCandidate]
     candidate_dialogue_state: list[DialogueStateCandidate]
     candidate_repairs: list[RepairCandidate] = field(default_factory=list)
+    pending_clarification: PendingClarification | None = None
+    pending_repair: PendingRepair | None = None
 
 
 @dataclass(frozen=True)
@@ -56,6 +76,38 @@ def build_stabilization_plan(
     dialogue_state_doc_id: str | None = None,
 ) -> StabilizationPlan:
     """Build pure stabilization decisions without touching storage adapters."""
+    def _carried_pending_clarification() -> PendingClarification | None:
+        prior = state.pending_clarification
+        if not prior.required:
+            return None
+        question = str(prior.question or "")
+        source_anchor = str(prior.get("source_anchor") or "commit.pending_clarification")
+        focus = str(prior.get("focus") or "")
+        durable_id = str(prior.get("obligation_id") or f"{source_anchor}:{observation.turn_id}")
+        return PendingClarification(
+            obligation_id=durable_id,
+            question=question,
+            source_anchor=source_anchor,
+            focus=focus,
+            carry_forward=True,
+        )
+
+    def _carried_pending_repair() -> PendingRepair | None:
+        prior = state.commit_receipt.pending_repair_state
+        if not (isinstance(prior, dict) and bool(prior.get("repair_offered_to_user"))):
+            return None
+        reason = str(prior.get("reason") or "repair_offer_rendered")
+        route = str(prior.get("followup_route") or "")
+        source_anchor = "commit.pending_repair_state:repair_offered_to_user"
+        durable_id = str(prior.get("obligation_id") or f"{source_anchor}:{observation.turn_id}")
+        return PendingRepair(
+            obligation_id=durable_id,
+            reason=reason,
+            followup_route=route,
+            source_anchor=source_anchor,
+            carry_forward=True,
+        )
+
     def _fact_with_durable_id(candidate: FactCandidate, index: int) -> FactCandidate:
         if candidate.candidate_id:
             return candidate
@@ -196,6 +248,8 @@ def build_stabilization_plan(
         candidate_speech_acts=stabilized_speech_acts,
         candidate_dialogue_state=stabilized_dialogue_state,
         candidate_repairs=stabilized_repairs,
+        pending_clarification=_carried_pending_clarification(),
+        pending_repair=_carried_pending_repair(),
     )
     next_state = PipelineState(
         **{
@@ -228,6 +282,14 @@ def build_stabilization_plan(
             "same_turn_exclusion": {
                 "excluded_doc_ids": same_turn_exclusion_doc_ids,
                 "reason": "stabilize.pre_route",
+            },
+            "pending_clarification": {
+                "required": stabilized.pending_clarification is not None,
+                "question": stabilized.pending_clarification.question if stabilized.pending_clarification else "",
+                "obligation_id": stabilized.pending_clarification.obligation_id if stabilized.pending_clarification else "",
+                "source_anchor": stabilized.pending_clarification.source_anchor if stabilized.pending_clarification else "",
+                "focus": stabilized.pending_clarification.focus if stabilized.pending_clarification else "",
+                "carry_forward": bool(stabilized.pending_clarification and stabilized.pending_clarification.carry_forward),
             },
         }
     )

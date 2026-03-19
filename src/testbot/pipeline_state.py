@@ -464,6 +464,18 @@ class PendingRepairArtifact(StageArtifact):
     required: bool = False
     reason: str = ""
 
+    @classmethod
+    def from_mapping(cls, payload: Mapping[str, Any] | None) -> PendingRepairArtifact:
+        payload = payload or {}
+        if isinstance(payload, cls):
+            return payload
+        known = {
+            "required": _mapping_bool(payload, "required"),
+            "reason": _mapping_string(payload, "reason"),
+        }
+        extra = {k: v for k, v in payload.items() if k not in known}
+        return cls(extra=extra, **known)
+
     def _raw_dict(self) -> dict[str, Any]:
         data = dict(self.extra)
         if self.required:
@@ -477,6 +489,18 @@ class PendingRepairArtifact(StageArtifact):
 class PendingClarificationArtifact(StageArtifact):
     required: bool = False
     question: str = ""
+
+    @classmethod
+    def from_mapping(cls, payload: Mapping[str, Any] | None) -> PendingClarificationArtifact:
+        payload = payload or {}
+        if isinstance(payload, cls):
+            return payload
+        known = {
+            "required": _mapping_bool(payload, "required"),
+            "question": _mapping_string(payload, "question"),
+        }
+        extra = {k: v for k, v in payload.items() if k not in known}
+        return cls(extra=extra, **known)
 
     def _raw_dict(self) -> dict[str, Any]:
         data = dict(self.extra)

@@ -354,6 +354,18 @@ Feature: Intent-specific grounding and provenance behavior
     And the typed evidence-state mapping should include fallback strategy "ANSWER_UNKNOWN" for "E.scored_empty"
     And the typed evidence-state mapping should include fallback strategy "OFFER_ASSIST_ALTERNATIVES" for "E.scored_empty_non_memory"
 
+  @ISSUE-0008 @AC-0008-40
+  Scenario: clarification obligation continuity carries durable identifiers across turns
+    Given an intent response harness
+    When a pending clarification is carried into the next stabilized turn
+    Then the stabilized turn should preserve clarification obligation id and focus anchors
+
+  @ISSUE-0008 @AC-0008-41
+  Scenario: repair follow-up continuity preserves durable obligation ids
+    Given an intent response harness
+    When a committed repair offer is carried into the next stabilized turn
+    Then the stabilized turn should preserve repair obligation id and followup route continuity
+
 
   @ISSUE-0008 @AC-0008-39
   Scenario: note-taking utterance preserves direct-answer assist contract
