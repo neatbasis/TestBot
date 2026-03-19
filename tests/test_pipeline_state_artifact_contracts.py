@@ -35,3 +35,24 @@ def test_commit_receipt_contract_types_are_enforced() -> None:
 def test_candidate_facts_artifact_facts_type_is_enforced() -> None:
     with pytest.raises(TypeError, match="facts must be a list"):
         CandidateFactsArtifact.from_mapping({"facts": {"key": "not-a-list"}})
+
+
+def test_commit_receipt_legacy_dict_round_trip_preserves_typed_gate_fields() -> None:
+    legacy_payload = {
+        "committed": True,
+        "commit_id": "answer.commit",
+        "turn_id": "turn-42",
+        "commit_stage": "answer.commit",
+        "pipeline_state_snapshot": "recorded",
+        "pending_repair_state": {"repair_offered_to_user": True, "reason": "repair_offer_rendered"},
+        "resolved_obligations": ["repair_state_not_required"],
+        "remaining_obligations": ["followup"],
+        "confirmed_user_facts": ["name=Ava"],
+        "custom_field": "preserve-me",
+    }
+
+    typed = CommitReceiptArtifact.from_mapping(legacy_payload)
+
+    assert typed.turn_id == "turn-42"
+    assert typed.continuity_turn_id == "turn-42"
+    assert typed.to_dict() == legacy_payload

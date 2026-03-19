@@ -13,7 +13,7 @@ from testbot.context_resolution import ContinuityPosture, ResolvedContext
 from testbot.evidence_retrieval import EvidenceBundle, EvidenceRecord
 from testbot.intent_resolution import ResolvedIntent
 from testbot.intent_router import IntentType
-from testbot.pipeline_state import ProvenanceType
+from testbot.pipeline_state import AlignmentDecision, InvariantDecision, ProvenanceType
 from testbot.policy_decision import DecisionClass, DecisionObject
 from testbot.stabilization import StabilizedTurnState
 from testbot.turn_observation import TurnObservation as LegacyTurnObservation
@@ -461,8 +461,8 @@ class ValidationResult:
     used_source_evidence_refs: tuple[str, ...] | None = None
     source_evidence_attribution: tuple[dict[str, str], ...] | None = None
     basis_statement: str = ""
-    invariant_decisions: dict[str, object] | None = None
-    alignment_decision: dict[str, object] | None = None
+    invariant_decisions: InvariantDecision | None = None
+    alignment_decision: AlignmentDecision | None = None
 
     @classmethod
     def from_validated_answer(cls, validated: ValidatedAnswer) -> ValidationResult:
@@ -482,8 +482,8 @@ class ValidationResult:
                 else None
             ),
             basis_statement=validated.basis_statement,
-            invariant_decisions=dict(validated.invariant_decisions) if validated.invariant_decisions is not None else None,
-            alignment_decision=dict(validated.alignment_decision) if validated.alignment_decision is not None else None,
+            invariant_decisions=InvariantDecision.from_mapping(validated.invariant_decisions),
+            alignment_decision=AlignmentDecision.from_mapping(validated.alignment_decision),
         )
 
     def to_validated_answer(self) -> ValidatedAnswer:
@@ -503,8 +503,10 @@ class ValidationResult:
                 else None
             ),
             basis_statement=self.basis_statement,
-            invariant_decisions=dict(self.invariant_decisions) if self.invariant_decisions is not None else None,
-            alignment_decision=dict(self.alignment_decision) if self.alignment_decision is not None else None,
+            invariant_decisions=(
+                self.invariant_decisions.to_dict() if self.invariant_decisions is not None else None
+            ),
+            alignment_decision=self.alignment_decision.to_dict() if self.alignment_decision is not None else None,
         )
 
 

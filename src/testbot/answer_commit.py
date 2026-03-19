@@ -71,8 +71,8 @@ class CommitValidationPayload:
     used_source_evidence_refs: list[str]
     source_evidence_attribution: list[dict[str, object]]
     basis_statement: str
-    invariant_decisions: dict[str, object]
-    alignment_decision: dict[str, object]
+    invariant_decisions: InvariantDecision
+    alignment_decision: AlignmentDecision
 
 
 @dataclass(frozen=True)
@@ -109,8 +109,8 @@ def build_commit_stage_inputs(
             used_source_evidence_refs=list(validation.used_source_evidence_refs or []),
             source_evidence_attribution=list(validation.source_evidence_attribution or []),
             basis_statement=validation.basis_statement,
-            invariant_decisions=InvariantDecision.from_mapping(validation.invariant_decisions).to_dict(),
-            alignment_decision=AlignmentDecision.from_mapping(validation.alignment_decision).to_dict(),
+            invariant_decisions=InvariantDecision.from_mapping(validation.invariant_decisions),
+            alignment_decision=AlignmentDecision.from_mapping(validation.alignment_decision),
         ),
         rendering=CommitRenderingPayload(
             rendered_text=rendered.rendered_text,
@@ -143,7 +143,7 @@ class AnswerCommitService:
 
         committed_facts = self.merge_confirmed_user_facts(assembly=assembly, state=state)
 
-        turn_id = str(state.candidate_facts.turn_id or state.commit_receipt.extra.get("turn_id") or "")
+        turn_id = str(state.candidate_facts.turn_id or state.commit_receipt.continuity_turn_id or "")
         repair_offer_rendered = commit_inputs.rendering.repair_offer_rendered
         pending_repair_state = PendingRepairState(
             repair_required_by_policy=assembly.pending_repair_state.repair_required_by_policy,
@@ -172,6 +172,7 @@ class AnswerCommitService:
                 "committed": True,
                 "commit_id": commit_stage_id,
                 "commit_stage": commit_stage_id,
+                "turn_id": turn_id,
                 "pipeline_state_snapshot": "recorded",
                 "pending_repair_state": pending_repair_state.as_mapping(),
                 "pending_ingestion_request_id": assembly.pending_ingestion_request_id,

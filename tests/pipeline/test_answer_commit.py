@@ -219,6 +219,26 @@ def test_prior_dialogue_state_updates_are_local_and_deterministic() -> None:
     assert committed_state.candidate_facts.get("dialogue_state") == [{"label": "self_identification", "turn_count": 3}]
 
 
+def test_commit_turn_id_continuity_uses_typed_commit_receipt_field() -> None:
+    prior_state = PipelineState(
+        user_input="follow up",
+        commit_receipt={
+            "turn_id": "turn-typed-007",
+            "legacy_only": "still-preserved",
+        },
+    )
+
+    committed_state, committed = commit_answer_stage(
+        prior_state,
+        assembly=_assembly(confirmed_user_facts=[]),
+        validation=ValidatedAnswer(passed=True, failures=[]),
+        rendered=RenderedAnswer(rendered_text="ok"),
+    )
+
+    assert committed.turn_id == "turn-typed-007"
+    assert committed_state.commit_receipt.turn_id == "turn-typed-007"
+
+
 def test_persisted_facts_are_exactly_one_write_per_fact_candidate() -> None:
     state = PipelineState(
         user_input="My name is Ava and timezone is UTC",

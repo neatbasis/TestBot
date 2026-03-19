@@ -395,6 +395,7 @@ class RenderOutputArtifact(StageArtifact):
 class CommitReceiptArtifact(StageArtifact):
     committed: bool = False
     commit_id: str = ""
+    turn_id: str = ""
     pending_ingestion_request_id: str = ""
     commit_stage: str = ""
     pipeline_state_snapshot: str = ""
@@ -411,6 +412,7 @@ class CommitReceiptArtifact(StageArtifact):
         known = {
             "committed": _mapping_bool(payload, "committed"),
             "commit_id": _mapping_string(payload, "commit_id"),
+            "turn_id": _mapping_string(payload, "turn_id"),
             "pending_ingestion_request_id": _mapping_string(payload, "pending_ingestion_request_id"),
             "commit_stage": _mapping_string(payload, "commit_stage"),
             "pipeline_state_snapshot": _mapping_string(payload, "pipeline_state_snapshot"),
@@ -428,6 +430,8 @@ class CommitReceiptArtifact(StageArtifact):
             data["committed"] = self.committed
         if self.commit_id:
             data["commit_id"] = self.commit_id
+        if self.turn_id:
+            data["turn_id"] = self.turn_id
         if self.pending_ingestion_request_id:
             data["pending_ingestion_request_id"] = self.pending_ingestion_request_id
         if self.commit_stage:
@@ -443,6 +447,12 @@ class CommitReceiptArtifact(StageArtifact):
         if self.confirmed_user_facts:
             data["confirmed_user_facts"] = self.confirmed_user_facts
         return data
+
+    @property
+    def continuity_turn_id(self) -> str:
+        if self.turn_id:
+            return self.turn_id
+        return str(self.extra.get("turn_id") or "")
 
 
 @dataclass(frozen=True)
