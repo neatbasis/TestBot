@@ -3,8 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import StrEnum
 
-from langchain_core.documents import Document
-
 from testbot.pipeline_state import PipelineState
 from testbot.stabilization import StabilizedTurnState
 
@@ -108,6 +106,19 @@ def continuity_evidence_from_prior_state(prior_pipeline_state: PipelineState | N
     pending_repair_state = commit_receipt.pending_repair_state
     if isinstance(pending_repair_state, dict) and pending_repair_state.get("repair_offered_to_user"):
         anchors.append("commit.pending_repair_state:repair_offered_to_user")
+        obligation_id = str(pending_repair_state.get("obligation_id") or "").strip()
+        if obligation_id:
+            anchors.append(f"commit.pending_repair_state:obligation_id={obligation_id}")
+
+    pending_clarification = prior_pipeline_state.pending_clarification
+    if pending_clarification.required:
+        anchors.append("commit.pending_clarification:required")
+        obligation_id = str(pending_clarification.get("obligation_id") or "").strip()
+        focus = str(pending_clarification.get("focus") or "").strip()
+        if obligation_id:
+            anchors.append(f"commit.pending_clarification:obligation_id={obligation_id}")
+        if focus:
+            anchors.append(f"commit.pending_clarification:focus={focus}")
 
     return tuple(dict.fromkeys(anchors))
 
@@ -131,18 +142,6 @@ def build_evidence_bundle(
     )
 
 
-def _to_evidence_record(*, doc: Document, score: float) -> EvidenceRecord:
-    metadata = doc.metadata if isinstance(doc.metadata, dict) else {}
-    return evidence_record_from_input(
-        RetrievalInputRecord(
-            ref_id=str(doc.id or metadata.get("doc_id") or ""),
-            score=float(score),
-            content=str(doc.page_content or ""),
-            metadata=metadata,
-        )
-    )
-
-
 def evidence_record_from_input(input_record: RetrievalInputRecord) -> EvidenceRecord:
     metadata = input_record.metadata if isinstance(input_record.metadata, dict) else {}
     return EvidenceRecord(
@@ -155,11 +154,6 @@ def evidence_record_from_input(input_record: RetrievalInputRecord) -> EvidenceRe
         segment_id=str(metadata.get("segment_id") or ""),
         segment_membership_edge_refs=tuple(str(v) for v in (metadata.get("segment_membership_edge_refs") or [])),
     )
-
-
-def _route_record_channel(*, doc: Document) -> str:
-    metadata = doc.metadata if isinstance(doc.metadata, dict) else {}
-    return route_record_channel(metadata=metadata)
 
 
 def route_record_channel(*, metadata: dict[str, object]) -> str:
@@ -183,19 +177,20 @@ def route_record_channel(*, metadata: dict[str, object]) -> str:
 
 
 def build_evidence_bundle_from_docs_and_scores(
-    docs_and_scores: list[tuple[Document, float]],
+    docs_and_scores: list[tuple[object, float]],
 ) -> EvidenceBundle:
-    return build_evidence_bundle_from_input_records(
-        [
+    input_records: list[RetrievalInputRecord] = []
+    for doc, score in docs_and_scores:
+        metadata = getattr(doc, "metadata", {})
+        input_records.append(
             RetrievalInputRecord(
-                ref_id=str(doc.id or (doc.metadata or {}).get("doc_id") or ""),
+                ref_id=str(getattr(doc, "id", "") or (metadata or {}).get("doc_id") or ""),
                 score=float(score),
-                content=str(doc.page_content or ""),
-                metadata=doc.metadata if isinstance(doc.metadata, dict) else {},
+                content=str(getattr(doc, "page_content", "") or ""),
+                metadata=metadata if isinstance(metadata, dict) else {},
             )
-            for doc, score in docs_and_scores
-        ]
-    )
+        )
+    return build_evidence_bundle_from_input_records(input_records)
 
 
 def build_evidence_bundle_from_input_records(input_records: list[RetrievalInputRecord]) -> EvidenceBundle:
@@ -250,7 +245,7 @@ def apply_memory_strata_precedence(bundle: EvidenceBundle) -> EvidenceBundle:
         source_evidence=bundle.source_evidence,
     )
 
-def build_evidence_bundle_from_hits(hits: list[Document]) -> EvidenceBundle:
+def build_evidence_bundle_from_hits(hits: list[object]) -> EvidenceBundle:
     # Hits already represent post-rerank confident records, so use a neutral fixed score.
     return build_evidence_bundle_from_docs_and_scores([(doc, 1.0) for doc in hits])
 

@@ -16,6 +16,7 @@ class PendingRepairState:
     offer_type: str = ""
     reason: str = "none"
     followup_route: str = ""
+    obligation_id: str = ""
 
     def as_mapping(self) -> dict[str, object]:
         payload: dict[str, object] = {
@@ -27,6 +28,8 @@ class PendingRepairState:
             payload["offer_type"] = self.offer_type
         if self.followup_route:
             payload["followup_route"] = self.followup_route
+        if self.obligation_id:
+            payload["obligation_id"] = self.obligation_id
         return payload
 
     def get(self, key: str, default: object = None) -> object:
@@ -55,6 +58,7 @@ class CommittedTurnState:
                 "offer_type": str(self.pending_repair_state.get("offer_type") or ""),
                 "reason": str(self.pending_repair_state.get("reason") or "none"),
                 "followup_route": str(self.pending_repair_state.get("followup_route") or ""),
+                "obligation_id": str(self.pending_repair_state.get("obligation_id") or ""),
             }))
 
 
@@ -139,6 +143,7 @@ class AnswerCommitService:
 
         committed_facts = self.merge_confirmed_user_facts(assembly=assembly, state=state)
 
+        turn_id = str(state.candidate_facts.turn_id or state.commit_receipt.extra.get("turn_id") or "")
         repair_offer_rendered = commit_inputs.rendering.repair_offer_rendered
         pending_repair_state = PendingRepairState(
             repair_required_by_policy=assembly.pending_repair_state.repair_required_by_policy,
@@ -146,6 +151,7 @@ class AnswerCommitService:
             offer_type=assembly.pending_repair_state.offer_type,
             reason=assembly.pending_repair_state.reason,
             followup_route=assembly.pending_repair_state.followup_route,
+            obligation_id=f"{commit_stage_id}:{turn_id}:pending_repair",
         )
         if repair_offer_rendered:
             pending_repair_state = replace(
@@ -176,7 +182,6 @@ class AnswerCommitService:
                 "degraded_response": degraded_response,
             }
         )
-        turn_id = str(state.candidate_facts.turn_id or state.commit_receipt.extra.get("turn_id") or "")
         committed_turn_state = CommittedTurnState(
             turn_id=turn_id,
             commit_stage=commit_stage_id,

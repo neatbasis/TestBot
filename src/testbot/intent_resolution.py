@@ -5,7 +5,7 @@ from dataclasses import dataclass
 
 from testbot.context_resolution import ContinuityPosture, ResolvedContext
 from testbot.stabilization import StabilizedTurnState
-from testbot.intent_router import IntentType, classify_intent
+from testbot.intent_router import IntentType, classify_intent, extract_intent_facets, validate_intent_facet_legality
 
 
 _SELF_REFERENTIAL_MEMORY_PATTERNS = (
@@ -26,6 +26,7 @@ class ResolvedIntent:
     classified_intent: IntentType
     resolved_intent: IntentType
     rationale: str
+    conflicts: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -78,53 +79,63 @@ def resolve(*, resolution_input: IntentResolutionInput) -> ResolvedIntent:
     classifier_input = stabilized_utterance or resolution_input.fallback_utterance
     classified_intent = classify_intent(classifier_input)
 
-    if context.continuity_posture is ContinuityPosture.PRESERVE_PRIOR_INTENT and context.prior_intent is not None:
-        return ResolvedIntent(
-            classified_intent=classified_intent,
-            resolved_intent=context.prior_intent,
-            rationale="continuity-preserving follow-up from clarification/capability flow",
-        )
+    tentative_resolved = classified_intent
+    rationale = (
+        "re-evaluated from stabilized artifact signals"
+        if stabilized_utterance
+        else "re-evaluated from fallback utterance metadata"
+    )
 
-    if (
+    allow_continuity_override = False
+    if context.continuity_posture is ContinuityPosture.PRESERVE_PRIOR_INTENT and context.prior_intent is not None:
+        tentative_resolved = context.prior_intent
+        rationale = "continuity-preserving follow-up from clarification/capability flow"
+        allow_continuity_override = True
+
+    elif (
         classified_intent is IntentType.KNOWLEDGE_QUESTION
         and _has_identity_continuity_artifacts(context)
         and _is_self_referential_memory_followup(classifier_input)
     ):
-        return ResolvedIntent(
-            classified_intent=IntentType.MEMORY_RECALL,
-            resolved_intent=IntentType.MEMORY_RECALL,
-            rationale="self-referential follow-up promoted to memory recall using committed continuity artifacts",
-        )
+        tentative_resolved = IntentType.MEMORY_RECALL
+        rationale = "self-referential follow-up promoted to memory recall using committed continuity artifacts"
+        allow_continuity_override = True
 
-    if (
+    elif (
         classified_intent is IntentType.KNOWLEDGE_QUESTION
         and _has_memory_recall_continuity(context)
         and _is_temporal_memory_followup(classifier_input)
     ):
-        return ResolvedIntent(
-            classified_intent=classified_intent,
-            resolved_intent=IntentType.TIME_QUERY,
-            rationale="temporal follow-up promoted to time_query using memory continuity anchors",
-        )
+        tentative_resolved = IntentType.TIME_QUERY
+        rationale = "temporal follow-up promoted to time_query using memory continuity anchors"
+        allow_continuity_override = True
 
-    if (
+    elif (
         classified_intent is IntentType.KNOWLEDGE_QUESTION
         and _has_repair_offer_continuity(context)
     ):
-        return ResolvedIntent(
-            classified_intent=classified_intent,
-            resolved_intent=IntentType.CAPABILITIES_HELP,
-            rationale="repair-offer followup promoted to capabilities_help via committed repair anchor",
-        )
+        tentative_resolved = IntentType.CAPABILITIES_HELP
+        rationale = "repair-offer followup promoted to capabilities_help via committed repair anchor"
+        allow_continuity_override = True
+
+    conflicts: list[str] = []
+    if classified_intent is IntentType.CONTROL and tentative_resolved is not IntentType.CONTROL:
+        tentative_resolved = IntentType.CONTROL
+        conflicts.append("classified_control_overrides_resolved")
+
+    facets = extract_intent_facets(classifier_input)
+    legality = validate_intent_facet_legality(tentative_resolved, facets)
+    if not legality.valid and not allow_continuity_override:
+        conflicts.append(f"resolved_intent_facet_conflict:{legality.reason}")
+        fallback_legality = validate_intent_facet_legality(classified_intent, facets)
+        tentative_resolved = classified_intent if fallback_legality.valid else IntentType.KNOWLEDGE_QUESTION
+        rationale = f"{rationale}; conflict handled via legality fallback"
 
     return ResolvedIntent(
         classified_intent=classified_intent,
-        resolved_intent=classified_intent,
-        rationale=(
-            "re-evaluated from stabilized artifact signals"
-            if stabilized_utterance
-            else "re-evaluated from fallback utterance metadata"
-        ),
+        resolved_intent=tentative_resolved,
+        rationale=rationale,
+        conflicts=tuple(conflicts),
     )
 
 

@@ -184,6 +184,7 @@ class PendingRepairState:
     offer_type: str = ""
     reason: str = "none"
     followup_route: str = ""
+    obligation_id: str = ""
 
     @classmethod
     def from_mapping(cls, raw: dict[str, Any]) -> PendingRepairState:
@@ -193,6 +194,7 @@ class PendingRepairState:
             offer_type=str(raw.get("offer_type") or ""),
             reason=str(raw.get("reason") or "none"),
             followup_route=str(raw.get("followup_route") or ""),
+            obligation_id=str(raw.get("obligation_id") or ""),
         )
 
     @classmethod
@@ -203,6 +205,7 @@ class PendingRepairState:
             offer_type=state.offer_type,
             reason=state.reason,
             followup_route=state.followup_route,
+            obligation_id=getattr(state, "obligation_id", ""),
         )
 
     def to_mapping(self) -> dict[str, object]:
@@ -215,6 +218,8 @@ class PendingRepairState:
             payload["offer_type"] = self.offer_type
         if self.followup_route:
             payload["followup_route"] = self.followup_route
+        if self.obligation_id:
+            payload["obligation_id"] = self.obligation_id
         return payload
 
     def to_legacy(self) -> LegacyPendingRepairState:
@@ -224,6 +229,7 @@ class PendingRepairState:
             offer_type=self.offer_type,
             reason=self.reason,
             followup_route=self.followup_route,
+            obligation_id=self.obligation_id,
         )
 
 
@@ -343,6 +349,25 @@ class UnresolvedObligation:
     @classmethod
     def from_raw(cls, value: object) -> UnresolvedObligation:
         return cls(obligation=str(value).strip())
+
+
+@dataclass(frozen=True)
+class PendingClarification:
+    obligation_id: str
+    question: str
+    source_anchor: str
+    focus: str = ""
+
+    @classmethod
+    def from_mapping(cls, payload: dict[str, object]) -> PendingClarification | None:
+        if not bool(payload.get("required", False)):
+            return None
+        return cls(
+            obligation_id=str(payload.get("obligation_id") or ""),
+            question=str(payload.get("question") or ""),
+            source_anchor=str(payload.get("source_anchor") or "commit.pending_clarification"),
+            focus=str(payload.get("focus") or ""),
+        )
 
 
 @dataclass(frozen=True)
@@ -565,6 +590,7 @@ __all__ = [
     "FocusAnchor",
     "IntentResolution",
     "PendingRepairState",
+    "PendingClarification",
     "PolicyDecision",
     "PreRouteState",
     "ReasoningTrace",

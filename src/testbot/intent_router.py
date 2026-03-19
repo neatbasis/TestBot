@@ -37,6 +37,12 @@ class PlanningDescriptor:
     facets: IntentFacets
 
 
+@dataclass(frozen=True)
+class IntentFacetValidation:
+    valid: bool
+    reason: str = ""
+
+
 _CONTROL_PATTERNS = (
     r"\b(cancel|stop|abort|nevermind|never mind)\b",
     r"\b(reset|restart)\b",
@@ -225,3 +231,17 @@ def planning_pathway_for_intent(intent: IntentType, facets: IntentFacets) -> Pla
         top_level_intent=intent,
         facets=facets,
     )
+
+
+def validate_intent_facet_legality(intent: IntentType, facets: IntentFacets) -> IntentFacetValidation:
+    if intent is IntentType.CONTROL and (facets.temporal or facets.memory or facets.capability):
+        return IntentFacetValidation(valid=False, reason="control_cannot_include_other_facets")
+    if intent is IntentType.CAPABILITIES_HELP and not facets.capability:
+        return IntentFacetValidation(valid=False, reason="capabilities_help_requires_capability")
+    if intent is IntentType.META_CONVERSATION and (facets.temporal or facets.memory):
+        return IntentFacetValidation(valid=False, reason="meta_cannot_include_temporal_memory")
+    if intent is IntentType.TIME_QUERY and not facets.temporal:
+        return IntentFacetValidation(valid=False, reason="time_query_requires_temporal")
+    if facets.control and intent is not IntentType.CONTROL:
+        return IntentFacetValidation(valid=False, reason="control_facet_requires_control_intent")
+    return IntentFacetValidation(valid=True)

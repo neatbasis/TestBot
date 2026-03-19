@@ -15,7 +15,11 @@ from testbot.intent_router import IntentFacets, IntentType, classify_intent, ext
 from testbot.policy_decision import DecisionClass, EvidencePosture, decide, decide_from_evidence
 from testbot.pipeline_state import CandidateHit, PipelineState, ProvenanceType
 from testbot.candidate_encoding import FactCandidate
+from testbot.candidate_encoding import EncodedTurnCandidates
+from testbot.memory_strata import SegmentDescriptor, SegmentType
 from testbot.stabilization import StabilizedTurnState
+from testbot.stabilization import build_stabilization_plan
+from testbot.turn_observation import TurnObservation
 from testbot.sat_chatbot_memory_v2 import (
     ROUTE_TO_ASK_ANSWER,
     build_provenance_metadata,
@@ -739,6 +743,88 @@ def step_then_invalid_typed_intent_objects_rejected_with_deterministic_reasons(c
     assert context.invalid_typed_intent_results
     for result in context.invalid_typed_intent_results:
         assert result["reason"] == result["expected_reason"]
+
+
+@when("a pending clarification is carried into the next stabilized turn")
+def step_when_pending_clarification_is_carried(context) -> None:
+    prior_state = PipelineState(
+        user_input="yes",
+        pending_clarification={
+            "required": True,
+            "question": "Which person, event, or time window should I focus on?",
+            "obligation_id": "obligation:clarify:42",
+            "source_anchor": "commit.pending_clarification",
+            "focus": "event",
+        },
+    )
+    observation = TurnObservation(
+        turn_id="turn-clarify-followup",
+        utterance="the event in February",
+        observed_at="2026-03-11T10:00:00Z",
+        speaker="user",
+        channel="cli",
+        classified_intent=IntentType.KNOWLEDGE_QUESTION.value,
+        resolved_intent=IntentType.KNOWLEDGE_QUESTION.value,
+    )
+    plan = build_stabilization_plan(
+        state=prior_state,
+        observation=observation,
+        encoded=EncodedTurnCandidates(rewritten_query=observation.utterance),
+        response_plan={},
+        reflection_yaml="focus: event",
+        segment=SegmentDescriptor(segment_type=SegmentType.CONTIGUOUS_TOPIC, segment_id="seg-1", continuity_key="event"),
+    )
+    context.bdd_stabilization_plan = plan
+
+
+@then("the stabilized turn should preserve clarification obligation id and focus anchors")
+def step_then_stabilized_turn_preserves_clarification_continuity(context) -> None:
+    pending = context.bdd_stabilization_plan.stabilized.pending_clarification
+    assert pending is not None
+    assert pending.obligation_id == "obligation:clarify:42"
+    assert pending.focus == "event"
+    assert context.bdd_stabilization_plan.next_state.pending_clarification.get("obligation_id") == "obligation:clarify:42"
+
+
+@when("a committed repair offer is carried into the next stabilized turn")
+def step_when_committed_repair_offer_is_carried(context) -> None:
+    prior_state = PipelineState(
+        user_input="yes please",
+        commit_receipt={
+            "pending_repair_state": {
+                "repair_offered_to_user": True,
+                "followup_route": "repair_offer_followup",
+                "obligation_id": "obligation:repair:11",
+                "reason": "repair_offer_rendered",
+            }
+        },
+    )
+    observation = TurnObservation(
+        turn_id="turn-repair-followup",
+        utterance="go ahead",
+        observed_at="2026-03-11T10:01:00Z",
+        speaker="user",
+        channel="cli",
+        classified_intent=IntentType.KNOWLEDGE_QUESTION.value,
+        resolved_intent=IntentType.CAPABILITIES_HELP.value,
+    )
+    plan = build_stabilization_plan(
+        state=prior_state,
+        observation=observation,
+        encoded=EncodedTurnCandidates(rewritten_query=observation.utterance),
+        response_plan={},
+        reflection_yaml="repair: followup",
+        segment=SegmentDescriptor(segment_type=SegmentType.CONTIGUOUS_TOPIC, segment_id="seg-2", continuity_key="repair"),
+    )
+    context.bdd_stabilization_plan = plan
+
+
+@then("the stabilized turn should preserve repair obligation id and followup route continuity")
+def step_then_stabilized_turn_preserves_repair_continuity(context) -> None:
+    pending = context.bdd_stabilization_plan.stabilized.pending_repair
+    assert pending is not None
+    assert pending.obligation_id == "obligation:repair:11"
+    assert pending.followup_route == "repair_offer_followup"
 
 
 @when("the user asks an ambiguous prompt requiring divergent analysis")

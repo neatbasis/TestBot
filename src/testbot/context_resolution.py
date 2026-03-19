@@ -62,12 +62,25 @@ def _commit_continuity_anchors(prior_pipeline_state: PipelineState | None) -> tu
     pending_repair_state = commit_receipt.pending_repair_state
     if isinstance(pending_repair_state, dict) and pending_repair_state.get("repair_offered_to_user"):
         anchors.append("commit.pending_repair_state:repair_offered_to_user")
+        obligation_id = str(pending_repair_state.get("obligation_id") or "").strip()
+        if obligation_id:
+            anchors.append(f"commit.pending_repair_state:obligation_id={obligation_id}")
         followup_route = str(pending_repair_state.get("followup_route") or "").strip()
         offer_type = str(pending_repair_state.get("offer_type") or "").strip()
         if followup_route:
             anchors.append(f"commit.assistant_offer_anchor:followup_route={followup_route}")
         if offer_type:
             anchors.append(f"commit.assistant_offer_anchor:offer_type={offer_type}")
+
+    pending_clarification = prior_pipeline_state.pending_clarification
+    if pending_clarification.required:
+        anchors.append("commit.pending_clarification:required")
+        obligation_id = str(pending_clarification.get("obligation_id") or "").strip()
+        focus = str(pending_clarification.get("focus") or "").strip()
+        if obligation_id:
+            anchors.append(f"commit.pending_clarification:obligation_id={obligation_id}")
+        if focus:
+            anchors.append(f"commit.pending_clarification:focus={focus}")
 
     pending_ingestion_request_id = str(commit_receipt.pending_ingestion_request_id or "").strip()
     if pending_ingestion_request_id:
