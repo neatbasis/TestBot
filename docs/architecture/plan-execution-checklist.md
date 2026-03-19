@@ -31,6 +31,7 @@ This checklist captures unresolved delivery obligations grouped by Workstream Aâ
 
 ## Workstream G â€” Boundary enforcement
 - [ ] Add enforceable dependency/script boundary controls (import-linter, public API declarations, typed package enforcement, deep-import prohibitions); **owner module(s):** repository config + `scripts/*` + package `__init__` surfaces; **required evidence (test/script/doc):** automated boundary checks in canonical gate + failing fixture tests for forbidden imports; **done signal:** CI blocks merges on boundary violations and scripts use declared public surfaces only.
+- [~] Progress (2026-03-19): readiness-gate integration exists via non-blocking `qa_architecture_boundary_report` (`scripts/architecture_boundary_report.py` output artifact + warning diagnostics), plus blocking static import-boundary enforcement through deterministic tests. Remaining ratchet work is to promote architecture-boundary report findings from warning-mode to blocking once policy criteria in `docs/testing.md` are met.
 
 ## Workstream H â€” Executable evidence and governance
 - [ ] Produce auditable readiness/governance artifacts (schema-versioned gate outputs, check/rule IDs, traceability links, retention/version policy, standards crosswalk evidence); **owner module(s):** `scripts/all_green_gate.py`, `docs/`, `artifacts/` schemas; **required evidence (test/script/doc):** gate artifact schema validation + issue/traceability validators + governance doc updates; **done signal:** `all_green_gate` emits machine-validated evidence artifacts that map controls to owners, checks, and blocking status.
@@ -40,5 +41,5 @@ This checklist captures unresolved delivery obligations grouped by Workstream Aâ
 - [~] **Architecture-as-document only:** do not mark A/B complete until typed contracts and canonical orchestration are executable and covered by deterministic tests (not prose-only architecture alignment).
 - [~] **Validation as advisory:** do not mark E complete until failed validation provably prevents semantic render+commit and only degraded fallback artifacts are allowed through.
 - [~] **Adapter leakage risk:** do not mark D/F complete until provider-native objects are absent from logic/policy interfaces and contract tests enforce DTO-only boundaries.
-- [~] **Boundary controls pending:** do not mark G complete until automated dependency/script boundary checks run inside the canonical readiness gate and are merge-blocking.
+- [~] **Boundary controls ratchet incomplete:** do not mark G complete until the existing readiness-gate boundary reporting path is promoted from warning-mode to merge-blocking enforcement and all dependency/script boundary controls are consolidated under canonical policy.
 - [~] **Governance intent without evidence:** do not mark H complete until schema-validated gate artifacts include check IDs, rule IDs, traceability metadata, and retention/version semantics.

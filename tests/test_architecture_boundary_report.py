@@ -12,6 +12,12 @@ reporter = importlib.util.module_from_spec(_spec)
 sys.modules[_spec.name] = reporter
 _spec.loader.exec_module(reporter)
 
+FIXTURE_DIR = Path(__file__).resolve().parent / "fixtures" / "architecture_boundaries"
+
+
+def _load_exception_fixture(name: str) -> dict[str, str]:
+    return json.loads((FIXTURE_DIR / name).read_text(encoding="utf-8"))
+
 
 def test_generate_architecture_boundary_report_classifies_all_statuses(tmp_path: Path) -> None:
     src_dir = tmp_path / "src" / "testbot"
@@ -111,15 +117,7 @@ def test_generate_architecture_boundary_report_classifies_all_statuses(tmp_path:
                 "public_surface": {"modules": ["testbot.observability"], "module_prefixes": ["testbot.observability"]},
             },
         ],
-        "temporary_exceptions": [
-            {
-                "importer": "testbot.adapters.*",
-                "imported": "testbot.observability.*",
-                "issue": "ISSUE-9999",
-                "expires_on": "2026-12-31",
-                "notes": "temporary during migration",
-            }
-        ],
+        "temporary_exceptions": [_load_exception_fixture("temporary_exception_valid.json")],
         "deprecated_compatibility": {"module_globs": ["testbot.answer_render"]},
     }
 
@@ -221,3 +219,113 @@ def test_main_writes_machine_readable_output(tmp_path: Path, monkeypatch) -> Non
     assert exit_code == 0
     assert payload["summary"]["counts_by_classification"]["allowed"] >= 0
     assert isinstance(payload["findings"], list)
+
+
+def test_expired_temporary_exception_is_downgraded_to_violation(tmp_path: Path) -> None:
+    src_dir = tmp_path / "src" / "testbot"
+    (src_dir / "adapters").mkdir(parents=True)
+    (src_dir / "observability").mkdir(parents=True)
+
+    for package in [src_dir, src_dir / "adapters", src_dir / "observability"]:
+        (package / "__init__.py").write_text("", encoding="utf-8")
+
+    (src_dir / "adapters" / "http.py").write_text(
+        "from testbot.observability import telemetry\n",
+        encoding="utf-8",
+    )
+    (src_dir / "observability" / "telemetry.py").write_text("EVENT = 1\n", encoding="utf-8")
+
+    config = {
+        "version": 1,
+        "package_name": "testbot",
+        "package_root": str(src_dir),
+        "areas": [
+            {
+                "name": "adapters",
+                "module_globs": ["testbot.adapters", "testbot.adapters.*"],
+                "allowed_dependencies": ["adapters", "observability"],
+                "public_surface": {"modules": ["testbot.adapters"], "module_prefixes": ["testbot.adapters"]},
+            },
+            {
+                "name": "observability",
+                "module_globs": ["testbot.observability", "testbot.observability.*"],
+                "allowed_dependencies": ["observability"],
+                "public_surface": {"modules": ["testbot.observability"], "module_prefixes": ["testbot.observability"]},
+            },
+        ],
+        "temporary_exceptions": [_load_exception_fixture("temporary_exception_expired.json")],
+    }
+
+    original_repo_root = reporter.REPO_ROOT
+    reporter.REPO_ROOT = tmp_path
+    try:
+        report = reporter.generate_architecture_boundary_report(config)
+    finally:
+        reporter.REPO_ROOT = original_repo_root
+
+    downgraded_finding = next(
+        finding
+        for finding in report["findings"]
+        if finding["importer"] == "testbot.adapters.http" and finding["imported"] == "testbot.observability.telemetry"
+    )
+    assert downgraded_finding["classification"] == "violation"
+    assert downgraded_finding["reason"] == "expired_temporary_exception"
+    assert downgraded_finding["metadata"]["downgraded_from"] == "temporary_exception"
+    assert downgraded_finding["metadata"]["expiry_enforcement"] == "temporary_exception_expired"
+    assert downgraded_finding["metadata"]["expires_on"] == "2020-01-01"
+    assert report["summary"]["counts_by_classification"]["violation"] == 1
+    assert report["summary"]["counts_by_classification"]["temporary_exception"] == 0
+
+
+def test_valid_temporary_exception_remains_non_violation(tmp_path: Path) -> None:
+    src_dir = tmp_path / "src" / "testbot"
+    (src_dir / "adapters").mkdir(parents=True)
+    (src_dir / "observability").mkdir(parents=True)
+
+    for package in [src_dir, src_dir / "adapters", src_dir / "observability"]:
+        (package / "__init__.py").write_text("", encoding="utf-8")
+
+    (src_dir / "adapters" / "http.py").write_text(
+        "from testbot.observability import telemetry\n",
+        encoding="utf-8",
+    )
+    (src_dir / "observability" / "telemetry.py").write_text("EVENT = 1\n", encoding="utf-8")
+
+    config = {
+        "version": 1,
+        "package_name": "testbot",
+        "package_root": str(src_dir),
+        "areas": [
+            {
+                "name": "adapters",
+                "module_globs": ["testbot.adapters", "testbot.adapters.*"],
+                "allowed_dependencies": ["adapters", "observability"],
+                "public_surface": {"modules": ["testbot.adapters"], "module_prefixes": ["testbot.adapters"]},
+            },
+            {
+                "name": "observability",
+                "module_globs": ["testbot.observability", "testbot.observability.*"],
+                "allowed_dependencies": ["observability"],
+                "public_surface": {"modules": ["testbot.observability"], "module_prefixes": ["testbot.observability"]},
+            },
+        ],
+        "temporary_exceptions": [_load_exception_fixture("temporary_exception_valid.json")],
+    }
+
+    original_repo_root = reporter.REPO_ROOT
+    reporter.REPO_ROOT = tmp_path
+    try:
+        report = reporter.generate_architecture_boundary_report(config)
+    finally:
+        reporter.REPO_ROOT = original_repo_root
+
+    finding = next(
+        candidate
+        for candidate in report["findings"]
+        if candidate["importer"] == "testbot.adapters.http" and candidate["imported"] == "testbot.observability.telemetry"
+    )
+    assert finding["classification"] == "temporary_exception"
+    assert finding["reason"] == "explicit_temporary_exception"
+    assert finding["metadata"]["issue"] == "ISSUE-VALID-0001"
+    assert finding["metadata"]["owner"] == "platform-architecture"
+    assert finding["metadata"]["removal_plan"].startswith("Remove adapter->observability shim")

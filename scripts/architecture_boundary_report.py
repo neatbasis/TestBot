@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import ast
+import datetime as dt
 import fnmatch
 import json
 from dataclasses import dataclass
@@ -35,6 +36,15 @@ class Classification:
 
 class BoundaryConfigError(RuntimeError):
     """Raised when boundary configuration is malformed."""
+
+
+def _parse_iso_date(value: str | None) -> dt.date | None:
+    if value is None:
+        return None
+    try:
+        return dt.date.fromisoformat(value)
+    except ValueError:
+        return None
 
 
 def _discover_modules(package_root: Path, package_name: str) -> dict[str, Path]:
@@ -161,11 +171,33 @@ def _classify_edge(
 
     for exception in temporary_exceptions:
         if fnmatch.fnmatch(edge.importer, exception["importer"]) and fnmatch.fnmatch(edge.imported, exception["imported"]):
+            evaluated_on = dt.date.today()
+            expires_on_raw = exception.get("expires_on")
+            expires_on = _parse_iso_date(expires_on_raw)
+            if expires_on is not None and expires_on < evaluated_on:
+                return Classification(
+                    status="violation",
+                    reason="expired_temporary_exception",
+                    metadata={
+                        "downgraded_from": "temporary_exception",
+                        "issue": exception.get("issue"),
+                        "owner": exception.get("owner"),
+                        "review_on": exception.get("review_on"),
+                        "removal_plan": exception.get("removal_plan"),
+                        "expires_on": expires_on_raw,
+                        "evaluated_on": evaluated_on.isoformat(),
+                        "expiry_enforcement": "temporary_exception_expired",
+                        "notes": exception.get("notes"),
+                    },
+                )
             return Classification(
                 status="temporary_exception",
                 reason="explicit_temporary_exception",
                 metadata={
                     "issue": exception.get("issue"),
+                    "owner": exception.get("owner"),
+                    "review_on": exception.get("review_on"),
+                    "removal_plan": exception.get("removal_plan"),
                     "expires_on": exception.get("expires_on"),
                     "notes": exception.get("notes"),
                 },

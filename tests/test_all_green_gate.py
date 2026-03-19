@@ -15,6 +15,15 @@ sys.modules[_all_green_gate_spec.name] = all_green_gate
 _all_green_gate_spec.loader.exec_module(all_green_gate)
 
 
+def test_docs_testing_defines_architecture_boundary_rollout_policy_and_current_mode() -> None:
+    docs_testing = (
+        Path(__file__).resolve().parents[1] / "docs" / "testing.md"
+    ).read_text(encoding="utf-8")
+
+    assert "## Architecture boundary rollout policy (authoritative)" in docs_testing
+    assert "Current mode (as of 2026-03-19): `warning`" in docs_testing
+
+
 def _result(
     *,
     name: str,
@@ -509,6 +518,32 @@ def test_warning_diagnostics_preserve_architecture_boundary_reason_classificatio
     assert summary["stages"][0]["warning_reasons"] == [
         "violation=1,temporary_exception=1,deprecated_compatibility=0"
     ]
+
+
+def test_summarize_keeps_architecture_boundary_warning_visible_in_machine_readable_checks() -> None:
+    summary = all_green_gate.summarize(
+        results=[
+            _result(
+                name="qa_architecture_boundary_report",
+                command="arch",
+                status="warning",
+                exit_code=1,
+                duration_s=0.1,
+                artifact_path="artifacts/qa/architecture-boundary-report.json",
+                diagnostic_reason="violation=1,temporary_exception=0,deprecated_compatibility=2",
+            )
+        ],
+        continue_on_failure=False,
+    )
+
+    assert summary["warning_count"] == 1
+    assert summary["checks"][0]["name"] == "qa_architecture_boundary_report"
+    assert summary["checks"][0]["status"] == "warning"
+    assert summary["checks"][0]["artifact_path"] == "artifacts/qa/architecture-boundary-report.json"
+    assert (
+        summary["checks"][0]["diagnostic_reason"]
+        == "violation=1,temporary_exception=0,deprecated_compatibility=2"
+    )
 
 
 def test_run_gate_keeps_blocking_failure_when_architecture_boundary_report_is_warning(

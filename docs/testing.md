@@ -201,20 +201,15 @@ Severity/state interpretation for warning-mode KPI results:
 
 When KPI warnings persist in `optional` mode, repository policy requires issue linkage in all three locations for each review cycle: the canonical issue record decision note, `docs/issues/RED_TAG.md` triage note (when red-tagged), and the sprint KPI evidence note.
 
-## Architecture boundary report mode policy (authoritative)
+## Architecture boundary rollout policy (authoritative)
 
-Current mode: `warning` in the canonical readiness gate.
-The architecture boundary report runs during `python scripts/all_green_gate.py --profile readiness` and is surfaced as readiness evidence. Boundary-report findings do not currently fail the gate by themselves. Blocking checks such as `product_behave` and `qa_pytest_not_live_smoke` remain fail-closed and continue to determine gate failure.
+Current mode (as of 2026-03-19): `warning` in the canonical readiness gate.
 
-The architecture boundary report rollout supports exactly three modes:
+The architecture boundary report runs during `python scripts/all_green_gate.py --profile readiness` and is surfaced as machine-readable readiness evidence (`artifacts/qa/architecture-boundary-report.json` plus gate summary diagnostics). In this current mode, boundary findings are non-blocking warnings. Blocking checks (for example `product_behave`, `qa_pytest_not_live_smoke`, and governance validators) remain fail-closed and still determine non-zero gate exit.
 
-- `report_only`
-- `warning`
-- `blocking`
+### 1. Scope and rollout modes
 
-### 1. Scope
-
-The architecture boundary report covers these architectural areas:
+The architecture boundary report covers:
 
 - `entrypoints`
 - `application`
@@ -224,51 +219,59 @@ The architecture boundary report covers these architectural areas:
 - `adapters`
 - `observability`
 
-Its purpose is to detect architectural drift in placement and dependency direction during the ongoing extraction/hardening phase.
+Rollout modes are:
 
-### 2. Classification contract
+- `report_only`: findings are produced in report artifacts but do not affect gate check status.
+- `warning` (current): findings produce warning status and remain visible in machine-readable artifacts, but do not fail gate exit by themselves.
+- `blocking`: boundary findings are enforced as blocking failures in the readiness gate.
 
-Architecture boundary report results are classified as:
+### 2. Classification semantics (authoritative)
 
-- `violation`: boundary break not currently sanctioned.
-- `temporary_exception`: known temporary boundary break allowed during migration.
-- `deprecated_compatibility`: compatibility/deprecation surface intentionally retained during retirement window.
-- `allowed`: conforms to current boundary policy.
+Architecture boundary findings use exactly these classifications:
 
-`temporary_exception` and `deprecated_compatibility` are not equivalent to `allowed`, and both classes must remain visible in readiness evidence.
+- `violation`: unsanctioned boundary break; policy-noncompliant and remediation-required.
+- `temporary_exception`: explicitly sanctioned migration waiver that is still valid (not expired) and issue-linked.
+- `deprecated_compatibility`: temporary compatibility/deprecation import surface retained during planned retirement.
+- `allowed`: dependency/import is policy-conformant.
 
-Temporary compatibility exceptions are allowed only when issue-linked. An unlinked temporary exception must be treated as a violation for governance purposes, even if the boundary report remains non-blocking in the current rollout mode.
+Important interpretation:
 
-### 3. Current gate behavior
+- `temporary_exception` and `deprecated_compatibility` are **not** equivalent to `allowed`.
+- All non-`allowed` classifications must remain visible in readiness evidence while rollout mode is `warning`.
+- Expired temporary exceptions are downgraded to `violation` by the boundary report classifier and must include machine-readable expiry-reason metadata.
 
-Current rollout behavior is fixed as follows:
+### 3. Temporary-exception (waiver) requirements
 
-- The architecture boundary report runs in the readiness gate (`python scripts/all_green_gate.py --profile readiness`).
-- The check is surfaced in gate output and in the JSON summary.
-- Boundary findings currently produce a non-blocking warning outcome.
-- The gate still exits non-zero on blocking-check failures.
-- The architecture report does not override, suppress, or replace existing deprecated alias enforcement.
+Any temporary exception/waiver entry must include:
 
-### 4. Promotion criteria to blocking
+1. **Issue link/ID** (for example `ISSUE-xxxx`) that tracks closure.
+2. **Owner** (team or accountable module owner).
+3. **Expiry or review date** (`expires_on` and/or explicit `review_on`).
+4. **Removal plan** describing the migration action that deletes the waiver.
 
-Promotion from `warning` to `blocking` is allowed only when all of the following are true:
+If a temporary exception is missing required governance metadata, expires, or fails review, it must be treated as a policy violation for readiness interpretation.
 
-1. Two consecutive readiness-gate runs in the intended validation environment show:
+### 4. Promotion criteria: `warning` → `blocking`
 
+Promotion is allowed only when all of the following are true:
+
+1. Two consecutive readiness-gate cycles in the intended validation environment report:
    - zero unsanctioned `violation` findings,
-   - and no increase in `temporary_exception` count.
-2. Every `temporary_exception` is linked to:
+   - zero expired temporary exceptions,
+   - and no net increase in active `temporary_exception` entries.
+2. Every remaining `temporary_exception` includes complete waiver metadata (issue, owner, expiry/review date, removal plan) and is actively tracked.
+3. `deprecated_compatibility` count is flat or decreasing, with linked deprecation retirement issues.
+4. Existing blocking checks remain green (no regressions masked by boundary-mode changes).
+5. The mode change decision is recorded in governance artifacts before default automation changes.
 
-   - an issue ID,
-   - an owning module/package,
-   - a stated removal target or review date.
-3. No new business logic has landed in `sat_chatbot_memory_v2.py` except:
+### 5. Current readiness-gate behavior contract
 
-   - compatibility delegators,
-   - warning/deprecation metadata,
-   - or migration-only adapter glue explicitly tracked as temporary.
-4. Existing deprecated alias enforcement remains green.
-5. Promotion is recorded in repo governance artifacts before the default gate mode is changed.
+- The boundary report check is included in readiness profile execution.
+- Findings are surfaced in:
+  - boundary report JSON (`artifacts/qa/architecture-boundary-report.json`), and
+  - gate summary JSON warning diagnostics.
+- Boundary findings currently remain non-blocking.
+- Blocking check failures still force non-zero gate exit regardless of boundary warning status.
 
 | Test layer | Canonical command | Runtime dependency | CI gate level | Expected runtime | Pass criteria |
 | --- | --- | --- | --- | --- | --- |

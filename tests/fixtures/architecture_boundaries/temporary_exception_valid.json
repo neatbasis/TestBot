@@ -1,0 +1,10 @@
+{
+  "importer": "testbot.adapters.*",
+  "imported": "testbot.observability.*",
+  "issue": "ISSUE-VALID-0001",
+  "owner": "platform-architecture",
+  "expires_on": "2999-12-31",
+  "review_on": "2099-01-15",
+  "removal_plan": "Remove adapter->observability shim once ISSUE-VALID-0001 facade extraction closes.",
+  "notes": "Deterministic fixture: far-future expiry remains a valid temporary exception."
+}

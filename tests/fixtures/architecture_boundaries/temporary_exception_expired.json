@@ -1,0 +1,10 @@
+{
+  "importer": "testbot.adapters.*",
+  "imported": "testbot.observability.*",
+  "issue": "ISSUE-EXPIRED-0001",
+  "owner": "platform-architecture",
+  "expires_on": "2020-01-01",
+  "review_on": "2020-01-15",
+  "removal_plan": "Expired fixture: waiver should be removed and dependency migrated.",
+  "notes": "Deterministic fixture: date is permanently in the past."
+}
