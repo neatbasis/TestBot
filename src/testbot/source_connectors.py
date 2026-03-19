@@ -7,13 +7,13 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
-from typing import Any, Callable, Protocol
+from typing import Any, Callable
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlencode
 from urllib.request import Request, urlopen
 import xml.etree.ElementTree as ET
 
-from langchain_core.documents import Document
+from testbot.ports import PortDocument, SourceConnector as SourceConnectorPort
 
 
 _LOGGER = logging.getLogger(__name__)
@@ -47,7 +47,7 @@ class SourceItem:
             raise ValueError("SourceItem.trust_tier must be non-empty")
 
 
-class SourceConnector(Protocol):
+class SourceConnector(SourceConnectorPort):
     """Contract for source acquisition connectors.
 
     Connectors fetch raw source items, normalize each item into a canonical document,
@@ -58,7 +58,7 @@ class SourceConnector(Protocol):
 
     def fetch(self, *, cursor: str | None, limit: int = 50) -> list[SourceItem]: ...
 
-    def normalize(self, item: SourceItem) -> Document: ...
+    def normalize(self, item: SourceItem) -> PortDocument: ...
 
     def update_cursor(self, *, previous_cursor: str | None, fetched_items: list[SourceItem]) -> str | None: ...
 
@@ -111,7 +111,7 @@ class FixtureSourceConnector:
             return []
         return list(self.fixtures[start : start + limit])
 
-    def normalize(self, item: SourceItem) -> Document:
+    def normalize(self, item: SourceItem) -> PortDocument:
         metadata = {
             **item.metadata,
             "doc_id": item.item_id,
@@ -120,7 +120,7 @@ class FixtureSourceConnector:
             "retrieved_at": item.retrieved_at,
             "trust_tier": item.trust_tier,
         }
-        return Document(id=item.item_id, page_content=item.content, metadata=metadata)
+        return PortDocument(doc_id=item.item_id, content=item.content, metadata=metadata)
 
     def update_cursor(self, *, previous_cursor: str | None, fetched_items: list[SourceItem]) -> str | None:
         if not fetched_items:
@@ -179,7 +179,7 @@ class LocalMarkdownSourceConnector:
             )
         return items
 
-    def normalize(self, item: SourceItem) -> Document:
+    def normalize(self, item: SourceItem) -> PortDocument:
         return _normalize_source_item(item=item, source_type=self.source_type)
 
     def update_cursor(self, *, previous_cursor: str | None, fetched_items: list[SourceItem]) -> str | None:
@@ -232,7 +232,7 @@ class WikipediaSummarySourceConnector:
             )
         ]
 
-    def normalize(self, item: SourceItem) -> Document:
+    def normalize(self, item: SourceItem) -> PortDocument:
         return _normalize_source_item(item=item, source_type=self.source_type)
 
     def update_cursor(self, *, previous_cursor: str | None, fetched_items: list[SourceItem]) -> str | None:
@@ -310,7 +310,7 @@ class ArxivSourceConnector:
             )
         return items
 
-    def normalize(self, item: SourceItem) -> Document:
+    def normalize(self, item: SourceItem) -> PortDocument:
         return _normalize_source_item(item=item, source_type=self.source_type)
 
     def update_cursor(self, *, previous_cursor: str | None, fetched_items: list[SourceItem]) -> str | None:
@@ -319,7 +319,7 @@ class ArxivSourceConnector:
         return str(self._parse_cursor(previous_cursor) + len(fetched_items))
 
 
-def _normalize_source_item(*, item: SourceItem, source_type: str) -> Document:
+def _normalize_source_item(*, item: SourceItem, source_type: str) -> PortDocument:
     metadata = {
         **item.metadata,
         "doc_id": item.item_id,
@@ -328,4 +328,4 @@ def _normalize_source_item(*, item: SourceItem, source_type: str) -> Document:
         "retrieved_at": item.retrieved_at,
         "trust_tier": item.trust_tier,
     }
-    return Document(id=item.item_id, page_content=item.content, metadata=metadata)
+    return PortDocument(doc_id=item.item_id, content=item.content, metadata=metadata)

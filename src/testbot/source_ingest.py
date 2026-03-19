@@ -3,8 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import hashlib
 
-from langchain_core.documents import Document
-
+from testbot.ports import PortDocument
 from testbot.source_connectors import SourceConnector, SourceItem
 from testbot.vector_store import (
     MemoryStore,
@@ -16,12 +15,12 @@ from testbot.vector_store import (
 
 @dataclass(frozen=True)
 class UtteranceMemoryRecord:
-    document: Document
+    document: PortDocument
 
 
 @dataclass(frozen=True)
 class SourceEvidenceRecord:
-    document: Document
+    document: PortDocument
 
 
 @dataclass(frozen=True)
@@ -29,8 +28,8 @@ class SourceIngestResult:
     fetched_count: int
     stored_count: int
     next_cursor: str | None
-    memory_documents: list[Document]
-    evidence_documents: list[Document]
+    memory_documents: list[PortDocument]
+    evidence_documents: list[PortDocument]
 
 
 def _provenance_metadata(*, connector: SourceConnector, item: SourceItem) -> dict[str, str]:
@@ -42,7 +41,7 @@ def _provenance_metadata(*, connector: SourceConnector, item: SourceItem) -> dic
     }
 
 
-def _canonical_memory_doc(normalized_doc: Document, *, provenance: dict[str, str]) -> Document:
+def _canonical_memory_doc(normalized_doc: PortDocument, *, provenance: dict[str, str]) -> PortDocument:
     source_item_type = normalized_doc.metadata.get("type")
     metadata = with_record_lane_metadata(
         {
@@ -54,10 +53,10 @@ def _canonical_memory_doc(normalized_doc: Document, *, provenance: dict[str, str
     if source_item_type is not None:
         metadata["source_item_type"] = str(source_item_type)
     doc_id = _resolve_source_document_id(normalized_doc, provenance=provenance)
-    return Document(id=doc_id, page_content=normalized_doc.page_content, metadata=metadata)
+    return PortDocument(doc_id=doc_id, content=normalized_doc.content, metadata=metadata)
 
 
-def _canonical_evidence_doc(normalized_doc: Document, *, provenance: dict[str, str]) -> Document:
+def _canonical_evidence_doc(normalized_doc: PortDocument, *, provenance: dict[str, str]) -> PortDocument:
     metadata = with_record_lane_metadata(
         {
         **dict(normalized_doc.metadata),
@@ -66,11 +65,11 @@ def _canonical_evidence_doc(normalized_doc: Document, *, provenance: dict[str, s
         lane=SOURCE_EVIDENCE_LANE,
     )
     base_id = _resolve_source_document_id(normalized_doc, provenance=provenance)
-    return Document(id=f"evidence::{base_id}", page_content=normalized_doc.page_content, metadata=metadata)
+    return PortDocument(doc_id=f"evidence::{base_id}", content=normalized_doc.content, metadata=metadata)
 
 
-def _resolve_source_document_id(normalized_doc: Document, *, provenance: dict[str, str]) -> str:
-    normalized_id = str(normalized_doc.id or "").strip()
+def _resolve_source_document_id(normalized_doc: PortDocument, *, provenance: dict[str, str]) -> str:
+    normalized_id = str(normalized_doc.doc_id or "").strip()
     if normalized_id:
         return normalized_id
 
@@ -80,7 +79,7 @@ def _resolve_source_document_id(normalized_doc: Document, *, provenance: dict[st
 
     source_type = str(provenance.get("source_type") or "")
     source_uri = str(provenance.get("source_uri") or "")
-    normalized_content = normalized_doc.page_content.strip()
+    normalized_content = normalized_doc.content.strip()
     content_hash = hashlib.sha256(normalized_content.encode("utf-8")).hexdigest()[:16]
     deterministic = f"{source_type}|{source_uri}|{content_hash}"
     return f"derived::{hashlib.sha256(deterministic.encode('utf-8')).hexdigest()[:24]}"
@@ -95,8 +94,8 @@ class SourceIngestor:
 
     def ingest_once(self, *, cursor: str | None = None, limit: int = 50) -> SourceIngestResult:
         fetched_items = self._connector.fetch(cursor=cursor, limit=limit)
-        memory_documents: list[Document] = []
-        evidence_documents: list[Document] = []
+        memory_documents: list[PortDocument] = []
+        evidence_documents: list[PortDocument] = []
 
         for item in fetched_items:
             normalized_doc = self._connector.normalize(item)
@@ -106,7 +105,7 @@ class SourceIngestor:
 
         documents_to_store = [*memory_documents, *evidence_documents]
         if documents_to_store:
-            self._memory_store.add_documents(documents_to_store)
+            self._memory_store.add_memory_records(documents_to_store)
 
         next_cursor = self._connector.update_cursor(previous_cursor=cursor, fetched_items=fetched_items)
         return SourceIngestResult(

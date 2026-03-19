@@ -125,6 +125,7 @@ from testbot.application.services.turn_service import TurnPipelineDependencies, 
 from langchain_core.documents import Document
 from langchain_core.prompts import ChatPromptTemplate
 from testbot.vector_store import MemoryStore, build_memory_store, normalize_memory_store_mode
+from testbot.ports import MemorySearchQuery
 from langchain_ollama import ChatOllama, OllamaEmbeddings
 
 
@@ -361,8 +362,8 @@ def _execute_source_ingestion(
         "fetched_count": result.fetched_count,
         "stored_count": result.stored_count,
         "next_cursor": result.next_cursor,
-        "memory_doc_ids": [str(doc.id or "") for doc in result.memory_documents],
-        "evidence_doc_ids": [str(doc.id or "") for doc in result.evidence_documents],
+        "memory_doc_ids": [str(doc.doc_id or "") for doc in result.memory_documents],
+        "evidence_doc_ids": [str(doc.doc_id or "") for doc in result.evidence_documents],
         "background": background,
         "ingestion_request_id": ingestion_request_id,
     }
@@ -1147,15 +1148,38 @@ def stage_retrieve(
     normalized_exclude_turn_scoped_ids = {value for value in (exclude_turn_scoped_ids or set()) if value}
     normalized_segment_ids = {value for value in (segment_ids or set()) if value}
     normalized_segment_types = {value for value in (segment_types or set()) if value}
-    raw_docs_and_scores = store.similarity_search_with_score(
-        state.rewritten_query,
-        k=18,
-        exclude_doc_ids=normalized_exclude_doc_ids,
-        exclude_source_ids=normalized_exclude_source_ids,
-        exclude_turn_scoped_ids=normalized_exclude_turn_scoped_ids,
-        segment_ids=normalized_segment_ids,
-        segment_types=normalized_segment_types,
-    )
+    if hasattr(store, "search_memory_records"):
+        raw_docs_and_scores = [
+            (
+                Document(
+                    id=hit.document.doc_id,
+                    page_content=hit.document.content,
+                    metadata=dict(hit.document.metadata),
+                ),
+                hit.score,
+            )
+            for hit in store.search_memory_records(
+                MemorySearchQuery(
+                    query=state.rewritten_query,
+                    k=18,
+                    exclude_doc_ids=normalized_exclude_doc_ids,
+                    exclude_source_ids=normalized_exclude_source_ids,
+                    exclude_turn_scoped_ids=normalized_exclude_turn_scoped_ids,
+                    segment_ids=normalized_segment_ids,
+                    segment_types=normalized_segment_types,
+                )
+            )
+        ]
+    else:
+        raw_docs_and_scores = store.similarity_search_with_score(
+            state.rewritten_query,
+            k=18,
+            exclude_doc_ids=normalized_exclude_doc_ids,
+            exclude_source_ids=normalized_exclude_source_ids,
+            exclude_turn_scoped_ids=normalized_exclude_turn_scoped_ids,
+            segment_ids=normalized_segment_ids,
+            segment_types=normalized_segment_types,
+        )
     docs_and_scores = mix_source_evidence_with_memory_cards(raw_docs_and_scores, top_k=12, source_quota=3)
     retrieval_candidates = [doc_to_candidate_hit(doc, score) for doc, score in docs_and_scores]
     retrieval_telemetry = {

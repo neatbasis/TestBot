@@ -4,6 +4,7 @@ from collections import deque
 import json
 
 from testbot.clock import SystemClock
+from testbot.ports import MemorySearchQuery, PortDocument, ScoredPortDocument
 from testbot.sat_chatbot_memory_v2 import (
     CapabilitySnapshot,
     RuntimeCapabilityStatus,
@@ -14,14 +15,13 @@ from testbot.sat_chatbot_memory_v2 import (
 
 class _FakeStore:
     def __init__(self) -> None:
-        self._docs = []
+        self._docs: list[PortDocument] = []
 
-    def add_documents(self, documents):
-        self._docs.extend(documents)
+    def add_memory_records(self, records):
+        self._docs.extend(records)
 
-    def similarity_search_with_score(self, query: str, k: int = 4, **kwargs):
-        del query, kwargs
-        return [(doc, 0.9) for doc in self._docs[:k]]
+    def search_memory_records(self, query: MemorySearchQuery):
+        return [ScoredPortDocument(document=doc, score=0.9) for doc in self._docs[: query.k]]
 
 
 class _StaticLLM:

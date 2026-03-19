@@ -5,7 +5,6 @@ from dataclasses import dataclass, replace
 from typing import Any, Callable
 
 from langchain_core.documents import Document
-from langchain_ollama import ChatOllama
 
 from testbot.answer_assembly import assemble_answer_contract
 from testbot.answer_commit import AnswerCommitService, build_commit_stage_inputs
@@ -54,13 +53,14 @@ from testbot.stage_transitions import (
 )
 from testbot.turn_observation import observe_turn
 from testbot.vector_store import MemoryStore
+from testbot.ports import LanguageModel
 
 
 @dataclass(frozen=True)
 class TurnPipelineDependencies:
     append_session_log: Callable[[str, dict[str, object]], None]
     validate_and_log_transition: Callable[[object], None]
-    stage_rewrite_query: Callable[[ChatOllama, PipelineState], PipelineState]
+    stage_rewrite_query: Callable[[LanguageModel, PipelineState], PipelineState]
     generate_reflection_yaml: Callable[..., str]
     intent_classifier_confidence: Callable[..., float]
     optional_string: Callable[[object], str | None]
@@ -93,7 +93,7 @@ class _ClockSnapshotTimeProvider:
 def run_canonical_turn_pipeline_service(
     *,
     runtime: dict[str, object] | None = None,
-    llm: ChatOllama,
+    llm: LanguageModel,
     store: MemoryStore,
     state: PipelineState,
     utterance: str,
