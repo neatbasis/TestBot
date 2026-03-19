@@ -14,15 +14,19 @@ This amended audit makes the authority census explicit, identifies concrete API-
 
 - Runtime code under `src/testbot/`.
 - Existing enforcement tests/scripts under `tests/` and `scripts/`.
-- Symbol census anchored to `src/testbot/sat_chatbot_memory_v2.py` (current line count: **4613** lines).
+- **Historical snapshot (date-stamped 2026-03-19, pre-extraction baseline):** symbol census previously anchored to `src/testbot/sat_chatbot_memory_v2.py` at **4613** lines.
+- **Current state (as of latest changelog in `docs/pivot.md`):** `src/testbot/sat_chatbot_memory_v2.py` is now **3806** lines, and package/CLI startup authority routes through `src/testbot/entrypoints/sat_cli.py::main(...)` with `sat_chatbot_memory_v2.main(...)` retained as a compatibility delegator.
 
 ---
 
 ## 1) Authority census for `sat_chatbot_memory_v2.py`
 
-The module currently spans at least seven authority domains:
+### 1.1 Historical snapshot (date-stamped, non-authoritative for current structure)
 
-| Domain | Approx lines | What it owns |
+> **Historical snapshot date:** 2026-03-19 baseline captured at **4613 lines**.  
+> **Status:** historical-only reference; the line ranges below are **not authoritative** for current file shape.
+
+| Domain | Historical approx lines (4613-line file) | Historical ownership readout |
 |---|---:|---|
 | A. Boot / entrypoint | 4521–4613 | `main()`, arg/env parsing, mode dispatch |
 | B. Infrastructure probing | 719–816 | HA/Ollama reachability and mode-effective checks |
@@ -32,13 +36,28 @@ The module currently spans at least seven authority domains:
 | F. Decision / alignment logic | ~1500–3568 | ambiguity/blocker reasoning, answer assembly/validation helpers, alignment scoring |
 | G. Chat loop / I/O | 4158–4396 | chat loop and CLI/satellite runtime loops |
 
-Additionally, the same module owns a telemetry sink (`append_session_log`), DTO mapper (`doc_to_candidate_hit`), diagnostics-only intent helper (`resolve_turn_intent`), and multiple constants/regex sets.
+### 1.2 Current state (as of latest changelog)
+
+> **Current reference date:** 2026-03-19 (latest changelog notes in `docs/pivot.md`).  
+> **Current file shape:** `sat_chatbot_memory_v2.py` = **3806 lines**.
+
+| Domain | Current anchor lines (3806-line file) | Current ownership readout |
+|---|---:|---|
+| A. Boot / compatibility entrypoint | 3799–3806 | `main(...)` is a compatibility delegator that forwards to `testbot.entrypoints.sat_cli:main` |
+| B. Startup wiring helpers (compatibility surface) | 763–973 | `_parse_args`, `_read_runtime_env`, `_resolve_mode`, `_print_startup_status` exported for compatibility and consumed by `entrypoints/sat_cli.py` |
+| C. Capability snapshot | 590–605, 3649–3698 | `RuntimeCapabilityStatus`, `CapabilitySnapshot`, `build_capability_snapshot(...)` |
+| D. Source ingestion lifecycle | 961–972, 3704–3767 | `_run_source_ingestion(...)` and `run_source_ingestion(...)` |
+| E. Canonical turn pipeline compatibility façade | 3272–3327 | `_run_canonical_turn_pipeline(...)` delegates to application canonical turn runtime/service |
+| F. Decision / answer compatibility surface | 2434–3243 | `answer_assemble(...)`, canonical/deprecated answer-stage entrypoints, and alignment compatibility shim |
+| G. Chat loop / I/O runtime loop wrappers | 3329–3647, 3770–3797 | `_run_chat_loop`, `_run_cli_mode`, `_run_satellite_mode`, `run_chat_loop(...)` |
+
+Additionally, the module still owns cross-cutting compatibility symbols (for example `append_session_log`, `doc_to_candidate_hit`, and `resolve_turn_intent`), so authority remains concentrated even after extracted service ownership.
 
 ---
 
 ## 2) Real collapse point (specific)
 
-### 2.1 `_run_canonical_turn_pipeline()` remains an authority surface, but closure capture was reduced
+### 2.1 Current state (as of latest changelog): `_run_canonical_turn_pipeline()` remains an authority surface, but closure capture was reduced
 
 `_run_canonical_turn_pipeline()` is still the monolith-owned compatibility entry, but canonical stage assembly/execution now lives in the application service (`run_canonical_turn_pipeline_service(...)`) with `_TurnPipelineStageHandlers(runtime=stage_runtime)` bound methods.
 
@@ -50,11 +69,11 @@ Practical impact:
 2. Stage replacement is now easier in service-layer tests, but monolith behavior ownership remains substantial across retrieval/assembly/validation helpers.
 3. Boot/runtime composition authority still lives in entrypoint runtime code instead of a dedicated thin composition root.
 
-### 2.2 `answer_assemble()` is a secondary collapse
+### 2.2 Historical snapshot + current state: `answer_assemble()` remains a secondary collapse
 
 `answer_assemble()` is public and test-visible, while also blending routing/result formatting/LLM orchestration concerns that ideally belong to separated services.
 
-### 2.3 `evaluate_alignment_decision()` lifecycle state (compatibility shim)
+### 2.3 Current state (as of latest changelog): `evaluate_alignment_decision()` lifecycle state (compatibility shim)
 
 `evaluate_alignment_decision()` in `sat_chatbot_memory_v2.py` is currently a **compatibility shim** that delegates to `testbot.logic.alignment.evaluate_alignment_decision`.
 
@@ -218,7 +237,7 @@ In short: the system has strong canonical-order and validation enforcement, but 
 
 ---
 
-## 2026-03-19 update (entrypoint + service ownership hardening)
+## 2026-03-19 update (current state as of latest changelog: entrypoint + service ownership hardening)
 
 ### Symbol moves
 - Canonical stage-order authority is now explicitly declared in `src/testbot/application/services/turn_service.py` as `CANONICAL_STAGE_SEQUENCE` and consumed by handler wiring.
@@ -228,7 +247,7 @@ In short: the system has strong canonical-order and validation enforcement, but 
   - `resolve_answer_routing_for_stage(...)`
   - fallback-action mapping used by `decision_object_from_assembled(...)`
 - Canonical turn runner composition now delegates through `src/testbot/application/services/canonical_turn_runtime.py` (`run_canonical_turn_pipeline(...)`), leaving `_run_canonical_turn_pipeline(...)` in the monolith as a compatibility façade.
-- CLI/satellite startup execution path moved into `src/testbot/entrypoints/sat_cli.py::main(...)`; `sat_chatbot_memory_v2.main(...)` is now a compatibility delegator.
+- Startup authority now uses **active path** `src/testbot/entrypoints/sat_cli.py::main(...)`; `sat_chatbot_memory_v2.main(...)` remains a compatibility delegator.
 
 ### Verified non-changes
 - Canonical stage names/order contract remains `observe.turn -> ... -> answer.commit`.
