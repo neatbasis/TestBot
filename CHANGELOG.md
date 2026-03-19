@@ -26,13 +26,17 @@ For each changelog entry, answer these three questions explicitly:
 #### 3) Why this step was taken in this order?
 - Completing deprecation metadata + import-boundary enforcement before symbol deletion creates an auditable, low-risk retirement path and prevents new dependency growth on deprecated aliases.
 
+#### 4) Lifecycle labels
+- `run_answer_stage_flow`: **compatibility delegator**, **deprecated**.
+- `evaluate_alignment_decision` (shim in monolith): **compatibility delegator**, **deprecated**.
+
 #### Compatibility lifecycle status snapshot
 
 | Symbol | Status | Removal target | Removal-ready criteria |
 |---|---|---|---|
-| `run_answer_stage_flow` | **still present** (deprecated passthrough alias) | 2026-04-01 | all internal callers and non-compatibility tests import `run_canonical_answer_stage_flow` |
-| `evaluate_alignment_decision` shim in `sat_chatbot_memory_v2` | **still present** (deprecated passthrough alias) | 2026-04-01 | all callers import from `testbot.logic.alignment` while compatibility passthrough tests remain green |
-| `_run_full_canonical_turn_from_seeded_artifacts` | **removed** | removed 2026-03-19 | n/a |
+| `run_answer_stage_flow` | **compatibility delegator** + **deprecated** | 2026-04-01 | all internal callers and non-compatibility tests import `run_canonical_answer_stage_flow` |
+| `evaluate_alignment_decision` shim in `sat_chatbot_memory_v2` | **compatibility delegator** + **deprecated** | 2026-04-01 | all callers import from `testbot.logic.alignment` while compatibility passthrough tests remain green |
+| `_run_full_canonical_turn_from_seeded_artifacts` | **fully retired** | removed 2026-03-19 | n/a |
 
 ### 1) What moved, and where did it land?
 - **Old path/symbol:** local helper `_is_definitional_query_form(...)` defined and called in `src/testbot/sat_chatbot_memory_v2.py`.
@@ -179,6 +183,10 @@ For each changelog entry, answer these three questions explicitly:
 #### 3) Why this step was taken in this order?
 - Removing the unused parallel seeded-turn helper first eliminates runtime authority overlap before alias retirement, making the remaining migration path measurable and testable.
 
+#### 4) Lifecycle labels
+- `_run_full_canonical_turn_from_seeded_artifacts(...)`: **fully retired**.
+- `run_answer_stage_flow(...)`: **compatibility delegator**, **deprecated**.
+
 #### Lifecycle status and removal/migration criteria
 - **`_run_full_canonical_turn_from_seeded_artifacts(...)`:** **Removed on 2026-03-19**. No compatibility API retained; restoration is disallowed unless a new audit-approved issue reintroduces it as explicitly non-authoritative test-only helper.
 - **`run_answer_stage_flow(...)` deprecation shim:** keep until all are true, then remove in the next release cut:
@@ -218,6 +226,11 @@ For each changelog entry, answer these three questions explicitly:
 #### 3) Why this step was taken in this order?
 - Eliminating duplicated answer-stage orchestration and closure-capture wiring first establishes a single auditable runtime path before further entrypoint/package migration work.
 
+#### 4) Lifecycle labels
+- `_TurnPipelineStageHandlers` extraction: **extracted**.
+- Seeded answer-stage parallel helper path: **fully retired**.
+- `run_answer_stage_flow(...)`: **compatibility delegator**, **deprecated**.
+
 ### Entry 13
 
 #### 1) What moved, and where did it land?
@@ -252,6 +265,11 @@ For each changelog entry, answer these three questions explicitly:
 #### 3) Why this step was taken in this order?
 - Establishing explicit sequence ownership and extracting entrypoint/decision helpers first reduces monolith authority while preserving stable runtime symbols for incremental migration.
 
+#### 4) Lifecycle labels
+- `CANONICAL_STAGE_SEQUENCE`: **extracted** (explicit canonical owner).
+- `sat_chatbot_memory_v2.main(...)`: **compatibility delegator**.
+- Monolith decision helper wrappers: **delegated**.
+
 ### Entry 15
 
 #### 1) What moved, and where did it land?
@@ -266,3 +284,7 @@ For each changelog entry, answer these three questions explicitly:
 
 #### 3) Why this step was taken in this order?
 - Moving package-script authority only after entrypoint extraction exists and is exercised reduces migration risk by switching installers to an already-established boot surface instead of introducing a brand-new runtime path.
+
+#### 4) Lifecycle labels
+- Package script mapping to `testbot.entrypoints.sat_cli:main`: **extracted**.
+- Monolith `main(...)`: **delegated** and retained as **compatibility delegator**.
