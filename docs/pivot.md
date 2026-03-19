@@ -119,6 +119,15 @@ The first-pass census above remains directionally valid. Since that baseline, se
 These updates reduce immediate drift risk, but they do **not** by themselves complete the structural split of `sat_chatbot_memory_v2.py` or establish package-layer enforcement.
 
 Additional progress since the initial pass (as of 2026-03-19):
+- [~] **Workstream A canonical DTO rollout (stage DTO distinctions)**
+  - [x] `CandidateEncodingSet`
+  - [x] `PreRouteState`
+  - [x] `ContextResolvedState`
+  - [x] `EvidenceSet`
+  - [x] `PolicyDecision`
+  - [x] `ValidationResult`
+  - [x] `RenderedResponse`
+  - [~] Remaining canonical stage DTOs stay in-progress (`TurnObservation`, `IntentResolution`, `AnswerCandidate`, `CommittedTurnState`).
 - ✅ Initial extraction slice landed: canonical stage-closure execution for `_run_canonical_turn_pipeline` now lives in `src/testbot/application/services/turn_service.py`, while `sat_chatbot_memory_v2.py` retains a compatibility façade delegating into the service.
 - ⚠️ This is intentionally scoped as an extraction seam only; it does not yet claim full entrypoint decomposition or finalized package-boundary enforcement.
 - [~] **Scoped seam extraction in `answer_commit.py` landed (partial, non-final)**
