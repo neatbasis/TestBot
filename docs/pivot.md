@@ -127,8 +127,12 @@ Additional progress since the initial pass (as of 2026-03-19):
   - [x] `PolicyDecision`
   - [x] `ValidationResult`
   - [x] `RenderedResponse`
-  - [~] Remaining canonical stage DTOs stay in-progress (`TurnObservation`, `IntentResolution`, `AnswerCandidate`, `CommittedTurnState`).
-- ✅ Initial extraction slice landed: canonical stage-closure execution for `_run_canonical_turn_pipeline` now lives in `src/testbot/application/services/turn_service.py`, while `sat_chatbot_memory_v2.py` retains a compatibility façade delegating into the service.
+  - [x] `TurnObservation`
+  - [x] `IntentResolution`
+  - [x] `AnswerCandidate`
+  - [x] `CommittedTurnState`
+  - [~] DTO migration remains partial for dict-heavy payloads (`PolicyDecision.reasoning`, validation decision maps, and artifact-map conventions) even with the canonical stage DTO class set now present.
+- ✅ Initial extraction slice landed: canonical turn orchestration for `_run_canonical_turn_pipeline` now lives in `src/testbot/application/services/turn_service.py` with `_TurnPipelineStageHandlers(runtime=...)` bound handlers (replacing the earlier inline lambda closure capture pattern), while `sat_chatbot_memory_v2.py` retains a compatibility façade delegating into the service.
 - ⚠️ This is intentionally scoped as an extraction seam only; it does not yet claim full entrypoint decomposition or finalized package-boundary enforcement.
 - [~] **Scoped seam extraction in `answer_commit.py` landed (partial, non-final)**
   - Commit orchestration now has a narrow service entry (`AnswerCommitService.commit`) that consumes upstream `CommitStageInputs`.
@@ -236,7 +240,7 @@ Boundary rules:
 ## 6) Concrete deliverables for next PRs (remaining work)
 
 1. **`ISSUE-0013-A`**: split `sat_chatbot_memory_v2.py` into thin entrypoint + turn service wiring.
-   - Immediate slice: extract `_run_canonical_turn_pipeline` stage closures into a receiver module first, then delegate from current call sites.
+   - Immediate slice is complete: `_run_canonical_turn_pipeline` delegates into the turn service and uses receiver-bound stage handlers; remaining work is thin-entrypoint migration + behavior extraction out of the monolith.
 2. **`ISSUE-0013-B`**: finish `PipelineState` domain purification.
    - Immediate slice: remove direct `memory_cards` dependency (`utc_now_iso`) from `src/testbot/pipeline_state.py` by introducing a domain-local clock boundary.
 3. **`ISSUE-0013-C`**: split stabilization/retrieval into pure logic + port-backed adapters.
