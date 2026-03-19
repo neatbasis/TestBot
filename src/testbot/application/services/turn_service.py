@@ -57,6 +57,20 @@ from testbot.vector_store import MemoryStore
 from testbot.ports import LanguageModel
 
 
+CANONICAL_STAGE_SEQUENCE: tuple[str, ...] = (
+    "observe.turn",
+    "encode.candidates",
+    "stabilize.pre_route",
+    "context.resolve",
+    "intent.resolve",
+    "retrieve.evidence",
+    "policy.decide",
+    "answer.assemble",
+    "answer.validate",
+    "answer.render",
+    "answer.commit",
+)
+
 @dataclass(frozen=True)
 class TurnPipelineDependencies:
     append_session_log: Callable[[str, dict[str, object]], None]
@@ -146,19 +160,20 @@ class _TurnPipelineStageHandlers:
         return answer_commit_stage(ctx, self.runtime)
 
     def canonical_stages(self) -> list[CanonicalStage]:
-        return [
-            CanonicalStage("observe.turn", self.observe_turn),
-            CanonicalStage("encode.candidates", self.encode_candidates),
-            CanonicalStage("stabilize.pre_route", self.stabilize_pre_route),
-            CanonicalStage("context.resolve", self.context_resolve),
-            CanonicalStage("intent.resolve", self.intent_resolve),
-            CanonicalStage("retrieve.evidence", self.retrieve_evidence),
-            CanonicalStage("policy.decide", self.policy_decide),
-            CanonicalStage("answer.assemble", self.answer_assemble),
-            CanonicalStage("answer.validate", self.answer_validate),
-            CanonicalStage("answer.render", self.answer_render),
-            CanonicalStage("answer.commit", self.answer_commit),
-        ]
+        handlers = {
+            "observe.turn": self.observe_turn,
+            "encode.candidates": self.encode_candidates,
+            "stabilize.pre_route": self.stabilize_pre_route,
+            "context.resolve": self.context_resolve,
+            "intent.resolve": self.intent_resolve,
+            "retrieve.evidence": self.retrieve_evidence,
+            "policy.decide": self.policy_decide,
+            "answer.assemble": self.answer_assemble,
+            "answer.validate": self.answer_validate,
+            "answer.render": self.answer_render,
+            "answer.commit": self.answer_commit,
+        }
+        return [CanonicalStage(name, handlers[name]) for name in CANONICAL_STAGE_SEQUENCE]
 
 
 def observe_turn_stage(ctx: CanonicalTurnContext, stage: TurnPipelineStageRuntime) -> CanonicalTurnContext:
@@ -741,4 +756,4 @@ def run_canonical_turn_pipeline_service(
     return final_state, list(final_context.artifacts["hits"])
 
 
-__all__ = ["TurnPipelineDependencies", "run_canonical_turn_pipeline_service"]
+__all__ = ["CANONICAL_STAGE_SEQUENCE", "TurnPipelineDependencies", "run_canonical_turn_pipeline_service"]

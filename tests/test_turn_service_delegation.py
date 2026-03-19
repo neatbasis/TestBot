@@ -15,7 +15,7 @@ def test_run_canonical_turn_pipeline_delegates_to_application_service(monkeypatc
         captured.update(kwargs)
         return "state-result", ["hit-result"]
 
-    monkeypatch.setattr(runtime, "run_canonical_turn_pipeline_service", _service_stub)
+    monkeypatch.setattr(runtime, "run_canonical_turn_pipeline", _service_stub)
 
     result = runtime._run_canonical_turn_pipeline(
         runtime={"test": True},

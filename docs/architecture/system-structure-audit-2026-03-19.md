@@ -199,3 +199,22 @@ Refactor safety should be enforced in CI as extraction occurs:
 Primary collapse is now the **authority concentration** in `sat_chatbot_memory_v2.py` (boot wiring + substantial behavior helpers + compatibility surface), amplified by dict-convention semantic contracts and incomplete boundary enforcement.
 
 In short: the system has strong canonical-order and validation enforcement, but architectural authority and semantic typing are still too centralized in one runtime module.
+
+---
+
+## 2026-03-19 update (entrypoint + service ownership hardening)
+
+### Symbol moves
+- Canonical stage-order authority is now explicitly declared in `src/testbot/application/services/turn_service.py` as `CANONICAL_STAGE_SEQUENCE` and consumed by handler wiring.
+- Decision helper ownership moved from `src/testbot/sat_chatbot_memory_v2.py` to `src/testbot/logic/decision_helpers.py` for:
+  - `selected_decision_from_confidence(...)`
+  - `resolve_answer_routing_from_decision_object(...)`
+  - `resolve_answer_routing_for_stage(...)`
+  - fallback-action mapping used by `decision_object_from_assembled(...)`
+- Canonical turn runner composition now delegates through `src/testbot/application/services/canonical_turn_runtime.py` (`run_canonical_turn_pipeline(...)`), leaving `_run_canonical_turn_pipeline(...)` in the monolith as a compatibility façade.
+- CLI/satellite startup execution path moved into `src/testbot/entrypoints/sat_cli.py::main(...)`; `sat_chatbot_memory_v2.main(...)` is now a compatibility delegator.
+
+### Verified non-changes
+- Canonical stage names/order contract remains `observe.turn -> ... -> answer.commit`.
+- Public compatibility exports in `sat_chatbot_memory_v2.py` remain available; caller migration is incremental, not breaking.
+- Session log schema version and commit receipt wire shape were not intentionally changed in this extraction step.
