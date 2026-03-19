@@ -14,6 +14,8 @@ This document defines static architecture boundaries enforced by `tests/architec
    - `render_answer(...)` call sites are restricted to canonical rendering flow functions.
 5. **Deprecated sat runtime compatibility exports must not be imported by new code.**
    - `run_answer_stage_flow` and `evaluate_alignment_decision` from `testbot.sat_chatbot_memory_v2` are compatibility-only aliases and import-allowlisted only for explicit compatibility tests.
+6. **Canonical runtime entrypoints must not be imported from monolith compatibility module.**
+   - `run_canonical_answer_stage_flow` and `run_chat_loop` must be imported from `testbot.entrypoints.canonical_runtime_entrypoints` in supported runtime call paths (`src/`, `features/`).
 
 ## Why these checks exist
 
@@ -31,6 +33,7 @@ The boundary rules deprecate the following implementation patterns for canonical
 - New end-to-end canonical stage-order declarations outside orchestration modules.
 - New direct `render_answer(...)` shortcut call sites outside the canonical render flow allowlist.
 - New imports of deprecated compatibility aliases from `testbot.sat_chatbot_memory_v2` outside approved compatibility tests.
+- New canonical runtime imports (`run_canonical_answer_stage_flow`, `run_chat_loop`) from `testbot.sat_chatbot_memory_v2` in supported source/feature paths.
 
 Existing legacy paths that still use these patterns should be treated as migration debt and removed behind issue-tracked follow-up work rather than expanded.
 

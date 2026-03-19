@@ -77,6 +77,16 @@ DEPRECATED_IMPORT_COMPAT_TEST_ALLOWLIST: tuple[Path, ...] = (
     REPO_ROOT / "tests" / "test_answer_stage_flow_delegation.py",
 )
 
+CANONICAL_RUNTIME_ENTRYPOINT_EXPORTS: tuple[str, ...] = (
+    "run_canonical_answer_stage_flow",
+    "run_chat_loop",
+)
+
+CANONICAL_RUNTIME_IMPORT_SCAN_ROOTS: tuple[Path, ...] = (
+    REPO_ROOT / "src",
+    REPO_ROOT / "features",
+)
+
 DEPRECATED_EXPORT_SCAN_ROOTS: tuple[Path, ...] = (
     REPO_ROOT / "src",
     REPO_ROOT / "tests",
@@ -217,5 +227,30 @@ def test_deprecated_sat_runtime_exports_are_only_imported_by_approved_compatibil
 
     assert not violations, (
         "Deprecated sat_chatbot_memory_v2 compatibility exports are restricted to approved compatibility tests:\n"
+        + "\n".join(violations)
+    )
+
+
+def test_canonical_runtime_entrypoints_are_not_imported_from_monolith_outside_compatibility() -> None:
+    violations: list[str] = []
+    for scan_root in CANONICAL_RUNTIME_IMPORT_SCAN_ROOTS:
+        for path in scan_root.rglob("*.py"):
+            if path == SRC_ROOT / "sat_chatbot_memory_v2.py":
+                continue
+            tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.ImportFrom):
+                    continue
+                if node.module != "testbot.sat_chatbot_memory_v2":
+                    continue
+                imported_names = {alias.name for alias in node.names}
+                leaked = sorted(imported_names.intersection(CANONICAL_RUNTIME_ENTRYPOINT_EXPORTS))
+                if leaked:
+                    violations.append(
+                        f"{path.relative_to(REPO_ROOT)} imports canonical runtime symbol(s) from monolith: {', '.join(leaked)}"
+                    )
+
+    assert not violations, (
+        "Canonical runtime entrypoints must be imported from testbot.entrypoints.canonical_runtime_entrypoints, not sat_chatbot_memory_v2:\n"
         + "\n".join(violations)
     )

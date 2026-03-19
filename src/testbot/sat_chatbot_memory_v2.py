@@ -135,6 +135,11 @@ from testbot.logic.alignment import (
 from testbot.retrieval_routing import decide_retrieval_routing, is_definitional_query_form
 from testbot.application.services.turn_service import TurnPipelineDependencies
 from testbot.application.services.canonical_turn_runtime import run_canonical_turn_pipeline
+from testbot.entrypoints.canonical_runtime_entrypoints import (
+    CanonicalRuntimeEntrypointDependencies,
+    run_canonical_answer_stage_flow_entrypoint,
+    run_chat_loop_entrypoint,
+)
 from testbot.logic.decision_helpers import (
     decision_object_from_assembled as _decision_object_from_fallback_action,
     resolve_answer_routing_for_stage as _resolve_answer_routing_for_stage_service,
@@ -338,6 +343,16 @@ _DEPRECATED_COMPATIBILITY_ALIASES: dict[str, dict[str, str]] = {
         "canonical_symbol": "testbot.logic.alignment.evaluate_alignment_decision",
         "removal_date": "2026-04-01",
         "removal_criteria": "all callers import from testbot.logic.alignment with compatibility shim coverage retained",
+    },
+    "run_canonical_answer_stage_flow": {
+        "canonical_symbol": "testbot.entrypoints.canonical_runtime_entrypoints.run_canonical_answer_stage_flow_entrypoint",
+        "removal_date": "2026-06-30",
+        "removal_criteria": "all supported callers import canonical answer-stage entrypoint from testbot.entrypoints.canonical_runtime_entrypoints",
+    },
+    "run_chat_loop": {
+        "canonical_symbol": "testbot.entrypoints.canonical_runtime_entrypoints.run_chat_loop_entrypoint",
+        "removal_date": "2026-06-30",
+        "removal_criteria": "all supported callers import canonical chat-loop entrypoint from testbot.entrypoints.canonical_runtime_entrypoints",
     },
 }
 
@@ -2899,6 +2914,58 @@ def _resolve_answer_routing_for_stage(
 def _decision_object_from_assembled(assembled: AnswerAssembleResult) -> DecisionObject:
     fallback_action = str(assembled.fallback_action or "")
     return _decision_object_from_fallback_action(fallback_action)
+
+
+def _build_default_runtime_capability_status() -> RuntimeCapabilityStatus:
+    return RuntimeCapabilityStatus(
+        ollama_available=True,
+        ha_available=False,
+        effective_mode="cli",
+        requested_mode="cli",
+        daemon_mode=False,
+        fallback_reason=None,
+        memory_backend="in_memory",
+        debug_enabled=False,
+        debug_verbose=False,
+        text_clarification_available=True,
+        satellite_ask_available=False,
+    )
+
+
+def _build_default_capability_snapshot(status: RuntimeCapabilityStatus) -> CapabilitySnapshot:
+    return CapabilitySnapshot(
+        runtime={},
+        requested_mode=status.requested_mode,
+        daemon_mode=status.daemon_mode,
+        effective_mode=status.effective_mode,
+        fallback_reason=status.fallback_reason,
+        exit_reason=None,
+        ha_error=None,
+        ollama_error=None,
+        runtime_capability_status=status,
+    )
+
+
+def _canonical_runtime_entrypoint_dependencies() -> CanonicalRuntimeEntrypointDependencies:
+    return CanonicalRuntimeEntrypointDependencies(
+        run_canonical_turn_pipeline=_run_canonical_turn_pipeline,
+        build_default_runtime_capability_status=_build_default_runtime_capability_status,
+        build_capability_snapshot=_build_default_capability_snapshot,
+        poll_pending_ingestion_obligations=_poll_pending_ingestion_obligations,
+        emit_obligation_transition=_emit_obligation_transition,
+        process_background_ingestion_completion=_process_background_ingestion_completion,
+        append_session_log=append_session_log,
+        ambiguity_score=_ambiguity_score,
+        user_followup_signal_proxy=_user_followup_signal_proxy,
+        intent_telemetry_payload=_intent_telemetry_payload,
+        build_debug_turn_payload=_build_debug_turn_payload,
+        format_debug_turn_trace_payload=_format_debug_turn_trace_payload,
+        is_clarification_answer=is_clarification_answer,
+        is_capabilities_help_answer=_is_capabilities_help_answer,
+        answer_commit_persistence=answer_commit_persistence,
+        utc_now_iso=_utc_now_iso,
+        obligation_timeout_seconds=BACKGROUND_INGESTION_OBLIGATION_TIMEOUT_SECONDS,
+    )
 
 
 def run_canonical_answer_stage_flow(

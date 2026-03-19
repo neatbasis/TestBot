@@ -8,12 +8,13 @@ from langchain_ollama import ChatOllama, OllamaEmbeddings
 from testbot.clock import SystemClock
 from testbot.entrypoints.sat_runtime_modes import run_cli_mode, run_satellite_mode
 from testbot.observability.session_log import append_session_log
+from testbot.entrypoints.canonical_runtime_entrypoints import run_chat_loop_entrypoint
 from testbot.sat_chatbot_memory_v2 import (
+    _canonical_runtime_entrypoint_dependencies,
     build_capability_snapshot,
     parse_args,
     print_startup_status,
     read_runtime_env,
-    run_chat_loop,
     run_source_ingestion,
     sat_say,
 )
@@ -83,7 +84,7 @@ def main(argv: list[str] | None = None) -> None:
             token=str(runtime["ha_api_secret"]),
             entity_id=str(runtime["ha_satellite_entity_id"]),
             clock=clock,
-            run_chat_loop=run_chat_loop,
+            run_chat_loop=lambda **kwargs: run_chat_loop_entrypoint(**kwargs, deps=_canonical_runtime_entrypoint_dependencies()),
             satellite_say=sat_say,
         )
         return
@@ -96,5 +97,5 @@ def main(argv: list[str] | None = None) -> None:
         near_tie_delta=float(runtime["memory_near_tie_delta"]),
         capability_snapshot=capability_snapshot,
         clock=clock,
-        run_chat_loop=run_chat_loop,
+        run_chat_loop=lambda **kwargs: run_chat_loop_entrypoint(**kwargs, deps=_canonical_runtime_entrypoint_dependencies()),
     )
