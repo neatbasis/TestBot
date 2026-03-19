@@ -7,6 +7,43 @@ from testbot.policy_decision import DecisionClass, DecisionObject
 
 
 @dataclass(frozen=True)
+class PendingRepairState:
+    repair_required_by_policy: bool
+    repair_offered_to_user: bool
+    offer_type: str = ""
+    reason: str = "none"
+    followup_route: str = ""
+
+    @classmethod
+    def from_mapping(cls, payload: dict[str, object]) -> PendingRepairState:
+        return cls(
+            repair_required_by_policy=bool(payload.get("repair_required_by_policy", False)),
+            repair_offered_to_user=bool(payload.get("repair_offered_to_user", False)),
+            offer_type=str(payload.get("offer_type") or ""),
+            reason=str(payload.get("reason") or "none"),
+            followup_route=str(payload.get("followup_route") or ""),
+        )
+
+    def as_mapping(self) -> dict[str, object]:
+        data: dict[str, object] = {
+            "repair_required_by_policy": self.repair_required_by_policy,
+            "repair_offered_to_user": self.repair_offered_to_user,
+            "reason": self.reason,
+        }
+        if self.offer_type:
+            data["offer_type"] = self.offer_type
+        if self.followup_route:
+            data["followup_route"] = self.followup_route
+        return data
+
+    def get(self, key: str, default: object = None) -> object:
+        return self.as_mapping().get(key, default)
+
+    def __getitem__(self, key: str) -> object:
+        return self.as_mapping()[key]
+
+
+@dataclass(frozen=True)
 class AnswerCandidate:
     """Contract-first answer assembly output.
 
@@ -19,11 +56,15 @@ class AnswerCandidate:
     retrieval_branch: str
     rationale: str
     evidence_counts: dict[str, int]
-    pending_repair_state: dict[str, object]
+    pending_repair_state: PendingRepairState | dict[str, object]
     pending_ingestion_request_id: str
     resolved_obligations: list[str]
     remaining_obligations: list[str]
     confirmed_user_facts: list[str]
+
+    def __post_init__(self) -> None:
+        if isinstance(self.pending_repair_state, dict):
+            object.__setattr__(self, "pending_repair_state", PendingRepairState.from_mapping(self.pending_repair_state))
 
 
 def assemble_answer_contract(
@@ -65,16 +106,16 @@ def assemble_answer_contract(
         retrieval_branch=decision.retrieval_branch,
         rationale=decision.rationale,
         evidence_counts=evidence_counts,
-        pending_repair_state={
-            "repair_required_by_policy": repair_required_by_policy,
-            "repair_offered_to_user": repair_required_by_policy or offer_bearing,
-            "offer_type": offer_type if offer_bearing else "",
-            "reason": (
+        pending_repair_state=PendingRepairState(
+            repair_required_by_policy=repair_required_by_policy,
+            repair_offered_to_user=repair_required_by_policy or offer_bearing,
+            offer_type=offer_type if offer_bearing else "",
+            reason=(
                 "repair_required_by_policy" if repair_required_by_policy
                 else "offer_bearing_answer" if offer_bearing
                 else "none"
             ),
-        },
+        ),
         pending_ingestion_request_id=(pending_ingestion_request_id if repair_required_by_policy else ""),
         resolved_obligations=resolved_obligations,
         remaining_obligations=remaining_obligations,

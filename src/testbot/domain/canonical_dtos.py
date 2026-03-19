@@ -1,16 +1,22 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Any
 
+from testbot.answer_commit import CommittedTurnState as LegacyCommittedTurnState
+from testbot.answer_commit import PendingRepairState as LegacyPendingRepairState
+from testbot.answer_assembly import AnswerCandidate as LegacyAnswerCandidate
 from testbot.answer_rendering import RenderedAnswer
 from testbot.answer_validation import ValidatedAnswer
 from testbot.candidate_encoding import DialogueStateCandidate, EncodedTurnCandidates, FactCandidate, RepairCandidate, SpeechActCandidate
 from testbot.context_resolution import ContinuityPosture, ResolvedContext
 from testbot.evidence_retrieval import EvidenceBundle, EvidenceRecord
+from testbot.intent_resolution import ResolvedIntent
 from testbot.intent_router import IntentType
 from testbot.pipeline_state import ProvenanceType
 from testbot.policy_decision import DecisionClass, DecisionObject
 from testbot.stabilization import StabilizedTurnState
+from testbot.turn_observation import TurnObservation as LegacyTurnObservation
 
 
 @dataclass(frozen=True)
@@ -172,6 +178,204 @@ class PolicyDecision:
 
 
 @dataclass(frozen=True)
+class PendingRepairState:
+    repair_required_by_policy: bool = False
+    repair_offered_to_user: bool = False
+    offer_type: str = ""
+    reason: str = "none"
+    followup_route: str = ""
+
+    @classmethod
+    def from_mapping(cls, raw: dict[str, Any]) -> PendingRepairState:
+        return cls(
+            repair_required_by_policy=bool(raw.get("repair_required_by_policy", False)),
+            repair_offered_to_user=bool(raw.get("repair_offered_to_user", False)),
+            offer_type=str(raw.get("offer_type") or ""),
+            reason=str(raw.get("reason") or "none"),
+            followup_route=str(raw.get("followup_route") or ""),
+        )
+
+    @classmethod
+    def from_legacy(cls, state: LegacyPendingRepairState) -> PendingRepairState:
+        return cls(
+            repair_required_by_policy=state.repair_required_by_policy,
+            repair_offered_to_user=state.repair_offered_to_user,
+            offer_type=state.offer_type,
+            reason=state.reason,
+            followup_route=state.followup_route,
+        )
+
+    def to_mapping(self) -> dict[str, object]:
+        payload: dict[str, object] = {
+            "repair_required_by_policy": self.repair_required_by_policy,
+            "repair_offered_to_user": self.repair_offered_to_user,
+            "reason": self.reason,
+        }
+        if self.offer_type:
+            payload["offer_type"] = self.offer_type
+        if self.followup_route:
+            payload["followup_route"] = self.followup_route
+        return payload
+
+    def to_legacy(self) -> LegacyPendingRepairState:
+        return LegacyPendingRepairState(
+            repair_required_by_policy=self.repair_required_by_policy,
+            repair_offered_to_user=self.repair_offered_to_user,
+            offer_type=self.offer_type,
+            reason=self.reason,
+            followup_route=self.followup_route,
+        )
+
+
+@dataclass(frozen=True)
+class TurnObservation:
+    turn_id: str
+    utterance: str
+    observed_at: str
+    speaker: str
+    channel: str
+    classified_intent: str
+    resolved_intent: str
+
+    @classmethod
+    def from_legacy(cls, legacy: LegacyTurnObservation) -> TurnObservation:
+        return cls(
+            turn_id=legacy.turn_id,
+            utterance=legacy.utterance,
+            observed_at=legacy.observed_at,
+            speaker=legacy.speaker,
+            channel=legacy.channel,
+            classified_intent=legacy.classified_intent,
+            resolved_intent=legacy.resolved_intent,
+        )
+
+    def to_legacy(self) -> LegacyTurnObservation:
+        return LegacyTurnObservation(
+            turn_id=self.turn_id,
+            utterance=self.utterance,
+            observed_at=self.observed_at,
+            speaker=self.speaker,
+            channel=self.channel,
+            classified_intent=self.classified_intent,
+            resolved_intent=self.resolved_intent,
+        )
+
+
+@dataclass(frozen=True)
+class IntentResolution:
+    classified_intent: IntentType
+    resolved_intent: IntentType
+    rationale: str
+
+    @classmethod
+    def from_legacy(cls, legacy: ResolvedIntent) -> IntentResolution:
+        return cls(
+            classified_intent=legacy.classified_intent,
+            resolved_intent=legacy.resolved_intent,
+            rationale=legacy.rationale,
+        )
+
+    def to_legacy(self) -> ResolvedIntent:
+        return ResolvedIntent(
+            classified_intent=self.classified_intent,
+            resolved_intent=self.resolved_intent,
+            rationale=self.rationale,
+        )
+
+
+@dataclass(frozen=True)
+class ReasoningTrace:
+    values: tuple[tuple[str, object], ...] = ()
+
+    @classmethod
+    def from_mapping(cls, mapping: dict[str, object]) -> ReasoningTrace:
+        return cls(values=tuple((str(k), v) for k, v in mapping.items()))
+
+    def to_mapping(self) -> dict[str, object]:
+        return {k: v for k, v in self.values}
+
+
+@dataclass(frozen=True)
+class AnswerCandidate:
+    decision_class: str
+    rendered_class: str
+    retrieval_branch: str
+    rationale: str
+    evidence_counts: tuple[tuple[str, int], ...]
+    pending_repair_state: PendingRepairState
+    pending_ingestion_request_id: str
+    resolved_obligations: tuple[str, ...]
+    remaining_obligations: tuple[str, ...]
+    confirmed_user_facts: tuple[str, ...]
+
+    @classmethod
+    def from_legacy(cls, legacy: LegacyAnswerCandidate) -> AnswerCandidate:
+        return cls(
+            decision_class=legacy.decision_class,
+            rendered_class=legacy.rendered_class,
+            retrieval_branch=legacy.retrieval_branch,
+            rationale=legacy.rationale,
+            evidence_counts=tuple((str(k), int(v)) for k, v in legacy.evidence_counts.items()),
+            pending_repair_state=PendingRepairState.from_legacy(legacy.pending_repair_state),
+            pending_ingestion_request_id=legacy.pending_ingestion_request_id,
+            resolved_obligations=tuple(legacy.resolved_obligations),
+            remaining_obligations=tuple(legacy.remaining_obligations),
+            confirmed_user_facts=tuple(legacy.confirmed_user_facts),
+        )
+
+    def to_legacy(self) -> LegacyAnswerCandidate:
+        return LegacyAnswerCandidate(
+            decision_class=self.decision_class,
+            rendered_class=self.rendered_class,
+            retrieval_branch=self.retrieval_branch,
+            rationale=self.rationale,
+            evidence_counts={k: v for k, v in self.evidence_counts},
+            pending_repair_state=self.pending_repair_state.to_legacy(),
+            pending_ingestion_request_id=self.pending_ingestion_request_id,
+            resolved_obligations=list(self.resolved_obligations),
+            remaining_obligations=list(self.remaining_obligations),
+            confirmed_user_facts=list(self.confirmed_user_facts),
+        )
+
+
+@dataclass(frozen=True)
+class CommittedTurnState:
+    turn_id: str
+    commit_stage: str
+    rendered_text: str
+    pending_repair_state: PendingRepairState
+    pending_ingestion_request_id: str
+    resolved_obligations: tuple[str, ...]
+    remaining_obligations: tuple[str, ...]
+    confirmed_user_facts: tuple[str, ...]
+
+    @classmethod
+    def from_legacy(cls, legacy: LegacyCommittedTurnState) -> CommittedTurnState:
+        return cls(
+            turn_id=legacy.turn_id,
+            commit_stage=legacy.commit_stage,
+            rendered_text=legacy.rendered_text,
+            pending_repair_state=PendingRepairState.from_legacy(legacy.pending_repair_state),
+            pending_ingestion_request_id=legacy.pending_ingestion_request_id,
+            resolved_obligations=tuple(legacy.resolved_obligations),
+            remaining_obligations=tuple(legacy.remaining_obligations),
+            confirmed_user_facts=tuple(legacy.confirmed_user_facts),
+        )
+
+    def to_legacy(self) -> LegacyCommittedTurnState:
+        return LegacyCommittedTurnState(
+            turn_id=self.turn_id,
+            commit_stage=self.commit_stage,
+            rendered_text=self.rendered_text,
+            pending_repair_state=self.pending_repair_state.to_legacy(),
+            pending_ingestion_request_id=self.pending_ingestion_request_id,
+            resolved_obligations=list(self.resolved_obligations),
+            remaining_obligations=list(self.remaining_obligations),
+            confirmed_user_facts=list(self.confirmed_user_facts),
+        )
+
+
+@dataclass(frozen=True)
 class ValidationResult:
     passed: bool
     failures: tuple[str, ...] = ()
@@ -285,19 +489,45 @@ def rendered_response_from_rendered_answer(rendered: RenderedAnswer) -> Rendered
     return RenderedResponse.from_rendered_answer(rendered)
 
 
+def turn_observation_from_legacy(observation: LegacyTurnObservation) -> TurnObservation:
+    return TurnObservation.from_legacy(observation)
+
+
+def intent_resolution_from_legacy(resolution: ResolvedIntent) -> IntentResolution:
+    return IntentResolution.from_legacy(resolution)
+
+
+def answer_candidate_from_legacy(candidate: LegacyAnswerCandidate) -> AnswerCandidate:
+    return AnswerCandidate.from_legacy(candidate)
+
+
+def committed_turn_state_from_legacy(committed: LegacyCommittedTurnState) -> CommittedTurnState:
+    return CommittedTurnState.from_legacy(committed)
+
+
 __all__ = [
+    "AnswerCandidate",
     "CandidateEncodingSet",
+    "CommittedTurnState",
     "ContextResolvedState",
     "EvidenceSet",
+    "IntentResolution",
+    "PendingRepairState",
     "PolicyDecision",
     "PreRouteState",
+    "ReasoningTrace",
     "RenderedResponse",
+    "TurnObservation",
     "ValidationResult",
+    "answer_candidate_from_legacy",
     "candidate_encoding_set_from_encoded_turn_candidates",
+    "committed_turn_state_from_legacy",
     "context_resolved_state_from_resolved_context",
     "evidence_set_from_evidence_bundle",
+    "intent_resolution_from_legacy",
     "policy_decision_from_decision_object",
     "pre_route_state_from_stabilized_turn_state",
     "rendered_response_from_rendered_answer",
+    "turn_observation_from_legacy",
     "validation_result_from_validated_answer",
 ]

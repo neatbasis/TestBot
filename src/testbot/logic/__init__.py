@@ -37,3 +37,6 @@ __all__ = [
     "validate_answer_contract",
     "validate_general_knowledge_contract",
 ]
+from testbot.logic.stage_artifacts import StageArtifacts
+
+__all__.append("StageArtifacts")
