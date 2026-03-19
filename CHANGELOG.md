@@ -37,3 +37,17 @@ For each changelog entry, answer these three questions explicitly:
 
 #### 3) Why this step was taken in this order?
 - Freezing and documenting the supported export surface before further extraction reduces accidental coupling and allows follow-on moves to preserve compatibility by contract rather than by incidental imports.
+
+### Entry 3
+
+#### 1) What moved, and where did it land?
+- **Old path/symbol:** high-frequency stage artifact keys were read via raw string lookups (for example `confidence_decision["scored_candidates"]`, `alignment_decision["dimension_inputs"]`, and `commit_receipt["commit_stage"]`) in `src/testbot/sat_chatbot_memory_v2.py`.
+- **New path/symbol:** typed fields + accessors were added in `src/testbot/pipeline_state.py` (`ConfidenceDecision.scored_candidates`, `AlignmentDecision.dimension_inputs`, `CommitReceiptArtifact.commit_stage` and related commit metadata), and the main call sites now use those typed accessors/fields.
+- **Delegation shim:** `StageArtifact.get(...)` and `extra` remain in place for backward-compatible unknown keys.
+
+#### 2) What did not change?
+- Session logging event names and overall payload shape were preserved; only the value-read mechanism shifted from ad-hoc key strings to typed artifacts.
+- Unknown artifact keys are still retained through `extra`, so older producers/consumers can continue to round-trip non-contract metadata.
+
+#### 3) Why this step was taken in this order?
+- Typing and enforcing the highest-frequency read paths first creates a safer contract surface for subsequent pipeline extraction while minimizing behavior risk in lower-traffic keys.
