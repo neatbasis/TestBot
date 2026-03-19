@@ -6,6 +6,7 @@ import sys
 from langchain_ollama import ChatOllama, OllamaEmbeddings
 
 from testbot.clock import SystemClock
+from testbot.observability.session_log import append_session_log
 from testbot.sat_chatbot_memory_v2 import (
     _parse_args,
     _print_startup_status,
@@ -13,7 +14,6 @@ from testbot.sat_chatbot_memory_v2 import (
     _run_cli_mode,
     _run_satellite_mode,
     _run_source_ingestion,
-    append_session_log,
     build_capability_snapshot,
 )
 from testbot.vector_store import build_memory_store

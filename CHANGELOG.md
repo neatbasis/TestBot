@@ -12,6 +12,25 @@ For each changelog entry, answer these three questions explicitly:
 
 ## 2026-03-19
 
+
+### Entry 8
+
+#### 1) What moved, and where did it land?
+- **Old path/symbol:** `append_session_log(...)` full implementation in `src/testbot/sat_chatbot_memory_v2.py` (including JSON-safe normalization and schema-version stamping).
+- **New path/symbol:** canonical owner is now `src/testbot/observability/session_log.py::append_session_log(...)` with `SESSION_LOG_SCHEMA_VERSION` colocated in the same module.
+- **Delegation shim:** `src/testbot/sat_chatbot_memory_v2.py::append_session_log(...)` remains as a compatibility delegator preserving the original call signature and forwarding to the canonical owner.
+
+#### 2) What did not change?
+- Session-log row contract remains unchanged (`ts`, `event`, `schema_version`, plus normalized payload keys), and schema version behavior remains `2`.
+- Legacy import path (`testbot.sat_chatbot_memory_v2.append_session_log`) remains available while active callers can import the canonical path (`testbot.observability.session_log.append_session_log`).
+
+#### 3) Why this step was taken in this order?
+- Moving the telemetry sink first while keeping a stable shim reduces coupling risk for broad call-site migration and preserves backward compatibility for tests/runtime integrations.
+
+#### 4) Lifecycle labels
+- `testbot.observability.session_log.append_session_log`: **canonical owner**.
+- `testbot.sat_chatbot_memory_v2.append_session_log`: **compatibility delegator**.
+
 ### Entry 0
 
 #### 1) What moved, and where did it land?
