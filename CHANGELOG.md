@@ -93,3 +93,21 @@ For each changelog entry, answer these three questions explicitly:
 
 #### 3) Why this step was taken in this order?
 - Isolating timestamp sourcing behind a small domain-local interface first removes an explicit adapter dependency with minimal surface-area change before broader `pipeline_state` and boundary-enforcement refactors.
+
+### Entry 7
+
+#### 1) What moved, and where did it land?
+- **Old path/symbol:** mixed stabilization decision + persistence orchestration in `src/testbot/stabilization.py` (`stabilize_pre_route(...)` performed planning and storage writes in one flow).
+- **New path/symbol:** `build_stabilization_plan(...)` now computes deterministic stabilization artifacts and next-state transitions as pure logic, while `persist_stabilization_records(...)` handles adapter-facing writes; `stabilize_pre_route(...)` delegates to those seams.
+- **Delegation shim:** `stabilize_pre_route(...)` remains the compatibility entrypoint and now acts as a thin orchestrator.
+- **Old path/symbol:** retrieval bundling logic in `src/testbot/evidence_retrieval.py` depended directly on provider-native `Document` mapping in the same path.
+- **New path/symbol:** domain-level `RetrievalInputRecord` plus pure logic functions (`evidence_record_from_input`, `route_record_channel`, `build_evidence_bundle_from_input_records`) now hold retrieval decision/bundling behavior; `Document` inputs are mapped through adapter-facing entrypoints.
+- **Delegation shim:** existing `build_evidence_bundle_from_docs_and_scores(...)` and `build_evidence_bundle_from_hits(...)` remain available and delegate through the new domain input seam.
+
+#### 2) What did not change?
+- Retrieval posture semantics (`empty_evidence`, `scored_empty`, `scored_non_empty`) and policy-consumption channel ordering were intentionally preserved.
+- Stage contract behavior for pre-route stabilization (candidate facts, same-turn exclusion, and retrieval constraints) was intentionally preserved at API level.
+- No new backend dependency was introduced; deterministic tests continue to run without concrete vector/provider services.
+
+#### 3) Why this step was taken in this order?
+- Introducing pure-logic seams before port/protocol extraction reduces coupling risk early while keeping existing runtime call sites stable for subsequent `ISSUE-0013` boundary work.
