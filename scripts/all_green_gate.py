@@ -208,6 +208,36 @@ def extract_kpi_reason_classification(stdout: str) -> str | None:
     return reason if isinstance(reason, str) else None
 
 
+def architecture_boundary_report_outcome(artifact_path: str | None) -> tuple[bool, str | None]:
+    if not artifact_path:
+        return False, None
+    report_path = Path(artifact_path)
+    if not report_path.is_absolute():
+        report_path = REPO_ROOT / report_path
+    if not report_path.exists():
+        return True, "report_missing"
+    try:
+        payload = json.loads(report_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return True, "report_unreadable"
+
+    summary = payload.get("summary") if isinstance(payload, dict) else None
+    counts = summary.get("counts_by_classification") if isinstance(summary, dict) else None
+    if not isinstance(counts, dict):
+        return True, "classification_missing"
+
+    classifications = ("violation", "temporary_exception", "deprecated_compatibility")
+    parts: list[str] = []
+    dirty = False
+    for classification in classifications:
+        value = counts.get(classification)
+        if not isinstance(value, int):
+            return True, f"classification_invalid:{classification}"
+        parts.append(f"{classification}={value}")
+        dirty = dirty or value > 0
+    return dirty, ",".join(parts)
+
+
 def resolve_best_effort_diff_base_ref(base_ref: str) -> tuple[str | None, list[str]]:
     """Resolve base refs for diff-oriented checks that can run on fallback history."""
     return governance_resolve_base_ref(
@@ -433,6 +463,16 @@ def build_checks(
                     name="qa_validate_markdown_paths",
                     command=[sys.executable, "scripts/validate_markdown_paths.py"],
                 ),
+                GateCheck(
+                    name="qa_architecture_boundary_report",
+                    command=[
+                        sys.executable,
+                        "scripts/architecture_boundary_report.py",
+                        "--output",
+                        "artifacts/qa/architecture-boundary-report.json",
+                    ],
+                    blocking=False,
+                ),
             ]
         )
 
@@ -486,6 +526,13 @@ def run_check(check: GateCheck) -> CheckResult:
         status = "passed" if code == 0 else "failed"
         if check.name == "qa_validate_kpi_guardrails":
             diagnostic_reason = extract_kpi_reason_classification(completed.stdout)
+        if check.name == "qa_architecture_boundary_report":
+            report_is_dirty, report_reason = architecture_boundary_report_outcome(
+                extract_artifact_path(check.command)
+            )
+            if report_is_dirty:
+                status = "failed"
+            diagnostic_reason = report_reason
     except FileNotFoundError:
         code = 127
         status = "failed"

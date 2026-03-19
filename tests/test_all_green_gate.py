@@ -237,6 +237,19 @@ def test_build_checks_includes_pipeline_stage_conformance_validator() -> None:
     check = next(check for check in checks if check.name == "safety_validate_pipeline_stage_conformance")
     assert check.command[1:] == ["scripts/validate_pipeline_stage_conformance.py"]
 
+
+def test_build_checks_includes_non_blocking_architecture_boundary_report() -> None:
+    checks = all_green_gate.build_checks(base_ref="origin/main", kpi_guardrail_mode="optional", profile="readiness")
+
+    check = next(check for check in checks if check.name == "qa_architecture_boundary_report")
+    assert check.command[1:] == [
+        "scripts/architecture_boundary_report.py",
+        "--output",
+        "artifacts/qa/architecture-boundary-report.json",
+    ]
+    assert check.blocking is False
+
+
 def test_build_checks_readiness_profile_has_expected_check_names() -> None:
     checks = all_green_gate.build_checks(base_ref="origin/main", kpi_guardrail_mode="optional", profile="readiness")
 
@@ -250,6 +263,7 @@ def test_build_checks_readiness_profile_has_expected_check_names() -> None:
         "qa_validate_issues",
         "qa_validate_invariant_sync",
         "qa_validate_markdown_paths",
+        "qa_architecture_boundary_report",
         "qa_aggregate_turn_analytics",
         "qa_validate_kpi_guardrails",
     ]
@@ -329,6 +343,85 @@ def test_extract_kpi_reason_classification_reads_structured_reason() -> None:
     )
 
     assert reason == "missing_input"
+
+
+def test_architecture_boundary_report_outcome_is_dirty_when_classifications_present(tmp_path: Path) -> None:
+    report_path = tmp_path / "architecture-boundary-report.json"
+    report_path.write_text(
+        json.dumps(
+            {
+                "summary": {
+                    "counts_by_classification": {
+                        "violation": 1,
+                        "temporary_exception": 2,
+                        "deprecated_compatibility": 3,
+                        "allowed": 9,
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    dirty, reason = all_green_gate.architecture_boundary_report_outcome(str(report_path))
+
+    assert dirty is True
+    assert reason == "violation=1,temporary_exception=2,deprecated_compatibility=3"
+
+
+def test_architecture_boundary_report_outcome_is_clean_when_only_allowed(tmp_path: Path) -> None:
+    report_path = tmp_path / "architecture-boundary-report.json"
+    report_path.write_text(
+        json.dumps(
+            {
+                "summary": {
+                    "counts_by_classification": {
+                        "violation": 0,
+                        "temporary_exception": 0,
+                        "deprecated_compatibility": 0,
+                        "allowed": 4,
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    dirty, reason = all_green_gate.architecture_boundary_report_outcome(str(report_path))
+
+    assert dirty is False
+    assert reason == "violation=0,temporary_exception=0,deprecated_compatibility=0"
+
+
+def test_run_check_marks_architecture_boundary_report_dirty_as_failed(monkeypatch: pytest.MonkeyPatch) -> None:
+    check = all_green_gate.GateCheck(
+        name="qa_architecture_boundary_report",
+        command=[
+            all_green_gate.sys.executable,
+            "scripts/architecture_boundary_report.py",
+            "--output",
+            "artifacts/qa/architecture-boundary-report.json",
+        ],
+        blocking=False,
+    )
+
+    class _Completed:
+        returncode = 0
+        stdout = ""
+        stderr = ""
+
+    monkeypatch.setattr(all_green_gate.subprocess, "run", lambda *_args, **_kwargs: _Completed())
+    monkeypatch.setattr(
+        all_green_gate,
+        "architecture_boundary_report_outcome",
+        lambda _artifact_path: (True, "violation=1,temporary_exception=0,deprecated_compatibility=0"),
+    )
+
+    result = all_green_gate.run_check(check)
+
+    assert result.status == "failed"
+    assert result.artifact_path == "artifacts/qa/architecture-boundary-report.json"
+    assert result.diagnostic_reason == "violation=1,temporary_exception=0,deprecated_compatibility=0"
 
 
 def test_summarize_includes_warning_reason_diagnostics() -> None:
