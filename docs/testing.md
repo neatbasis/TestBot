@@ -201,6 +201,75 @@ Severity/state interpretation for warning-mode KPI results:
 
 When KPI warnings persist in `optional` mode, repository policy requires issue linkage in all three locations for each review cycle: the canonical issue record decision note, `docs/issues/RED_TAG.md` triage note (when red-tagged), and the sprint KPI evidence note.
 
+## Architecture boundary report mode policy (authoritative)
+
+Current mode: `warning` in the canonical readiness gate.
+The architecture boundary report runs during `python scripts/all_green_gate.py --profile readiness` and is surfaced as readiness evidence. Boundary-report findings do not currently fail the gate by themselves. Blocking checks such as `product_behave` and `qa_pytest_not_live_smoke` remain fail-closed and continue to determine gate failure.
+
+The architecture boundary report rollout supports exactly three modes:
+
+- `report_only`
+- `warning`
+- `blocking`
+
+### 1. Scope
+
+The architecture boundary report covers these architectural areas:
+
+- `entrypoints`
+- `application`
+- `logic`
+- `domain`
+- `ports`
+- `adapters`
+- `observability`
+
+Its purpose is to detect architectural drift in placement and dependency direction during the ongoing extraction/hardening phase.
+
+### 2. Classification contract
+
+Architecture boundary report results are classified as:
+
+- `violation`: boundary break not currently sanctioned.
+- `temporary_exception`: known temporary boundary break allowed during migration.
+- `deprecated_compatibility`: compatibility/deprecation surface intentionally retained during retirement window.
+- `allowed`: conforms to current boundary policy.
+
+`temporary_exception` and `deprecated_compatibility` are not equivalent to `allowed`, and both classes must remain visible in readiness evidence.
+
+Temporary compatibility exceptions are allowed only when issue-linked. An unlinked temporary exception must be treated as a violation for governance purposes, even if the boundary report remains non-blocking in the current rollout mode.
+
+### 3. Current gate behavior
+
+Current rollout behavior is fixed as follows:
+
+- The architecture boundary report runs in the readiness gate (`python scripts/all_green_gate.py --profile readiness`).
+- The check is surfaced in gate output and in the JSON summary.
+- Boundary findings currently produce a non-blocking warning outcome.
+- The gate still exits non-zero on blocking-check failures.
+- The architecture report does not override, suppress, or replace existing deprecated alias enforcement.
+
+### 4. Promotion criteria to blocking
+
+Promotion from `warning` to `blocking` is allowed only when all of the following are true:
+
+1. Two consecutive readiness-gate runs in the intended validation environment show:
+
+   - zero unsanctioned `violation` findings,
+   - and no increase in `temporary_exception` count.
+2. Every `temporary_exception` is linked to:
+
+   - an issue ID,
+   - an owning module/package,
+   - a stated removal target or review date.
+3. No new business logic has landed in `sat_chatbot_memory_v2.py` except:
+
+   - compatibility delegators,
+   - warning/deprecation metadata,
+   - or migration-only adapter glue explicitly tracked as temporary.
+4. Existing deprecated alias enforcement remains green.
+5. Promotion is recorded in repo governance artifacts before the default gate mode is changed.
+
 | Test layer | Canonical command | Runtime dependency | CI gate level | Expected runtime | Pass criteria |
 | --- | --- | --- | --- | --- | --- |
 | Local triage gate (default local profile) | `python scripts/all_green_gate.py` | Python dev extras (`behave`, `pytest`) plus local fixtures | **Required for local iteration** | ~20-90s depending on test volume | Exit code `0`; runtime correctness + schema + core deterministic checks pass (BDD, recall eval, log/schema + pipeline-stage conformance, deterministic `pytest -m "not live_smoke"`). |
