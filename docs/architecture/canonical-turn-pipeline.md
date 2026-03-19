@@ -56,6 +56,15 @@ U → I
 
 Intent labels are quotient-like and should be derived only after structure has been preserved.
 
+### Authoritative typed contract surface (implementation source of truth)
+
+Canonical stage contracts are authoritative in code under:
+
+- `src/testbot/domain/canonical_dtos.py` for stage DTOs (`TurnObservation`, `IntentResolution`, `AnswerCandidate`, `CommittedTurnState`, and supporting typed contracts).
+- `src/testbot/logic/stage_artifacts.py` for typed stage artifact accessors used at orchestration boundaries.
+
+When prose and implementation diverge, these typed contracts govern runtime behavior and tests.
+
 ## Stage contracts
 
 ### 1) `observe.turn`

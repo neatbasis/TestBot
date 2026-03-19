@@ -57,33 +57,27 @@ def validate_answer_assembly_boundary(
     alignment_decision: dict[str, object] | None = None,
 ) -> ValidatedAnswer:
     failures: list[str] = []
-    as_mapping = assembly.__dict__
     for key in REQUIRED_ASSEMBLY_KEYS:
-        if key not in as_mapping:
+        if not hasattr(assembly, key):
             failures.append(f"missing_required_field:{key}")
 
-    pending_repair_state = as_mapping.get("pending_repair_state")
-    if not isinstance(pending_repair_state, dict):
-        failures.append("pending_repair_state_not_dict")
-    else:
-        if "repair_required_by_policy" not in pending_repair_state:
-            failures.append("pending_repair_state_missing_repair_required_by_policy")
-        if "repair_offered_to_user" not in pending_repair_state:
-            failures.append("pending_repair_state_missing_repair_offered_to_user")
+    if not isinstance(assembly.pending_repair_state.repair_required_by_policy, bool):
+        failures.append("pending_repair_state_invalid_repair_required_by_policy")
+    if not isinstance(assembly.pending_repair_state.repair_offered_to_user, bool):
+        failures.append("pending_repair_state_invalid_repair_offered_to_user")
 
-    if not isinstance(as_mapping.get("resolved_obligations"), list):
+    if not isinstance(assembly.resolved_obligations, list):
         failures.append("resolved_obligations_not_list")
-    if not isinstance(as_mapping.get("remaining_obligations"), list):
+    if not isinstance(assembly.remaining_obligations, list):
         failures.append("remaining_obligations_not_list")
-    if not isinstance(as_mapping.get("confirmed_user_facts"), list):
+    if not isinstance(assembly.confirmed_user_facts, list):
         failures.append("confirmed_user_facts_not_list")
 
-    pending_ingestion_request_id = as_mapping.get("pending_ingestion_request_id")
-    if not isinstance(pending_ingestion_request_id, str):
+    if not isinstance(assembly.pending_ingestion_request_id, str):
         failures.append("pending_ingestion_request_id_not_str")
 
-    decision_class = str(as_mapping.get("decision_class") or "")
-    rendered_class = str(as_mapping.get("rendered_class") or "")
+    decision_class = str(assembly.decision_class or "")
+    rendered_class = str(assembly.rendered_class or "")
     expected_rendered_class = DECISION_TO_RENDERED_CLASS.get(decision_class)
     if not expected_rendered_class:
         failures.append("decision_class_unknown")

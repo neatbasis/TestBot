@@ -63,11 +63,11 @@ def render_answer(*, assembly: AnswerCandidate, validation: ValidatedAnswer, pre
         text = ""
 
     offer_bearing = (
-        bool(assembly.pending_repair_state.get("repair_offered_to_user"))
-        and not assembly.pending_repair_state.get("repair_required_by_policy")
+        assembly.pending_repair_state.repair_offered_to_user
+        and not assembly.pending_repair_state.repair_required_by_policy
     )
 
-    if assembly.pending_repair_state.get("repair_required_by_policy"):
+    if assembly.pending_repair_state.repair_required_by_policy:
         if assembly.decision_class == "pending_lookup_background_ingestion":
             if text.strip():
                 return RenderedAnswer(rendered_text=text)
@@ -86,7 +86,7 @@ def render_answer(*, assembly: AnswerCandidate, validation: ValidatedAnswer, pre
         return RenderedAnswer(
             rendered_text=text,
             repair_offer_rendered=True,
-            repair_followup_route=str(assembly.pending_repair_state.get("offer_type") or "repair_offer_followup"),
+            repair_followup_route=(assembly.pending_repair_state.offer_type or "repair_offer_followup"),
         )
 
     if text.strip():

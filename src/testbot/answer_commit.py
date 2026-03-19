@@ -10,15 +10,52 @@ from testbot.pipeline_state import CommitReceiptArtifact, PipelineState
 
 
 @dataclass(frozen=True)
+class PendingRepairState:
+    repair_required_by_policy: bool = False
+    repair_offered_to_user: bool = False
+    offer_type: str = ""
+    reason: str = "none"
+    followup_route: str = ""
+
+    def as_mapping(self) -> dict[str, object]:
+        payload: dict[str, object] = {
+            "repair_required_by_policy": self.repair_required_by_policy,
+            "repair_offered_to_user": self.repair_offered_to_user,
+            "reason": self.reason,
+        }
+        if self.offer_type:
+            payload["offer_type"] = self.offer_type
+        if self.followup_route:
+            payload["followup_route"] = self.followup_route
+        return payload
+
+    def get(self, key: str, default: object = None) -> object:
+        return self.as_mapping().get(key, default)
+
+    def __getitem__(self, key: str) -> object:
+        return self.as_mapping()[key]
+
+
+@dataclass(frozen=True)
 class CommittedTurnState:
     turn_id: str
     commit_stage: str
     rendered_text: str
-    pending_repair_state: dict[str, object]
+    pending_repair_state: PendingRepairState | dict[str, object]
     pending_ingestion_request_id: str
     resolved_obligations: list[str]
     remaining_obligations: list[str]
     confirmed_user_facts: list[str]
+
+    def __post_init__(self) -> None:
+        if isinstance(self.pending_repair_state, dict):
+            object.__setattr__(self, "pending_repair_state", PendingRepairState(**{
+                "repair_required_by_policy": bool(self.pending_repair_state.get("repair_required_by_policy", False)),
+                "repair_offered_to_user": bool(self.pending_repair_state.get("repair_offered_to_user", False)),
+                "offer_type": str(self.pending_repair_state.get("offer_type") or ""),
+                "reason": str(self.pending_repair_state.get("reason") or "none"),
+                "followup_route": str(self.pending_repair_state.get("followup_route") or ""),
+            }))
 
 
 @dataclass(frozen=True)
@@ -151,17 +188,26 @@ class AnswerCommitService:
         committed_facts = self.merge_confirmed_user_facts(assembly=assembly, state=state)
 
         repair_offer_rendered = commit_inputs.rendering.repair_offer_rendered
-        pending_repair_state = {
-            **dict(assembly.pending_repair_state),
-            "repair_offered_to_user": repair_offer_rendered,
-        }
+        pending_repair_state = PendingRepairState(
+            repair_required_by_policy=assembly.pending_repair_state.repair_required_by_policy,
+            repair_offered_to_user=repair_offer_rendered,
+            offer_type=assembly.pending_repair_state.offer_type,
+            reason=assembly.pending_repair_state.reason,
+            followup_route=assembly.pending_repair_state.followup_route,
+        )
         if repair_offer_rendered:
-            pending_repair_state["reason"] = "repair_offer_rendered"
-            pending_repair_state["followup_route"] = commit_inputs.rendering.repair_followup_route
+            pending_repair_state = replace(
+                pending_repair_state,
+                reason="repair_offer_rendered",
+                followup_route=commit_inputs.rendering.repair_followup_route,
+            )
         else:
-            pending_repair_state["reason"] = "none"
-            pending_repair_state.pop("followup_route", None)
-            pending_repair_state.pop("offer_type", None)
+            pending_repair_state = replace(
+                pending_repair_state,
+                reason="none",
+                offer_type="",
+                followup_route="",
+            )
 
         commit_receipt = CommitReceiptArtifact.from_mapping(
             {
@@ -169,7 +215,7 @@ class AnswerCommitService:
                 "commit_id": commit_stage_id,
                 "commit_stage": commit_stage_id,
                 "pipeline_state_snapshot": "recorded",
-                "pending_repair_state": pending_repair_state,
+                "pending_repair_state": pending_repair_state.as_mapping(),
                 "pending_ingestion_request_id": assembly.pending_ingestion_request_id,
                 "resolved_obligations": list(assembly.resolved_obligations),
                 "remaining_obligations": list(assembly.remaining_obligations),
@@ -183,7 +229,7 @@ class AnswerCommitService:
             turn_id=turn_id,
             commit_stage=commit_stage_id,
             rendered_text=commit_inputs.rendering.rendered_text,
-            pending_repair_state=dict(pending_repair_state),
+            pending_repair_state=pending_repair_state,
             pending_ingestion_request_id=assembly.pending_ingestion_request_id,
             resolved_obligations=list(assembly.resolved_obligations),
             remaining_obligations=list(assembly.remaining_obligations),
@@ -201,7 +247,7 @@ class AnswerCommitService:
                 basis_statement=commit_inputs.validation.basis_statement,
                 invariant_decisions=commit_inputs.validation.invariant_decisions,
                 alignment_decision=commit_inputs.validation.alignment_decision,
-                pending_repair=(pending_repair_state if repair_offer_rendered else {}),
+                pending_repair=(pending_repair_state.as_mapping() if repair_offer_rendered else {}),
                 commit_receipt=commit_receipt,
             ),
             committed_turn_state,

@@ -22,6 +22,7 @@ from testbot.evidence_retrieval import (
 from testbot.intent_resolution import IntentResolutionInput, resolve as resolve_intent
 from testbot.intent_router import IntentType, extract_intent_facets, planning_pathway_for_intent
 from testbot.memory_strata import SegmentDescriptor, SegmentType, derive_segment_descriptor
+from testbot.logic import StageArtifacts
 from testbot.pipeline_state import PipelineState, append_pipeline_snapshot
 from testbot.policy_decision import DecisionClass, decide as decide_policy, decide_from_evidence
 from testbot.reflection_policy import CapabilityStatus
@@ -108,11 +109,12 @@ class TurnPipelineStageRuntime:
 
 
 def observe_turn_stage(ctx: CanonicalTurnContext, stage: TurnPipelineStageRuntime) -> CanonicalTurnContext:
+    artifacts = StageArtifacts(ctx.artifacts)
     stage.deps.validate_and_log_transition(validate_observe_turn_pre(ctx.state))
     observed_at = stage.clock.now().isoformat()
     observation = observe_turn(
         ctx.state,
-        turn_id=ctx.artifacts["turn_id"],
+        turn_id=artifacts.turn_id,
         observed_at=observed_at,
         speaker="user",
         channel=stage.io_channel,
@@ -307,12 +309,13 @@ def intent_resolve_stage(ctx: CanonicalTurnContext, stage: TurnPipelineStageRunt
 
 
 def retrieve_evidence_stage(ctx: CanonicalTurnContext, stage: TurnPipelineStageRuntime) -> CanonicalTurnContext:
+    artifacts = StageArtifacts(ctx.artifacts)
     background_poll = stage.deps.poll_background_source_ingestion(runtime=stage.runtime)
     background_in_progress = bool(stage.runtime.get("source_ingest_background_in_progress", False))
-    if background_in_progress and not ctx.artifacts.get("pending_ingestion_request_id"):
+    if background_in_progress and not artifacts.pending_ingestion_request_id:
         live_request_id = str(stage.runtime.get("source_ingest_background_request_id") or "")
         if live_request_id:
-            ctx.artifacts["pending_ingestion_request_id"] = live_request_id
+            artifacts.pending_ingestion_request_id = live_request_id
     ctx.artifacts["background_ingestion_in_progress"] = background_in_progress
     if background_poll is not None:
         ctx.artifacts["background_ingestion_poll"] = background_poll
@@ -320,9 +323,9 @@ def retrieve_evidence_stage(ctx: CanonicalTurnContext, stage: TurnPipelineStageR
         if isinstance(poll_payload, dict):
             polled_request_id = str(poll_payload.get("ingestion_request_id") or "")
             if polled_request_id:
-                ctx.artifacts["pending_ingestion_request_id"] = polled_request_id
+                artifacts.pending_ingestion_request_id = polled_request_id
 
-    retrieval_requirement = ctx.artifacts.get("retrieval_requirement") or {}
+    retrieval_requirement = artifacts.retrieval_requirement
     if bool(retrieval_requirement.get("requires_retrieval", False)):
         stage.deps.validate_and_log_transition(validate_retrieve_evidence_pre(ctx.state))
         same_turn_exclusion_doc_ids = set(ctx.state.same_turn_exclusion.get("excluded_doc_ids", []))
@@ -347,7 +350,7 @@ def retrieve_evidence_stage(ctx: CanonicalTurnContext, stage: TurnPipelineStageR
             start_result = stage.deps.start_background_source_ingestion(runtime=stage.runtime, store=stage.store)
             start_request_id = str(start_result.get("ingestion_request_id") or "")
             if start_request_id:
-                ctx.artifacts["pending_ingestion_request_id"] = start_request_id
+                artifacts.pending_ingestion_request_id = start_request_id
             background_in_progress = bool(stage.runtime.get("source_ingest_background_in_progress", False))
         ctx.state = replace(
             ctx.state,
@@ -395,10 +398,11 @@ def retrieve_evidence_stage(ctx: CanonicalTurnContext, stage: TurnPipelineStageR
 
 
 def policy_decide_stage(ctx: CanonicalTurnContext, stage: TurnPipelineStageRuntime) -> CanonicalTurnContext:
+    artifacts = StageArtifacts(ctx.artifacts)
     resolved_intent = IntentType(ctx.state.resolved_intent)
-    retrieval_requirement = ctx.artifacts.get("retrieval_requirement") or {}
+    retrieval_requirement = artifacts.retrieval_requirement
     requires_retrieval = bool(retrieval_requirement.get("requires_retrieval", False))
-    repair_required = bool(ctx.artifacts.get("background_ingestion_in_progress", False))
+    repair_required = artifacts.get_bool("background_ingestion_in_progress", default=False)
     if requires_retrieval:
         stage.deps.validate_and_log_transition(validate_policy_decide_pre(ctx.state))
         stabilized: StabilizedTurnState = ctx.artifacts["stabilized_turn_state"]
@@ -473,6 +477,7 @@ def policy_decide_stage(ctx: CanonicalTurnContext, stage: TurnPipelineStageRunti
 
 
 def answer_assemble_stage(ctx: CanonicalTurnContext, stage: TurnPipelineStageRuntime) -> CanonicalTurnContext:
+    artifacts = StageArtifacts(ctx.artifacts)
     stage.deps.validate_and_log_transition(validate_answer_assemble_pre(ctx.state))
     ctx.state, answer_routing = stage.deps.resolve_answer_routing_for_stage(
         ctx.state,
@@ -500,7 +505,7 @@ def answer_assemble_stage(ctx: CanonicalTurnContext, stage: TurnPipelineStageRun
     ctx.artifacts["answer_assembly_contract"] = assemble_answer_contract(
         decision=decision_object,
         evidence_bundle=retrieval_result_obj.evidence_bundle,
-        pending_ingestion_request_id=str(ctx.artifacts.get("pending_ingestion_request_id") or ""),
+        pending_ingestion_request_id=artifacts.pending_ingestion_request_id,
         offer_bearing=bool(offer_type),
         offer_type=offer_type,
     )
