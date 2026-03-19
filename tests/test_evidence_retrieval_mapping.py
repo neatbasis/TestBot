@@ -6,10 +6,12 @@ from testbot.evidence_retrieval import (
     EvidenceBundle,
     build_evidence_bundle_from_docs_and_scores,
     build_evidence_bundle_from_hits,
+    build_evidence_bundle_from_input_records,
     retrieval_result,
 )
 from testbot.intent_router import IntentType
 from testbot.policy_decision import DecisionClass, decide_from_evidence
+from testbot.sat_chatbot_memory_v2 import _retrieval_input_from_document
 
 
 def test_build_evidence_bundle_from_docs_and_scores_keeps_class_separation() -> None:
@@ -91,6 +93,21 @@ def test_confident_hits_produce_non_empty_bundle_for_memory_recall_decision() ->
 
     decision = decide_from_evidence(intent=IntentType.MEMORY_RECALL, retrieval=retrieval)
     assert decision.decision_class == DecisionClass.ANSWER_FROM_MEMORY
+
+
+def test_adapter_edge_document_to_input_record_mapping_preserves_bundle_parity() -> None:
+    docs_and_scores = [
+        (Document(id="fact-1", page_content="name=Sam", metadata={"type": "profile_fact"}), 0.79),
+        (Document(id="src-1", page_content="calendar evidence", metadata={"type": "source_evidence", "source_type": "calendar"}), 0.88),
+        (Document(id="mem-1", page_content="I asked about Friday", metadata={"type": "user_utterance"}), 0.91),
+    ]
+
+    bundle_from_docs = build_evidence_bundle_from_docs_and_scores(docs_and_scores)
+    bundle_from_inputs = build_evidence_bundle_from_input_records(
+        [_retrieval_input_from_document(doc, score=score) for doc, score in docs_and_scores]
+    )
+
+    assert bundle_from_inputs == bundle_from_docs
 
 
 def test_memory_recall_scored_empty_remains_clarification_not_generic_knowledge() -> None:

@@ -4,8 +4,6 @@ from collections import deque
 from dataclasses import dataclass, replace
 from typing import Any, Callable
 
-from langchain_core.documents import Document
-
 from testbot.answer_assembly import assemble_answer_contract
 from testbot.answer_commit import AnswerCommitService, build_commit_stage_inputs
 from testbot.answer_rendering import render_answer
@@ -71,16 +69,6 @@ CANONICAL_STAGE_SEQUENCE: tuple[str, ...] = (
     "answer.commit",
 )
 
-
-def _to_input_record(doc: Document, score: float) -> RetrievalInputRecord:
-    metadata = doc.metadata if isinstance(doc.metadata, dict) else {}
-    return RetrievalInputRecord(
-        ref_id=str(doc.id or metadata.get("doc_id") or ""),
-        score=float(score),
-        content=str(doc.page_content or ""),
-        metadata=metadata,
-    )
-
 @dataclass(frozen=True)
 class TurnPipelineDependencies:
     append_session_log: Callable[[str, dict[str, object]], None]
@@ -94,8 +82,8 @@ class TurnPipelineDependencies:
     intent_telemetry_payload: Callable[..., dict[str, object]]
     poll_background_source_ingestion: Callable[..., dict[str, object] | None]
     start_background_source_ingestion: Callable[..., dict[str, object]]
-    stage_retrieve: Callable[..., tuple[PipelineState, list[tuple[Document, float]]]]
-    stage_rerank: Callable[..., tuple[PipelineState, list[Document]]]
+    stage_retrieve: Callable[..., tuple[PipelineState, list[RetrievalInputRecord]]]
+    stage_rerank: Callable[..., tuple[PipelineState, list[RetrievalInputRecord]]]
     selected_decision_from_confidence: Callable[..., Any]
     minimal_confidence_decision_for_direct_answer: Callable[..., dict[str, object]]
     resolve_answer_routing_for_stage: Callable[..., tuple[PipelineState, Any]]
@@ -413,7 +401,7 @@ def retrieve_evidence_stage(ctx: CanonicalTurnContext, stage: TurnPipelineStageR
         retrieval_segment_ids = set(segment_constraints.get("segment_ids", []))
         retrieval_segment_types = set(segment_constraints.get("segment_types", []))
 
-        ctx.state, docs_and_scores = stage.deps.stage_retrieve(
+        ctx.state, retrieval_candidates = stage.deps.stage_retrieve(
             stage.store,
             ctx.state,
             exclude_doc_ids=retrieval_exclude_doc_ids,
@@ -423,7 +411,7 @@ def retrieve_evidence_stage(ctx: CanonicalTurnContext, stage: TurnPipelineStageR
             segment_types=retrieval_segment_types,
         )
         stage.deps.validate_and_log_transition(validate_retrieve_evidence_post(ctx.state))
-        if not docs_and_scores and bool(stage.runtime.get("source_ingest_async_continuation", False)):
+        if not retrieval_candidates and bool(stage.runtime.get("source_ingest_async_continuation", False)):
             start_result = stage.deps.start_background_source_ingestion(runtime=stage.runtime, store=stage.store)
             start_request_id = str(start_result.get("ingestion_request_id") or "")
             if start_request_id:
@@ -437,17 +425,17 @@ def retrieve_evidence_stage(ctx: CanonicalTurnContext, stage: TurnPipelineStageR
         if background_in_progress:
             ctx.artifacts["continuation_required"] = True
 
-        ctx.artifacts["docs_and_scores"] = docs_and_scores
-        considered = int(ctx.state.confidence_decision.get("retrieval_candidates_considered", len(docs_and_scores)) or 0)
-        prerank_bundle = build_evidence_bundle_from_input_records([_to_input_record(doc, score) for doc, score in docs_and_scores])
+        ctx.artifacts["docs_and_scores"] = retrieval_candidates
+        considered = int(ctx.state.confidence_decision.get("retrieval_candidates_considered", len(retrieval_candidates)) or 0)
+        prerank_bundle = build_evidence_bundle_from_input_records(retrieval_candidates)
         ctx.artifacts["pre_rerank_evidence_bundle"] = prerank_bundle
         ctx.artifacts["retrieval_result"] = retrieval_result(evidence_bundle=prerank_bundle, retrieval_candidates_considered=considered, hit_count=0)
         stage.deps.append_session_log(
             "retrieval_candidates",
             {
                 "query": ctx.state.rewritten_query,
-                "candidate_count": len(docs_and_scores),
-                "top_candidates": [{"doc_id": (doc.id or doc.metadata.get("doc_id") or ""), "score": float(score)} for doc, score in docs_and_scores[:4]],
+                "candidate_count": len(retrieval_candidates),
+                "top_candidates": [{"doc_id": record.ref_id, "score": float(record.score)} for record in retrieval_candidates[:4]],
                 "hygiene": {
                     "exclude_doc_ids": sorted(retrieval_exclude_doc_ids),
                     "exclude_source_ids": sorted(retrieval_exclude_source_ids),
@@ -508,7 +496,7 @@ def policy_decide_stage(ctx: CanonicalTurnContext, stage: TurnPipelineStageRunti
             guard_forced_memory_retrieval=bool(ctx.artifacts.get("guard_forced_memory_retrieval", False)),
         )
         ctx.artifacts["policy_decision"] = policy_decision
-        finalized_bundle = build_evidence_bundle_from_input_records([_to_input_record(doc, 1.0) for doc in hits])
+        finalized_bundle = build_evidence_bundle_from_input_records(hits)
         ctx.artifacts["retrieval_result"] = retrieval_result(
             evidence_bundle=finalized_bundle,
             retrieval_candidates_considered=considered,
@@ -685,7 +673,7 @@ def answer_commit_stage(ctx: CanonicalTurnContext, stage: TurnPipelineStageRunti
             "mode": ctx.state.invariant_decisions.get("answer_mode", "dont-know"),
             "query": ctx.state.rewritten_query,
             "context_confident": ctx.state.confidence_decision.get("context_confident", False),
-            "retrieved_docs": [(d.id or d.metadata.get("doc_id") or "") for d in ctx.artifacts["hits"]],
+            "retrieved_docs": [record.ref_id for record in ctx.artifacts["hits"]],
             "claims": ctx.state.claims,
             "provenance_types": [p.value for p in ctx.state.provenance_types],
             "used_memory_refs": ctx.state.used_memory_refs,
@@ -716,7 +704,7 @@ def run_canonical_turn_pipeline_service(
     clock: Clock,
     io_channel: str,
     deps: TurnPipelineDependencies,
-) -> tuple[PipelineState, list[Document]]:
+) -> tuple[PipelineState, list[RetrievalInputRecord]]:
     runtime = runtime or {}
     snapshot_time_provider = _ClockSnapshotTimeProvider(clock=clock)
     prior_pending_ingestion_request_id = ""
