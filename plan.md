@@ -559,13 +559,13 @@ Create all state/DTO types and stage contracts.
 
 ### Workstream B — Thin orchestration path
 
-**Current status (2026-03-19): Partial.** `turn_service.py` exists and stages are module-level functions. Orchestration still wires lambdas that capture `stage_runtime`. `sat_chatbot_memory_v2.py` is reduced to 3970 lines (from 4614), but authority concentration remains high. `run_answer_stage_flow` is a documented deprecated alias; legacy seeded-runner status still needs explicit verification in this workstream.
+**Current status (2026-03-19): Partial.** `turn_service.py` exists and stages are module-level functions. The canonical runtime is now constructed as `TurnPipelineStageRuntime`, and stage handlers are bound via `_TurnPipelineStageHandlers(runtime=stage_runtime)` in `src/testbot/application/services/turn_service.py`. `sat_chatbot_memory_v2.py` is reduced to 3970 lines (from 4614), but authority concentration remains high. `run_answer_stage_flow` is a documented deprecated alias; legacy seeded-runner status still needs explicit verification in this workstream.
 
 Replace monolithic entrypoint behavior with a `turn_service` that executes the canonical sequence.
 
 ### Workstream C — Stabilization and discourse state
 
-**Current status (2026-03-19): Minimal.** Stabilization logic/persistence split exists, but candidate facts still collapse without durable per-candidate IDs. `AssistantOfferAnchor`, `FocusAnchor`, and `UnresolvedObligation` do not yet exist as typed objects.
+**Current status (2026-03-19): Minimal.** Stabilization logic/persistence split exists, but candidate facts still collapse without durable per-candidate IDs. Residual risk is now concentrated in closing dict-heavy contract surfaces and tightening obligation lifecycle semantics (creation, carry-forward, and resolution transitions) across turns.
 
 Implement candidate preservation, fact candidate persistence, pending repair/clarification modeling.
 
