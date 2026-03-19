@@ -6,8 +6,8 @@ The prior audit correctly identified `sat_chatbot_memory_v2.py` as a major autho
 
 This amended audit makes the authority census explicit, identifies concrete API-risk symbols, and defines a receiver-first extraction protocol to avoid parallel implementations.
 
-- **Primary collapse point:** `sat_chatbot_memory_v2.py` still concentrates runtime authority, but canonical stage execution now routes through `src/testbot/application/services/turn_service.py` using receiver-bound handlers (`_TurnPipelineStageHandlers`) rather than inline closures.
-- **Secondary collapse points:** `answer_assemble()` and `evaluate_alignment_decision()` combine business logic and orchestration concerns in test-visible symbols.
+- **Primary collapse point (historical framing + current state):** `sat_chatbot_memory_v2.py` has historically concentrated runtime authority; canonical stage execution now routes through `src/testbot/application/services/turn_service.py` using receiver-bound handlers (`_TurnPipelineStageHandlers`) rather than inline closures.
+- **Secondary collapse points (historical framing):** `answer_assemble()` and the monolith-owned alignment symbol surface were historical collapse contributors; `evaluate_alignment_decision()` now remains in the monolith as a compatibility shim symbol.
 - **Hidden coupling:** dict-shaped contracts (`confidence_decision`, `commit_receipt`, `candidate_facts`) are written/read across multiple domains without a typed interface.
 
 ## Scope and evidence basis
@@ -54,9 +54,11 @@ Practical impact:
 
 `answer_assemble()` is public and test-visible, while also blending routing/result formatting/LLM orchestration concerns that ideally belong to separated services.
 
-### 2.3 `evaluate_alignment_decision()` is a third collapse
+### 2.3 `evaluate_alignment_decision()` lifecycle state (compatibility shim)
 
-`evaluate_alignment_decision()` is pure scoring logic but currently co-located with entrypoint runtime concerns and module-level constants it implicitly owns.
+`evaluate_alignment_decision()` in `sat_chatbot_memory_v2.py` is currently a **compatibility shim** that delegates to `testbot.logic.alignment.evaluate_alignment_decision`.
+
+The collapse characterization for this symbol is therefore primarily **historical** (when scoring ownership lived directly in the monolith), while current risk is compatibility-surface drift until alias retirement is complete.
 
 ---
 
@@ -109,7 +111,7 @@ As of **2026-03-19**, canonical answer-stage execution authority is intentionall
 - `run_answer_stage_flow` emits a deprecation warning and calls `run_canonical_answer_stage_flow(...)`.
 - `_run_full_canonical_turn_from_seeded_artifacts(...)` has been removed to eliminate seeded-artifact runner overlap from runtime code.
 
-Residual risk now comes primarily from import-surface drift (callers continuing to import the deprecated alias) rather than from ambiguous runtime behavior between two independent implementations.
+Residual risk now comes primarily from import-surface drift (callers continuing to import deprecated compatibility aliases) and delayed alias retirement, rather than from duplicate active logic.
 
 ### 5.1 Compatibility entry-surface inventory + lifecycle state (as of 2026-03-19)
 
@@ -117,7 +119,7 @@ Residual risk now comes primarily from import-surface drift (callers continuing 
 |---|---|---|---|---|
 | `run_canonical_answer_stage_flow` | Canonical entrypoint | still present (authoritative) | n/a | n/a |
 | `run_answer_stage_flow` | Deprecated compatibility alias (in `__all__`) | still present | 2026-04-01 | no internal callers + no non-compatibility-test imports remain |
-| `evaluate_alignment_decision` | Deprecated alignment shim export (in `__all__`) | still present | 2026-04-01 | all callers import canonical owner `testbot.logic.alignment.evaluate_alignment_decision`; shim passthrough tests only |
+| `evaluate_alignment_decision` | Deprecated alignment compatibility shim export (in `__all__`) | still present (delegates to canonical logic owner) | 2026-04-01 | all callers import canonical owner `testbot.logic.alignment.evaluate_alignment_decision`; shim passthrough tests only |
 | `_answer_routing_from_decision_object` | Deprecated stage helper bridge (not in `__all__`) | still present | TBD (post decision-helper migration completion) | no in-repo callers outside shim tests |
 | `_run_full_canonical_turn_from_seeded_artifacts` | Deprecated seeded helper | removed | removed 2026-03-19 | n/a |
 
