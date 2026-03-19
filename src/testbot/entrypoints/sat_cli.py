@@ -6,22 +6,23 @@ import sys
 from langchain_ollama import ChatOllama, OllamaEmbeddings
 
 from testbot.clock import SystemClock
+from testbot.entrypoints.sat_runtime_modes import run_cli_mode, run_satellite_mode
 from testbot.observability.session_log import append_session_log
 from testbot.sat_chatbot_memory_v2 import (
-    _parse_args,
-    _print_startup_status,
-    _read_runtime_env,
-    _run_cli_mode,
-    _run_satellite_mode,
-    _run_source_ingestion,
     build_capability_snapshot,
+    parse_args,
+    print_startup_status,
+    read_runtime_env,
+    run_chat_loop,
+    run_source_ingestion,
+    sat_say,
 )
 from testbot.vector_store import build_memory_store
 
 
 def main(argv: list[str] | None = None) -> None:
-    args = _parse_args(argv)
-    runtime = _read_runtime_env()
+    args = parse_args(argv)
+    runtime = read_runtime_env()
     debug_verbose_override = getattr(args, "debug_verbose", None)
     if debug_verbose_override is not None:
         runtime["debug_verbose"] = debug_verbose_override
@@ -45,7 +46,7 @@ def main(argv: list[str] | None = None) -> None:
             "exit_reason": capability_snapshot.exit_reason,
         },
     )
-    _print_startup_status(snapshot=capability_snapshot)
+    print_startup_status(snapshot=capability_snapshot)
 
     if capability_snapshot.effective_mode is None:
         if args.mode == "auto" and args.daemon:
@@ -68,10 +69,10 @@ def main(argv: list[str] | None = None) -> None:
     )
     chat_history = deque(maxlen=10)
     clock = SystemClock()
-    _run_source_ingestion(runtime=runtime, store=store)
+    run_source_ingestion(runtime=runtime, store=store)
 
     if capability_snapshot.effective_mode == "satellite":
-        _run_satellite_mode(
+        run_satellite_mode(
             runtime=runtime,
             llm=llm,
             store=store,
@@ -82,10 +83,12 @@ def main(argv: list[str] | None = None) -> None:
             token=str(runtime["ha_api_secret"]),
             entity_id=str(runtime["ha_satellite_entity_id"]),
             clock=clock,
+            run_chat_loop=run_chat_loop,
+            satellite_say=sat_say,
         )
         return
 
-    _run_cli_mode(
+    run_cli_mode(
         runtime=runtime,
         llm=llm,
         store=store,
@@ -93,4 +96,5 @@ def main(argv: list[str] | None = None) -> None:
         near_tie_delta=float(runtime["memory_near_tie_delta"]),
         capability_snapshot=capability_snapshot,
         clock=clock,
+        run_chat_loop=run_chat_loop,
     )

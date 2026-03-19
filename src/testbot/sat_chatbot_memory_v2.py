@@ -91,7 +91,6 @@ from testbot.source_connectors import (
     WikipediaSummarySourceConnector,
 )
 from testbot.source_ingest import SourceIngestor
-from ha_ask import AskSpec, ask_question
 from ha_ask.config import normalize_rest_api_url
 from testbot.history_packer import PackedHistory, labeled_history_claims, pack_chat_history, render_packed_history
 from testbot.response_planner import build_response_plan, plan_to_dict, render_response_plan_block
@@ -3506,29 +3505,17 @@ def _run_chat_loop(
 
 
 def _run_cli_mode(*, runtime: dict[str, object], llm: ChatOllama, store: MemoryStore, chat_history: deque[ChatMsg], near_tie_delta: float, capability_snapshot: CapabilitySnapshot, clock: Clock) -> None:
-    print("CLI chat ready. Ask memory-grounded questions; type 'stop' to exit.")
+    from testbot.entrypoints.sat_runtime_modes import run_cli_mode
 
-    def _read() -> str | None:
-        try:
-            return input("you> ")
-        except EOFError:
-            return None
-
-    def _send(text: str) -> None:
-        print(f"bot> {text}")
-
-    _run_chat_loop(
+    run_cli_mode(
         runtime=runtime,
         llm=llm,
         store=store,
         chat_history=chat_history,
         near_tie_delta=near_tie_delta,
-        io_channel="cli",
-        capability_status="ask_unavailable",
         capability_snapshot=capability_snapshot,
-        read_user_utterance=_read,
-        send_assistant_text=_send,
         clock=clock,
+        run_chat_loop=_run_chat_loop,
     )
 
 
@@ -3545,43 +3532,22 @@ def _run_satellite_mode(
     capability_snapshot: CapabilitySnapshot,
     clock: Clock,
 ) -> None:
-    rest = normalize_rest_api_url(api_url)
-    with Client(rest, token) as client:
-        sat_say(client, entity_id, "v0 memory loop online. Say 'stop' to exit.")
+    from testbot.entrypoints.sat_runtime_modes import run_satellite_mode
 
-        def _read() -> str | None:
-            res = ask_question(
-                channel="satellite",
-                spec=AskSpec(
-                    question="Ask one memory-grounded question.",
-                    answers=None,
-                    timeout_s=60.0,
-                ),
-                api_url=api_url,
-                token=token,
-                satellite_entity_id=entity_id,
-            )
-            if res.get("error"):
-                sat_say(client, entity_id, f"I didn't get that. Error: {res['error']}")
-                return ""
-            return str(res.get("sentence") or "")
-
-        def _send(text: str) -> None:
-            sat_say(client, entity_id, text)
-
-        _run_chat_loop(
-            runtime=runtime,
-            llm=llm,
-            store=store,
-            chat_history=chat_history,
-            near_tie_delta=near_tie_delta,
-            io_channel="satellite",
-            capability_status="ask_available",
-            capability_snapshot=capability_snapshot,
-            read_user_utterance=_read,
-            send_assistant_text=_send,
-            clock=clock,
-        )
+    run_satellite_mode(
+        runtime=runtime,
+        llm=llm,
+        store=store,
+        chat_history=chat_history,
+        near_tie_delta=near_tie_delta,
+        api_url=api_url,
+        token=token,
+        entity_id=entity_id,
+        capability_snapshot=capability_snapshot,
+        clock=clock,
+        run_chat_loop=_run_chat_loop,
+        satellite_say=sat_say,
+    )
 
 
 def _build_runtime_capability_status(
