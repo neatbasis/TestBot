@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from urllib.error import HTTPError, URLError
 
+from testbot.ports import PortDocument
 from testbot.source_connectors import (
     ArxivSourceConnector,
     FixtureSourceConnector,
@@ -17,11 +18,11 @@ class _FakeStore:
     def __init__(self) -> None:
         self.docs = []
 
-    def add_documents(self, documents):
-        self.docs.extend(documents)
+    def add_memory_records(self, records):
+        self.docs.extend(records)
 
-    def similarity_search_with_score(self, query: str, k: int = 4, **kwargs):  # pragma: no cover
-        del query, k
+    def search_memory_records(self, query):  # pragma: no cover
+        del query
         return []
 
 
@@ -52,7 +53,7 @@ def test_fixture_connector_fetch_normalize_and_cursor_lifecycle() -> None:
     assert [item.item_id for item in first_batch] == ["evt-1"]
 
     normalized = connector.normalize(first_batch[0])
-    assert normalized.id == "evt-1"
+    assert normalized.doc_id == "evt-1"
     assert normalized.metadata["doc_id"] == "evt-1"
     assert normalized.metadata["source_uri"] == "calendar://team/evt-1"
 

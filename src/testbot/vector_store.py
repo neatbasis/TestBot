@@ -1,15 +1,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal
-from typing import Protocol
+from typing import Literal, Protocol
 
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 from langchain_core.vectorstores import InMemoryVectorStore
 
+from testbot.ports import MemoryRepository, MemorySearchQuery, PortDocument, ScoredPortDocument, VectorStore
 
-class MemoryStore(Protocol):
+
+class MemoryStore(MemoryRepository, VectorStore, Protocol):
     def add_documents(self, documents: list[Document]) -> None: ...
 
     def similarity_search_with_score(
@@ -66,6 +67,26 @@ def with_record_lane_metadata(metadata: dict[str, object], *, lane: RecordLane) 
     }
 
 
+def _to_port_document(document: Document) -> PortDocument:
+    return PortDocument(
+        doc_id=str(document.id or ""),
+        content=str(document.page_content or ""),
+        metadata=dict(document.metadata or {}),
+    )
+
+
+def _to_langchain_document(document: PortDocument) -> Document:
+    return Document(id=document.doc_id, page_content=document.content, metadata=dict(document.metadata))
+
+
+def _to_port_search_results(hits: list[tuple[Document, float]]) -> list[ScoredPortDocument]:
+    return [ScoredPortDocument(document=_to_port_document(doc), score=float(score)) for doc, score in hits]
+
+
+def _to_langchain_search_results(hits: list[ScoredPortDocument]) -> list[tuple[Document, float]]:
+    return [(_to_langchain_document(hit.document), float(hit.score)) for hit in hits]
+
+
 def normalize_memory_store_mode(mode: str) -> MemoryBackend:
     normalized = mode.strip().lower()
     if normalized in {"inmemory", "in_memory"}:
@@ -107,6 +128,25 @@ class InMemoryMemoryStore:
             segment_ids=segment_ids,
             segment_types=segment_types,
         )
+
+    def add_memory_records(self, records: list[PortDocument]) -> None:
+        self.add_documents([_to_langchain_document(record) for record in records])
+
+    def search_memory_records(self, query: MemorySearchQuery) -> list[ScoredPortDocument]:
+        return _to_port_search_results(
+            self.similarity_search_with_score(
+                query.query,
+                k=query.k,
+                exclude_doc_ids=query.exclude_doc_ids,
+                exclude_source_ids=query.exclude_source_ids,
+                exclude_turn_scoped_ids=query.exclude_turn_scoped_ids,
+                segment_ids=query.segment_ids,
+                segment_types=query.segment_types,
+            )
+        )
+
+    def similarity_search(self, query: MemorySearchQuery) -> list[ScoredPortDocument]:
+        return self.search_memory_records(query)
 
 
 class ElasticsearchMemoryStore:
@@ -241,6 +281,25 @@ class ElasticsearchMemoryStore:
             segment_types=segment_types,
         )
 
+    def add_memory_records(self, records: list[PortDocument]) -> None:
+        self.add_documents([_to_langchain_document(record) for record in records])
+
+    def search_memory_records(self, query: MemorySearchQuery) -> list[ScoredPortDocument]:
+        return _to_port_search_results(
+            self.similarity_search_with_score(
+                query.query,
+                k=query.k,
+                exclude_doc_ids=query.exclude_doc_ids,
+                exclude_source_ids=query.exclude_source_ids,
+                exclude_turn_scoped_ids=query.exclude_turn_scoped_ids,
+                segment_ids=query.segment_ids,
+                segment_types=query.segment_types,
+            )
+        )
+
+    def similarity_search(self, query: MemorySearchQuery) -> list[ScoredPortDocument]:
+        return self.search_memory_records(query)
+
 
 @dataclass
 class PromotingMemoryStore:
@@ -301,6 +360,25 @@ class PromotingMemoryStore:
                 )
             self.primary.add_documents(promoted_docs)
         return fallback_hits
+
+    def add_memory_records(self, records: list[PortDocument]) -> None:
+        self.add_documents([_to_langchain_document(record) for record in records])
+
+    def search_memory_records(self, query: MemorySearchQuery) -> list[ScoredPortDocument]:
+        return _to_port_search_results(
+            self.similarity_search_with_score(
+                query.query,
+                k=query.k,
+                exclude_doc_ids=query.exclude_doc_ids,
+                exclude_source_ids=query.exclude_source_ids,
+                exclude_turn_scoped_ids=query.exclude_turn_scoped_ids,
+                segment_ids=query.segment_ids,
+                segment_types=query.segment_types,
+            )
+        )
+
+    def similarity_search(self, query: MemorySearchQuery) -> list[ScoredPortDocument]:
+        return self.search_memory_records(query)
 
 
 def _normalize_exclusion_ids(values: set[str] | None) -> set[str]:

@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 import arrow
 from langchain_core.documents import Document
+from testbot.ports import PortDocument
 from testbot.vector_store import MemoryStore
 
 
@@ -61,8 +62,9 @@ def make_reflection_card(*, ts_iso: str, about: str, source_doc_id: str, doc_id:
 
 
 def store_doc(store: MemoryStore, *, doc_id: str, content: str, metadata: dict) -> None:
-    """
-    Newer LangChain core: attach the id directly on Document.
-    """
-    doc = Document(id=doc_id, page_content=content, metadata=metadata)
-    store.add_documents([doc])
+    doc = PortDocument(doc_id=doc_id, content=content, metadata=metadata)
+    if hasattr(store, "add_memory_records"):
+        store.add_memory_records([doc])
+        return
+    legacy_doc = Document(id=doc_id, page_content=content, metadata=metadata)
+    store.add_documents([legacy_doc])

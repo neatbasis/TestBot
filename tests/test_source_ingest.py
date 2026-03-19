@@ -3,8 +3,8 @@ from __future__ import annotations
 import json
 
 import pytest
-from langchain_core.documents import Document
 
+from testbot.ports import PortDocument
 from testbot.source_connectors import ArxivSourceConnector, LocalMarkdownSourceConnector, SourceItem, WikipediaSummarySourceConnector
 from testbot.source_ingest import SourceIngestor
 
@@ -31,8 +31,8 @@ class _FakeConnector:
             )
         ]
 
-    def normalize(self, item: SourceItem) -> Document:
-        return Document(id=item.item_id, page_content=item.content, metadata={"ts": item.metadata["ts"], "doc_id": item.item_id})
+    def normalize(self, item: SourceItem) -> PortDocument:
+        return PortDocument(doc_id=item.item_id, content=item.content, metadata={"ts": item.metadata["ts"], "doc_id": item.item_id})
 
     def update_cursor(self, *, previous_cursor: str | None, fetched_items: list[SourceItem]) -> str | None:
         self.cursor_updates.append(previous_cursor)
@@ -55,9 +55,9 @@ class _MissingIdConnector(_FakeConnector):
         del cursor, limit
         return [self._item]
 
-    def normalize(self, item: SourceItem) -> Document:
+    def normalize(self, item: SourceItem) -> PortDocument:
         del item
-        return Document(id=None, page_content=self._item.content, metadata={"ts": self._item.metadata["ts"]})
+        return PortDocument(doc_id="", content=self._item.content, metadata={"ts": self._item.metadata["ts"]})
 
 
 class _ChangingRetrievedAtMissingIdConnector(_FakeConnector):
@@ -81,34 +81,34 @@ class _ChangingRetrievedAtMissingIdConnector(_FakeConnector):
             )
         ]
 
-    def normalize(self, item: SourceItem) -> Document:
-        return Document(id=None, page_content=item.content, metadata={"ts": item.metadata["ts"]})
+    def normalize(self, item: SourceItem) -> PortDocument:
+        return PortDocument(doc_id="", content=item.content, metadata={"ts": item.metadata["ts"]})
 
 
 class _TypedNormalizeConnector(_FakeConnector):
-    def normalize(self, item: SourceItem) -> Document:
-        return Document(
-            id=item.item_id,
-            page_content=item.content,
+    def normalize(self, item: SourceItem) -> PortDocument:
+        return PortDocument(
+            doc_id=item.item_id,
+            content=item.content,
             metadata={"ts": item.metadata["ts"], "doc_id": item.item_id, "type": "calendar_event"},
         )
 
 
 class _FakeStore:
     def __init__(self) -> None:
-        self.docs: list[Document] = []
+        self.docs: list[PortDocument] = []
 
-    def add_documents(self, documents: list[Document]) -> None:
-        self.docs.extend(documents)
+    def add_memory_records(self, records: list[PortDocument]) -> None:
+        self.docs.extend(records)
 
-    def similarity_search_with_score(self, query: str, k: int = 4, **kwargs):  # pragma: no cover
-        del query, k
+    def search_memory_records(self, query):  # pragma: no cover
+        del query
         return []
 
 
 class _FailingStore:
-    def add_documents(self, documents: list[Document]) -> None:
-        del documents
+    def add_memory_records(self, records: list[PortDocument]) -> None:
+        del records
         raise RuntimeError("embedding backend unavailable")
 
 
@@ -164,13 +164,13 @@ def test_source_ingestor_derives_stable_ids_when_normalized_id_and_doc_id_are_mi
     first = ingestor.ingest_once(cursor=None)
     second = ingestor.ingest_once(cursor=None)
 
-    memory_id = first.memory_documents[0].id
-    evidence_id = first.evidence_documents[0].id
+    memory_id = first.memory_documents[0].doc_id
+    evidence_id = first.evidence_documents[0].doc_id
 
     assert memory_id
     assert evidence_id
-    assert memory_id == second.memory_documents[0].id
-    assert evidence_id == second.evidence_documents[0].id
+    assert memory_id == second.memory_documents[0].doc_id
+    assert evidence_id == second.evidence_documents[0].doc_id
     assert evidence_id == f"evidence::{memory_id}"
     assert len(store.docs) == 4
 
@@ -184,8 +184,8 @@ def test_source_ingestor_derived_ids_ignore_retrieved_at_for_unchanged_content()
     second = ingestor.ingest_once(cursor=None)
 
     assert first.memory_documents[0].metadata["retrieved_at"] != second.memory_documents[0].metadata["retrieved_at"]
-    assert first.memory_documents[0].id == second.memory_documents[0].id
-    assert first.evidence_documents[0].id == second.evidence_documents[0].id
+    assert first.memory_documents[0].doc_id == second.memory_documents[0].doc_id
+    assert first.evidence_documents[0].doc_id == second.evidence_documents[0].doc_id
 
 
 def test_source_item_requires_mandatory_provenance_fields() -> None:

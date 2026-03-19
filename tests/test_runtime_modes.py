@@ -462,8 +462,8 @@ def test_run_source_ingestion_stores_fixture_docs_and_logs(monkeypatch, tmp_path
         def __init__(self) -> None:
             self.docs = []
 
-        def add_documents(self, docs):
-            self.docs.extend(docs)
+        def add_memory_records(self, records):
+            self.docs.extend(records)
 
     logs = []
     monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: logs.append((event, payload)))
@@ -580,8 +580,8 @@ def test_run_source_ingestion_invalid_cursor_logs_and_falls_back(monkeypatch, tm
     )
 
     class _Store:
-        def add_documents(self, docs):
-            del docs
+        def add_memory_records(self, records):
+            del records
 
     logs = []
     monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: logs.append((event, payload)))
