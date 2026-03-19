@@ -118,6 +118,10 @@ The first-pass census above remains directionally valid. Since that baseline, se
 
 These updates reduce immediate drift risk, but they do **not** by themselves complete the structural split of `sat_chatbot_memory_v2.py` or establish package-layer enforcement.
 
+Additional progress since the initial pass (as of 2026-03-19):
+- ✅ Initial extraction slice landed: canonical stage-closure execution for `_run_canonical_turn_pipeline` now lives in `src/testbot/application/services/turn_service.py`, while `sat_chatbot_memory_v2.py` retains a compatibility façade delegating into the service.
+- ⚠️ This is intentionally scoped as an extraction seam only; it does not yet claim full entrypoint decomposition or finalized package-boundary enforcement.
+
 ---
 
 ## 3) Prioritized migration order (derived from census scores)
@@ -233,6 +237,7 @@ Boundary rules:
 ### Pivot deliverables checklist
 
 - [ ] **`ISSUE-0013-E` complete**: dependency contracts are CI-enforced with owners, failure semantics, and readiness-blocking behavior documented.
+- [~] **`ISSUE-0013-A` initial slice**: `_run_canonical_turn_pipeline` stage closures extracted to application service with delegating façade retained.
 
 ## 6.D) Port extraction done criteria (`ISSUE-0013-D`)
 

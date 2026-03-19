@@ -65,3 +65,17 @@ For each changelog entry, answer these three questions explicitly:
 
 #### 3) Why this step was taken in this order?
 - Locking audit text to current code evidence first keeps refactor sequencing auditable and ensures the next extraction step is a concrete alias-removal/migration plan rather than rediscovery.
+
+### Entry 5
+
+#### 1) What moved, and where did it land?
+- **Old path/symbol:** `_run_canonical_turn_pipeline(...)` in `src/testbot/sat_chatbot_memory_v2.py` contained inline canonical stage-closure orchestration.
+- **New path/symbol:** canonical turn-stage closure execution moved into application-layer service `src/testbot/application/services/turn_service.py` via `run_canonical_turn_pipeline_service(...)` with `TurnPipelineDependencies` receiver wiring.
+- **Delegation shim:** `_run_canonical_turn_pipeline(...)` remains in `sat_chatbot_memory_v2.py` as a thin façade that builds dependencies and delegates.
+
+#### 2) What did not change?
+- The existing runtime façade symbol set (`__all__`) in `sat_chatbot_memory_v2.py` remains unchanged; existing import surfaces stay compatible.
+- Canonical stage ordering and session-log event semantics are intended to remain unchanged; this extraction step rehomes orchestration logic without policy changes.
+
+#### 3) Why this step was taken in this order?
+- Extracting stage-closure execution behind a dependency-receiver boundary first reduces monolith complexity while preserving stable runtime entrypoints for follow-on package-map refactors.
