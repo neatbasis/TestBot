@@ -11,6 +11,32 @@ from testbot.memory_cards import utc_now_iso
 PIPELINE_SNAPSHOT_SCHEMA_VERSION = 3
 
 
+def _mapping_string(payload: Mapping[str, Any], key: str, default: str = "") -> str:
+    return str(payload.get(key, default) or default)
+
+
+def _mapping_bool(payload: Mapping[str, Any], key: str, default: bool = False) -> bool:
+    return bool(payload.get(key, default))
+
+
+def _mapping_dict(payload: Mapping[str, Any], key: str) -> dict[str, Any]:
+    value = payload.get(key)
+    if value is None:
+        return {}
+    if not isinstance(value, Mapping):
+        raise TypeError(f"{key} must be a mapping when present")
+    return dict(value)
+
+
+def _mapping_list(payload: Mapping[str, Any], key: str) -> list[Any]:
+    value = payload.get(key)
+    if value is None:
+        return []
+    if not isinstance(value, list):
+        raise TypeError(f"{key} must be a list when present")
+    return list(value)
+
+
 @dataclass(frozen=True)
 class CandidateHit:
     doc_id: str
@@ -77,19 +103,40 @@ class ConfidenceDecision(StageArtifact):
     context_confident: bool | None = None
     ambiguity_detected: bool | None = None
     retrieval_branch: str = ""
+    scored_candidates: list[dict[str, Any]] = field(default_factory=list)
+    min_margin_to_second: float | None = None
+    turn_latency_ms: float | None = None
+    latency_budget_ms: float | None = None
+    token_budget_ratio: float | None = None
 
     @classmethod
     def from_mapping(cls, payload: Mapping[str, Any] | None) -> ConfidenceDecision:
         payload = payload or {}
         if isinstance(payload, cls):
             return payload
+        scored_candidates_payload = payload.get("scored_candidates")
+        scored_candidates: list[dict[str, Any]] = []
+        if scored_candidates_payload is not None:
+            if not isinstance(scored_candidates_payload, list):
+                raise TypeError("scored_candidates must be a list when present")
+            scored_candidates = [dict(item) if isinstance(item, Mapping) else {} for item in scored_candidates_payload]
         known = {
             "context_confident": payload.get("context_confident"),
             "ambiguity_detected": payload.get("ambiguity_detected"),
-            "retrieval_branch": str(payload.get("retrieval_branch", "") or ""),
+            "retrieval_branch": _mapping_string(payload, "retrieval_branch"),
+            "scored_candidates": scored_candidates,
+            "min_margin_to_second": float(payload["min_margin_to_second"]) if payload.get("min_margin_to_second") is not None else None,
+            "turn_latency_ms": float(payload["turn_latency_ms"]) if payload.get("turn_latency_ms") is not None else None,
+            "latency_budget_ms": float(payload["latency_budget_ms"]) if payload.get("latency_budget_ms") is not None else None,
+            "token_budget_ratio": float(payload["token_budget_ratio"]) if payload.get("token_budget_ratio") is not None else None,
         }
         extra = {k: v for k, v in payload.items() if k not in known}
         return cls(extra=extra, **known)
+
+    def typed_scored_candidates(self, *, required: bool = False) -> list[dict[str, Any]]:
+        if required and not self.scored_candidates:
+            raise KeyError("scored_candidates is required")
+        return list(self.scored_candidates)
 
     def _raw_dict(self) -> dict[str, Any]:
         data: dict[str, Any] = {}
@@ -99,6 +146,16 @@ class ConfidenceDecision(StageArtifact):
             data["ambiguity_detected"] = self.ambiguity_detected
         if self.retrieval_branch:
             data["retrieval_branch"] = self.retrieval_branch
+        if self.scored_candidates:
+            data["scored_candidates"] = self.scored_candidates
+        if self.min_margin_to_second is not None:
+            data["min_margin_to_second"] = self.min_margin_to_second
+        if self.turn_latency_ms is not None:
+            data["turn_latency_ms"] = self.turn_latency_ms
+        if self.latency_budget_ms is not None:
+            data["latency_budget_ms"] = self.latency_budget_ms
+        if self.token_budget_ratio is not None:
+            data["token_budget_ratio"] = self.token_budget_ratio
         data.update(self.extra)
         return data
 
@@ -140,25 +197,38 @@ class InvariantDecision(StageArtifact):
 
 @dataclass(frozen=True)
 class AlignmentDecision(StageArtifact):
+    objective_version: str = ""
     final_alignment_decision: str = ""
     dimensions: dict[str, Any] = field(default_factory=dict)
+    dimension_inputs: dict[str, Any] = field(default_factory=dict)
 
     @classmethod
     def from_mapping(cls, payload: Mapping[str, Any] | None) -> AlignmentDecision:
         payload = payload or {}
         if isinstance(payload, cls):
             return payload
-        known_keys = {"final_alignment_decision", "dimensions"}
+        known_keys = {"objective_version", "final_alignment_decision", "dimensions", "dimension_inputs"}
         return cls(
-            final_alignment_decision=str(payload.get("final_alignment_decision", "") or ""),
-            dimensions=dict(payload.get("dimensions") or {}),
+            objective_version=_mapping_string(payload, "objective_version"),
+            final_alignment_decision=_mapping_string(payload, "final_alignment_decision"),
+            dimensions=_mapping_dict(payload, "dimensions"),
+            dimension_inputs=_mapping_dict(payload, "dimension_inputs"),
             extra={k: v for k, v in payload.items() if k not in known_keys},
         )
 
+    def typed_dimension_inputs(self, *, required: bool = False) -> dict[str, Any]:
+        if required and not self.dimension_inputs:
+            raise KeyError("dimension_inputs is required")
+        return dict(self.dimension_inputs)
+
     def _raw_dict(self) -> dict[str, Any]:
         data: dict[str, Any] = {}
+        if self.objective_version:
+            data["objective_version"] = self.objective_version
         if self.dimensions:
             data["dimensions"] = self.dimensions
+        if self.dimension_inputs:
+            data["dimension_inputs"] = self.dimension_inputs
         if self.final_alignment_decision:
             data["final_alignment_decision"] = self.final_alignment_decision
         data.update(self.extra)
@@ -283,6 +353,12 @@ class CommitReceiptArtifact(StageArtifact):
     committed: bool = False
     commit_id: str = ""
     pending_ingestion_request_id: str = ""
+    commit_stage: str = ""
+    pipeline_state_snapshot: str = ""
+    pending_repair_state: dict[str, Any] = field(default_factory=dict)
+    resolved_obligations: list[Any] = field(default_factory=list)
+    remaining_obligations: list[Any] = field(default_factory=list)
+    confirmed_user_facts: list[Any] = field(default_factory=list)
 
     @classmethod
     def from_mapping(cls, payload: Mapping[str, Any] | None) -> CommitReceiptArtifact:
@@ -290,9 +366,15 @@ class CommitReceiptArtifact(StageArtifact):
         if isinstance(payload, cls):
             return payload
         known = {
-            "committed": bool(payload.get("committed", False)),
-            "commit_id": str(payload.get("commit_id", "") or ""),
-            "pending_ingestion_request_id": str(payload.get("pending_ingestion_request_id", "") or ""),
+            "committed": _mapping_bool(payload, "committed"),
+            "commit_id": _mapping_string(payload, "commit_id"),
+            "pending_ingestion_request_id": _mapping_string(payload, "pending_ingestion_request_id"),
+            "commit_stage": _mapping_string(payload, "commit_stage"),
+            "pipeline_state_snapshot": _mapping_string(payload, "pipeline_state_snapshot"),
+            "pending_repair_state": _mapping_dict(payload, "pending_repair_state"),
+            "resolved_obligations": _mapping_list(payload, "resolved_obligations"),
+            "remaining_obligations": _mapping_list(payload, "remaining_obligations"),
+            "confirmed_user_facts": _mapping_list(payload, "confirmed_user_facts"),
         }
         extra = {k: v for k, v in payload.items() if k not in known}
         return cls(extra=extra, **known)
@@ -305,6 +387,18 @@ class CommitReceiptArtifact(StageArtifact):
             data["commit_id"] = self.commit_id
         if self.pending_ingestion_request_id:
             data["pending_ingestion_request_id"] = self.pending_ingestion_request_id
+        if self.commit_stage:
+            data["commit_stage"] = self.commit_stage
+        if self.pipeline_state_snapshot:
+            data["pipeline_state_snapshot"] = self.pipeline_state_snapshot
+        if self.pending_repair_state:
+            data["pending_repair_state"] = self.pending_repair_state
+        if self.resolved_obligations:
+            data["resolved_obligations"] = self.resolved_obligations
+        if self.remaining_obligations:
+            data["remaining_obligations"] = self.remaining_obligations
+        if self.confirmed_user_facts:
+            data["confirmed_user_facts"] = self.confirmed_user_facts
         return data
 
 
