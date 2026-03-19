@@ -1,0 +1,2345 @@
+{
+  "areas": [
+    {
+      "description": "User-facing command/runtime entrypoints and orchestration boundaries.",
+      "module_count": 4,
+      "name": "entrypoints",
+      "sample_modules": [
+        "testbot.entrypoints",
+        "testbot.entrypoints.sat_cli",
+        "testbot.entrypoints.sat_runtime_modes",
+        "testbot.sat_chatbot_memory_v2"
+      ]
+    },
+    {
+      "description": "Application service layer coordinating use-cases.",
+      "module_count": 4,
+      "name": "application",
+      "sample_modules": [
+        "testbot.application",
+        "testbot.application.services",
+        "testbot.application.services.canonical_turn_runtime",
+        "testbot.application.services.turn_service"
+      ]
+    },
+    {
+      "description": "Pure decision helpers and deterministic transition logic.",
+      "module_count": 11,
+      "name": "logic",
+      "sample_modules": [
+        "testbot.intent_router",
+        "testbot.logic",
+        "testbot.logic.alignment",
+        "testbot.logic.decision_helpers",
+        "testbot.logic.stage_artifacts",
+        "testbot.policy_decision",
+        "testbot.promotion_policy",
+        "testbot.reflection_policy",
+        "testbot.reject_taxonomy",
+        "testbot.retrieval_routing"
+      ]
+    },
+    {
+      "description": "Core domain entities, DTOs, and state artifacts.",
+      "module_count": 19,
+      "name": "domain",
+      "sample_modules": [
+        "testbot.answer_assembly",
+        "testbot.answer_commit",
+        "testbot.answer_rendering",
+        "testbot.answer_validation",
+        "testbot.candidate_encoding",
+        "testbot.clock",
+        "testbot.context_resolution",
+        "testbot.domain",
+        "testbot.domain.canonical_dtos",
+        "testbot.evidence_retrieval"
+      ]
+    },
+    {
+      "description": "Protocol and integration contracts consumed by application and adapters.",
+      "module_count": 2,
+      "name": "ports",
+      "sample_modules": [
+        "testbot.ports",
+        "testbot.ports.contracts"
+      ]
+    },
+    {
+      "description": "Infra/external system adapters and connectors (currently sparse and partly legacy).",
+      "module_count": 6,
+      "name": "adapters",
+      "sample_modules": [
+        "testbot.config",
+        "testbot.eval_fixtures",
+        "testbot.rerank",
+        "testbot.source_connectors",
+        "testbot.source_ingest",
+        "testbot.vector_store"
+      ]
+    },
+    {
+      "description": "Telemetry, diagnostics, and runtime tracing surfaces.",
+      "module_count": 4,
+      "name": "observability",
+      "sample_modules": [
+        "testbot.observability",
+        "testbot.observability.session_log",
+        "testbot.pipeline.metrics",
+        "testbot.turn_analytics_diagnostics"
+      ]
+    }
+  ],
+  "config_version": 1,
+  "findings": [
+    {
+      "classification": "allowed",
+      "imported": "testbot.intent_router",
+      "imported_area": "logic",
+      "importer": "testbot",
+      "importer_area": null,
+      "line": 3,
+      "metadata": {},
+      "reason": "module_outside_governed_areas",
+      "source_file": "src/testbot/__init__.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.evidence_retrieval",
+      "imported_area": "domain",
+      "importer": "testbot.answer_assembly",
+      "importer_area": "domain",
+      "line": 5,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/answer_assembly.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.policy_decision",
+      "imported_area": "logic",
+      "importer": "testbot.answer_assembly",
+      "importer_area": "domain",
+      "line": 6,
+      "metadata": {
+        "allowed_dependencies": [
+          "domain"
+        ]
+      },
+      "reason": "forbidden_dependency_direction",
+      "source_file": "src/testbot/answer_assembly.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.answer_assembly",
+      "imported_area": "domain",
+      "importer": "testbot.answer_commit",
+      "importer_area": "domain",
+      "line": 6,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/answer_commit.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.answer_rendering",
+      "imported_area": "domain",
+      "importer": "testbot.answer_commit",
+      "importer_area": "domain",
+      "line": 7,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/answer_commit.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.answer_validation",
+      "imported_area": "domain",
+      "importer": "testbot.answer_commit",
+      "importer_area": "domain",
+      "line": 8,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/answer_commit.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.pipeline_state",
+      "imported_area": "domain",
+      "importer": "testbot.answer_commit",
+      "importer_area": "domain",
+      "line": 9,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/answer_commit.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.reflection_policy",
+      "imported_area": "logic",
+      "importer": "testbot.answer_policy",
+      "importer_area": null,
+      "line": 8,
+      "metadata": {},
+      "reason": "module_outside_governed_areas",
+      "source_file": "src/testbot/answer_policy.py"
+    },
+    {
+      "classification": "deprecated_compatibility",
+      "imported": "testbot.answer_rendering",
+      "imported_area": "domain",
+      "importer": "testbot.answer_render",
+      "importer_area": null,
+      "line": 10,
+      "metadata": {},
+      "reason": "deprecated_module_compatibility_path",
+      "source_file": "src/testbot/answer_render.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.answer_assembly",
+      "imported_area": "domain",
+      "importer": "testbot.answer_rendering",
+      "importer_area": "domain",
+      "line": 5,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/answer_rendering.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.answer_validation",
+      "imported_area": "domain",
+      "importer": "testbot.answer_rendering",
+      "importer_area": "domain",
+      "line": 6,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/answer_rendering.py"
+    },
+    {
+      "classification": "deprecated_compatibility",
+      "imported": "testbot.answer_validation",
+      "imported_area": "domain",
+      "importer": "testbot.answer_validate",
+      "importer_area": null,
+      "line": 10,
+      "metadata": {},
+      "reason": "deprecated_module_compatibility_path",
+      "source_file": "src/testbot/answer_validate.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.answer_assembly",
+      "imported_area": "domain",
+      "importer": "testbot.answer_validation",
+      "importer_area": "domain",
+      "line": 6,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/answer_validation.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.pipeline_state",
+      "imported_area": "domain",
+      "importer": "testbot.answer_validation",
+      "importer_area": "domain",
+      "line": 7,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/answer_validation.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.application.services.turn_service",
+      "imported_area": "application",
+      "importer": "testbot.application.services",
+      "importer_area": "application",
+      "line": 3,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/application/services/__init__.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.application.services.turn_service",
+      "imported_area": "application",
+      "importer": "testbot.application.services.canonical_turn_runtime",
+      "importer_area": "application",
+      "line": 5,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/application/services/canonical_turn_runtime.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.clock",
+      "imported_area": "domain",
+      "importer": "testbot.application.services.canonical_turn_runtime",
+      "importer_area": "application",
+      "line": 6,
+      "metadata": {
+        "expected_public_surface": {
+          "module_prefixes": [
+            "testbot.domain"
+          ],
+          "modules": [
+            "testbot.domain",
+            "testbot.pipeline_state"
+          ]
+        }
+      },
+      "reason": "private_surface_import",
+      "source_file": "src/testbot/application/services/canonical_turn_runtime.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.evidence_retrieval",
+      "imported_area": "domain",
+      "importer": "testbot.application.services.canonical_turn_runtime",
+      "importer_area": "application",
+      "line": 7,
+      "metadata": {
+        "expected_public_surface": {
+          "module_prefixes": [
+            "testbot.domain"
+          ],
+          "modules": [
+            "testbot.domain",
+            "testbot.pipeline_state"
+          ]
+        }
+      },
+      "reason": "private_surface_import",
+      "source_file": "src/testbot/application/services/canonical_turn_runtime.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.memory_cards",
+      "imported_area": "domain",
+      "importer": "testbot.application.services.canonical_turn_runtime",
+      "importer_area": "application",
+      "line": 8,
+      "metadata": {
+        "expected_public_surface": {
+          "module_prefixes": [
+            "testbot.domain"
+          ],
+          "modules": [
+            "testbot.domain",
+            "testbot.pipeline_state"
+          ]
+        }
+      },
+      "reason": "private_surface_import",
+      "source_file": "src/testbot/application/services/canonical_turn_runtime.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.pipeline_state",
+      "imported_area": "domain",
+      "importer": "testbot.application.services.canonical_turn_runtime",
+      "importer_area": "application",
+      "line": 9,
+      "metadata": {},
+      "reason": "allowed_dependency",
+      "source_file": "src/testbot/application/services/canonical_turn_runtime.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.reflection_policy",
+      "imported_area": "logic",
+      "importer": "testbot.application.services.canonical_turn_runtime",
+      "importer_area": "application",
+      "line": 10,
+      "metadata": {
+        "expected_public_surface": {
+          "module_prefixes": [
+            "testbot.logic"
+          ],
+          "modules": [
+            "testbot.logic"
+          ]
+        }
+      },
+      "reason": "private_surface_import",
+      "source_file": "src/testbot/application/services/canonical_turn_runtime.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.vector_store",
+      "imported_area": "adapters",
+      "importer": "testbot.application.services.canonical_turn_runtime",
+      "importer_area": "application",
+      "line": 11,
+      "metadata": {
+        "allowed_dependencies": [
+          "application",
+          "logic",
+          "domain",
+          "ports",
+          "observability"
+        ]
+      },
+      "reason": "forbidden_dependency_direction",
+      "source_file": "src/testbot/application/services/canonical_turn_runtime.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.answer_assembly",
+      "imported_area": "domain",
+      "importer": "testbot.application.services.turn_service",
+      "importer_area": "application",
+      "line": 7,
+      "metadata": {
+        "expected_public_surface": {
+          "module_prefixes": [
+            "testbot.domain"
+          ],
+          "modules": [
+            "testbot.domain",
+            "testbot.pipeline_state"
+          ]
+        }
+      },
+      "reason": "private_surface_import",
+      "source_file": "src/testbot/application/services/turn_service.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.answer_commit",
+      "imported_area": "domain",
+      "importer": "testbot.application.services.turn_service",
+      "importer_area": "application",
+      "line": 8,
+      "metadata": {
+        "expected_public_surface": {
+          "module_prefixes": [
+            "testbot.domain"
+          ],
+          "modules": [
+            "testbot.domain",
+            "testbot.pipeline_state"
+          ]
+        }
+      },
+      "reason": "private_surface_import",
+      "source_file": "src/testbot/application/services/turn_service.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.answer_rendering",
+      "imported_area": "domain",
+      "importer": "testbot.application.services.turn_service",
+      "importer_area": "application",
+      "line": 9,
+      "metadata": {
+        "expected_public_surface": {
+          "module_prefixes": [
+            "testbot.domain"
+          ],
+          "modules": [
+            "testbot.domain",
+            "testbot.pipeline_state"
+          ]
+        }
+      },
+      "reason": "private_surface_import",
+      "source_file": "src/testbot/application/services/turn_service.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.answer_validation",
+      "imported_area": "domain",
+      "importer": "testbot.application.services.turn_service",
+      "importer_area": "application",
+      "line": 10,
+      "metadata": {
+        "expected_public_surface": {
+          "module_prefixes": [
+            "testbot.domain"
+          ],
+          "modules": [
+            "testbot.domain",
+            "testbot.pipeline_state"
+          ]
+        }
+      },
+      "reason": "private_surface_import",
+      "source_file": "src/testbot/application/services/turn_service.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.candidate_encoding",
+      "imported_area": "domain",
+      "importer": "testbot.application.services.turn_service",
+      "importer_area": "application",
+      "line": 202,
+      "metadata": {
+        "expected_public_surface": {
+          "module_prefixes": [
+            "testbot.domain"
+          ],
+          "modules": [
+            "testbot.domain",
+            "testbot.pipeline_state"
+          ]
+        }
+      },
+      "reason": "private_surface_import",
+      "source_file": "src/testbot/application/services/turn_service.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.canonical_turn_orchestrator",
+      "imported_area": null,
+      "importer": "testbot.application.services.turn_service",
+      "importer_area": "application",
+      "line": 11,
+      "metadata": {},
+      "reason": "module_outside_governed_areas",
+      "source_file": "src/testbot/application/services/turn_service.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.clock",
+      "imported_area": "domain",
+      "importer": "testbot.application.services.turn_service",
+      "importer_area": "application",
+      "line": 12,
+      "metadata": {
+        "expected_public_surface": {
+          "module_prefixes": [
+            "testbot.domain"
+          ],
+          "modules": [
+            "testbot.domain",
+            "testbot.pipeline_state"
+          ]
+        }
+      },
+      "reason": "private_surface_import",
+      "source_file": "src/testbot/application/services/turn_service.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.evidence_retrieval",
+      "imported_area": "domain",
+      "importer": "testbot.application.services.turn_service",
+      "importer_area": "application",
+      "line": 13,
+      "metadata": {
+        "expected_public_surface": {
+          "module_prefixes": [
+            "testbot.domain"
+          ],
+          "modules": [
+            "testbot.domain",
+            "testbot.pipeline_state"
+          ]
+        }
+      },
+      "reason": "private_surface_import",
+      "source_file": "src/testbot/application/services/turn_service.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.intent_resolution",
+      "imported_area": "domain",
+      "importer": "testbot.application.services.turn_service",
+      "importer_area": "application",
+      "line": 20,
+      "metadata": {
+        "expected_public_surface": {
+          "module_prefixes": [
+            "testbot.domain"
+          ],
+          "modules": [
+            "testbot.domain",
+            "testbot.pipeline_state"
+          ]
+        }
+      },
+      "reason": "private_surface_import",
+      "source_file": "src/testbot/application/services/turn_service.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.intent_router",
+      "imported_area": "logic",
+      "importer": "testbot.application.services.turn_service",
+      "importer_area": "application",
+      "line": 21,
+      "metadata": {
+        "expected_public_surface": {
+          "module_prefixes": [
+            "testbot.logic"
+          ],
+          "modules": [
+            "testbot.logic"
+          ]
+        }
+      },
+      "reason": "private_surface_import",
+      "source_file": "src/testbot/application/services/turn_service.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.logic",
+      "imported_area": "logic",
+      "importer": "testbot.application.services.turn_service",
+      "importer_area": "application",
+      "line": 23,
+      "metadata": {},
+      "reason": "allowed_dependency",
+      "source_file": "src/testbot/application/services/turn_service.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.memory_strata",
+      "imported_area": "domain",
+      "importer": "testbot.application.services.turn_service",
+      "importer_area": "application",
+      "line": 22,
+      "metadata": {
+        "expected_public_surface": {
+          "module_prefixes": [
+            "testbot.domain"
+          ],
+          "modules": [
+            "testbot.domain",
+            "testbot.pipeline_state"
+          ]
+        }
+      },
+      "reason": "private_surface_import",
+      "source_file": "src/testbot/application/services/turn_service.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.pipeline_state",
+      "imported_area": "domain",
+      "importer": "testbot.application.services.turn_service",
+      "importer_area": "application",
+      "line": 24,
+      "metadata": {},
+      "reason": "allowed_dependency",
+      "source_file": "src/testbot/application/services/turn_service.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.policy_decision",
+      "imported_area": "logic",
+      "importer": "testbot.application.services.turn_service",
+      "importer_area": "application",
+      "line": 25,
+      "metadata": {
+        "expected_public_surface": {
+          "module_prefixes": [
+            "testbot.logic"
+          ],
+          "modules": [
+            "testbot.logic"
+          ]
+        }
+      },
+      "reason": "private_surface_import",
+      "source_file": "src/testbot/application/services/turn_service.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.ports",
+      "imported_area": "ports",
+      "importer": "testbot.application.services.turn_service",
+      "importer_area": "application",
+      "line": 55,
+      "metadata": {},
+      "reason": "allowed_dependency",
+      "source_file": "src/testbot/application/services/turn_service.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.reflection_policy",
+      "imported_area": "logic",
+      "importer": "testbot.application.services.turn_service",
+      "importer_area": "application",
+      "line": 26,
+      "metadata": {
+        "expected_public_surface": {
+          "module_prefixes": [
+            "testbot.logic"
+          ],
+          "modules": [
+            "testbot.logic"
+          ]
+        }
+      },
+      "reason": "private_surface_import",
+      "source_file": "src/testbot/application/services/turn_service.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.response_planner",
+      "imported_area": null,
+      "importer": "testbot.application.services.turn_service",
+      "importer_area": "application",
+      "line": 27,
+      "metadata": {},
+      "reason": "module_outside_governed_areas",
+      "source_file": "src/testbot/application/services/turn_service.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.retrieval_routing",
+      "imported_area": "logic",
+      "importer": "testbot.application.services.turn_service",
+      "importer_area": "application",
+      "line": 28,
+      "metadata": {
+        "expected_public_surface": {
+          "module_prefixes": [
+            "testbot.logic"
+          ],
+          "modules": [
+            "testbot.logic"
+          ]
+        }
+      },
+      "reason": "private_surface_import",
+      "source_file": "src/testbot/application/services/turn_service.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.stabilization",
+      "imported_area": "domain",
+      "importer": "testbot.application.services.turn_service",
+      "importer_area": "application",
+      "line": 29,
+      "metadata": {
+        "expected_public_surface": {
+          "module_prefixes": [
+            "testbot.domain"
+          ],
+          "modules": [
+            "testbot.domain",
+            "testbot.pipeline_state"
+          ]
+        }
+      },
+      "reason": "private_surface_import",
+      "source_file": "src/testbot/application/services/turn_service.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.stage_transitions",
+      "imported_area": "logic",
+      "importer": "testbot.application.services.turn_service",
+      "importer_area": "application",
+      "line": 30,
+      "metadata": {
+        "expected_public_surface": {
+          "module_prefixes": [
+            "testbot.logic"
+          ],
+          "modules": [
+            "testbot.logic"
+          ]
+        }
+      },
+      "reason": "private_surface_import",
+      "source_file": "src/testbot/application/services/turn_service.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.turn_observation",
+      "imported_area": "domain",
+      "importer": "testbot.application.services.turn_service",
+      "importer_area": "application",
+      "line": 53,
+      "metadata": {
+        "expected_public_surface": {
+          "module_prefixes": [
+            "testbot.domain"
+          ],
+          "modules": [
+            "testbot.domain",
+            "testbot.pipeline_state"
+          ]
+        }
+      },
+      "reason": "private_surface_import",
+      "source_file": "src/testbot/application/services/turn_service.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.vector_store",
+      "imported_area": "adapters",
+      "importer": "testbot.application.services.turn_service",
+      "importer_area": "application",
+      "line": 54,
+      "metadata": {
+        "allowed_dependencies": [
+          "application",
+          "logic",
+          "domain",
+          "ports",
+          "observability"
+        ]
+      },
+      "reason": "forbidden_dependency_direction",
+      "source_file": "src/testbot/application/services/turn_service.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.pipeline_state",
+      "imported_area": "domain",
+      "importer": "testbot.candidate_encoding",
+      "importer_area": "domain",
+      "line": 6,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/candidate_encoding.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.turn_observation",
+      "imported_area": "domain",
+      "importer": "testbot.candidate_encoding",
+      "importer_area": "domain",
+      "line": 7,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/candidate_encoding.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.pipeline_state",
+      "imported_area": "domain",
+      "importer": "testbot.canonical_turn_orchestrator",
+      "importer_area": null,
+      "line": 6,
+      "metadata": {},
+      "reason": "module_outside_governed_areas",
+      "source_file": "src/testbot/canonical_turn_orchestrator.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.intent_router",
+      "imported_area": "logic",
+      "importer": "testbot.context_resolution",
+      "importer_area": "domain",
+      "line": 6,
+      "metadata": {
+        "allowed_dependencies": [
+          "domain"
+        ]
+      },
+      "reason": "forbidden_dependency_direction",
+      "source_file": "src/testbot/context_resolution.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.pipeline_state",
+      "imported_area": "domain",
+      "importer": "testbot.context_resolution",
+      "importer_area": "domain",
+      "line": 7,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/context_resolution.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.domain.canonical_dtos",
+      "imported_area": "domain",
+      "importer": "testbot.domain",
+      "importer_area": "domain",
+      "line": 1,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/domain/__init__.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.answer_assembly",
+      "imported_area": "domain",
+      "importer": "testbot.domain.canonical_dtos",
+      "importer_area": "domain",
+      "line": 8,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/domain/canonical_dtos.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.answer_commit",
+      "imported_area": "domain",
+      "importer": "testbot.domain.canonical_dtos",
+      "importer_area": "domain",
+      "line": 6,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/domain/canonical_dtos.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.answer_commit",
+      "imported_area": "domain",
+      "importer": "testbot.domain.canonical_dtos",
+      "importer_area": "domain",
+      "line": 7,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/domain/canonical_dtos.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.answer_rendering",
+      "imported_area": "domain",
+      "importer": "testbot.domain.canonical_dtos",
+      "importer_area": "domain",
+      "line": 9,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/domain/canonical_dtos.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.answer_validation",
+      "imported_area": "domain",
+      "importer": "testbot.domain.canonical_dtos",
+      "importer_area": "domain",
+      "line": 10,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/domain/canonical_dtos.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.candidate_encoding",
+      "imported_area": "domain",
+      "importer": "testbot.domain.canonical_dtos",
+      "importer_area": "domain",
+      "line": 11,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/domain/canonical_dtos.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.context_resolution",
+      "imported_area": "domain",
+      "importer": "testbot.domain.canonical_dtos",
+      "importer_area": "domain",
+      "line": 12,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/domain/canonical_dtos.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.evidence_retrieval",
+      "imported_area": "domain",
+      "importer": "testbot.domain.canonical_dtos",
+      "importer_area": "domain",
+      "line": 13,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/domain/canonical_dtos.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.intent_resolution",
+      "imported_area": "domain",
+      "importer": "testbot.domain.canonical_dtos",
+      "importer_area": "domain",
+      "line": 14,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/domain/canonical_dtos.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.intent_router",
+      "imported_area": "logic",
+      "importer": "testbot.domain.canonical_dtos",
+      "importer_area": "domain",
+      "line": 15,
+      "metadata": {
+        "allowed_dependencies": [
+          "domain"
+        ]
+      },
+      "reason": "forbidden_dependency_direction",
+      "source_file": "src/testbot/domain/canonical_dtos.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.pipeline_state",
+      "imported_area": "domain",
+      "importer": "testbot.domain.canonical_dtos",
+      "importer_area": "domain",
+      "line": 16,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/domain/canonical_dtos.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.policy_decision",
+      "imported_area": "logic",
+      "importer": "testbot.domain.canonical_dtos",
+      "importer_area": "domain",
+      "line": 17,
+      "metadata": {
+        "allowed_dependencies": [
+          "domain"
+        ]
+      },
+      "reason": "forbidden_dependency_direction",
+      "source_file": "src/testbot/domain/canonical_dtos.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.stabilization",
+      "imported_area": "domain",
+      "importer": "testbot.domain.canonical_dtos",
+      "importer_area": "domain",
+      "line": 18,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/domain/canonical_dtos.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.turn_observation",
+      "imported_area": "domain",
+      "importer": "testbot.domain.canonical_dtos",
+      "importer_area": "domain",
+      "line": 19,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/domain/canonical_dtos.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.entrypoints.sat_cli",
+      "imported_area": "entrypoints",
+      "importer": "testbot.entrypoints",
+      "importer_area": "entrypoints",
+      "line": 3,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/entrypoints/__init__.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.clock",
+      "imported_area": "domain",
+      "importer": "testbot.entrypoints.sat_cli",
+      "importer_area": "entrypoints",
+      "line": 8,
+      "metadata": {
+        "expected_public_surface": {
+          "module_prefixes": [
+            "testbot.domain"
+          ],
+          "modules": [
+            "testbot.domain",
+            "testbot.pipeline_state"
+          ]
+        }
+      },
+      "reason": "private_surface_import",
+      "source_file": "src/testbot/entrypoints/sat_cli.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.entrypoints.sat_runtime_modes",
+      "imported_area": "entrypoints",
+      "importer": "testbot.entrypoints.sat_cli",
+      "importer_area": "entrypoints",
+      "line": 9,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/entrypoints/sat_cli.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.observability.session_log",
+      "imported_area": "observability",
+      "importer": "testbot.entrypoints.sat_cli",
+      "importer_area": "entrypoints",
+      "line": 10,
+      "metadata": {},
+      "reason": "allowed_dependency",
+      "source_file": "src/testbot/entrypoints/sat_cli.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.sat_chatbot_memory_v2",
+      "imported_area": "entrypoints",
+      "importer": "testbot.entrypoints.sat_cli",
+      "importer_area": "entrypoints",
+      "line": 11,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/entrypoints/sat_cli.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.vector_store",
+      "imported_area": "adapters",
+      "importer": "testbot.entrypoints.sat_cli",
+      "importer_area": "entrypoints",
+      "line": 20,
+      "metadata": {
+        "allowed_dependencies": [
+          "entrypoints",
+          "application",
+          "ports",
+          "observability",
+          "domain"
+        ]
+      },
+      "reason": "forbidden_dependency_direction",
+      "source_file": "src/testbot/entrypoints/sat_cli.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.clock",
+      "imported_area": "domain",
+      "importer": "testbot.entrypoints.sat_runtime_modes",
+      "importer_area": "entrypoints",
+      "line": 11,
+      "metadata": {
+        "expected_public_surface": {
+          "module_prefixes": [
+            "testbot.domain"
+          ],
+          "modules": [
+            "testbot.domain",
+            "testbot.pipeline_state"
+          ]
+        }
+      },
+      "reason": "private_surface_import",
+      "source_file": "src/testbot/entrypoints/sat_runtime_modes.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.sat_chatbot_memory_v2",
+      "imported_area": "entrypoints",
+      "importer": "testbot.entrypoints.sat_runtime_modes",
+      "importer_area": "entrypoints",
+      "line": 12,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/entrypoints/sat_runtime_modes.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.vector_store",
+      "imported_area": "adapters",
+      "importer": "testbot.entrypoints.sat_runtime_modes",
+      "importer_area": "entrypoints",
+      "line": 13,
+      "metadata": {
+        "allowed_dependencies": [
+          "entrypoints",
+          "application",
+          "ports",
+          "observability",
+          "domain"
+        ]
+      },
+      "reason": "forbidden_dependency_direction",
+      "source_file": "src/testbot/entrypoints/sat_runtime_modes.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.pipeline_state",
+      "imported_area": "domain",
+      "importer": "testbot.evidence_retrieval",
+      "importer_area": "domain",
+      "line": 6,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/evidence_retrieval.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.stabilization",
+      "imported_area": "domain",
+      "importer": "testbot.evidence_retrieval",
+      "importer_area": "domain",
+      "line": 7,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/evidence_retrieval.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.context_resolution",
+      "imported_area": "domain",
+      "importer": "testbot.intent_resolution",
+      "importer_area": "domain",
+      "line": 6,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/intent_resolution.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.intent_router",
+      "imported_area": "logic",
+      "importer": "testbot.intent_resolution",
+      "importer_area": "domain",
+      "line": 8,
+      "metadata": {
+        "allowed_dependencies": [
+          "domain"
+        ]
+      },
+      "reason": "forbidden_dependency_direction",
+      "source_file": "src/testbot/intent_resolution.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.stabilization",
+      "imported_area": "domain",
+      "importer": "testbot.intent_resolution",
+      "importer_area": "domain",
+      "line": 7,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/intent_resolution.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.logic.alignment",
+      "imported_area": "logic",
+      "importer": "testbot.logic",
+      "importer_area": "logic",
+      "line": 3,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/logic/__init__.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.logic.stage_artifacts",
+      "imported_area": "logic",
+      "importer": "testbot.logic",
+      "importer_area": "logic",
+      "line": 40,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/logic/__init__.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.pipeline_state",
+      "imported_area": "domain",
+      "importer": "testbot.logic.alignment",
+      "importer_area": "logic",
+      "line": 7,
+      "metadata": {},
+      "reason": "allowed_dependency",
+      "source_file": "src/testbot/logic/alignment.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.stage_transitions",
+      "imported_area": "logic",
+      "importer": "testbot.logic.alignment",
+      "importer_area": "logic",
+      "line": 8,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/logic/alignment.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.answer_policy",
+      "imported_area": null,
+      "importer": "testbot.logic.decision_helpers",
+      "importer_area": "logic",
+      "line": 6,
+      "metadata": {},
+      "reason": "module_outside_governed_areas",
+      "source_file": "src/testbot/logic/decision_helpers.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.intent_router",
+      "imported_area": "logic",
+      "importer": "testbot.logic.decision_helpers",
+      "importer_area": "logic",
+      "line": 7,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/logic/decision_helpers.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.pipeline_state",
+      "imported_area": "domain",
+      "importer": "testbot.logic.decision_helpers",
+      "importer_area": "logic",
+      "line": 8,
+      "metadata": {},
+      "reason": "allowed_dependency",
+      "source_file": "src/testbot/logic/decision_helpers.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.policy_decision",
+      "imported_area": "logic",
+      "importer": "testbot.logic.decision_helpers",
+      "importer_area": "logic",
+      "line": 9,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/logic/decision_helpers.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.reflection_policy",
+      "imported_area": "logic",
+      "importer": "testbot.logic.decision_helpers",
+      "importer_area": "logic",
+      "line": 10,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/logic/decision_helpers.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.ports",
+      "imported_area": "ports",
+      "importer": "testbot.memory_cards",
+      "importer_area": "domain",
+      "line": 7,
+      "metadata": {
+        "allowed_dependencies": [
+          "domain"
+        ]
+      },
+      "reason": "forbidden_dependency_direction",
+      "source_file": "src/testbot/memory_cards.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.vector_store",
+      "imported_area": "adapters",
+      "importer": "testbot.memory_cards",
+      "importer_area": "domain",
+      "line": 8,
+      "metadata": {
+        "allowed_dependencies": [
+          "domain"
+        ]
+      },
+      "reason": "forbidden_dependency_direction",
+      "source_file": "src/testbot/memory_cards.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.observability.session_log",
+      "imported_area": "observability",
+      "importer": "testbot.observability",
+      "importer_area": "observability",
+      "line": 1,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/observability/__init__.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.memory_cards",
+      "imported_area": "domain",
+      "importer": "testbot.observability.session_log",
+      "importer_area": "observability",
+      "line": 8,
+      "metadata": {
+        "expected_public_surface": {
+          "module_prefixes": [
+            "testbot.domain"
+          ],
+          "modules": [
+            "testbot.domain",
+            "testbot.pipeline_state"
+          ]
+        }
+      },
+      "reason": "private_surface_import",
+      "source_file": "src/testbot/observability/session_log.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.pipeline.metrics",
+      "imported_area": "observability",
+      "importer": "testbot.pipeline",
+      "importer_area": null,
+      "line": 3,
+      "metadata": {},
+      "reason": "module_outside_governed_areas",
+      "source_file": "src/testbot/pipeline/__init__.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.canonical_turn_orchestrator",
+      "imported_area": null,
+      "importer": "testbot.pipeline.metrics",
+      "importer_area": "observability",
+      "line": 6,
+      "metadata": {},
+      "reason": "module_outside_governed_areas",
+      "source_file": "src/testbot/pipeline/metrics.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.evidence_retrieval",
+      "imported_area": "domain",
+      "importer": "testbot.policy_decision",
+      "importer_area": "logic",
+      "line": 7,
+      "metadata": {
+        "expected_public_surface": {
+          "module_prefixes": [
+            "testbot.domain"
+          ],
+          "modules": [
+            "testbot.domain",
+            "testbot.pipeline_state"
+          ]
+        }
+      },
+      "reason": "private_surface_import",
+      "source_file": "src/testbot/policy_decision.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.intent_router",
+      "imported_area": "logic",
+      "importer": "testbot.policy_decision",
+      "importer_area": "logic",
+      "line": 8,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/policy_decision.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.retrieval_routing",
+      "imported_area": "logic",
+      "importer": "testbot.policy_decision",
+      "importer_area": "logic",
+      "line": 9,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/policy_decision.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.ports.contracts",
+      "imported_area": "ports",
+      "importer": "testbot.ports",
+      "importer_area": "ports",
+      "line": 1,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/ports/__init__.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.memory_cards",
+      "imported_area": "domain",
+      "importer": "testbot.promotion_policy",
+      "importer_area": "logic",
+      "line": 8,
+      "metadata": {
+        "expected_public_surface": {
+          "module_prefixes": [
+            "testbot.domain"
+          ],
+          "modules": [
+            "testbot.domain",
+            "testbot.pipeline_state"
+          ]
+        }
+      },
+      "reason": "private_surface_import",
+      "source_file": "src/testbot/promotion_policy.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.vector_store",
+      "imported_area": "adapters",
+      "importer": "testbot.promotion_policy",
+      "importer_area": "logic",
+      "line": 9,
+      "metadata": {
+        "allowed_dependencies": [
+          "logic",
+          "domain",
+          "ports",
+          "observability"
+        ]
+      },
+      "reason": "forbidden_dependency_direction",
+      "source_file": "src/testbot/promotion_policy.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.vector_store",
+      "imported_area": "adapters",
+      "importer": "testbot.rerank",
+      "importer_area": "adapters",
+      "line": 13,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/rerank.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.intent_router",
+      "imported_area": "logic",
+      "importer": "testbot.response_planner",
+      "importer_area": null,
+      "line": 8,
+      "metadata": {},
+      "reason": "module_outside_governed_areas",
+      "source_file": "src/testbot/response_planner.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.intent_router",
+      "imported_area": "logic",
+      "importer": "testbot.retrieval_routing",
+      "importer_area": "logic",
+      "line": 5,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/retrieval_routing.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.answer_policy",
+      "imported_area": null,
+      "importer": "testbot.sat_chatbot_memory_v2",
+      "importer_area": "entrypoints",
+      "line": 44,
+      "metadata": {},
+      "reason": "module_outside_governed_areas",
+      "source_file": "src/testbot/sat_chatbot_memory_v2.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.application.services.canonical_turn_runtime",
+      "imported_area": "application",
+      "importer": "testbot.sat_chatbot_memory_v2",
+      "importer_area": "entrypoints",
+      "line": 137,
+      "metadata": {},
+      "reason": "allowed_dependency",
+      "source_file": "src/testbot/sat_chatbot_memory_v2.py"
+    },
+    {
+      "classification": "temporary_exception",
+      "imported": "testbot.application.services.turn_service",
+      "imported_area": "application",
+      "importer": "testbot.sat_chatbot_memory_v2",
+      "importer_area": "entrypoints",
+      "line": 136,
+      "metadata": {
+        "expires_on": "2026-12-31",
+        "issue": "ISSUE-0013",
+        "notes": "Legacy runtime entrypoint still wires directly to turn service while boundary extraction completes.",
+        "owner": "runtime-pipeline",
+        "removal_plan": "Remove direct entrypoint-to-service import once sat_chatbot_memory_v2 compatibility delegator is retired from runtime startup path.",
+        "review_on": "2026-06-30"
+      },
+      "reason": "explicit_temporary_exception",
+      "source_file": "src/testbot/sat_chatbot_memory_v2.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.candidate_encoding",
+      "imported_area": "domain",
+      "importer": "testbot.sat_chatbot_memory_v2",
+      "importer_area": "entrypoints",
+      "line": 99,
+      "metadata": {
+        "expected_public_surface": {
+          "module_prefixes": [
+            "testbot.domain"
+          ],
+          "modules": [
+            "testbot.domain",
+            "testbot.pipeline_state"
+          ]
+        }
+      },
+      "reason": "private_surface_import",
+      "source_file": "src/testbot/sat_chatbot_memory_v2.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.clock",
+      "imported_area": "domain",
+      "importer": "testbot.sat_chatbot_memory_v2",
+      "importer_area": "entrypoints",
+      "line": 24,
+      "metadata": {
+        "expected_public_surface": {
+          "module_prefixes": [
+            "testbot.domain"
+          ],
+          "modules": [
+            "testbot.domain",
+            "testbot.pipeline_state"
+          ]
+        }
+      },
+      "reason": "private_surface_import",
+      "source_file": "src/testbot/sat_chatbot_memory_v2.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.config",
+      "imported_area": "adapters",
+      "importer": "testbot.sat_chatbot_memory_v2",
+      "importer_area": "entrypoints",
+      "line": 25,
+      "metadata": {
+        "allowed_dependencies": [
+          "entrypoints",
+          "application",
+          "ports",
+          "observability",
+          "domain"
+        ]
+      },
+      "reason": "forbidden_dependency_direction",
+      "source_file": "src/testbot/sat_chatbot_memory_v2.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.context_resolution",
+      "imported_area": "domain",
+      "importer": "testbot.sat_chatbot_memory_v2",
+      "importer_area": "entrypoints",
+      "line": 101,
+      "metadata": {
+        "expected_public_surface": {
+          "module_prefixes": [
+            "testbot.domain"
+          ],
+          "modules": [
+            "testbot.domain",
+            "testbot.pipeline_state"
+          ]
+        }
+      },
+      "reason": "private_surface_import",
+      "source_file": "src/testbot/sat_chatbot_memory_v2.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.entrypoints.sat_cli",
+      "imported_area": "entrypoints",
+      "importer": "testbot.sat_chatbot_memory_v2",
+      "importer_area": "entrypoints",
+      "line": 3842,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/sat_chatbot_memory_v2.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.entrypoints.sat_runtime_modes",
+      "imported_area": "entrypoints",
+      "importer": "testbot.sat_chatbot_memory_v2",
+      "importer_area": "entrypoints",
+      "line": 3618,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/sat_chatbot_memory_v2.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.entrypoints.sat_runtime_modes",
+      "imported_area": "entrypoints",
+      "importer": "testbot.sat_chatbot_memory_v2",
+      "importer_area": "entrypoints",
+      "line": 3645,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/sat_chatbot_memory_v2.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.evidence_retrieval",
+      "imported_area": "domain",
+      "importer": "testbot.sat_chatbot_memory_v2",
+      "importer_area": "entrypoints",
+      "line": 103,
+      "metadata": {
+        "expected_public_surface": {
+          "module_prefixes": [
+            "testbot.domain"
+          ],
+          "modules": [
+            "testbot.domain",
+            "testbot.pipeline_state"
+          ]
+        }
+      },
+      "reason": "private_surface_import",
+      "source_file": "src/testbot/sat_chatbot_memory_v2.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.history_packer",
+      "imported_area": "domain",
+      "importer": "testbot.sat_chatbot_memory_v2",
+      "importer_area": "entrypoints",
+      "line": 95,
+      "metadata": {
+        "expected_public_surface": {
+          "module_prefixes": [
+            "testbot.domain"
+          ],
+          "modules": [
+            "testbot.domain",
+            "testbot.pipeline_state"
+          ]
+        }
+      },
+      "reason": "private_surface_import",
+      "source_file": "src/testbot/sat_chatbot_memory_v2.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.intent_resolution",
+      "imported_area": "domain",
+      "importer": "testbot.sat_chatbot_memory_v2",
+      "importer_area": "entrypoints",
+      "line": 102,
+      "metadata": {
+        "expected_public_surface": {
+          "module_prefixes": [
+            "testbot.domain"
+          ],
+          "modules": [
+            "testbot.domain",
+            "testbot.pipeline_state"
+          ]
+        }
+      },
+      "reason": "private_surface_import",
+      "source_file": "src/testbot/sat_chatbot_memory_v2.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.intent_router",
+      "imported_area": "logic",
+      "importer": "testbot.sat_chatbot_memory_v2",
+      "importer_area": "entrypoints",
+      "line": 78,
+      "metadata": {
+        "allowed_dependencies": [
+          "entrypoints",
+          "application",
+          "ports",
+          "observability",
+          "domain"
+        ]
+      },
+      "reason": "forbidden_dependency_direction",
+      "source_file": "src/testbot/sat_chatbot_memory_v2.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.logic.alignment",
+      "imported_area": "logic",
+      "importer": "testbot.sat_chatbot_memory_v2",
+      "importer_area": "entrypoints",
+      "line": 117,
+      "metadata": {
+        "allowed_dependencies": [
+          "entrypoints",
+          "application",
+          "ports",
+          "observability",
+          "domain"
+        ]
+      },
+      "reason": "forbidden_dependency_direction",
+      "source_file": "src/testbot/sat_chatbot_memory_v2.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.logic.decision_helpers",
+      "imported_area": "logic",
+      "importer": "testbot.sat_chatbot_memory_v2",
+      "importer_area": "entrypoints",
+      "line": 138,
+      "metadata": {
+        "allowed_dependencies": [
+          "entrypoints",
+          "application",
+          "ports",
+          "observability",
+          "domain"
+        ]
+      },
+      "reason": "forbidden_dependency_direction",
+      "source_file": "src/testbot/sat_chatbot_memory_v2.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.memory_cards",
+      "imported_area": "domain",
+      "importer": "testbot.sat_chatbot_memory_v2",
+      "importer_area": "entrypoints",
+      "line": 26,
+      "metadata": {
+        "expected_public_surface": {
+          "module_prefixes": [
+            "testbot.domain"
+          ],
+          "modules": [
+            "testbot.domain",
+            "testbot.pipeline_state"
+          ]
+        }
+      },
+      "reason": "private_surface_import",
+      "source_file": "src/testbot/sat_chatbot_memory_v2.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.memory_strata",
+      "imported_area": "domain",
+      "importer": "testbot.sat_chatbot_memory_v2",
+      "importer_area": "entrypoints",
+      "line": 28,
+      "metadata": {
+        "expected_public_surface": {
+          "module_prefixes": [
+            "testbot.domain"
+          ],
+          "modules": [
+            "testbot.domain",
+            "testbot.pipeline_state"
+          ]
+        }
+      },
+      "reason": "private_surface_import",
+      "source_file": "src/testbot/sat_chatbot_memory_v2.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.observability.session_log",
+      "imported_area": "observability",
+      "importer": "testbot.sat_chatbot_memory_v2",
+      "importer_area": "entrypoints",
+      "line": 27,
+      "metadata": {},
+      "reason": "allowed_dependency",
+      "source_file": "src/testbot/sat_chatbot_memory_v2.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.pipeline_state",
+      "imported_area": "domain",
+      "importer": "testbot.sat_chatbot_memory_v2",
+      "importer_area": "entrypoints",
+      "line": 35,
+      "metadata": {},
+      "reason": "allowed_dependency",
+      "source_file": "src/testbot/sat_chatbot_memory_v2.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.policy_decision",
+      "imported_area": "logic",
+      "importer": "testbot.sat_chatbot_memory_v2",
+      "importer_area": "entrypoints",
+      "line": 111,
+      "metadata": {
+        "allowed_dependencies": [
+          "entrypoints",
+          "application",
+          "ports",
+          "observability",
+          "domain"
+        ]
+      },
+      "reason": "forbidden_dependency_direction",
+      "source_file": "src/testbot/sat_chatbot_memory_v2.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.ports",
+      "imported_area": "ports",
+      "importer": "testbot.sat_chatbot_memory_v2",
+      "importer_area": "entrypoints",
+      "line": 148,
+      "metadata": {},
+      "reason": "allowed_dependency",
+      "source_file": "src/testbot/sat_chatbot_memory_v2.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.promotion_policy",
+      "imported_area": "logic",
+      "importer": "testbot.sat_chatbot_memory_v2",
+      "importer_area": "entrypoints",
+      "line": 42,
+      "metadata": {
+        "allowed_dependencies": [
+          "entrypoints",
+          "application",
+          "ports",
+          "observability",
+          "domain"
+        ]
+      },
+      "reason": "forbidden_dependency_direction",
+      "source_file": "src/testbot/sat_chatbot_memory_v2.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.reflection_policy",
+      "imported_area": "logic",
+      "importer": "testbot.sat_chatbot_memory_v2",
+      "importer_area": "entrypoints",
+      "line": 43,
+      "metadata": {
+        "allowed_dependencies": [
+          "entrypoints",
+          "application",
+          "ports",
+          "observability",
+          "domain"
+        ]
+      },
+      "reason": "forbidden_dependency_direction",
+      "source_file": "src/testbot/sat_chatbot_memory_v2.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.reject_taxonomy",
+      "imported_area": "logic",
+      "importer": "testbot.sat_chatbot_memory_v2",
+      "importer_area": "entrypoints",
+      "line": 97,
+      "metadata": {
+        "allowed_dependencies": [
+          "entrypoints",
+          "application",
+          "ports",
+          "observability",
+          "domain"
+        ]
+      },
+      "reason": "forbidden_dependency_direction",
+      "source_file": "src/testbot/sat_chatbot_memory_v2.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.rerank",
+      "imported_area": "adapters",
+      "importer": "testbot.sat_chatbot_memory_v2",
+      "importer_area": "entrypoints",
+      "line": 45,
+      "metadata": {
+        "allowed_dependencies": [
+          "entrypoints",
+          "application",
+          "ports",
+          "observability",
+          "domain"
+        ]
+      },
+      "reason": "forbidden_dependency_direction",
+      "source_file": "src/testbot/sat_chatbot_memory_v2.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.response_planner",
+      "imported_area": null,
+      "importer": "testbot.sat_chatbot_memory_v2",
+      "importer_area": "entrypoints",
+      "line": 96,
+      "metadata": {},
+      "reason": "module_outside_governed_areas",
+      "source_file": "src/testbot/sat_chatbot_memory_v2.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.retrieval_routing",
+      "imported_area": "logic",
+      "importer": "testbot.sat_chatbot_memory_v2",
+      "importer_area": "entrypoints",
+      "line": 135,
+      "metadata": {
+        "allowed_dependencies": [
+          "entrypoints",
+          "application",
+          "ports",
+          "observability",
+          "domain"
+        ]
+      },
+      "reason": "forbidden_dependency_direction",
+      "source_file": "src/testbot/sat_chatbot_memory_v2.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.source_connectors",
+      "imported_area": "adapters",
+      "importer": "testbot.sat_chatbot_memory_v2",
+      "importer_area": "entrypoints",
+      "line": 86,
+      "metadata": {
+        "allowed_dependencies": [
+          "entrypoints",
+          "application",
+          "ports",
+          "observability",
+          "domain"
+        ]
+      },
+      "reason": "forbidden_dependency_direction",
+      "source_file": "src/testbot/sat_chatbot_memory_v2.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.source_ingest",
+      "imported_area": "adapters",
+      "importer": "testbot.sat_chatbot_memory_v2",
+      "importer_area": "entrypoints",
+      "line": 93,
+      "metadata": {
+        "allowed_dependencies": [
+          "entrypoints",
+          "application",
+          "ports",
+          "observability",
+          "domain"
+        ]
+      },
+      "reason": "forbidden_dependency_direction",
+      "source_file": "src/testbot/sat_chatbot_memory_v2.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.stabilization",
+      "imported_area": "domain",
+      "importer": "testbot.sat_chatbot_memory_v2",
+      "importer_area": "entrypoints",
+      "line": 100,
+      "metadata": {
+        "expected_public_surface": {
+          "module_prefixes": [
+            "testbot.domain"
+          ],
+          "modules": [
+            "testbot.domain",
+            "testbot.pipeline_state"
+          ]
+        }
+      },
+      "reason": "private_surface_import",
+      "source_file": "src/testbot/sat_chatbot_memory_v2.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.stage_transitions",
+      "imported_area": "logic",
+      "importer": "testbot.sat_chatbot_memory_v2",
+      "importer_area": "entrypoints",
+      "line": 53,
+      "metadata": {
+        "allowed_dependencies": [
+          "entrypoints",
+          "application",
+          "ports",
+          "observability",
+          "domain"
+        ]
+      },
+      "reason": "forbidden_dependency_direction",
+      "source_file": "src/testbot/sat_chatbot_memory_v2.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.time_parse",
+      "imported_area": "domain",
+      "importer": "testbot.sat_chatbot_memory_v2",
+      "importer_area": "entrypoints",
+      "line": 77,
+      "metadata": {
+        "expected_public_surface": {
+          "module_prefixes": [
+            "testbot.domain"
+          ],
+          "modules": [
+            "testbot.domain",
+            "testbot.pipeline_state"
+          ]
+        }
+      },
+      "reason": "private_surface_import",
+      "source_file": "src/testbot/sat_chatbot_memory_v2.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.time_reasoning",
+      "imported_area": "domain",
+      "importer": "testbot.sat_chatbot_memory_v2",
+      "importer_area": "entrypoints",
+      "line": 85,
+      "metadata": {
+        "expected_public_surface": {
+          "module_prefixes": [
+            "testbot.domain"
+          ],
+          "modules": [
+            "testbot.domain",
+            "testbot.pipeline_state"
+          ]
+        }
+      },
+      "reason": "private_surface_import",
+      "source_file": "src/testbot/sat_chatbot_memory_v2.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.turn_observation",
+      "imported_area": "domain",
+      "importer": "testbot.sat_chatbot_memory_v2",
+      "importer_area": "entrypoints",
+      "line": 98,
+      "metadata": {
+        "expected_public_surface": {
+          "module_prefixes": [
+            "testbot.domain"
+          ],
+          "modules": [
+            "testbot.domain",
+            "testbot.pipeline_state"
+          ]
+        }
+      },
+      "reason": "private_surface_import",
+      "source_file": "src/testbot/sat_chatbot_memory_v2.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.vector_store",
+      "imported_area": "adapters",
+      "importer": "testbot.sat_chatbot_memory_v2",
+      "importer_area": "entrypoints",
+      "line": 147,
+      "metadata": {
+        "allowed_dependencies": [
+          "entrypoints",
+          "application",
+          "ports",
+          "observability",
+          "domain"
+        ]
+      },
+      "reason": "forbidden_dependency_direction",
+      "source_file": "src/testbot/sat_chatbot_memory_v2.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.ports",
+      "imported_area": "ports",
+      "importer": "testbot.source_connectors",
+      "importer_area": "adapters",
+      "line": 16,
+      "metadata": {},
+      "reason": "allowed_dependency",
+      "source_file": "src/testbot/source_connectors.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.ports",
+      "imported_area": "ports",
+      "importer": "testbot.source_ingest",
+      "importer_area": "adapters",
+      "line": 6,
+      "metadata": {},
+      "reason": "allowed_dependency",
+      "source_file": "src/testbot/source_ingest.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.source_connectors",
+      "imported_area": "adapters",
+      "importer": "testbot.source_ingest",
+      "importer_area": "adapters",
+      "line": 7,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/source_ingest.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.vector_store",
+      "imported_area": "adapters",
+      "importer": "testbot.source_ingest",
+      "importer_area": "adapters",
+      "line": 8,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/source_ingest.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.candidate_encoding",
+      "imported_area": "domain",
+      "importer": "testbot.stabilization",
+      "importer_area": "domain",
+      "line": 6,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/stabilization.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.memory_cards",
+      "imported_area": "domain",
+      "importer": "testbot.stabilization",
+      "importer_area": "domain",
+      "line": 9,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/stabilization.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.memory_strata",
+      "imported_area": "domain",
+      "importer": "testbot.stabilization",
+      "importer_area": "domain",
+      "line": 10,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/stabilization.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.pipeline_state",
+      "imported_area": "domain",
+      "importer": "testbot.stabilization",
+      "importer_area": "domain",
+      "line": 11,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/stabilization.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.turn_observation",
+      "imported_area": "domain",
+      "importer": "testbot.stabilization",
+      "importer_area": "domain",
+      "line": 12,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/stabilization.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.vector_store",
+      "imported_area": "adapters",
+      "importer": "testbot.stabilization",
+      "importer_area": "domain",
+      "line": 13,
+      "metadata": {
+        "allowed_dependencies": [
+          "domain"
+        ]
+      },
+      "reason": "forbidden_dependency_direction",
+      "source_file": "src/testbot/stabilization.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.memory_cards",
+      "imported_area": "domain",
+      "importer": "testbot.stage_transitions",
+      "importer_area": "logic",
+      "line": 9,
+      "metadata": {
+        "expected_public_surface": {
+          "module_prefixes": [
+            "testbot.domain"
+          ],
+          "modules": [
+            "testbot.domain",
+            "testbot.pipeline_state"
+          ]
+        }
+      },
+      "reason": "private_surface_import",
+      "source_file": "src/testbot/stage_transitions.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.pipeline_state",
+      "imported_area": "domain",
+      "importer": "testbot.stage_transitions",
+      "importer_area": "logic",
+      "line": 10,
+      "metadata": {},
+      "reason": "allowed_dependency",
+      "source_file": "src/testbot/stage_transitions.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.pipeline_state",
+      "imported_area": "domain",
+      "importer": "testbot.turn_observation",
+      "importer_area": "domain",
+      "line": 5,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/turn_observation.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.ports",
+      "imported_area": "ports",
+      "importer": "testbot.vector_store",
+      "importer_area": "adapters",
+      "line": 10,
+      "metadata": {},
+      "reason": "allowed_dependency",
+      "source_file": "src/testbot/vector_store.py"
+    }
+  ],
+  "package_name": "testbot",
+  "package_root": "src/testbot",
+  "schema_version": "1",
+  "summary": {
+    "counts_by_classification": {
+      "allowed": 84,
+      "deprecated_compatibility": 2,
+      "temporary_exception": 1,
+      "violation": 65
+    },
+    "import_edge_count": 152,
+    "module_count": 57
+  }
+}
