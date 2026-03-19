@@ -118,7 +118,7 @@ from testbot.policy_decision import (
 from testbot.answer_assembly import assemble_answer_contract
 from testbot.answer_validation import validate_answer_assembly_boundary
 from testbot.answer_rendering import render_answer
-from testbot.answer_commit import commit_answer_stage
+from testbot.answer_commit import AnswerCommitService, build_commit_stage_inputs
 from testbot.retrieval_routing import decide_retrieval_routing, is_definitional_query_form
 from testbot.application.services.turn_service import TurnPipelineDependencies, run_canonical_turn_pipeline_service
 
@@ -2906,11 +2906,14 @@ def _run_answer_stages_from_supplied_artifacts(
         validation=validation_contract,
         preferred_text=validated.final_answer,
     )
-    state, _ = commit_answer_stage(
-        state,
-        assembly=assembly_contract,
+    commit_inputs = build_commit_stage_inputs(
         validation=validation_contract,
         rendered=rendered_contract,
+    )
+    state, _ = AnswerCommitService().commit(
+        state,
+        assembly=assembly_contract,
+        commit_inputs=commit_inputs,
         commit_stage_id="answer.commit",
     )
     return replace(state, draft_answer=assembled.draft_answer)

@@ -111,3 +111,19 @@ For each changelog entry, answer these three questions explicitly:
 
 #### 3) Why this step was taken in this order?
 - Introducing pure-logic seams before port/protocol extraction reduces coupling risk early while keeping existing runtime call sites stable for subsequent `ISSUE-0013` boundary work.
+
+### Entry 8
+
+#### 1) What moved, and where did it land?
+- **Old path/symbol:** `commit_answer_stage(...)` in `src/testbot/answer_commit.py` directly consumed `ValidatedAnswer` + `RenderedAnswer` and co-owned translation into commit persistence fields.
+- **New path/symbol:** narrow commit application entry `AnswerCommitService.commit(...)` now consumes `CommitStageInputs` (`CommitValidationPayload` + `CommitRenderingPayload`), while upstream translation is isolated in `build_commit_stage_inputs(...)`.
+- **Delegation shim:** `commit_answer_stage(...)` remains as a compatibility wrapper delegating to `AnswerCommitService`.
+- **Call-site movement:** orchestration paths now build commit inputs before commit in `src/testbot/application/services/turn_service.py` and `src/testbot/sat_chatbot_memory_v2.py`.
+
+#### 2) What did not change?
+- Commit guardrail semantics are intentionally unchanged (failed validation still requires explicit degraded rendering contract; validated answers still reject degraded commit contract).
+- Commit receipt shape and stage-log contract fields are intentionally unchanged in this step; this is an internal seam extraction, not a wire/schema redesign.
+- This step does **not** claim full package-layer enforcement or full `answer_commit.py` decomposition beyond the commit-input seam.
+
+#### 3) Why this step was taken in this order?
+- Introducing a receiver-style commit seam before deeper module/package relocation enables deterministic service tests with fakes while minimizing runtime regression risk.

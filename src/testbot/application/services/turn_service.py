@@ -8,7 +8,7 @@ from langchain_core.documents import Document
 from langchain_ollama import ChatOllama
 
 from testbot.answer_assembly import assemble_answer_contract
-from testbot.answer_commit import commit_answer_stage
+from testbot.answer_commit import AnswerCommitService, build_commit_stage_inputs
 from testbot.answer_rendering import render_answer
 from testbot.answer_validation import validate_answer_assembly_boundary
 from testbot.canonical_turn_orchestrator import CanonicalStage, CanonicalTurnContext, CanonicalTurnOrchestrator
@@ -589,17 +589,20 @@ def run_canonical_turn_pipeline_service(
             validation=ctx.artifacts["answer_validation_contract"],
             preferred_text=ctx.artifacts["answer_validation_contract"].final_answer,
         )
+        ctx.artifacts["answer_commit_inputs"] = build_commit_stage_inputs(
+            validation=ctx.artifacts["answer_validation_contract"],
+            rendered=ctx.artifacts["answer_render_contract"],
+        )
         deps.validate_and_log_transition(validate_answer_render_post(ctx.state, ctx.artifacts))
         append_pipeline_snapshot("answer.render", ctx.state, time_provider=snapshot_time_provider)
         return ctx
 
     def _answer_commit(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
         deps.validate_and_log_transition(validate_answer_commit_pre(ctx.state, ctx.artifacts))
-        ctx.state, ctx.artifacts["committed_turn_state"] = commit_answer_stage(
+        ctx.state, ctx.artifacts["committed_turn_state"] = AnswerCommitService().commit(
             ctx.state,
             assembly=ctx.artifacts["answer_assembly_contract"],
-            validation=ctx.artifacts["answer_validation_contract"],
-            rendered=ctx.artifacts["answer_render_contract"],
+            commit_inputs=ctx.artifacts["answer_commit_inputs"],
             commit_stage_id="answer.commit",
         )
         ctx.state = replace(ctx.state, draft_answer=ctx.artifacts["assembled_answer"].draft_answer)
