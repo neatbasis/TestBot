@@ -2,10 +2,9 @@ from __future__ import annotations
 
 from collections import deque
 
-from langchain_core.documents import Document
-
 from testbot.application.services.turn_service import TurnPipelineDependencies, run_canonical_turn_pipeline_service
 from testbot.clock import Clock
+from testbot.evidence_retrieval import RetrievalInputRecord
 from testbot.memory_cards import store_doc
 from testbot.pipeline_state import PipelineState
 from testbot.reflection_policy import CapabilityStatus
@@ -28,7 +27,7 @@ def run_canonical_turn_pipeline(
     clock: Clock,
     io_channel: str,
     deps: TurnPipelineDependencies,
-) -> tuple[PipelineState, list[Document]]:
+) -> tuple[PipelineState, list[RetrievalInputRecord]]:
     return run_canonical_turn_pipeline_service(
         runtime=runtime,
         llm=llm,

@@ -2,6 +2,7 @@ from collections import deque
 
 from testbot import sat_chatbot_memory_v2 as runtime
 from testbot.application.services.turn_service import TurnPipelineDependencies
+from testbot.evidence_retrieval import RetrievalInputRecord
 
 
 class _CapabilitySnapshotStub:
@@ -13,7 +14,7 @@ def test_run_canonical_turn_pipeline_delegates_to_application_service(monkeypatc
 
     def _service_stub(**kwargs):
         captured.update(kwargs)
-        return "state-result", ["hit-result"]
+        return "state-result", [RetrievalInputRecord(ref_id="hit-result", score=1.0, content="hit", metadata={})]
 
     monkeypatch.setattr(runtime, "run_canonical_turn_pipeline", _service_stub)
 
@@ -32,7 +33,9 @@ def test_run_canonical_turn_pipeline_delegates_to_application_service(monkeypatc
         clock=object(),
     )
 
-    assert result == ("state-result", ["hit-result"])
+    assert result[0] == "state-result"
+    assert len(result[1]) == 1
+    assert result[1][0].id == "hit-result"
     assert captured["utterance"] == "hello"
     assert captured["io_channel"] == "cli"
     deps = captured["deps"]

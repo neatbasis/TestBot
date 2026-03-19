@@ -102,6 +102,7 @@ from testbot.context_resolution import resolve as resolve_context
 from testbot.intent_resolution import IntentResolutionInput, resolve as resolve_intent
 from testbot.evidence_retrieval import (
     EvidenceBundle,
+    RetrievalInputRecord,
     build_evidence_bundle_from_docs_and_scores,
     build_evidence_bundle_from_hits,
     continuity_evidence_from_prior_state,
@@ -1205,6 +1206,47 @@ def stage_retrieve(
     ), docs_and_scores
 
 
+def _retrieval_input_from_document(doc: Document, *, score: float) -> RetrievalInputRecord:
+    metadata = doc.metadata if isinstance(doc.metadata, dict) else {}
+    return RetrievalInputRecord(
+        ref_id=str(doc.id or metadata.get("doc_id") or ""),
+        score=float(score),
+        content=str(doc.page_content or ""),
+        metadata=metadata,
+    )
+
+
+def _document_from_retrieval_input(record: RetrievalInputRecord) -> Document:
+    metadata = record.metadata if isinstance(record.metadata, dict) else {}
+    return Document(
+        id=str(record.ref_id or metadata.get("doc_id") or ""),
+        page_content=str(record.content or ""),
+        metadata=metadata,
+    )
+
+
+def _stage_retrieve_for_turn_service(
+    store: MemoryStore,
+    state: PipelineState,
+    *,
+    exclude_doc_ids: set[str] | None = None,
+    exclude_source_ids: set[str] | None = None,
+    exclude_turn_scoped_ids: set[str] | None = None,
+    segment_ids: set[str] | None = None,
+    segment_types: set[str] | None = None,
+) -> tuple[PipelineState, list[RetrievalInputRecord]]:
+    updated_state, docs_and_scores = stage_retrieve(
+        store,
+        state,
+        exclude_doc_ids=exclude_doc_ids,
+        exclude_source_ids=exclude_source_ids,
+        exclude_turn_scoped_ids=exclude_turn_scoped_ids,
+        segment_ids=segment_ids,
+        segment_types=segment_types,
+    )
+    return updated_state, [_retrieval_input_from_document(doc, score=score) for doc, score in docs_and_scores]
+
+
 _ANAPHORA_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"\bit\b", re.IGNORECASE),
     re.compile(r"\bthat\b", re.IGNORECASE),
@@ -1403,6 +1445,73 @@ def stage_rerank(
         "window_end": str(temporal_bridge.get("window_end") or ""),
     }
     return replace(state, reranked_hits=reranked_hits, confidence_decision=confidence_decision), hits
+
+
+def _stage_rerank_for_turn_service(
+    state: PipelineState,
+    retrieval_candidates: list[RetrievalInputRecord],
+    *,
+    utterance: str,
+    user_doc_id: str,
+    user_reflection_doc_id: str,
+    near_tie_delta: float,
+    clock: Clock,
+    io_channel: str = "cli",
+) -> tuple[PipelineState, list[RetrievalInputRecord]]:
+    del io_channel
+    docs_and_scores = [(_document_from_retrieval_input(record), float(record.score)) for record in retrieval_candidates]
+    updated_state, hits = stage_rerank(
+        state,
+        docs_and_scores,
+        utterance=utterance,
+        user_doc_id=user_doc_id,
+        user_reflection_doc_id=user_reflection_doc_id,
+        near_tie_delta=near_tie_delta,
+        clock=clock,
+    )
+    return updated_state, [_retrieval_input_from_document(doc, score=1.0) for doc in hits]
+
+
+def _answer_assemble_for_turn_service(
+    llm: ChatOllama,
+    state: PipelineState,
+    *,
+    chat_history: deque[ChatMsg],
+    hits: list[RetrievalInputRecord],
+    capability_status: CapabilityStatus,
+    answer_routing: AnswerRoutingDecision | None = None,
+    runtime_capability_status: CapabilityStatus | None = None,
+    clock: Clock | None = None,
+):
+    docs = [_document_from_retrieval_input(record) for record in hits]
+    return answer_assemble(
+        llm,
+        state,
+        chat_history=chat_history,
+        hits=docs,
+        capability_status=capability_status,
+        answer_routing=answer_routing,
+        runtime_capability_status=runtime_capability_status,
+        clock=clock,
+    )
+
+
+def _answer_validate_for_turn_service(
+    state: PipelineState,
+    *,
+    assembled: AssembledAnswer,
+    hits: list[RetrievalInputRecord],
+    chat_history: deque[ChatMsg],
+    pending_lookup_override: bool = False,
+):
+    docs = [_document_from_retrieval_input(record) for record in hits]
+    return answer_validate(
+        state,
+        assembled=assembled,
+        hits=docs,
+        chat_history=chat_history,
+        pending_lookup_override=pending_lookup_override,
+    )
 
 
 
@@ -3262,19 +3371,19 @@ def _run_canonical_turn_pipeline(
         intent_telemetry_payload=_intent_telemetry_payload,
         poll_background_source_ingestion=_poll_background_source_ingestion,
         start_background_source_ingestion=_start_background_source_ingestion,
-        stage_retrieve=stage_retrieve,
-        stage_rerank=stage_rerank,
+        stage_retrieve=_stage_retrieve_for_turn_service,
+        stage_rerank=_stage_rerank_for_turn_service,
         selected_decision_from_confidence=_selected_decision_from_confidence,
         minimal_confidence_decision_for_direct_answer=_minimal_confidence_decision_for_direct_answer,
         resolve_answer_routing_for_stage=_resolve_answer_routing_for_stage,
-        answer_assemble=answer_assemble,
-        answer_validate=answer_validate,
+        answer_assemble=_answer_assemble_for_turn_service,
+        answer_validate=_answer_validate_for_turn_service,
         detect_capability_offer=_detect_capability_offer,
         ambiguity_score=_ambiguity_score,
         store_doc_fn=store_doc,
         intent_classifier_confidence_threshold=INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD,
     )
-    return run_canonical_turn_pipeline(
+    next_state, normalized_hits = run_canonical_turn_pipeline(
         runtime=runtime,
         llm=llm,
         store=store,
@@ -3290,6 +3399,7 @@ def _run_canonical_turn_pipeline(
         io_channel=io_channel,
         deps=deps,
     )
+    return next_state, [_document_from_retrieval_input(record) for record in normalized_hits]
 
 def _run_chat_loop(
     *,

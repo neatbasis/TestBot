@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from collections import deque
 
-from langchain_core.documents import Document
-
 from testbot.application.services import turn_service
+from testbot.evidence_retrieval import RetrievalInputRecord
 from testbot.pipeline_state import PipelineState
 
 
@@ -61,7 +60,9 @@ def test_run_canonical_turn_pipeline_service_preserves_canonical_stage_order(mon
 
     def _commit_stage(ctx, _runtime):
         order.append("answer.commit")
-        ctx.artifacts["hits"] = [Document(page_content="committed", metadata={"doc_id": "d1"})]
+        ctx.artifacts["hits"] = [
+            RetrievalInputRecord(ref_id="d1", score=1.0, content="committed", metadata={"doc_id": "d1"})
+        ]
         return ctx
 
     monkeypatch.setattr(turn_service, "answer_commit_stage", _commit_stage)
@@ -111,4 +112,4 @@ def test_run_canonical_turn_pipeline_service_preserves_canonical_stage_order(mon
     assert order == list(turn_service.CANONICAL_STAGE_SEQUENCE)
     assert final_state.confidence_decision["stage_audit_trail"] == list(turn_service.CANONICAL_STAGE_SEQUENCE)
     assert len(hits) == 1
-    assert hits[0].metadata["doc_id"] == "d1"
+    assert hits[0].ref_id == "d1"
