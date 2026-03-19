@@ -345,7 +345,7 @@ Your priority ordering already points in the right direction. In practice, the s
 
 ### Phase 2: Split orchestration and authority
 
-**Status (2026-03-19): In progress.** `turn_service.py` was created, orchestration was partially extracted, and boot/wiring separation has started. Remaining work is to eliminate closure capture of `stage_runtime` and complete authority extraction from `sat_chatbot_memory_v2.py`.
+**Status (2026-03-19): In progress.** `turn_service.py` and `canonical_turn_runtime.py` now carry canonical turn execution, and boot/wiring extraction has started through `src/testbot/entrypoints/sat_cli.py`. Remaining work is to shrink residual monolith authority in `sat_chatbot_memory_v2.py`, retire compatibility delegators on schedule, and complete typed replacement of dict-heavy contracts at stage boundaries.
 
 * thin out `sat_chatbot_memory_v2.py`
 * create `turn_service` or equivalent application orchestrator
@@ -553,13 +553,13 @@ If I compress the whole thing into the smallest serious implementation program, 
 
 ### Workstream A — Canonical types and stage interfaces
 
-**Current status (2026-03-19): Partial.** `EvidencePosture` is typed and several stage DTOs exist. Core dict blobs remain (`pending_repair_state`, `reasoning`, artifact maps). The five semantic distinctions are only partially type-enforced; the remainder still relies on string keys.
+**Current status (2026-03-19): Partial.** All eleven named stage DTO classes are present and key artifact boundaries are typed. Remaining obligations are concentrated in dict-heavy residual contracts (`reasoning` payloads and non-critical artifact maps), where monolith-era string-key semantics still carry authority that should move into canonical typed contracts.
 
 Create all state/DTO types and stage contracts.
 
 ### Workstream B — Thin orchestration path
 
-**Current status (2026-03-19): Partial.** `turn_service.py` exists and stages are module-level functions. The canonical runtime is now constructed as `TurnPipelineStageRuntime`, and stage handlers are bound via `_TurnPipelineStageHandlers(runtime=stage_runtime)` in `src/testbot/application/services/turn_service.py`. `sat_chatbot_memory_v2.py` is reduced to 3970 lines (from 4614), but authority concentration remains high. `run_answer_stage_flow` is a documented deprecated alias; legacy seeded-runner status still needs explicit verification in this workstream.
+**Current status (2026-03-19): Partial.** `turn_service.py` now owns canonical sequence declaration (`CANONICAL_STAGE_SEQUENCE`) and stage binding via `_TurnPipelineStageHandlers(runtime=stage_runtime)`. Boot/wiring extraction has started through `src/testbot/entrypoints/sat_cli.py` (including package-script authority), while `sat_chatbot_memory_v2.main(...)` remains a compatibility delegator. Remaining obligations are concentrated in reducing residual monolith runtime authority, retiring compatibility delegators on schedule (including `run_answer_stage_flow`), and finishing extraction of dict-heavy stage contracts that still blur boundary ownership.
 
 Replace monolithic entrypoint behavior with a `turn_service` that executes the canonical sequence.
 
