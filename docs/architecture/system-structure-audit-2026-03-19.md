@@ -115,6 +115,17 @@ There is also duplicated definitional-query form logic presence (local `_is_defi
 
 Add explicit `__all__` in `sat_chatbot_memory_v2.py` (or successor module) to define stable exports and expose accidental internal imports.
 
+#### Finalized export contract (implemented 2026-03-19)
+
+`src/testbot/sat_chatbot_memory_v2.py` now declares an explicit stable export set via `__all__`.
+
+- **Core runtime contracts:** `append_session_log`, `run_canonical_answer_stage_flow`, `run_answer_stage_flow`, `answer_assemble`, `build_capability_snapshot`, `resolve_turn_intent`.
+- **Compatibility constants/types:** `RuntimeCapabilityStatus`, `CapabilitySnapshot`, `AnswerAssembleResult`, `AnswerValidateResult`, `FALLBACK_ANSWER`, `CLARIFY_ANSWER`, `DENY_ANSWER`, `ROUTE_TO_ASK_ANSWER`, `ASSIST_ALTERNATIVES_ANSWER`, `NON_KNOWLEDGE_UNCERTAINTY_ANSWER`.
+- **Diagnostic/policy helpers intentionally stabilized as façades:** `parse_args`, `read_runtime_env`, `resolve_mode`, `print_startup_status`, `run_source_ingestion`, `run_chat_loop`, `resolve_answer_routing_from_decision_object`, `decision_object_from_assembled`, `build_debug_turn_payload`, `format_debug_turn_trace`, `format_debug_turn_trace_payload`, `ambiguity_score`, `user_followup_signal_proxy`, `derive_response_blocker_reason`, `intent_label`.
+- **Additional existing public helpers preserved:** `stage_rewrite_query`, `stage_rerank`, `build_provenance_metadata`, `collect_used_source_evidence_refs`, `has_sufficient_context_confidence`, `has_required_memory_citation`, `raw_claim_like_text_detected`, `response_contains_claims`, `validate_answer_contract`, `generate_reflection_yaml`, `render_context`, `evaluate_alignment_decision`.
+
+Tests that previously imported underscored helpers now consume these stable façade symbols.
+
 ### Step 2 — Resolve two-runner ambiguity
 
 Formally define whether `run_answer_stage_flow` is deprecated alias vs distinct behavior. If alias, deprecate and delegate; if distinct, document contract differences.

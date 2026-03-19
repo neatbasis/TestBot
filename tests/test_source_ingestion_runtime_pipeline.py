@@ -7,8 +7,8 @@ from testbot.clock import SystemClock
 from testbot.sat_chatbot_memory_v2 import (
     CapabilitySnapshot,
     RuntimeCapabilityStatus,
-    _run_chat_loop,
-    _run_source_ingestion,
+    run_chat_loop,
+    run_source_ingestion,
 )
 
 
@@ -66,11 +66,11 @@ def test_fixture_source_ingestion_pipeline_emits_completion_and_provenance(monke
 
     monkeypatch.setattr("testbot.sat_chatbot_memory_v2.append_session_log", _capture_session_log)
 
-    _run_source_ingestion(runtime=runtime, store=store)
+    run_source_ingestion(runtime=runtime, store=store)
 
     replies: list[str] = []
     prompts = iter(["What is a Hilbert space?", "stop"])
-    _run_chat_loop(
+    run_chat_loop(
         runtime=runtime,
         llm=_StaticLLM("A Hilbert space is a complete inner-product vector space."),
         store=store,

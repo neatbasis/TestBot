@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from testbot.pipeline_state import PipelineState
-from testbot.sat_chatbot_memory_v2 import _build_debug_turn_payload, _format_debug_turn_trace, _format_debug_turn_trace_payload
+from testbot.sat_chatbot_memory_v2 import build_debug_turn_payload, format_debug_turn_trace, format_debug_turn_trace_payload
 
 
 REQUIRED_DEBUG_KEYS = {
@@ -37,7 +37,7 @@ def test_structured_debug_payload_memory_recall_contains_stage_sections() -> Non
         invariant_decisions={"answer_mode": "clarify", "fallback_action": "ASK_CLARIFYING_QUESTION"},
     )
 
-    payload = _build_debug_turn_payload(state=state, intent_label="memory_recall", hits=[])
+    payload = build_debug_turn_payload(state=state, intent_label="memory_recall", hits=[])
 
     assert set(payload.keys()) == REQUIRED_DEBUG_KEYS
     _assert_gate_shape(payload["debug.rerank"]["top_final_score_gate"])
@@ -68,7 +68,7 @@ def test_structured_debug_payload_knowledge_includes_contract_gate_scalars() -> 
         },
     )
 
-    payload = _build_debug_turn_payload(state=state, intent_label="knowledge_question", hits=[])
+    payload = build_debug_turn_payload(state=state, intent_label="knowledge_question", hits=[])
 
     _assert_gate_shape(payload["debug.contract"]["answer_contract_gate"])
     _assert_gate_shape(payload["debug.contract"]["general_knowledge_contract_gate"])
@@ -101,7 +101,7 @@ def test_structured_debug_payload_memory_recall_emits_numeric_intent_and_retriev
         invariant_decisions={"answer_mode": "clarify", "fallback_action": "ASK_CLARIFYING_QUESTION"},
     )
 
-    payload = _build_debug_turn_payload(state=state, intent_label="memory_recall", hits=[])
+    payload = build_debug_turn_payload(state=state, intent_label="memory_recall", hits=[])
 
     assert payload["debug.intent"]["predicted"] == "memory_recall"
     assert isinstance(payload["debug.intent"]["confidence"], float)
@@ -140,7 +140,7 @@ def test_structured_debug_payload_knowledge_question_emits_numeric_intent_and_re
         },
     )
 
-    payload = _build_debug_turn_payload(state=state, intent_label="knowledge_question", hits=[])
+    payload = build_debug_turn_payload(state=state, intent_label="knowledge_question", hits=[])
 
     assert payload["debug.intent"]["predicted"] == "knowledge_question"
     assert isinstance(payload["debug.intent"]["confidence"], float)
@@ -160,7 +160,7 @@ def test_structured_debug_payload_policy_reject_signal_shape_and_legacy_reason()
         invariant_decisions={"answer_mode": "assist", "fallback_action": "OFFER_CAPABILITY_ALTERNATIVES"},
     )
 
-    payload = _build_debug_turn_payload(state=state, intent_label="memory_recall", hits=[])
+    payload = build_debug_turn_payload(state=state, intent_label="memory_recall", hits=[])
 
     policy = payload["debug.policy"]
     assert set(policy.keys()) >= {
@@ -209,7 +209,7 @@ def test_structured_debug_payload_observation_includes_candidate_evidence_detail
         invariant_decisions={"answer_mode": "clarify", "fallback_action": "ASK_CLARIFYING_QUESTION"},
     )
 
-    payload = _build_debug_turn_payload(
+    payload = build_debug_turn_payload(
         state=state,
         intent_label="memory_recall",
         hits=[],
@@ -246,7 +246,7 @@ def test_structured_debug_payload_rejected_turn_has_nearest_gate_and_counterfact
         },
     )
 
-    payload = _build_debug_turn_payload(state=state, intent_label="memory_recall", hits=[])
+    payload = build_debug_turn_payload(state=state, intent_label="memory_recall", hits=[])
 
     policy = payload["debug.policy"]
     assert policy["rejected_turn"] is True
@@ -321,7 +321,7 @@ def test_structured_debug_payload_temporal_rejection_includes_temporal_frontier_
         invariant_decisions={"answer_mode": "dont-know", "fallback_action": "ANSWER_UNKNOWN"},
     )
 
-    payload = _build_debug_turn_payload(state=state, intent_label="time_query", hits=[])
+    payload = build_debug_turn_payload(state=state, intent_label="time_query", hits=[])
 
     counterfactuals = payload["debug.policy"]["counterfactuals"]
     assert counterfactuals["nearest_pass_frontier"] == [
@@ -356,7 +356,7 @@ def test_structured_debug_payload_contract_rejection_frontier_focuses_contract_g
         },
     )
 
-    payload = _build_debug_turn_payload(state=state, intent_label="knowledge_question", hits=[])
+    payload = build_debug_turn_payload(state=state, intent_label="knowledge_question", hits=[])
 
     assert payload["debug.policy"]["counterfactuals"]["nearest_pass_frontier"] == [
         {"family": "contract", "gate": "answer_contract_gate", "current": 0.0, "required": 1.0, "delta_to_pass": 1.0}
@@ -383,7 +383,7 @@ def test_structured_debug_payload_non_rejected_turn_has_no_nearest_failure_gate(
         },
     )
 
-    payload = _build_debug_turn_payload(state=state, intent_label="time_query", hits=[])
+    payload = build_debug_turn_payload(state=state, intent_label="time_query", hits=[])
 
     policy = payload["debug.policy"]
     assert policy["rejected_turn"] is False
@@ -403,7 +403,7 @@ def test_structured_debug_payload_temporal_query_is_emitted_in_verbose_trace() -
         invariant_decisions={"answer_mode": "assist", "fallback_action": "ANSWER_GENERAL_KNOWLEDGE"},
     )
 
-    trace = _format_debug_turn_trace(state=state, intent_label="time_query", hits=[], verbose=True)
+    trace = format_debug_turn_trace(state=state, intent_label="time_query", hits=[], verbose=True)
 
     assert trace.startswith("[debug] {")
     for key in REQUIRED_DEBUG_KEYS:
@@ -431,7 +431,7 @@ def test_structured_debug_payload_policy_chosen_action_matches_fallback_action_a
         },
     )
 
-    payload = _build_debug_turn_payload(state=state, intent_label="memory_recall", hits=[])
+    payload = build_debug_turn_payload(state=state, intent_label="memory_recall", hits=[])
 
     assert payload["debug.policy"]["fallback_action"] == "ANSWER_GENERAL_KNOWLEDGE"
     assert payload["debug.policy"]["chosen_action"] == payload["debug.policy"]["fallback_action"]
@@ -447,11 +447,11 @@ def test_debug_turn_payload_schema_drift_fails_loudly_in_formatter() -> None:
         invariant_decisions={"answer_mode": "assist", "fallback_action": "ANSWER_GENERAL_KNOWLEDGE"},
     )
 
-    payload = _build_debug_turn_payload(state=state, intent_label="knowledge_question", hits=[])
+    payload = build_debug_turn_payload(state=state, intent_label="knowledge_question", hits=[])
     payload.pop("debug.policy")
 
     try:
-        _format_debug_turn_trace_payload(payload=payload, verbose=False)
+        format_debug_turn_trace_payload(payload=payload, verbose=False)
     except ValueError as exc:
         assert "schema drift" in str(exc)
     else:
@@ -470,7 +470,7 @@ def test_debug_payload_generation_is_observational_only_for_pipeline_state() -> 
     before_confidence = state.confidence_decision.to_dict()
     before_invariant = state.invariant_decisions.to_dict()
 
-    _build_debug_turn_payload(state=state, intent_label="memory_recall", hits=[])
+    build_debug_turn_payload(state=state, intent_label="memory_recall", hits=[])
 
     assert state.confidence_decision.to_dict() == before_confidence
     assert state.invariant_decisions.to_dict() == before_invariant
@@ -496,7 +496,7 @@ def test_structured_debug_payload_non_applicable_gk_contract_does_not_emit_false
         },
     )
 
-    payload = _build_debug_turn_payload(state=state, intent_label="knowledge_question", hits=[])
+    payload = build_debug_turn_payload(state=state, intent_label="knowledge_question", hits=[])
 
     assert payload["debug.contract"]["general_knowledge_contract_gate"]["passed"] is True
     assert payload["debug.contract"]["general_knowledge_contract_applicability"] == "not_applicable"
@@ -513,7 +513,7 @@ def test_structured_debug_payload_intent_metrics_are_null_when_not_persisted() -
         invariant_decisions={"answer_mode": "assist", "fallback_action": "ANSWER_UNKNOWN"},
     )
 
-    payload = _build_debug_turn_payload(state=state, intent_label="knowledge_question", hits=[])
+    payload = build_debug_turn_payload(state=state, intent_label="knowledge_question", hits=[])
 
     assert payload["debug.intent"]["confidence"] is None
     assert payload["debug.intent"]["threshold"] is None

@@ -251,6 +251,52 @@ _LOGGER = logging.getLogger(__name__)
 _BACKGROUND_SOURCE_INGEST_EXECUTOR = ThreadPoolExecutor(max_workers=1, thread_name_prefix="source-ingest")
 _BACKGROUND_SOURCE_INGEST_LOCK = Lock()
 
+__all__ = [
+    "ASSIST_ALTERNATIVES_ANSWER",
+    "AnswerAssembleResult",
+    "AnswerValidateResult",
+    "CLARIFY_ANSWER",
+    "CapabilitySnapshot",
+    "DENY_ANSWER",
+    "FALLBACK_ANSWER",
+    "NON_KNOWLEDGE_UNCERTAINTY_ANSWER",
+    "ROUTE_TO_ASK_ANSWER",
+    "RuntimeCapabilityStatus",
+    "ambiguity_score",
+    "answer_assemble",
+    "append_session_log",
+    "build_capability_snapshot",
+    "build_debug_turn_payload",
+    "build_provenance_metadata",
+    "collect_used_source_evidence_refs",
+    "decision_object_from_assembled",
+    "derive_response_blocker_reason",
+    "evaluate_alignment_decision",
+    "format_debug_turn_trace",
+    "format_debug_turn_trace_payload",
+    "generate_reflection_yaml",
+    "has_required_memory_citation",
+    "has_sufficient_context_confidence",
+    "intent_label",
+    "parse_args",
+    "print_startup_status",
+    "raw_claim_like_text_detected",
+    "read_runtime_env",
+    "render_context",
+    "resolve_answer_routing_from_decision_object",
+    "resolve_mode",
+    "resolve_turn_intent",
+    "response_contains_claims",
+    "run_answer_stage_flow",
+    "run_canonical_answer_stage_flow",
+    "run_chat_loop",
+    "run_source_ingestion",
+    "stage_rerank",
+    "stage_rewrite_query",
+    "user_followup_signal_proxy",
+    "validate_answer_contract",
+]
+
 
 def _execute_source_ingestion(
     *,
@@ -4499,6 +4545,113 @@ def build_capability_snapshot(*, requested_mode: str, daemon_mode: bool, runtime
         ha_error=ha_error,
         ollama_error=ollama_error,
         runtime_capability_status=runtime_capability_status,
+    )
+
+
+def parse_args(argv: list[str] | None = None) -> Namespace:
+    return _parse_args(argv)
+
+
+def read_runtime_env() -> dict[str, object]:
+    return _read_runtime_env()
+
+
+def resolve_mode(requested_mode: str, ha_error: str | None) -> str:
+    return _resolve_mode(requested_mode, ha_error)
+
+
+def run_source_ingestion(*, runtime: dict[str, object], store: MemoryStore) -> None:
+    _run_source_ingestion(runtime=runtime, store=store)
+
+
+def print_startup_status(*, snapshot: CapabilitySnapshot) -> None:
+    _print_startup_status(snapshot=snapshot)
+
+
+def ambiguity_score(confidence_decision: dict[str, object]) -> float:
+    return _ambiguity_score(confidence_decision)
+
+
+def user_followup_signal_proxy(*, final_answer: str, fallback_action: str, ambiguity_score: float) -> float:
+    return _user_followup_signal_proxy(
+        final_answer=final_answer,
+        fallback_action=fallback_action,
+        ambiguity_score=ambiguity_score,
+    )
+
+
+def derive_response_blocker_reason(
+    *,
+    state: PipelineState,
+    intent_label: str,
+    fallback_action: str,
+    hits: list[Document],
+    confidence_decision: dict[str, object],
+) -> str:
+    return _derive_response_blocker_reason(
+        state=state,
+        intent_label=intent_label,
+        fallback_action=fallback_action,
+        hits=hits,
+        confidence_decision=confidence_decision,
+    )
+
+
+def build_debug_turn_payload(*, state: PipelineState, intent_label: str, hits: list[Document]) -> dict[str, object]:
+    return _build_debug_turn_payload(state=state, intent_label=intent_label, hits=hits)
+
+
+def format_debug_turn_trace_payload(*, payload: dict[str, object], verbose: bool = False) -> str:
+    return _format_debug_turn_trace_payload(payload=payload, verbose=verbose)
+
+
+def format_debug_turn_trace(*, state: PipelineState, intent_label: str, hits: list[Document], verbose: bool = False) -> str:
+    return _format_debug_turn_trace(state=state, intent_label=intent_label, hits=hits, verbose=verbose)
+
+
+def intent_label(intent: IntentType) -> str:
+    return _intent_label(intent)
+
+
+def resolve_answer_routing_from_decision_object(
+    decision: DecisionObject, *, capability_status: str
+) -> AnswerRoutingDecision:
+    return _resolve_answer_routing_from_decision_object(
+        decision,
+        capability_status=capability_status,
+    )
+
+
+def decision_object_from_assembled(assembled: AnswerAssembleResult) -> DecisionObject:
+    return _decision_object_from_assembled(assembled)
+
+
+def run_chat_loop(
+    *,
+    runtime: dict[str, object],
+    llm: ChatOllama,
+    store: MemoryStore,
+    chat_history: deque[ChatMsg],
+    near_tie_delta: float,
+    io_channel: str,
+    capability_status: str,
+    capability_snapshot: CapabilitySnapshot,
+    read_user_utterance,
+    send_assistant_text,
+    clock: Clock,
+) -> None:
+    _run_chat_loop(
+        runtime=runtime,
+        llm=llm,
+        store=store,
+        chat_history=chat_history,
+        near_tie_delta=near_tie_delta,
+        io_channel=io_channel,
+        capability_status=capability_status,
+        capability_snapshot=capability_snapshot,
+        read_user_utterance=read_user_utterance,
+        send_assistant_text=send_assistant_text,
+        clock=clock,
     )
 
 
