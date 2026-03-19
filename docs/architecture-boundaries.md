@@ -12,6 +12,8 @@ This document defines static architecture boundaries enforced by `tests/architec
    - Full canonical stage sequence declarations are restricted to orchestration modules.
 4. **No direct raw-input-to-render shortcuts outside canonical process flow.**
    - `render_answer(...)` call sites are restricted to canonical rendering flow functions.
+5. **Deprecated sat runtime compatibility exports must not be imported by new code.**
+   - `run_answer_stage_flow` and `evaluate_alignment_decision` from `testbot.sat_chatbot_memory_v2` are compatibility-only aliases and import-allowlisted only for explicit compatibility tests.
 
 ## Why these checks exist
 
@@ -28,6 +30,7 @@ The boundary rules deprecate the following implementation patterns for canonical
 - Domain-type module coupling to external client libraries (`elasticsearch`, `langchain_ollama`, `homeassistant_api`).
 - New end-to-end canonical stage-order declarations outside orchestration modules.
 - New direct `render_answer(...)` shortcut call sites outside the canonical render flow allowlist.
+- New imports of deprecated compatibility aliases from `testbot.sat_chatbot_memory_v2` outside approved compatibility tests.
 
 Existing legacy paths that still use these patterns should be treated as migration debt and removed behind issue-tracked follow-up work rather than expanded.
 

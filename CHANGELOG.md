@@ -12,6 +12,28 @@ For each changelog entry, answer these three questions explicitly:
 
 ## 2026-03-19
 
+### Entry 0
+
+#### 1) What moved, and where did it land?
+- **Old path/symbol:** compatibility aliases in `src/testbot/sat_chatbot_memory_v2.py` (`run_answer_stage_flow`, `evaluate_alignment_decision`) had partial deprecation messaging and runtime-internal call paths still touched the alignment shim.
+- **New path/symbol:** runtime-internal alignment callers now use canonical owner `_evaluate_alignment_decision` (`testbot.logic.alignment.evaluate_alignment_decision`), and both compatibility aliases now share explicit deprecation metadata (canonical owner, removal target date, removal criteria).
+- **Delegation shim:** both aliases remain as temporary re-exports with strict passthrough coverage in `tests/test_answer_stage_flow_delegation.py`.
+
+#### 2) What did not change?
+- External compatibility exports remain present in `__all__` for `run_answer_stage_flow` and `evaluate_alignment_decision`; no caller-breaking API removal was performed in this step.
+- Canonical answer-stage execution authority remains `run_canonical_answer_stage_flow(...)`, and alignment scoring behavior remains owned by `testbot.logic.alignment`.
+
+#### 3) Why this step was taken in this order?
+- Completing deprecation metadata + import-boundary enforcement before symbol deletion creates an auditable, low-risk retirement path and prevents new dependency growth on deprecated aliases.
+
+#### Compatibility lifecycle status snapshot
+
+| Symbol | Status | Removal target | Removal-ready criteria |
+|---|---|---|---|
+| `run_answer_stage_flow` | **still present** (deprecated passthrough alias) | 2026-04-01 | all internal callers and non-compatibility tests import `run_canonical_answer_stage_flow` |
+| `evaluate_alignment_decision` shim in `sat_chatbot_memory_v2` | **still present** (deprecated passthrough alias) | 2026-04-01 | all callers import from `testbot.logic.alignment` while compatibility passthrough tests remain green |
+| `_run_full_canonical_turn_from_seeded_artifacts` | **removed** | removed 2026-03-19 | n/a |
+
 ### 1) What moved, and where did it land?
 - **Old path/symbol:** local helper `_is_definitional_query_form(...)` defined and called in `src/testbot/sat_chatbot_memory_v2.py`.
 - **New path/symbol:** shared helper `is_definitional_query_form(...)` from `testbot.retrieval_routing` (imported and used by `sat_chatbot_memory_v2.py`).
@@ -133,7 +155,7 @@ For each changelog entry, answer these three questions explicitly:
 #### 1) What moved, and where did it land?
 - **Old path/symbol:** alignment scoring logic lived in `src/testbot/sat_chatbot_memory_v2.py` (`evaluate_alignment_decision`, `response_contains_claims`, `raw_claim_like_text_detected`, `has_required_memory_citation`, and related general-knowledge alignment helpers/constants).
 - **New path/symbol:** alignment scoring now lives in `src/testbot/logic/alignment.py`, with package export at `src/testbot/logic/__init__.py`.
-- **Delegation shim:** `evaluate_alignment_decision(...)` remains in `src/testbot/sat_chatbot_memory_v2.py` as a temporary re-export shim that emits `DeprecationWarning`; planned removal date is **2026-06-30** after downstream imports fully migrate.
+- **Delegation shim:** `evaluate_alignment_decision(...)` remains in `src/testbot/sat_chatbot_memory_v2.py` as a temporary re-export shim that emits `DeprecationWarning`; planned removal date is **2026-04-01** after downstream imports fully migrate.
 
 #### 2) What did not change?
 - Alignment decision payload structure (`objective_version`, `dimensions`, `dimension_inputs`, `final_alignment_decision`) and contract semantics were preserved.

@@ -111,6 +111,20 @@ As of **2026-03-19**, canonical answer-stage execution authority is intentionall
 
 Residual risk now comes primarily from import-surface drift (callers continuing to import the deprecated alias) rather than from ambiguous runtime behavior between two independent implementations.
 
+### 5.1 Compatibility entry-surface inventory + lifecycle state (as of 2026-03-19)
+
+| Symbol surface (`sat_chatbot_memory_v2.py`) | Category | Lifecycle state | Removal target | Removal-ready criteria |
+|---|---|---|---|---|
+| `run_canonical_answer_stage_flow` | Canonical entrypoint | still present (authoritative) | n/a | n/a |
+| `run_answer_stage_flow` | Deprecated compatibility alias (in `__all__`) | still present | 2026-04-01 | no internal callers + no non-compatibility-test imports remain |
+| `evaluate_alignment_decision` | Deprecated alignment shim export (in `__all__`) | still present | 2026-04-01 | all callers import canonical owner `testbot.logic.alignment.evaluate_alignment_decision`; shim passthrough tests only |
+| `_answer_routing_from_decision_object` | Deprecated stage helper bridge (not in `__all__`) | still present | TBD (post decision-helper migration completion) | no in-repo callers outside shim tests |
+| `_run_full_canonical_turn_from_seeded_artifacts` | Deprecated seeded helper | removed | removed 2026-03-19 | n/a |
+
+### 5.2 Import drift enforcement added
+
+Architecture boundary enforcement now includes a static AST check that fails when deprecated aliases (`run_answer_stage_flow`, `evaluate_alignment_decision`) are imported from `testbot.sat_chatbot_memory_v2` outside approved compatibility tests.
+
 ---
 
 ## 6) Receiver-first protocol required before deleting/moving logic
