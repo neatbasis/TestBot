@@ -103,6 +103,21 @@ The following table extends the executed census beyond `src/testbot/*.py` as an 
 5. **Adapters exist but ports are not explicit enough:**
    - `vector_store.py` and `source_connectors.py` are identifiable adapters; they need corresponding formal ports.
 
+### Status update after first-pass census (as of 2026-03-19)
+
+The first-pass census above remains directionally valid. Since that baseline, several pre-extraction hardening steps have landed and should be treated as completed prerequisites (not future intent):
+
+- ✅ **Definitional query helper de-duplicated in runtime path**
+  - Runtime intent handling now uses `testbot.retrieval_routing.is_definitional_query_form` directly in `src/testbot/sat_chatbot_memory_v2.py` (no local duplicate implementation remains).
+- ✅ **Export surface made explicit for the monolith runtime module**
+  - `src/testbot/sat_chatbot_memory_v2.py` now declares `__all__` and exposes stable façade symbols used by tests/scripts.
+- ✅ **High-frequency stage artifact reads gained typed fields/accessors**
+  - `src/testbot/pipeline_state.py` now contains typed fields/accessors for frequently-read artifact values (for example `ConfidenceDecision.scored_candidates`, `AlignmentDecision.dimension_inputs`, and `CommitReceiptArtifact` commit metadata fields).
+- ✅ **Runner ambiguity narrative corrected in architecture audit**
+  - `docs/architecture/system-structure-audit-2026-03-19.md` now documents `run_answer_stage_flow` as a deprecated delegating alias of `run_canonical_answer_stage_flow`.
+
+These updates reduce immediate drift risk, but they do **not** by themselves complete the structural split of `sat_chatbot_memory_v2.py` or establish package-layer enforcement.
+
 ---
 
 ## 3) Prioritized migration order (derived from census scores)
@@ -201,13 +216,19 @@ Boundary rules:
 
 ---
 
-## 6) Concrete deliverables for next PRs (non-circular)
+## 6) Concrete deliverables for next PRs (remaining work)
 
 1. **`ISSUE-0013-A`**: split `sat_chatbot_memory_v2.py` into thin entrypoint + turn service wiring.
-2. **`ISSUE-0013-B`**: extract `PipelineState` pure domain model from memory coupling.
+   - Immediate slice: extract `_run_canonical_turn_pipeline` stage closures into a receiver module first, then delegate from current call sites.
+2. **`ISSUE-0013-B`**: finish `PipelineState` domain purification.
+   - Immediate slice: remove direct `memory_cards` dependency (`utc_now_iso`) from `src/testbot/pipeline_state.py` by introducing a domain-local clock boundary.
 3. **`ISSUE-0013-C`**: split stabilization/retrieval into pure logic + port-backed adapters.
+   - Immediate slice: separate provider-native mapping from retrieval policy decision code paths.
 4. **`ISSUE-0013-D`**: add ports (`MemoryRepository`, `VectorStore`, `LanguageModel`, `SourceConnector`) and contract tests.
 5. **`ISSUE-0013-E`**: add import-boundary checks enforcing dependency direction.
+   - Immediate slice: land report-only import-linter/ruff checks, then ratchet to readiness-blocking mode.
+6. **`ISSUE-0013-F`**: complete per-file census scoring for deferred surfaces.
+   - Required for `src/testbot/pipeline/*.py` and `src/seem_bot/*.py` before assigning P-bands.
 
 ### Pivot deliverables checklist
 
