@@ -13,6 +13,8 @@ This checklist captures unresolved delivery obligations grouped by Workstream A�
 
 ## Workstream B — Thin orchestration path
 - [ ] Replace monolithic turn flow with explicit canonical sequence orchestration (`observe → encode → stabilize → context → intent → retrieve → decide → assemble → validate → render → commit`); **owner module(s):** `src/testbot/application/turn_service.py`, `src/testbot/entrypoints/*`; **required evidence (test/script/doc):** service tests over fake ports + sequence coverage in BDD; **done signal:** no supported runtime path bypasses the canonical stage chain.
+- [~] Progress (2026-03-19): canonical sequence ownership is now explicit via `CANONICAL_STAGE_SEQUENCE` in `src/testbot/application/services/turn_service.py`, and deterministic service test coverage was added for full ordered execution from raw turn input to committed artifacts (`tests/test_turn_service_canonical_sequence.py`).
+- [~] Progress (2026-03-19): CLI/satellite startup routing now executes through `src/testbot/entrypoints/sat_cli.py`, while `sat_chatbot_memory_v2.main(...)` remains as a compatibility delegator.
 
 ## Workstream C — Stabilization and discourse state
 - [ ] Implement pre-route stabilization and explicit unresolved-obligation discourse model (`PendingClarification`, `PendingRepair`, anchors, candidate/confirmed fact split); **owner module(s):** `src/testbot/logic/stabilization/*`, `src/testbot/domain/discourse*`, `src/testbot/domain/memory*`; **required evidence (test/script/doc):** unit tests for preservation/ID/provenance semantics + BDD scenarios for clarification/repair follow-up; **done signal:** candidate interpretations are preserved pre-route and discourse obligations survive turn boundaries deterministically.

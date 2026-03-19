@@ -209,3 +209,23 @@ For each changelog entry, answer these three questions explicitly:
 
 #### 3) Why this step was taken in this order?
 - Keeping planning and audit documents synchronized with already-landed extraction work reduces governance drift and prevents follow-on work from being planned against outdated assumptions.
+### Entry 14
+
+#### 1) What moved, and where did it land?
+- **Old path/symbol:** canonical-sequence declaration remained implicit in handler construction inside `src/testbot/application/services/turn_service.py`.
+- **New path/symbol:** explicit sequence contract `CANONICAL_STAGE_SEQUENCE` now owns the canonical stage ordering and drives stage binding in `turn_service`.
+- **Delegation shim:** none required for stage names; existing canonical stage handlers remain unchanged.
+- **Old path/symbol:** monolith-owned decision helper implementations in `src/testbot/sat_chatbot_memory_v2.py` (`_selected_decision_from_confidence`, `_resolve_answer_routing_from_decision_object`, `_resolve_answer_routing_for_stage`, `_decision_object_from_assembled`).
+- **New path/symbol:** helper ownership moved to `src/testbot/logic/decision_helpers.py`, with monolith wrappers retained for compatibility.
+- **Delegation shim:** yes; monolith private helpers now delegate to logic helpers.
+- **Old path/symbol:** startup execution logic in `sat_chatbot_memory_v2.main(...)`.
+- **New path/symbol:** dedicated entrypoint module `src/testbot/entrypoints/sat_cli.py::main(...)`; runtime `main(...)` now delegates.
+- **Delegation shim:** yes; compatibility `main(...)` remains in monolith.
+
+#### 2) What did not change?
+- Canonical stage order semantics and stage names were intentionally preserved (`observe.turn` through `answer.commit`).
+- Compatibility exports in `sat_chatbot_memory_v2.py` remain available; this step is ownership relocation and wiring refactor, not a caller-breaking API cut.
+- Session log schema version and commit receipt wire contract were not intentionally changed in this step.
+
+#### 3) Why this step was taken in this order?
+- Establishing explicit sequence ownership and extracting entrypoint/decision helpers first reduces monolith authority while preserving stable runtime symbols for incremental migration.
