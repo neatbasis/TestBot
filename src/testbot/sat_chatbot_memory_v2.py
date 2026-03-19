@@ -1454,28 +1454,12 @@ def _intent_label(intent: IntentType) -> str:
     return intent.value
 
 
-def _is_definitional_query_form(normalized_utterance: str) -> bool:
-    text = (normalized_utterance or "").strip()
-    if not text:
-        return False
-    definitional_prefixes = (
-        "what is ",
-        "what are ",
-        "who is ",
-        "who are ",
-        "define ",
-        "definition of ",
-    )
-    return text.startswith(definitional_prefixes)
-
-
-
 def _intent_classifier_confidence(*, utterance: str, predicted_intent: IntentType) -> float:
     normalized = (utterance or "").strip().lower()
     if not normalized:
         return INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD
 
-    if predicted_intent == IntentType.KNOWLEDGE_QUESTION and not _is_definitional_query_form(normalized):
+    if predicted_intent == IntentType.KNOWLEDGE_QUESTION and not is_definitional_query_form(normalized):
         return 0.82
 
     return 0.95
