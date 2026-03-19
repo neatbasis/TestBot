@@ -46,6 +46,9 @@ def test_build_stabilization_plan_runs_as_pure_logic_without_store() -> None:
     assert plan.stabilized.reflection_doc_id == "reflection-fixed"
     assert plan.stabilized.dialogue_state_doc_id == "dialogue-fixed"
     assert plan.stabilized.utterance_doc_id == "turn-100"
+    assert plan.stabilized.candidate_facts[0].candidate_id == "turn-100:fact:utterance_raw:0"
+    assert plan.stabilized.candidate_facts[1].candidate_id == "turn-100:fact:user_name:1"
+    assert plan.stabilized.candidate_facts[1].provenance == "unit"
     assert len(plan.persistence_records) == 3
     assert plan.next_state.same_turn_exclusion["excluded_doc_ids"] == [
         "turn-100",

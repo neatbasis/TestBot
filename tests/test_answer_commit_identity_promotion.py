@@ -27,13 +27,13 @@ def _base_assembly(*, confirmed_user_facts: list[str]) -> AnswerCandidate:
     )
 
 
-def test_commit_promotes_stabilized_identity_fact_into_receipt() -> None:
+def test_commit_does_not_promote_stabilized_candidate_identity_into_confirmed_receipt() -> None:
     state = PipelineState(
         user_input="My name is sam",
         candidate_facts={
             "facts": [
-                {"key": "utterance_raw", "value": "My name is sam", "confidence": 1.0},
-                {"key": "user_name", "value": "sam", "confidence": 0.95},
+                {"key": "utterance_raw", "value": "My name is sam", "confidence": 1.0, "candidate_id": "turn-1:fact:utterance_raw:0"},
+                {"key": "user_name", "value": "sam", "confidence": 0.95, "candidate_id": "turn-1:fact:user_name:0"},
             ]
         },
     )
@@ -45,11 +45,11 @@ def test_commit_promotes_stabilized_identity_fact_into_receipt() -> None:
         rendered=RenderedAnswer(rendered_text="ok"),
     )
 
-    assert committed_state.commit_receipt.get("confirmed_user_facts") == ["name=Sam"]
-    assert committed.confirmed_user_facts == ["name=Sam"]
+    assert committed_state.commit_receipt.confirmed_user_facts == []
+    assert committed.confirmed_user_facts == []
 
 
-def test_commit_does_not_promote_identity_when_contradicted_by_confirmed_fact() -> None:
+def test_commit_keeps_confirmed_identity_when_candidate_identity_disagrees() -> None:
     state = PipelineState(
         user_input="My name is sam",
         candidate_facts={
@@ -68,14 +68,14 @@ def test_commit_does_not_promote_identity_when_contradicted_by_confirmed_fact() 
     assert committed.confirmed_user_facts == ["name=Taylor"]
 
 
-def test_promoted_identity_fact_is_available_as_next_turn_continuity_anchor() -> None:
+def test_confirmed_identity_fact_is_available_as_next_turn_continuity_anchor() -> None:
     state = PipelineState(
         user_input="My name is sam",
         candidate_facts={"facts": [{"key": "user_name", "value": "sam", "confidence": 0.95}]},
     )
     committed_state, _ = commit_answer_stage(
         state,
-        assembly=_base_assembly(confirmed_user_facts=[]),
+        assembly=_base_assembly(confirmed_user_facts=["name=Sam"]),
         validation=ValidatedAnswer(passed=True, failures=[]),
         rendered=RenderedAnswer(rendered_text="ok"),
     )

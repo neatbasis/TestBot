@@ -12,6 +12,8 @@ class SpeechActCandidate:
     label: str
     confidence: float
     rationale: str
+    candidate_id: str = ""
+    provenance: str = "encode.candidates"
 
 
 @dataclass(frozen=True)
@@ -19,6 +21,7 @@ class FactCandidate:
     key: str
     value: str
     confidence: float
+    candidate_id: str = ""
     provenance: str = "user_utterance"
 
 
@@ -26,6 +29,8 @@ class FactCandidate:
 class DialogueStateCandidate:
     label: str
     confidence: float
+    candidate_id: str = ""
+    provenance: str = "encode.candidates"
 
 
 @dataclass(frozen=True)
@@ -33,6 +38,8 @@ class RepairCandidate:
     label: str
     confidence: float
     rationale: str
+    candidate_id: str = ""
+    provenance: str = "encode.candidates"
 
 
 @dataclass(frozen=True)
@@ -67,14 +74,43 @@ def encode_turn_candidates(
     dialogue_state: list[DialogueStateCandidate] = []
 
     if utterance.endswith("?"):
-        speech_acts.append(SpeechActCandidate(label="query", confidence=0.9, rationale="question_mark"))
+        speech_acts.append(
+            SpeechActCandidate(
+                candidate_id=f"{observation.turn_id}:speech_act:query:0",
+                label="query",
+                confidence=0.9,
+                rationale="question_mark",
+            )
+        )
     else:
-        speech_acts.append(SpeechActCandidate(label="inform", confidence=0.6, rationale="declarative_default"))
+        speech_acts.append(
+            SpeechActCandidate(
+                candidate_id=f"{observation.turn_id}:speech_act:inform:0",
+                label="inform",
+                confidence=0.6,
+                rationale="declarative_default",
+            )
+        )
 
     name_match = _NAME_PATTERN.search(utterance)
     if name_match:
-        facts.append(FactCandidate(key="user_name", value=name_match.group(1), confidence=0.95))
-        dialogue_state.append(DialogueStateCandidate(label="self_identification", confidence=0.9))
+        facts.append(
+            FactCandidate(
+                candidate_id=f"{observation.turn_id}:fact:user_name:0",
+                key="user_name",
+                value=name_match.group(1),
+                confidence=0.95,
+                provenance="encode.candidates",
+            )
+        )
+        dialogue_state.append(
+            DialogueStateCandidate(
+                candidate_id=f"{observation.turn_id}:dialogue_state:self_identification:0",
+                label="self_identification",
+                confidence=0.9,
+                provenance="encode.candidates",
+            )
+        )
 
     return EncodedTurnCandidates(
         rewritten_query=rewritten_query or state.user_input,

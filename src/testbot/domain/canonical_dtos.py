@@ -296,6 +296,56 @@ class ReasoningTrace:
 
 
 @dataclass(frozen=True)
+class AssistantOfferAnchor:
+    offer_type: str
+    followup_route: str
+    offered_to_user: bool
+    reason: str = ""
+
+    @classmethod
+    def from_mapping(cls, payload: dict[str, object]) -> AssistantOfferAnchor:
+        return cls(
+            offer_type=str(payload.get("offer_type") or ""),
+            followup_route=str(payload.get("followup_route") or ""),
+            offered_to_user=bool(payload.get("repair_offered_to_user", payload.get("offered_to_user", False))),
+            reason=str(payload.get("reason") or ""),
+        )
+
+    def to_mapping(self) -> dict[str, object]:
+        return {
+            "offer_type": self.offer_type,
+            "followup_route": self.followup_route,
+            "offered_to_user": self.offered_to_user,
+            "reason": self.reason,
+        }
+
+
+@dataclass(frozen=True)
+class FocusAnchor:
+    anchor_key: str
+    anchor_value: str
+    provenance: str = ""
+
+    @classmethod
+    def from_fact_candidate(cls, candidate: FactCandidate) -> FocusAnchor:
+        return cls(
+            anchor_key=candidate.key,
+            anchor_value=candidate.value,
+            provenance=candidate.provenance,
+        )
+
+
+@dataclass(frozen=True)
+class UnresolvedObligation:
+    obligation: str
+    source: str = "commit.remaining_obligations"
+
+    @classmethod
+    def from_raw(cls, value: object) -> UnresolvedObligation:
+        return cls(obligation=str(value).strip())
+
+
+@dataclass(frozen=True)
 class AnswerCandidate:
     decision_class: str
     rendered_class: str
@@ -506,11 +556,13 @@ def committed_turn_state_from_legacy(committed: LegacyCommittedTurnState) -> Com
 
 
 __all__ = [
+    "AssistantOfferAnchor",
     "AnswerCandidate",
     "CandidateEncodingSet",
     "CommittedTurnState",
     "ContextResolvedState",
     "EvidenceSet",
+    "FocusAnchor",
     "IntentResolution",
     "PendingRepairState",
     "PolicyDecision",
@@ -518,6 +570,7 @@ __all__ = [
     "ReasoningTrace",
     "RenderedResponse",
     "TurnObservation",
+    "UnresolvedObligation",
     "ValidationResult",
     "answer_candidate_from_legacy",
     "candidate_encoding_set_from_encoded_turn_candidates",

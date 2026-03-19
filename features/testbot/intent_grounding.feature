@@ -127,6 +127,20 @@ Feature: Intent-specific grounding and provenance behavior
     Then hostile affirmation should not preserve prior clarification intent
     And commit-state transitions should clear clarification obligations at the hostile follow-up boundary
 
+  @ISSUE-0008 @AC-0008-42
+  Scenario: pending clarification commit anchors are preserved for immediate affirmative follow-up
+    Given an intent response harness
+    And a committed clarification turn with pending follow-up route
+    When the user follows up with immediate affirmation "yes"
+    Then immediate follow-up should preserve clarification continuity anchors
+
+  @ISSUE-0008 @AC-0008-43
+  Scenario: repair continuation obligations clear after an intervening topic-shift commit
+    Given an intent response harness
+    And a committed repair offer turn with continuation obligations
+    When an unrelated topic-shift turn is committed before delayed follow-up "yes"
+    Then delayed follow-up should not preserve repair continuation continuity anchors
+
 
 
   @ISSUE-0008 @AC-0008-14

@@ -5,13 +5,17 @@ from testbot.answer_commit import CommittedTurnState
 from testbot.answer_rendering import RenderedAnswer
 from testbot.answer_validation import ValidatedAnswer
 from testbot.domain import (
+    AssistantOfferAnchor,
     AnswerCandidate as TypedAnswerCandidate,
     CommittedTurnState as TypedCommittedTurnState,
+    FocusAnchor,
     IntentResolution,
     TurnObservation,
+    UnresolvedObligation,
     answer_candidate_from_legacy,
     committed_turn_state_from_legacy,
 )
+from testbot.candidate_encoding import FactCandidate
 from testbot.intent_resolution import ResolvedIntent
 from testbot.intent_router import IntentType
 from testbot.policy_decision import DecisionClass, decide
@@ -106,3 +110,36 @@ def test_rendered_offer_vs_committed_pending_repair_state_distinction() -> None:
     typed_committed: TypedCommittedTurnState = committed_turn_state_from_legacy(committed)
     assert typed_committed.pending_repair_state.reason == "repair_offer_rendered"
     assert typed_committed.pending_repair_state.followup_route == "capability_offer"
+
+
+def test_typed_assistant_offer_anchor_round_trips_from_commit_mapping() -> None:
+    anchor = AssistantOfferAnchor.from_mapping(
+        {
+            "repair_offered_to_user": True,
+            "offer_type": "repair_offer_followup",
+            "followup_route": "repair_offer_followup",
+            "reason": "repair_offer_rendered",
+        }
+    )
+
+    assert anchor.offered_to_user is True
+    assert anchor.followup_route == "repair_offer_followup"
+    assert anchor.to_mapping()["offer_type"] == "repair_offer_followup"
+
+
+def test_focus_anchor_and_unresolved_obligation_typed_models_capture_pre_route_and_commit_contracts() -> None:
+    focus = FocusAnchor.from_fact_candidate(
+        FactCandidate(
+            key="user_name",
+            value="Ava",
+            confidence=0.95,
+            candidate_id="turn-1:fact:user_name:0",
+            provenance="encode.candidates",
+        )
+    )
+    obligation = UnresolvedObligation.from_raw("continue_repair_reconstruction")
+
+    assert focus.anchor_key == "user_name"
+    assert focus.anchor_value == "Ava"
+    assert focus.provenance == "encode.candidates"
+    assert obligation.obligation == "continue_repair_reconstruction"
