@@ -6,7 +6,7 @@ from dataclasses import dataclass
 import yaml
 
 from testbot.memory_cards import make_reflection_card, store_doc
-from testbot.vector_store import MemoryStore
+from testbot.ports import MemoryStorePort
 
 
 @dataclass(frozen=True)
@@ -188,7 +188,7 @@ def evaluate_promotion_policy(
 
 def persist_promoted_context(
     *,
-    store: MemoryStore,
+    store: MemoryStorePort,
     ts_iso: str,
     source_doc_id: str,
     source_reflection_id: str,

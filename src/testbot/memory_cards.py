@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import arrow
 from langchain_core.documents import Document
 from testbot.ports import PortDocument
-from testbot.vector_store import MemoryStore
+from testbot.ports import MemoryStorePort
 
 
 @dataclass(frozen=True)
@@ -61,7 +61,7 @@ def make_reflection_card(*, ts_iso: str, about: str, source_doc_id: str, doc_id:
     )
 
 
-def store_doc(store: MemoryStore, *, doc_id: str, content: str, metadata: dict) -> None:
+def store_doc(store: MemoryStorePort, *, doc_id: str, content: str, metadata: dict) -> None:
     doc = PortDocument(doc_id=doc_id, content=content, metadata=metadata)
     if hasattr(store, "add_memory_records"):
         store.add_memory_records([doc])

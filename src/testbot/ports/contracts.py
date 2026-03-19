@@ -64,6 +64,25 @@ class MemoryRepository(Protocol):
     def search_memory_records(self, query: MemorySearchQuery) -> list[ScoredPortDocument]: ...
 
 
+
+
+class MemoryStorePort(MemoryRepository, Protocol):
+    """Narrow runtime memory-storage port for non-adapter layers."""
+
+    def add_documents(self, documents: list[object]) -> None: ...
+
+    def similarity_search_with_score(
+        self,
+        query: str,
+        k: int = 4,
+        *,
+        exclude_doc_ids: set[str] | None = None,
+        exclude_source_ids: set[str] | None = None,
+        exclude_turn_scoped_ids: set[str] | None = None,
+        segment_ids: set[str] | None = None,
+        segment_types: set[str] | None = None,
+    ) -> list[tuple[object, float]]: ...
+
 class LanguageModel(Protocol):
     def invoke(self, prompt: object) -> object: ...
 

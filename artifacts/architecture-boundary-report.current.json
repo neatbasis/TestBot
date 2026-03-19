@@ -67,9 +67,10 @@
     },
     {
       "description": "Infra/external system adapters and connectors (currently sparse and partly legacy).",
-      "module_count": 6,
+      "module_count": 7,
       "name": "adapters",
       "sample_modules": [
+        "testbot.adapters.memory_store_factory",
         "testbot.config",
         "testbot.eval_fixtures",
         "testbot.rerank",
@@ -102,6 +103,17 @@
       "metadata": {},
       "reason": "module_outside_governed_areas",
       "source_file": "src/testbot/__init__.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.vector_store",
+      "imported_area": "adapters",
+      "importer": "testbot.adapters.memory_store_factory",
+      "importer_area": "adapters",
+      "line": 3,
+      "metadata": {},
+      "reason": "same_area_dependency",
+      "source_file": "src/testbot/adapters/memory_store_factory.py"
     },
     {
       "classification": "allowed",
@@ -347,6 +359,17 @@
       "source_file": "src/testbot/application/services/canonical_turn_runtime.py"
     },
     {
+      "classification": "allowed",
+      "imported": "testbot.ports",
+      "imported_area": "ports",
+      "importer": "testbot.application.services.canonical_turn_runtime",
+      "importer_area": "application",
+      "line": 11,
+      "metadata": {},
+      "reason": "allowed_dependency",
+      "source_file": "src/testbot/application/services/canonical_turn_runtime.py"
+    },
+    {
       "classification": "violation",
       "imported": "testbot.reflection_policy",
       "imported_area": "logic",
@@ -364,25 +387,6 @@
         }
       },
       "reason": "private_surface_import",
-      "source_file": "src/testbot/application/services/canonical_turn_runtime.py"
-    },
-    {
-      "classification": "violation",
-      "imported": "testbot.vector_store",
-      "imported_area": "adapters",
-      "importer": "testbot.application.services.canonical_turn_runtime",
-      "importer_area": "application",
-      "line": 11,
-      "metadata": {
-        "allowed_dependencies": [
-          "application",
-          "logic",
-          "domain",
-          "ports",
-          "observability"
-        ]
-      },
-      "reason": "forbidden_dependency_direction",
       "source_file": "src/testbot/application/services/canonical_turn_runtime.py"
     },
     {
@@ -475,7 +479,7 @@
       "imported_area": "domain",
       "importer": "testbot.application.services.turn_service",
       "importer_area": "application",
-      "line": 202,
+      "line": 201,
       "metadata": {
         "expected_public_surface": {
           "module_prefixes": [
@@ -653,7 +657,7 @@
       "imported_area": "ports",
       "importer": "testbot.application.services.turn_service",
       "importer_area": "application",
-      "line": 55,
+      "line": 54,
       "metadata": {},
       "reason": "allowed_dependency",
       "source_file": "src/testbot/application/services/turn_service.py"
@@ -769,25 +773,6 @@
         }
       },
       "reason": "private_surface_import",
-      "source_file": "src/testbot/application/services/turn_service.py"
-    },
-    {
-      "classification": "violation",
-      "imported": "testbot.vector_store",
-      "imported_area": "adapters",
-      "importer": "testbot.application.services.turn_service",
-      "importer_area": "application",
-      "line": 54,
-      "metadata": {
-        "allowed_dependencies": [
-          "application",
-          "logic",
-          "domain",
-          "ports",
-          "observability"
-        ]
-      },
-      "reason": "forbidden_dependency_direction",
       "source_file": "src/testbot/application/services/turn_service.py"
     },
     {
@@ -1035,6 +1020,25 @@
     },
     {
       "classification": "violation",
+      "imported": "testbot.adapters.memory_store_factory",
+      "imported_area": "adapters",
+      "importer": "testbot.entrypoints.sat_cli",
+      "importer_area": "entrypoints",
+      "line": 20,
+      "metadata": {
+        "allowed_dependencies": [
+          "entrypoints",
+          "application",
+          "ports",
+          "observability",
+          "domain"
+        ]
+      },
+      "reason": "forbidden_dependency_direction",
+      "source_file": "src/testbot/entrypoints/sat_cli.py"
+    },
+    {
+      "classification": "violation",
       "imported": "testbot.clock",
       "imported_area": "domain",
       "importer": "testbot.entrypoints.sat_cli",
@@ -1089,25 +1093,6 @@
     },
     {
       "classification": "violation",
-      "imported": "testbot.vector_store",
-      "imported_area": "adapters",
-      "importer": "testbot.entrypoints.sat_cli",
-      "importer_area": "entrypoints",
-      "line": 20,
-      "metadata": {
-        "allowed_dependencies": [
-          "entrypoints",
-          "application",
-          "ports",
-          "observability",
-          "domain"
-        ]
-      },
-      "reason": "forbidden_dependency_direction",
-      "source_file": "src/testbot/entrypoints/sat_cli.py"
-    },
-    {
-      "classification": "violation",
       "imported": "testbot.clock",
       "imported_area": "domain",
       "importer": "testbot.entrypoints.sat_runtime_modes",
@@ -1129,6 +1114,17 @@
     },
     {
       "classification": "allowed",
+      "imported": "testbot.ports",
+      "imported_area": "ports",
+      "importer": "testbot.entrypoints.sat_runtime_modes",
+      "importer_area": "entrypoints",
+      "line": 13,
+      "metadata": {},
+      "reason": "allowed_dependency",
+      "source_file": "src/testbot/entrypoints/sat_runtime_modes.py"
+    },
+    {
+      "classification": "allowed",
       "imported": "testbot.sat_chatbot_memory_v2",
       "imported_area": "entrypoints",
       "importer": "testbot.entrypoints.sat_runtime_modes",
@@ -1136,25 +1132,6 @@
       "line": 12,
       "metadata": {},
       "reason": "same_area_dependency",
-      "source_file": "src/testbot/entrypoints/sat_runtime_modes.py"
-    },
-    {
-      "classification": "violation",
-      "imported": "testbot.vector_store",
-      "imported_area": "adapters",
-      "importer": "testbot.entrypoints.sat_runtime_modes",
-      "importer_area": "entrypoints",
-      "line": 13,
-      "metadata": {
-        "allowed_dependencies": [
-          "entrypoints",
-          "application",
-          "ports",
-          "observability",
-          "domain"
-        ]
-      },
-      "reason": "forbidden_dependency_direction",
       "source_file": "src/testbot/entrypoints/sat_runtime_modes.py"
     },
     {
@@ -1332,8 +1309,8 @@
     },
     {
       "classification": "violation",
-      "imported": "testbot.vector_store",
-      "imported_area": "adapters",
+      "imported": "testbot.ports",
+      "imported_area": "ports",
       "importer": "testbot.memory_cards",
       "importer_area": "domain",
       "line": 8,
@@ -1475,21 +1452,14 @@
       "source_file": "src/testbot/promotion_policy.py"
     },
     {
-      "classification": "violation",
-      "imported": "testbot.vector_store",
-      "imported_area": "adapters",
+      "classification": "allowed",
+      "imported": "testbot.ports",
+      "imported_area": "ports",
       "importer": "testbot.promotion_policy",
       "importer_area": "logic",
       "line": 9,
-      "metadata": {
-        "allowed_dependencies": [
-          "logic",
-          "domain",
-          "ports",
-          "observability"
-        ]
-      },
-      "reason": "forbidden_dependency_direction",
+      "metadata": {},
+      "reason": "allowed_dependency",
       "source_file": "src/testbot/promotion_policy.py"
     },
     {
@@ -1524,6 +1494,25 @@
       "metadata": {},
       "reason": "same_area_dependency",
       "source_file": "src/testbot/retrieval_routing.py"
+    },
+    {
+      "classification": "violation",
+      "imported": "testbot.adapters.memory_store_factory",
+      "imported_area": "adapters",
+      "importer": "testbot.sat_chatbot_memory_v2",
+      "importer_area": "entrypoints",
+      "line": 148,
+      "metadata": {
+        "allowed_dependencies": [
+          "entrypoints",
+          "application",
+          "ports",
+          "observability",
+          "domain"
+        ]
+      },
+      "reason": "forbidden_dependency_direction",
+      "source_file": "src/testbot/sat_chatbot_memory_v2.py"
     },
     {
       "classification": "allowed",
@@ -1889,7 +1878,7 @@
       "imported_area": "ports",
       "importer": "testbot.sat_chatbot_memory_v2",
       "importer_area": "entrypoints",
-      "line": 148,
+      "line": 147,
       "metadata": {},
       "reason": "allowed_dependency",
       "source_file": "src/testbot/sat_chatbot_memory_v2.py"
@@ -2142,25 +2131,6 @@
       "source_file": "src/testbot/sat_chatbot_memory_v2.py"
     },
     {
-      "classification": "violation",
-      "imported": "testbot.vector_store",
-      "imported_area": "adapters",
-      "importer": "testbot.sat_chatbot_memory_v2",
-      "importer_area": "entrypoints",
-      "line": 147,
-      "metadata": {
-        "allowed_dependencies": [
-          "entrypoints",
-          "application",
-          "ports",
-          "observability",
-          "domain"
-        ]
-      },
-      "reason": "forbidden_dependency_direction",
-      "source_file": "src/testbot/sat_chatbot_memory_v2.py"
-    },
-    {
       "classification": "allowed",
       "imported": "testbot.ports",
       "imported_area": "ports",
@@ -2249,20 +2219,9 @@
       "source_file": "src/testbot/stabilization.py"
     },
     {
-      "classification": "allowed",
-      "imported": "testbot.turn_observation",
-      "imported_area": "domain",
-      "importer": "testbot.stabilization",
-      "importer_area": "domain",
-      "line": 12,
-      "metadata": {},
-      "reason": "same_area_dependency",
-      "source_file": "src/testbot/stabilization.py"
-    },
-    {
       "classification": "violation",
-      "imported": "testbot.vector_store",
-      "imported_area": "adapters",
+      "imported": "testbot.ports",
+      "imported_area": "ports",
       "importer": "testbot.stabilization",
       "importer_area": "domain",
       "line": 13,
@@ -2272,6 +2231,17 @@
         ]
       },
       "reason": "forbidden_dependency_direction",
+      "source_file": "src/testbot/stabilization.py"
+    },
+    {
+      "classification": "allowed",
+      "imported": "testbot.turn_observation",
+      "imported_area": "domain",
+      "importer": "testbot.stabilization",
+      "importer_area": "domain",
+      "line": 12,
+      "metadata": {},
+      "reason": "same_area_dependency",
       "source_file": "src/testbot/stabilization.py"
     },
     {
@@ -2334,12 +2304,12 @@
   "schema_version": "1",
   "summary": {
     "counts_by_classification": {
-      "allowed": 84,
+      "allowed": 88,
       "deprecated_compatibility": 2,
       "temporary_exception": 1,
-      "violation": 65
+      "violation": 61
     },
     "import_edge_count": 152,
-    "module_count": 57
+    "module_count": 58
   }
 }

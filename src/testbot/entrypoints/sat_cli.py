@@ -17,7 +17,7 @@ from testbot.sat_chatbot_memory_v2 import (
     run_source_ingestion,
     sat_say,
 )
-from testbot.vector_store import build_memory_store
+from testbot.adapters.memory_store_factory import build_memory_store
 
 
 def main(argv: list[str] | None = None) -> None:

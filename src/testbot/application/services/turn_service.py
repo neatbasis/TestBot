@@ -51,8 +51,7 @@ from testbot.stage_transitions import (
     validate_stabilize_pre_route_pre,
 )
 from testbot.turn_observation import observe_turn
-from testbot.vector_store import MemoryStore
-from testbot.ports import LanguageModel
+from testbot.ports import LanguageModel, MemoryStorePort
 
 
 CANONICAL_STAGE_SEQUENCE: tuple[str, ...] = (
@@ -107,7 +106,7 @@ class _ClockSnapshotTimeProvider:
 class TurnPipelineStageRuntime:
     runtime: dict[str, object]
     llm: LanguageModel
-    store: MemoryStore
+    store: MemoryStorePort
     utterance: str
     prior_pipeline_state: PipelineState | None
     near_tie_delta: float
@@ -692,7 +691,7 @@ def run_canonical_turn_pipeline_service(
     *,
     runtime: dict[str, object] | None = None,
     llm: LanguageModel,
-    store: MemoryStore,
+    store: MemoryStorePort,
     state: PipelineState,
     utterance: str,
     prior_pipeline_state: PipelineState | None,
