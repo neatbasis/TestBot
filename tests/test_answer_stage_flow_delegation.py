@@ -12,8 +12,10 @@ def _state() -> PipelineState:
 
 def test_run_answer_stage_flow_deprecated_alias_surfaces_canonical_bypass_retirement() -> None:
     expected = _state()
+    observed: dict[str, object] = {}
 
-    def _fake_runner(*_args, **_kwargs):
+    def _fake_runner(*_args, **kwargs):
+        observed.update(kwargs)
         return expected
 
     monkeypatch = pytest.MonkeyPatch()
@@ -33,6 +35,15 @@ def test_run_answer_stage_flow_deprecated_alias_surfaces_canonical_bypass_retire
     finally:
         monkeypatch.undo()
     assert actual is expected
+    assert observed == {
+        "chat_history": [],
+        "hits": [],
+        "capability_status": "ask_unavailable",
+        "selected_decision": None,
+        "runtime_capability_status": None,
+        "clock": None,
+        "timezone": "Europe/Helsinki",
+    }
 
 
 def test_canonical_answer_stage_flow_is_retired_to_prevent_raw_utterance_bypass() -> None:
@@ -90,6 +101,23 @@ def test_evaluate_alignment_decision_shim_warns_and_strictly_passthroughs_to_log
     assert observed["user_input"] == "hello"
     assert observed["draft_answer"] == "draft"
     assert observed["final_answer"] == "final"
+    assert observed["confidence_decision"] == {"context_confident": True}
+    assert observed["claims"] == ["claim"]
+    assert observed["provenance_types"] == []
+    assert observed["basis_statement"] == "basis"
+    assert observed["is_clarification_answer"] is runtime.is_clarification_answer
+    assert observed["is_capabilities_help_answer"] is runtime._is_capabilities_help_answer
+    assert set(observed) == {
+        "user_input",
+        "draft_answer",
+        "final_answer",
+        "confidence_decision",
+        "claims",
+        "provenance_types",
+        "basis_statement",
+        "is_clarification_answer",
+        "is_capabilities_help_answer",
+    }
 
 
 def test_no_parallel_full_turn_seeded_runner_symbol_exists() -> None:
