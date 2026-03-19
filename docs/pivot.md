@@ -121,6 +121,10 @@ These updates reduce immediate drift risk, but they do **not** by themselves com
 Additional progress since the initial pass (as of 2026-03-19):
 - ✅ Initial extraction slice landed: canonical stage-closure execution for `_run_canonical_turn_pipeline` now lives in `src/testbot/application/services/turn_service.py`, while `sat_chatbot_memory_v2.py` retains a compatibility façade delegating into the service.
 - ⚠️ This is intentionally scoped as an extraction seam only; it does not yet claim full entrypoint decomposition or finalized package-boundary enforcement.
+- [~] **Scoped seam extraction in `answer_commit.py` landed (partial, non-final)**
+  - Commit orchestration now has a narrow service entry (`AnswerCommitService.commit`) that consumes upstream `CommitStageInputs`.
+  - Rendering/validation-to-commit translation now happens upstream via `build_commit_stage_inputs(...)` at call sites.
+  - **Explicit non-claim:** this does **not** mean commit-area decomposition is complete; compatibility wrappers remain and package-level dependency direction is still not CI-enforced.
 
 ---
 
@@ -241,6 +245,7 @@ Boundary rules:
 - [~] **`ISSUE-0013-A` initial slice**: `_run_canonical_turn_pipeline` stage closures extracted to application service with delegating façade retained.
 - [~] **`ISSUE-0013-B` immediate slice (scoped progress)**: `pipeline_state.py` now uses a domain-local snapshot time provider and key callers pass clock-backed providers; broader domain-purification and CI dependency enforcement remain open.
 - [~] **`ISSUE-0013-C` immediate slice (scoped progress)**: stabilization and retrieval now have pure-logic seams (`build_stabilization_plan`, `build_evidence_bundle_from_input_records`) and adapter-facing mapping/persistence helpers; full port protocol extraction and package-boundary enforcement are still open.
+- [~] **`answer_commit.py` scoped seam progress (partial)**: commit persistence orchestration now accepts upstream commit payloads via `AnswerCommitService.commit(...)` + `CommitStageInputs`, and orchestration call sites build those inputs before commit; full package relocation/port extraction and boundary enforcement are still pending.
 
 ## 6.D) Port extraction done criteria (`ISSUE-0013-D`)
 

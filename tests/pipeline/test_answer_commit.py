@@ -3,7 +3,14 @@ from __future__ import annotations
 import pytest
 
 from testbot.answer_assembly import AnswerCandidate
-from testbot.answer_commit import CommittedTurnState, commit_answer_stage
+from testbot.answer_commit import (
+    AnswerCommitService,
+    CommitRenderingPayload,
+    CommitStageInputs,
+    CommitValidationPayload,
+    CommittedTurnState,
+    commit_answer_stage,
+)
 from testbot.answer_rendering import RenderedAnswer
 from testbot.answer_validation import ValidatedAnswer
 from testbot.pipeline_state import PipelineState, ProvenanceType
@@ -27,6 +34,66 @@ def _assembly(*, confirmed_user_facts: list[str], pending_repair_state: dict[str
         remaining_obligations=[],
         confirmed_user_facts=confirmed_user_facts,
     )
+
+
+def _commit_inputs(
+    *,
+    passed: bool = True,
+    rendered_text: str = "ok",
+    degraded_response: bool = False,
+    response_contract: str = "validated_normal",
+    repair_offer_rendered: bool = False,
+    repair_followup_route: str = "repair_offer_followup",
+    claims: list[str] | None = None,
+    provenance_types: list[ProvenanceType] | None = None,
+    used_memory_refs: list[str] | None = None,
+    used_source_evidence_refs: list[str] | None = None,
+    source_evidence_attribution: list[dict[str, object]] | None = None,
+    basis_statement: str = "",
+    invariant_decisions: dict[str, object] | None = None,
+    alignment_decision: dict[str, object] | None = None,
+) -> CommitStageInputs:
+    return CommitStageInputs(
+        validation=CommitValidationPayload(
+            passed=passed,
+            claims=list(claims or []),
+            provenance_types=list(provenance_types or []),
+            used_memory_refs=list(used_memory_refs or []),
+            used_source_evidence_refs=list(used_source_evidence_refs or []),
+            source_evidence_attribution=list(source_evidence_attribution or []),
+            basis_statement=basis_statement,
+            invariant_decisions=dict(invariant_decisions or {}),
+            alignment_decision=dict(alignment_decision or {}),
+        ),
+        rendering=CommitRenderingPayload(
+            rendered_text=rendered_text,
+            response_contract=response_contract,
+            degraded_response=degraded_response,
+            repair_offer_rendered=repair_offer_rendered,
+            repair_followup_route=repair_followup_route,
+        ),
+    )
+
+
+def test_commit_service_accepts_upstream_commit_inputs_and_fake_fact_merger() -> None:
+    service = AnswerCommitService(
+        merge_confirmed_user_facts=lambda **_kwargs: ["name=Fixture", "timezone=UTC"],
+    )
+    committed_state, committed = service.commit(
+        PipelineState(user_input="hello"),
+        assembly=_assembly(confirmed_user_facts=[]),
+        commit_inputs=_commit_inputs(
+            rendered_text="fixture answer",
+            claims=["claim:a"],
+            provenance_types=[ProvenanceType.MEMORY],
+        ),
+    )
+
+    assert committed_state.final_answer == "fixture answer"
+    assert committed_state.claims == ["claim:a"]
+    assert committed_state.provenance_types == [ProvenanceType.MEMORY]
+    assert committed_state.commit_receipt.get("confirmed_user_facts") == ["name=Fixture", "timezone=UTC"]
+    assert committed.confirmed_user_facts == ["name=Fixture", "timezone=UTC"]
 
 
 def test_committed_turn_state_confirmed_user_facts_match_stabilized_fact_candidates_exactly() -> None:
