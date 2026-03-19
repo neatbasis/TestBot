@@ -1,0 +1,217 @@
+{
+  "version": 1,
+  "package_name": "testbot",
+  "package_root": "src/testbot",
+  "areas": [
+    {
+      "name": "entrypoints",
+      "description": "User-facing command/runtime entrypoints and orchestration boundaries.",
+      "module_globs": [
+        "testbot.entrypoints",
+        "testbot.entrypoints.*",
+        "testbot.sat_chatbot_memory_v2"
+      ],
+      "allowed_dependencies": [
+        "entrypoints",
+        "application",
+        "ports",
+        "observability",
+        "domain"
+      ],
+      "public_surface": {
+        "modules": [
+          "testbot.entrypoints"
+        ],
+        "module_prefixes": [
+          "testbot.entrypoints"
+        ]
+      }
+    },
+    {
+      "name": "application",
+      "description": "Application service layer coordinating use-cases.",
+      "module_globs": [
+        "testbot.application",
+        "testbot.application.*"
+      ],
+      "allowed_dependencies": [
+        "application",
+        "logic",
+        "domain",
+        "ports",
+        "observability"
+      ],
+      "public_surface": {
+        "modules": [
+          "testbot.application",
+          "testbot.application.services",
+          "testbot.application.services.turn_service"
+        ],
+        "module_prefixes": [
+          "testbot.application.services"
+        ]
+      }
+    },
+    {
+      "name": "logic",
+      "description": "Pure decision helpers and deterministic transition logic.",
+      "module_globs": [
+        "testbot.logic",
+        "testbot.logic.*",
+        "testbot.intent_router",
+        "testbot.retrieval_routing",
+        "testbot.policy_decision",
+        "testbot.stage_transitions",
+        "testbot.reflection_policy",
+        "testbot.promotion_policy",
+        "testbot.reject_taxonomy"
+      ],
+      "allowed_dependencies": [
+        "logic",
+        "domain",
+        "ports",
+        "observability"
+      ],
+      "public_surface": {
+        "modules": [
+          "testbot.logic"
+        ],
+        "module_prefixes": [
+          "testbot.logic"
+        ]
+      }
+    },
+    {
+      "name": "domain",
+      "description": "Core domain entities, DTOs, and state artifacts.",
+      "module_globs": [
+        "testbot.domain",
+        "testbot.domain.*",
+        "testbot.pipeline_state",
+        "testbot.candidate_encoding",
+        "testbot.stabilization",
+        "testbot.context_resolution",
+        "testbot.intent_resolution",
+        "testbot.evidence_retrieval",
+        "testbot.answer_assembly",
+        "testbot.answer_validation",
+        "testbot.answer_rendering",
+        "testbot.answer_commit",
+        "testbot.turn_observation",
+        "testbot.memory_strata",
+        "testbot.memory_cards",
+        "testbot.history_packer",
+        "testbot.clock",
+        "testbot.time_parse",
+        "testbot.time_reasoning"
+      ],
+      "allowed_dependencies": [
+        "domain"
+      ],
+      "public_surface": {
+        "modules": [
+          "testbot.domain",
+          "testbot.pipeline_state"
+        ],
+        "module_prefixes": [
+          "testbot.domain"
+        ]
+      }
+    },
+    {
+      "name": "ports",
+      "description": "Protocol and integration contracts consumed by application and adapters.",
+      "module_globs": [
+        "testbot.ports",
+        "testbot.ports.*"
+      ],
+      "allowed_dependencies": [
+        "ports",
+        "domain"
+      ],
+      "public_surface": {
+        "modules": [
+          "testbot.ports"
+        ],
+        "module_prefixes": [
+          "testbot.ports"
+        ]
+      }
+    },
+    {
+      "name": "adapters",
+      "description": "Infra/external system adapters and connectors (currently sparse and partly legacy).",
+      "module_globs": [
+        "testbot.adapters",
+        "testbot.adapters.*",
+        "testbot.source_connectors",
+        "testbot.source_ingest",
+        "testbot.vector_store",
+        "testbot.rerank",
+        "testbot.eval_fixtures",
+        "testbot.config"
+      ],
+      "allowed_dependencies": [
+        "adapters",
+        "ports",
+        "domain",
+        "logic",
+        "observability"
+      ],
+      "public_surface": {
+        "modules": [
+          "testbot.source_ingest",
+          "testbot.source_connectors",
+          "testbot.vector_store"
+        ],
+        "module_prefixes": []
+      }
+    },
+    {
+      "name": "observability",
+      "description": "Telemetry, diagnostics, and runtime tracing surfaces.",
+      "module_globs": [
+        "testbot.observability",
+        "testbot.observability.*",
+        "testbot.turn_analytics_diagnostics",
+        "testbot.pipeline.metrics"
+      ],
+      "allowed_dependencies": [
+        "observability",
+        "domain",
+        "ports"
+      ],
+      "public_surface": {
+        "modules": [
+          "testbot.observability"
+        ],
+        "module_prefixes": [
+          "testbot.observability"
+        ]
+      }
+    }
+  ],
+  "temporary_exceptions": [
+    {
+      "importer": "testbot.sat_chatbot_memory_v2",
+      "imported": "testbot.application.services.turn_service",
+      "issue": "ISSUE-0013",
+      "expires_on": "2026-12-31",
+      "notes": "Legacy runtime entrypoint still wires directly to turn service while boundary extraction completes."
+    },
+    {
+      "importer": "testbot.application.services.turn_service",
+      "imported": "testbot.sat_chatbot_memory_v2",
+      "issue": "ISSUE-0013",
+      "expires_on": "2026-12-31",
+      "notes": "Bidirectional compatibility shim retained until entrypoint facade migration is complete."
+    }
+  ],
+  "deprecated_compatibility": {
+    "module_globs": [
+      "testbot.answer_render",
+      "testbot.answer_validate"
+    ],
+    "notes": "Compatibility aliases retained for downstream imports while canonical answer_* modules are adopted."
+  }
+}
