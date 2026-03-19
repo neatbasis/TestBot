@@ -68,6 +68,15 @@ CANONICAL_RENDER_FLOW_ALLOWLIST: dict[Path, set[str]] = {
     SRC_ROOT / "answer_render.py": set(),
 }
 
+DEPRECATED_SAT_RUNTIME_EXPORTS: tuple[str, ...] = (
+    "run_answer_stage_flow",
+    "evaluate_alignment_decision",
+)
+
+DEPRECATED_IMPORT_COMPAT_TEST_ALLOWLIST: tuple[Path, ...] = (
+    REPO_ROOT / "tests" / "test_answer_stage_flow_delegation.py",
+)
+
 
 def _module_imports(path: Path) -> set[str]:
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
@@ -176,3 +185,32 @@ def test_no_raw_input_to_render_shortcuts_outside_canonical_process_flow() -> No
             )
 
     assert not violations, "Raw-input-to-render shortcut violations:\n" + "\n".join(violations)
+
+
+def test_deprecated_sat_runtime_exports_are_only_imported_by_approved_compatibility_tests() -> None:
+    violations: list[str] = []
+    for path in REPO_ROOT.rglob("*.py"):
+        if path.relative_to(REPO_ROOT).parts[:1] not in {("src",), ("tests",)}:
+            continue
+        if path == SRC_ROOT / "sat_chatbot_memory_v2.py":
+            continue
+        if path in DEPRECATED_IMPORT_COMPAT_TEST_ALLOWLIST:
+            continue
+
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.ImportFrom):
+                continue
+            if node.module != "testbot.sat_chatbot_memory_v2":
+                continue
+            imported_names = {alias.name for alias in node.names}
+            used_deprecated_names = sorted(imported_names.intersection(DEPRECATED_SAT_RUNTIME_EXPORTS))
+            if used_deprecated_names:
+                violations.append(
+                    f"{path.relative_to(REPO_ROOT)} imports deprecated symbol(s): {', '.join(used_deprecated_names)}"
+                )
+
+    assert not violations, (
+        "Deprecated sat_chatbot_memory_v2 compatibility exports are restricted to approved compatibility tests:\n"
+        + "\n".join(violations)
+    )

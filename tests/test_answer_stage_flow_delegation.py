@@ -19,7 +19,10 @@ def test_run_answer_stage_flow_deprecated_alias_surfaces_canonical_bypass_retire
     monkeypatch = pytest.MonkeyPatch()
     monkeypatch.setattr(runtime, "run_canonical_answer_stage_flow", _fake_runner)
     try:
-        with pytest.warns(DeprecationWarning, match="run_answer_stage_flow"):
+        with pytest.warns(
+            DeprecationWarning,
+            match=r"run_answer_stage_flow.*run_canonical_answer_stage_flow.*2026-04-01",
+        ):
             actual = runtime.run_answer_stage_flow(
                 llm=object(),
                 state=_state(),
@@ -54,6 +57,39 @@ def test_canonical_answer_stage_flow_is_retired_to_prevent_raw_utterance_bypass(
 
     assert observed["utterance"] == "hello"
     assert observed["io_channel"] == "cli"
+
+
+def test_evaluate_alignment_decision_shim_warns_and_strictly_passthroughs_to_logic_owner() -> None:
+    expected = {"final_alignment_decision": "allow", "dimensions": {}}
+    observed: dict[str, object] = {}
+
+    def _fake_logic_alignment(**kwargs):
+        observed.update(kwargs)
+        return expected
+
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr(runtime, "_evaluate_alignment_decision", _fake_logic_alignment)
+    try:
+        with pytest.warns(
+            DeprecationWarning,
+            match=r"evaluate_alignment_decision.*logic\.alignment.*2026-04-01",
+        ):
+            actual = runtime.evaluate_alignment_decision(
+                user_input="hello",
+                draft_answer="draft",
+                final_answer="final",
+                confidence_decision={"context_confident": True},
+                claims=["claim"],
+                provenance_types=[],
+                basis_statement="basis",
+            )
+    finally:
+        monkeypatch.undo()
+
+    assert actual is expected
+    assert observed["user_input"] == "hello"
+    assert observed["draft_answer"] == "draft"
+    assert observed["final_answer"] == "final"
 
 
 def test_no_parallel_full_turn_seeded_runner_symbol_exists() -> None:

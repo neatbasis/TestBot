@@ -329,6 +329,31 @@ __all__ = [
     "validate_answer_contract",
 ]
 
+_DEPRECATED_COMPATIBILITY_ALIASES: dict[str, dict[str, str]] = {
+    "run_answer_stage_flow": {
+        "canonical_symbol": "run_canonical_answer_stage_flow",
+        "removal_date": "2026-04-01",
+        "removal_criteria": "all internal callers and non-compatibility tests import run_canonical_answer_stage_flow",
+    },
+    "evaluate_alignment_decision": {
+        "canonical_symbol": "testbot.logic.alignment.evaluate_alignment_decision",
+        "removal_date": "2026-04-01",
+        "removal_criteria": "all callers import from testbot.logic.alignment with compatibility shim coverage retained",
+    },
+}
+
+
+def _emit_deprecated_alias_warning(name: str) -> None:
+    alias_metadata = _DEPRECATED_COMPATIBILITY_ALIASES[name]
+    warnings.warn(
+        (
+            f"{name}(...) is deprecated; use {alias_metadata['canonical_symbol']} instead. "
+            f"Removal target: {alias_metadata['removal_date']} once {alias_metadata['removal_criteria']}."
+        ),
+        DeprecationWarning,
+        stacklevel=2,
+    )
+
 
 def _execute_source_ingestion(
     *,
@@ -2600,7 +2625,7 @@ def answer_validate(
             provenance_types=provenance_types,
             confidence_decision=state.confidence_decision,
         )
-        alignment_decision = evaluate_alignment_decision(
+        alignment_decision = _evaluate_alignment_decision(
             user_input=state.user_input,
             draft_answer="",
             final_answer=assembled.final_answer,
@@ -2662,7 +2687,7 @@ def answer_validate(
         confidence_decision=state.confidence_decision,
     )
 
-    alignment_decision = evaluate_alignment_decision(
+    alignment_decision = _evaluate_alignment_decision(
         user_input=state.user_input,
         draft_answer=assembled.draft_answer,
         final_answer=assembled.final_answer,
@@ -2899,11 +2924,7 @@ def run_answer_stage_flow(
     clock: Clock | None = None,
     timezone: str = "Europe/Helsinki",
 ) -> PipelineState:
-    warnings.warn(
-        "run_answer_stage_flow(...) is deprecated; use run_canonical_answer_stage_flow(...) instead.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
+    _emit_deprecated_alias_warning("run_answer_stage_flow")
     return run_canonical_answer_stage_flow(
         llm,
         state,
@@ -3218,11 +3239,7 @@ def build_provenance_metadata(
 
 
 def _deprecated_alignment_function_notice(name: str) -> None:
-    warnings.warn(
-        f"{name} has moved to testbot.logic.alignment and will be removed from testbot.sat_chatbot_memory_v2 after 2026-06-30.",
-        DeprecationWarning,
-        stacklevel=2,
-    )
+    _emit_deprecated_alias_warning(name)
 
 
 def evaluate_alignment_decision(
