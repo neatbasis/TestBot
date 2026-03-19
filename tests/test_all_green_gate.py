@@ -250,6 +250,27 @@ def test_build_checks_includes_non_blocking_architecture_boundary_report() -> No
     assert check.blocking is False
 
 
+def test_readiness_summary_includes_architecture_boundary_report_check() -> None:
+    checks = all_green_gate.build_checks(base_ref="origin/main", kpi_guardrail_mode="optional", profile="readiness")
+    architecture_check = next(check for check in checks if check.name == "qa_architecture_boundary_report")
+
+    summary = all_green_gate.summarize(
+        results=[
+            _result(
+                name=architecture_check.name,
+                command="arch",
+                status="passed",
+                exit_code=0,
+                duration_s=0.1,
+                artifact_path="artifacts/qa/architecture-boundary-report.json",
+            )
+        ],
+        continue_on_failure=False,
+    )
+
+    assert any(check["name"] == "qa_architecture_boundary_report" for check in summary["checks"])
+
+
 def test_build_checks_readiness_profile_has_expected_check_names() -> None:
     checks = all_green_gate.build_checks(base_ref="origin/main", kpi_guardrail_mode="optional", profile="readiness")
 
@@ -267,6 +288,14 @@ def test_build_checks_readiness_profile_has_expected_check_names() -> None:
         "qa_aggregate_turn_analytics",
         "qa_validate_kpi_guardrails",
     ]
+
+
+def test_deprecated_alias_enforcement_check_still_runs_alongside_architecture_boundary_report() -> None:
+    checks = all_green_gate.build_checks(base_ref="origin/main", kpi_guardrail_mode="optional", profile="readiness")
+
+    check_names = [check.name for check in checks]
+    assert "qa_architecture_boundary_report" in check_names
+    assert "qa_pytest_not_live_smoke" in check_names
 
 
 def test_build_checks_triage_profile_excludes_governance_checks() -> None:
@@ -422,6 +451,102 @@ def test_run_check_marks_architecture_boundary_report_dirty_as_failed(monkeypatc
     assert result.status == "failed"
     assert result.artifact_path == "artifacts/qa/architecture-boundary-report.json"
     assert result.diagnostic_reason == "violation=1,temporary_exception=0,deprecated_compatibility=0"
+
+
+def test_run_gate_classifies_architecture_boundary_report_as_warning_in_report_only_mode(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    checks = [
+        all_green_gate.GateCheck(
+            name="qa_architecture_boundary_report",
+            command=["arch"],
+            blocking=False,
+        )
+    ]
+
+    def fake_run_check(_check: all_green_gate.GateCheck) -> all_green_gate.CheckResult:
+        return _result(
+            name="qa_architecture_boundary_report",
+            command="arch",
+            status="failed",
+            exit_code=1,
+            duration_s=0.02,
+            diagnostic_reason="violation=1,temporary_exception=0,deprecated_compatibility=1",
+        )
+
+    monkeypatch.setattr(all_green_gate, "run_check", fake_run_check)
+
+    results, exit_code = all_green_gate.run_gate(checks=checks, continue_on_failure=False)
+    summary = all_green_gate.summarize(results=results, continue_on_failure=False)
+
+    assert exit_code == 0
+    assert results[0].status == "warning"
+    assert summary["warning_count"] == 1
+    assert summary["checks"][0]["status"] == "warning"
+
+
+def test_warning_diagnostics_preserve_architecture_boundary_reason_classification() -> None:
+    summary = all_green_gate.summarize(
+        results=[
+            _result(
+                name="qa_architecture_boundary_report",
+                command="arch",
+                status="warning",
+                exit_code=1,
+                duration_s=0.1,
+                diagnostic_reason="violation=1,temporary_exception=1,deprecated_compatibility=0",
+            )
+        ],
+        continue_on_failure=False,
+    )
+
+    assert summary["warning_diagnostics"] == [
+        {
+            "check": "qa_architecture_boundary_report",
+            "reason_classification": "violation=1,temporary_exception=1,deprecated_compatibility=0",
+        }
+    ]
+    assert summary["stages"][0]["warning_reasons"] == [
+        "violation=1,temporary_exception=1,deprecated_compatibility=0"
+    ]
+
+
+def test_run_gate_keeps_blocking_failure_when_architecture_boundary_report_is_warning(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    checks = [
+        all_green_gate.GateCheck(name="qa_architecture_boundary_report", command=["arch"], blocking=False),
+        all_green_gate.GateCheck(name="qa_pytest_not_live_smoke", command=["pytest"], blocking=True),
+        all_green_gate.GateCheck(name="later_check", command=["later"], blocking=True),
+    ]
+
+    status_by_name = {
+        "qa_architecture_boundary_report": _result(
+            name="qa_architecture_boundary_report",
+            command="arch",
+            status="failed",
+            exit_code=1,
+            duration_s=0.01,
+            diagnostic_reason="violation=0,temporary_exception=1,deprecated_compatibility=1",
+        ),
+        "qa_pytest_not_live_smoke": _result(
+            name="qa_pytest_not_live_smoke",
+            command="pytest",
+            status="failed",
+            exit_code=2,
+            duration_s=0.02,
+        ),
+    }
+
+    def fake_run_check(check: all_green_gate.GateCheck) -> all_green_gate.CheckResult:
+        return status_by_name[check.name]
+
+    monkeypatch.setattr(all_green_gate, "run_check", fake_run_check)
+
+    results, exit_code = all_green_gate.run_gate(checks=checks, continue_on_failure=False)
+
+    assert [result.status for result in results] == ["warning", "failed", "not_run"]
+    assert exit_code == 1
 
 
 def test_summarize_includes_warning_reason_diagnostics() -> None:
