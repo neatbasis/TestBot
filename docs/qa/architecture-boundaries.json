@@ -196,14 +196,20 @@
       "importer": "testbot.sat_chatbot_memory_v2",
       "imported": "testbot.application.services.turn_service",
       "issue": "ISSUE-0013",
+      "owner": "runtime-pipeline",
       "expires_on": "2026-12-31",
+      "review_on": "2026-06-30",
+      "removal_plan": "Remove direct entrypoint-to-service import once sat_chatbot_memory_v2 compatibility delegator is retired from runtime startup path.",
       "notes": "Legacy runtime entrypoint still wires directly to turn service while boundary extraction completes."
     },
     {
       "importer": "testbot.application.services.turn_service",
       "imported": "testbot.sat_chatbot_memory_v2",
       "issue": "ISSUE-0013",
+      "owner": "runtime-pipeline",
       "expires_on": "2026-12-31",
+      "review_on": "2026-06-30",
+      "removal_plan": "Delete bidirectional shim once canonical entrypoint facade migration closes and sat_chatbot_memory_v2 is downgraded to compatibility-only exports.",
       "notes": "Bidirectional compatibility shim retained until entrypoint facade migration is complete."
     }
   ],

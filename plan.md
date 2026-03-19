@@ -589,7 +589,7 @@ Introduce `MemoryRepository`, `VectorStore`, `LanguageModel`, `SourceConnector` 
 
 ### Workstream G — Boundary enforcement
 
-**Current status (2026-03-19): Not started in code.** `append_session_log` definition and test patch targets remain in `sat_chatbot_memory_v2.py`. No `import-linter` configuration exists yet.
+**Current status (2026-03-19): Partial.** Boundary enforcement is already active in two forms: (1) blocking static import-boundary tests (`tests/architecture/test_import_boundaries.py`) and (2) readiness-gate integration of `qa_architecture_boundary_report` as a non-blocking warning-mode check with machine-readable artifacts. Remaining work is the warning→blocking ratchet for architecture-boundary findings, plus broader script-surface/package-policy hardening (`import-linter`, deeper public-surface declarations, and residual monolith authority reduction).
 
 Import-linter, script surface rules, public API declarations, typed-package enforcement.
 
