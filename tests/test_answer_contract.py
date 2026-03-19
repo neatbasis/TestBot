@@ -8,12 +8,12 @@ from testbot.answer_policy import AnswerPolicyInput, resolve_answer_mode, resolv
 from testbot.pipeline_state import PipelineState, ProvenanceType
 from testbot.history_packer import pack_chat_history
 from testbot.stage_transitions import validate_answer_commit_post
+from testbot.logic.alignment import evaluate_alignment_decision
 from testbot.sat_chatbot_memory_v2 import (
     ASSIST_ALTERNATIVES_ANSWER,
     FALLBACK_ANSWER,
     RuntimeCapabilityStatus,
     build_provenance_metadata,
-    evaluate_alignment_decision,
     has_required_memory_citation,
     raw_claim_like_text_detected,
     render_context,

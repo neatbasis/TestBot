@@ -4,9 +4,9 @@ from dataclasses import replace
 from langchain_core.documents import Document
 
 from testbot.pipeline_state import PipelineState, ProvenanceType
+from testbot.logic.alignment import evaluate_alignment_decision
 from testbot.sat_chatbot_memory_v2 import (
     ASSIST_ALTERNATIVES_ANSWER,
-    evaluate_alignment_decision,
     run_canonical_answer_stage_flow,
 )
 from testbot.stage_transitions import (

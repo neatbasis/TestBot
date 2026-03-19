@@ -127,3 +127,18 @@ For each changelog entry, answer these three questions explicitly:
 
 #### 3) Why this step was taken in this order?
 - Introducing a receiver-style commit seam before deeper module/package relocation enables deterministic service tests with fakes while minimizing runtime regression risk.
+
+### Entry 9
+
+#### 1) What moved, and where did it land?
+- **Old path/symbol:** alignment scoring logic lived in `src/testbot/sat_chatbot_memory_v2.py` (`evaluate_alignment_decision`, `response_contains_claims`, `raw_claim_like_text_detected`, `has_required_memory_citation`, and related general-knowledge alignment helpers/constants).
+- **New path/symbol:** alignment scoring now lives in `src/testbot/logic/alignment.py`, with package export at `src/testbot/logic/__init__.py`.
+- **Delegation shim:** `evaluate_alignment_decision(...)` remains in `src/testbot/sat_chatbot_memory_v2.py` as a temporary re-export shim that emits `DeprecationWarning`; planned removal date is **2026-06-30** after downstream imports fully migrate.
+
+#### 2) What did not change?
+- Alignment decision payload structure (`objective_version`, `dimensions`, `dimension_inputs`, `final_alignment_decision`) and contract semantics were preserved.
+- Canonical answer-stage behavior and invariants were validated without intentional policy-threshold changes.
+- Existing helper imports from `sat_chatbot_memory_v2.py` remain available during this migration step.
+
+#### 3) Why this step was taken in this order?
+- Extracting pure scoring logic first while preserving a temporary shim minimizes blast radius and enables receiver-first import migration in tests and downstream callsites before removing legacy exports.
