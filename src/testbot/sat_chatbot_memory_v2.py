@@ -167,6 +167,14 @@ BACKGROUND_INGESTION_COMPLETION_MESSAGE_TEMPLATE = (
 BACKGROUND_INGESTION_OBLIGATION_TIMEOUT_SECONDS = int(os.getenv("SOURCE_INGEST_OBLIGATION_TIMEOUT_SECONDS", "900"))
 
 
+@dataclass(frozen=True)
+class _ClockBackedSnapshotTimeProvider:
+    clock: Clock
+
+    def now_iso(self) -> str:
+        return self.clock.now().isoformat()
+
+
 def _utc_now_iso() -> str:
     return arrow.utcnow().isoformat()
 
@@ -3736,7 +3744,7 @@ def _run_chat_loop(
             ),
             confidence_decision={},
         )
-        append_pipeline_snapshot("ingest", state)
+        append_pipeline_snapshot("ingest", state, time_provider=_ClockBackedSnapshotTimeProvider(clock=clock))
         turn_id = str(uuid.uuid4())
 
         state, hits = _run_canonical_turn_pipeline(

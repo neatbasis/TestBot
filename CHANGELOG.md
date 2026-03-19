@@ -79,3 +79,17 @@ For each changelog entry, answer these three questions explicitly:
 
 #### 3) Why this step was taken in this order?
 - Extracting stage-closure execution behind a dependency-receiver boundary first reduces monolith complexity while preserving stable runtime entrypoints for follow-on package-map refactors.
+
+### Entry 6
+
+#### 1) What moved, and where did it land?
+- **Old path/symbol:** `append_pipeline_snapshot(...)` in `src/testbot/pipeline_state.py` directly imported `utc_now_iso` from `testbot.memory_cards`.
+- **New path/symbol:** `append_pipeline_snapshot(...)` now accepts a domain-local `SnapshotTimeProvider` boundary (defaulting to `UtcSnapshotTimeProvider` in the same module), and clock-aware callers in `src/testbot/application/services/turn_service.py` and `src/testbot/sat_chatbot_memory_v2.py` pass clock-backed providers through that boundary.
+- **Delegation shim:** compatibility is retained because `append_pipeline_snapshot(...)` still works without caller changes via the default `UtcSnapshotTimeProvider`.
+
+#### 2) What did not change?
+- Pipeline snapshot schema/event contract remains unchanged for consumers (`event`, `schema_version`, `stage`, and `state` payload structure are unchanged); only timestamp sourcing was decoupled from `memory_cards`.
+- Existing timestamped snapshot behavior is preserved at a parity level by tests that verify snapshot writing still includes `ts` and supports deterministic injected time values.
+
+#### 3) Why this step was taken in this order?
+- Isolating timestamp sourcing behind a small domain-local interface first removes an explicit adapter dependency with minimal surface-area change before broader `pipeline_state` and boundary-enforcement refactors.

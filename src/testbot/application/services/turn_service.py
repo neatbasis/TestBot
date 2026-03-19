@@ -82,6 +82,14 @@ class TurnPipelineDependencies:
     intent_classifier_confidence_threshold: float
 
 
+@dataclass(frozen=True)
+class _ClockSnapshotTimeProvider:
+    clock: Clock
+
+    def now_iso(self) -> str:
+        return self.clock.now().isoformat()
+
+
 def run_canonical_turn_pipeline_service(
     *,
     runtime: dict[str, object] | None = None,
@@ -100,6 +108,7 @@ def run_canonical_turn_pipeline_service(
     deps: TurnPipelineDependencies,
 ) -> tuple[PipelineState, list[Document]]:
     runtime = runtime or {}
+    snapshot_time_provider = _ClockSnapshotTimeProvider(clock=clock)
     prior_pending_ingestion_request_id = ""
     if prior_pipeline_state is not None:
         prior_pending_ingestion_request_id = prior_pipeline_state.commit_receipt.pending_ingestion_request_id
@@ -130,7 +139,7 @@ def run_canonical_turn_pipeline_service(
         ctx.artifacts["turn_observation"] = observation
         ctx.state = replace(ctx.state, last_user_message_ts=observed_at)
         deps.validate_and_log_transition(validate_observe_turn_post(ctx.state))
-        append_pipeline_snapshot("observe", ctx.state)
+        append_pipeline_snapshot("observe", ctx.state, time_provider=snapshot_time_provider)
         return ctx
 
     def _encode_candidates(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
@@ -153,7 +162,7 @@ def run_canonical_turn_pipeline_service(
             rewritten_query=encoded.rewritten_query,
             candidate_facts=encoded.as_artifact_payload(),
         )
-        append_pipeline_snapshot("rewrite", ctx.state)
+        append_pipeline_snapshot("rewrite", ctx.state, time_provider=snapshot_time_provider)
         return ctx
 
     def _stabilize_pre_route(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
@@ -195,7 +204,7 @@ def run_canonical_turn_pipeline_service(
         )
         ctx.artifacts["stabilized_turn_state"] = stabilized
         deps.validate_and_log_transition(validate_stabilize_pre_route_post(ctx.state))
-        append_pipeline_snapshot("stabilize", ctx.state)
+        append_pipeline_snapshot("stabilize", ctx.state, time_provider=snapshot_time_provider)
         return ctx
 
     def _context_resolve(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
@@ -223,7 +232,7 @@ def run_canonical_turn_pipeline_service(
             },
         )
         deps.validate_and_log_transition(validate_context_resolve_post(ctx.state))
-        append_pipeline_snapshot("context", ctx.state)
+        append_pipeline_snapshot("context", ctx.state, time_provider=snapshot_time_provider)
         return ctx
 
     def _intent_resolve(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
@@ -308,7 +317,7 @@ def run_canonical_turn_pipeline_service(
             ),
         )
         deps.validate_and_log_transition(validate_intent_resolve_post(ctx.state))
-        append_pipeline_snapshot("intent", ctx.state)
+        append_pipeline_snapshot("intent", ctx.state, time_provider=snapshot_time_provider)
         return ctx
 
     def _retrieve_evidence(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
@@ -413,7 +422,7 @@ def run_canonical_turn_pipeline_service(
                 "retrieval_candidates",
                 {"query": ctx.state.rewritten_query, "candidate_count": 0, "top_candidates": [], "skipped": True},
             )
-        append_pipeline_snapshot("retrieve", ctx.state)
+        append_pipeline_snapshot("retrieve", ctx.state, time_provider=snapshot_time_provider)
         return ctx
 
     def _policy_decide(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
@@ -498,7 +507,7 @@ def run_canonical_turn_pipeline_service(
                     },
                 ),
             )
-        append_pipeline_snapshot("rerank", ctx.state)
+        append_pipeline_snapshot("rerank", ctx.state, time_provider=snapshot_time_provider)
         return ctx
 
     def _answer_assemble(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
@@ -533,7 +542,7 @@ def run_canonical_turn_pipeline_service(
             offer_bearing=bool(offer_type),
             offer_type=offer_type,
         )
-        append_pipeline_snapshot("answer.assemble", ctx.state)
+        append_pipeline_snapshot("answer.assemble", ctx.state, time_provider=snapshot_time_provider)
         return ctx
 
     def _answer_validate(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
@@ -570,7 +579,7 @@ def run_canonical_turn_pipeline_service(
         if not ctx.artifacts["answer_validation_contract"].passed:
             raise RuntimeError("answer assembly contract validation failed before render/commit")
         deps.validate_and_log_transition(validate_answer_validate_post(ctx.state, ctx.artifacts))
-        append_pipeline_snapshot("answer.validate", ctx.state)
+        append_pipeline_snapshot("answer.validate", ctx.state, time_provider=snapshot_time_provider)
         return ctx
 
     def _answer_render(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
@@ -581,7 +590,7 @@ def run_canonical_turn_pipeline_service(
             preferred_text=ctx.artifacts["answer_validation_contract"].final_answer,
         )
         deps.validate_and_log_transition(validate_answer_render_post(ctx.state, ctx.artifacts))
-        append_pipeline_snapshot("answer.render", ctx.state)
+        append_pipeline_snapshot("answer.render", ctx.state, time_provider=snapshot_time_provider)
         return ctx
 
     def _answer_commit(ctx: CanonicalTurnContext) -> CanonicalTurnContext:
@@ -595,7 +604,7 @@ def run_canonical_turn_pipeline_service(
         )
         ctx.state = replace(ctx.state, draft_answer=ctx.artifacts["assembled_answer"].draft_answer)
         deps.validate_and_log_transition(validate_answer_commit_post(ctx.state))
-        append_pipeline_snapshot("answer", ctx.state)
+        append_pipeline_snapshot("answer", ctx.state, time_provider=snapshot_time_provider)
         ambiguity_score = deps.ambiguity_score(ctx.state.confidence_decision)
         ctx.artifacts["ambiguity_score"] = ambiguity_score
         deps.append_session_log(
@@ -643,7 +652,7 @@ def run_canonical_turn_pipeline_service(
                 "commit_stage": ctx.state.commit_receipt.commit_stage or "answer.commit",
             },
         )
-        append_pipeline_snapshot("answer.commit", ctx.state)
+        append_pipeline_snapshot("answer.commit", ctx.state, time_provider=snapshot_time_provider)
         return ctx
 
     orchestrator = CanonicalTurnOrchestrator(
