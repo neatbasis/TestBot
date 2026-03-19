@@ -379,13 +379,13 @@ Your priority ordering already points in the right direction. In practice, the s
 
 ### Phase 6: Complete governance evidence
 
-**Status (2026-03-19): Not started.** Gate artifact schema, blocking/traceability metadata, and retention policy are not yet implemented.
+**Status (2026-03-19): In progress.** Verification manifest schema versioning is implemented (`VERIFICATION_MANIFEST_SCHEMA_VERSION = "1.0"`), but readiness-evidence closure is still incomplete at rule-ID/blocking, traceability metadata, and retention/versioning policy levels.
 
-* readiness artifacts
-* schema versioning
-* traceability to issue IDs
-* rule IDs and blocking semantics
-* retention/version policy
+* readiness artifacts (full-field completeness)
+* check/rule IDs and blocking semantics
+* traceability to issue IDs/owners/check links
+* retention/version policy completeness
+* standards crosswalk as enforceable evidence (not prose-only intent)
 
 That order minimizes the chance of reorganizing files before the contracts are strong enough.
 
@@ -595,7 +595,7 @@ Import-linter, script surface rules, public API declarations, typed-package enfo
 
 ### Workstream H — Executable evidence and governance
 
-**Current status (2026-03-19): Not started.** Gate output still lacks required readiness-evidence fields such as `schema_version`, blocking rule IDs, and traceability metadata. Standards mappings are documented as target state rather than enforcement artifacts, and retention policy is not implemented.
+**Current status (2026-03-19): In progress.** Verification manifest output is schema-versioned (`VERIFICATION_MANIFEST_SCHEMA_VERSION = "1.0"`), but governance closure is still open for blocking rule-ID resolution, traceability metadata completeness (issue/control/owner/check linkage), retention/versioning policy completeness, and remaining readiness-evidence fields required for machine-verifiable standards crosswalk outputs.
 
 Readiness artifact schema, gate outputs, rule IDs, traceability, retention/versioning, standards crosswalk.
 
