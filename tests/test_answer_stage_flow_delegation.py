@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from collections import deque
-
 import pytest
 
 from testbot.pipeline_state import PipelineState
@@ -12,49 +10,50 @@ def _state() -> PipelineState:
     return PipelineState(user_input="hello")
 
 
-def test_run_answer_stage_flow_delegates_to_canonical_runner(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_run_answer_stage_flow_deprecated_alias_surfaces_canonical_bypass_retirement() -> None:
     expected = _state()
-    observed: dict[str, object] = {}
 
-    def _fake_canonical_runner(*args, **kwargs):
-        observed["args"] = args
-        observed["kwargs"] = kwargs
+    def _fake_runner(*_args, **_kwargs):
         return expected
 
-    monkeypatch.setattr(runtime, "run_canonical_answer_stage_flow", _fake_canonical_runner)
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr(runtime, "run_canonical_answer_stage_flow", _fake_runner)
+    try:
+        with pytest.warns(DeprecationWarning, match="run_answer_stage_flow"):
+            actual = runtime.run_answer_stage_flow(
+                llm=object(),
+                state=_state(),
+                chat_history=[],
+                hits=[],
+                capability_status="ask_unavailable",
+            )
+    finally:
+        monkeypatch.undo()
+    assert actual is expected
 
-    with pytest.warns(DeprecationWarning, match="run_answer_stage_flow"):
-        actual = runtime.run_answer_stage_flow(
+
+def test_canonical_answer_stage_flow_is_retired_to_prevent_raw_utterance_bypass() -> None:
+    observed: dict[str, object] = {}
+
+    def _fake_pipeline(**kwargs):
+        observed.update(kwargs)
+        return _state(), []
+
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr(runtime, "_run_canonical_turn_pipeline", _fake_pipeline)
+    try:
+        runtime.run_canonical_answer_stage_flow(
             llm=object(),
             state=_state(),
-            chat_history=deque(),
+            chat_history=[],
             hits=[],
             capability_status="ask_unavailable",
         )
+    finally:
+        monkeypatch.undo()
 
-    assert actual is expected
-    assert isinstance(observed["kwargs"]["chat_history"], deque)
-    assert not observed["kwargs"]["chat_history"]
-    assert observed["kwargs"]["hits"] == []
-
-
-def test_canonical_runner_uses_single_seeded_artifact_stage_path(monkeypatch: pytest.MonkeyPatch) -> None:
-    expected = _state()
-
-    def _fake_answer_stage_runner(*_args, **_kwargs):
-        return expected
-
-    monkeypatch.setattr(runtime, "_run_answer_stages_from_supplied_artifacts", _fake_answer_stage_runner)
-
-    actual = runtime.run_canonical_answer_stage_flow(
-        llm=object(),
-        state=_state(),
-        chat_history=deque(),
-        hits=[],
-        capability_status="ask_unavailable",
-    )
-
-    assert actual is expected
+    assert observed["utterance"] == "hello"
+    assert observed["io_channel"] == "cli"
 
 
 def test_no_parallel_full_turn_seeded_runner_symbol_exists() -> None:

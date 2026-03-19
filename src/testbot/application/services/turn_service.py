@@ -108,6 +108,59 @@ class TurnPipelineStageRuntime:
     snapshot_time_provider: _ClockSnapshotTimeProvider
 
 
+@dataclass(frozen=True)
+class _TurnPipelineStageHandlers:
+    runtime: TurnPipelineStageRuntime
+
+    def observe_turn(self, ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        return observe_turn_stage(ctx, self.runtime)
+
+    def encode_candidates(self, ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        return encode_candidates_stage(ctx, self.runtime)
+
+    def stabilize_pre_route(self, ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        return stabilize_pre_route_stage(ctx, self.runtime)
+
+    def context_resolve(self, ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        return context_resolve_stage(ctx, self.runtime)
+
+    def intent_resolve(self, ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        return intent_resolve_stage(ctx, self.runtime)
+
+    def retrieve_evidence(self, ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        return retrieve_evidence_stage(ctx, self.runtime)
+
+    def policy_decide(self, ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        return policy_decide_stage(ctx, self.runtime)
+
+    def answer_assemble(self, ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        return answer_assemble_stage(ctx, self.runtime)
+
+    def answer_validate(self, ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        return answer_validate_stage(ctx, self.runtime)
+
+    def answer_render(self, ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        return answer_render_stage(ctx, self.runtime)
+
+    def answer_commit(self, ctx: CanonicalTurnContext) -> CanonicalTurnContext:
+        return answer_commit_stage(ctx, self.runtime)
+
+    def canonical_stages(self) -> list[CanonicalStage]:
+        return [
+            CanonicalStage("observe.turn", self.observe_turn),
+            CanonicalStage("encode.candidates", self.encode_candidates),
+            CanonicalStage("stabilize.pre_route", self.stabilize_pre_route),
+            CanonicalStage("context.resolve", self.context_resolve),
+            CanonicalStage("intent.resolve", self.intent_resolve),
+            CanonicalStage("retrieve.evidence", self.retrieve_evidence),
+            CanonicalStage("policy.decide", self.policy_decide),
+            CanonicalStage("answer.assemble", self.answer_assemble),
+            CanonicalStage("answer.validate", self.answer_validate),
+            CanonicalStage("answer.render", self.answer_render),
+            CanonicalStage("answer.commit", self.answer_commit),
+        ]
+
+
 def observe_turn_stage(ctx: CanonicalTurnContext, stage: TurnPipelineStageRuntime) -> CanonicalTurnContext:
     artifacts = StageArtifacts(ctx.artifacts)
     stage.deps.validate_and_log_transition(validate_observe_turn_pre(ctx.state))
@@ -675,21 +728,8 @@ def run_canonical_turn_pipeline_service(
         snapshot_time_provider=snapshot_time_provider,
     )
 
-    orchestrator = CanonicalTurnOrchestrator(
-        stages=[
-            CanonicalStage("observe.turn", lambda ctx: observe_turn_stage(ctx, stage_runtime)),
-            CanonicalStage("encode.candidates", lambda ctx: encode_candidates_stage(ctx, stage_runtime)),
-            CanonicalStage("stabilize.pre_route", lambda ctx: stabilize_pre_route_stage(ctx, stage_runtime)),
-            CanonicalStage("context.resolve", lambda ctx: context_resolve_stage(ctx, stage_runtime)),
-            CanonicalStage("intent.resolve", lambda ctx: intent_resolve_stage(ctx, stage_runtime)),
-            CanonicalStage("retrieve.evidence", lambda ctx: retrieve_evidence_stage(ctx, stage_runtime)),
-            CanonicalStage("policy.decide", lambda ctx: policy_decide_stage(ctx, stage_runtime)),
-            CanonicalStage("answer.assemble", lambda ctx: answer_assemble_stage(ctx, stage_runtime)),
-            CanonicalStage("answer.validate", lambda ctx: answer_validate_stage(ctx, stage_runtime)),
-            CanonicalStage("answer.render", lambda ctx: answer_render_stage(ctx, stage_runtime)),
-            CanonicalStage("answer.commit", lambda ctx: answer_commit_stage(ctx, stage_runtime)),
-        ]
-    )
+    stage_handlers = _TurnPipelineStageHandlers(runtime=stage_runtime)
+    orchestrator = CanonicalTurnOrchestrator(stages=stage_handlers.canonical_stages())
     final_context = orchestrator.run(context)
     final_state = replace(
         final_context.state,
