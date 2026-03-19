@@ -31,7 +31,7 @@ dev = [
 ]
 
 [project.scripts]
-testbot = "testbot.sat_chatbot_memory_v2:main"
+testbot = "testbot.entrypoints.sat_cli:main"
 seem-bot = "seem_bot.cli:main"
 
 [tool.setuptools]
