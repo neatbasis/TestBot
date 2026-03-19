@@ -68,7 +68,7 @@ The module acts as a de-facto API surface. Moving symbols without compatibility 
 |---|---|---|
 | `append_session_log` | Telemetry sink | **High** |
 | `run_canonical_answer_stage_flow` | Public turn runner | **High** |
-| `run_answer_stage_flow` | Parallel public runner | **High** |
+| `run_answer_stage_flow` | Deprecated alias delegating to canonical runner | **Medium** |
 | `answer_assemble` | Orchestration-heavy public helper | **High** |
 | `build_capability_snapshot` | startup capability resolver | Medium |
 | `resolve_turn_intent` | diagnostics/parity helper | Medium |
@@ -97,13 +97,19 @@ Population and reads cross multiple boundaries with convention-based keys (`fact
 
 ## 5) Parallel-implementation trap (current evidence)
 
-The module has multiple near-overlapping public runner entry points:
+As of **2026-03-19**, the answer-stage public surface is no longer a true parallel implementation split:
 
 - `run_canonical_answer_stage_flow()`
 - `run_answer_stage_flow()`
 - `_run_full_canonical_turn_from_seeded_artifacts()`
 
-These create synchronization risk during extraction/refactor if behavior is updated in one path but not the others.
+`run_answer_stage_flow()` currently emits a `DeprecationWarning` and directly delegates to `run_canonical_answer_stage_flow()`, so functional execution is centralized through the canonical symbol.
+
+**As-of date + code evidence note (auditability):**
+- `run_canonical_answer_stage_flow` is defined in `src/testbot/sat_chatbot_memory_v2.py` around lines **2997–3021**.
+- `run_answer_stage_flow` is defined around lines **3023–3052** and calls `run_canonical_answer_stage_flow(...)` after warning around **3036–3039**.
+
+Residual risk now comes primarily from import-surface drift (callers continuing to import the deprecated alias) rather than from ambiguous runtime behavior between two independent implementations.
 
 There is also duplicated definitional-query form logic presence (local `_is_definitional_query_form` while also importing from `retrieval_routing`), which increases semantic drift risk.
 
@@ -126,9 +132,13 @@ Add explicit `__all__` in `sat_chatbot_memory_v2.py` (or successor module) to de
 
 Tests that previously imported underscored helpers now consume these stable façade symbols.
 
-### Step 2 — Resolve two-runner ambiguity
+### Step 2 — Complete alias removal timeline and import migration
 
-Formally define whether `run_answer_stage_flow` is deprecated alias vs distinct behavior. If alias, deprecate and delegate; if distinct, document contract differences.
+`run_answer_stage_flow` is already a deprecated delegating alias to `run_canonical_answer_stage_flow`. The next step is to:
+
+1. publish a removal target release/date for `run_answer_stage_flow`,
+2. migrate all internal imports/callers to `run_canonical_answer_stage_flow`,
+3. keep a temporary compatibility shim only until migration completion criteria are met.
 
 Also remove duplicate definitional-query helper implementation by selecting one canonical owner.
 
