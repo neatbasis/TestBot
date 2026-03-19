@@ -30,17 +30,34 @@ class StabilizedTurnState:
     candidate_repairs: list[RepairCandidate] = field(default_factory=list)
 
 
-def stabilize_pre_route(
+@dataclass(frozen=True)
+class PersistenceRecord:
+    doc_id: str
+    content: str
+    metadata: dict[str, object]
+
+
+@dataclass(frozen=True)
+class StabilizationPlan:
+    stabilized: StabilizedTurnState
+    persistence_records: tuple[PersistenceRecord, ...]
+    next_state: PipelineState
+
+
+def build_stabilization_plan(
     *,
-    store: MemoryStore,
     state: PipelineState,
     observation: TurnObservation,
     encoded: EncodedTurnCandidates,
     response_plan: dict[str, object],
     reflection_yaml: str,
     segment: SegmentDescriptor,
-    store_doc_fn: Callable[..., None] = store_doc,
-) -> tuple[PipelineState, StabilizedTurnState]:
+    reflection_doc_id: str | None = None,
+    dialogue_state_doc_id: str | None = None,
+) -> StabilizationPlan:
+    """Build pure stabilization decisions without touching storage adapters."""
+    generated_reflection_doc_id = reflection_doc_id or str(uuid.uuid4())
+    generated_dialogue_state_doc_id = dialogue_state_doc_id or str(uuid.uuid4())
     utterance_doc_id = observation.turn_id
     utterance_card = make_utterance_card(
         ts_iso=observation.observed_at,
@@ -63,19 +80,12 @@ def stabilize_pre_route(
         segment=segment,
         member_doc_id=utterance_doc_id,
     )
-    store_doc_fn(
-        store,
-        doc_id=utterance_doc_id,
-        content=utterance_card,
-        metadata=utterance_metadata,
-    )
 
-    reflection_doc_id = str(uuid.uuid4())
     reflection_card = make_reflection_card(
         ts_iso=observation.observed_at,
         about=observation.speaker,
         source_doc_id=utterance_doc_id,
-        doc_id=reflection_doc_id,
+        doc_id=generated_reflection_doc_id,
         reflection_yaml=reflection_yaml,
     )
     reflection_metadata = apply_persistence_metadata(
@@ -84,21 +94,14 @@ def stabilize_pre_route(
             "type": "reflection",
             "about": observation.speaker,
             "source_doc_id": utterance_doc_id,
-            "doc_id": reflection_doc_id,
+            "doc_id": generated_reflection_doc_id,
             "turn_id": observation.turn_id,
         },
         stratum=MemoryStratum.SEMANTIC,
         segment=segment,
-        member_doc_id=reflection_doc_id,
-    )
-    store_doc_fn(
-        store,
-        doc_id=reflection_doc_id,
-        content=reflection_card,
-        metadata=reflection_metadata,
+        member_doc_id=generated_reflection_doc_id,
     )
 
-    dialogue_state_doc_id = str(uuid.uuid4())
     dialogue_state_payload = {
         "turn_id": observation.turn_id,
         "dialogue_state": [asdict(candidate) for candidate in encoded.dialogue_state],
@@ -108,21 +111,14 @@ def stabilize_pre_route(
         metadata={
             "ts": observation.observed_at,
             "type": "dialogue_state_snapshot",
-            "doc_id": dialogue_state_doc_id,
+            "doc_id": generated_dialogue_state_doc_id,
             "turn_id": observation.turn_id,
         },
         stratum=MemoryStratum.PROCEDURAL_DIALOGUE_STATE,
         segment=segment,
-        member_doc_id=dialogue_state_doc_id,
+        member_doc_id=generated_dialogue_state_doc_id,
     )
-    store_doc_fn(
-        store,
-        doc_id=dialogue_state_doc_id,
-        content=str(dialogue_state_payload),
-        metadata=dialogue_state_metadata,
-    )
-
-    same_turn_exclusion_doc_ids = [utterance_doc_id, reflection_doc_id, dialogue_state_doc_id]
+    same_turn_exclusion_doc_ids = [utterance_doc_id, generated_reflection_doc_id, generated_dialogue_state_doc_id]
     segment_membership_edge_refs = (
         list(utterance_metadata.get("segment_membership_edge_refs") or [])
         + list(reflection_metadata.get("segment_membership_edge_refs") or [])
@@ -132,13 +128,12 @@ def stabilize_pre_route(
         FactCandidate(key="utterance_raw", value=observation.utterance, confidence=1.0, provenance="stabilize.pre_route"),
         *encoded.facts,
     ]
-
     stabilized = StabilizedTurnState(
         turn_id=observation.turn_id,
         utterance_card=utterance_card,
         utterance_doc_id=utterance_doc_id,
-        reflection_doc_id=reflection_doc_id,
-        dialogue_state_doc_id=dialogue_state_doc_id,
+        reflection_doc_id=generated_reflection_doc_id,
+        dialogue_state_doc_id=generated_dialogue_state_doc_id,
         segment_type=segment.segment_type.value,
         segment_id=segment.segment_id,
         segment_membership_edge_refs=segment_membership_edge_refs,
@@ -148,7 +143,6 @@ def stabilize_pre_route(
         candidate_dialogue_state=list(encoded.dialogue_state),
         candidate_repairs=list(encoded.repairs),
     )
-
     next_state = PipelineState(
         **{
             **state.__dict__,
@@ -162,8 +156,8 @@ def stabilize_pre_route(
                 "turn_id": observation.turn_id,
                 "utterance_card": utterance_card,
                 "utterance_doc_id": utterance_doc_id,
-                "reflection_doc_id": reflection_doc_id,
-                "dialogue_state_doc_id": dialogue_state_doc_id,
+                "reflection_doc_id": generated_reflection_doc_id,
+                "dialogue_state_doc_id": generated_dialogue_state_doc_id,
                 "segment_type": segment.segment_type.value,
                 "segment_id": segment.segment_id,
                 "segment_membership_edge_refs": segment_membership_edge_refs,
@@ -183,4 +177,54 @@ def stabilize_pre_route(
             },
         }
     )
-    return next_state, stabilized
+    return StabilizationPlan(
+        stabilized=stabilized,
+        next_state=next_state,
+        persistence_records=(
+            PersistenceRecord(doc_id=utterance_doc_id, content=utterance_card, metadata=utterance_metadata),
+            PersistenceRecord(doc_id=generated_reflection_doc_id, content=reflection_card, metadata=reflection_metadata),
+            PersistenceRecord(
+                doc_id=generated_dialogue_state_doc_id,
+                content=str(dialogue_state_payload),
+                metadata=dialogue_state_metadata,
+            ),
+        ),
+    )
+
+
+def persist_stabilization_records(
+    *,
+    store: MemoryStore,
+    persistence_records: tuple[PersistenceRecord, ...],
+    store_doc_fn: Callable[..., None],
+) -> None:
+    for record in persistence_records:
+        store_doc_fn(
+            store,
+            doc_id=record.doc_id,
+            content=record.content,
+            metadata=record.metadata,
+        )
+
+
+def stabilize_pre_route(
+    *,
+    store: MemoryStore,
+    state: PipelineState,
+    observation: TurnObservation,
+    encoded: EncodedTurnCandidates,
+    response_plan: dict[str, object],
+    reflection_yaml: str,
+    segment: SegmentDescriptor,
+    store_doc_fn: Callable[..., None] = store_doc,
+) -> tuple[PipelineState, StabilizedTurnState]:
+    plan = build_stabilization_plan(
+        state=state,
+        observation=observation,
+        encoded=encoded,
+        response_plan=response_plan,
+        reflection_yaml=reflection_yaml,
+        segment=segment,
+    )
+    persist_stabilization_records(store=store, persistence_records=plan.persistence_records, store_doc_fn=store_doc_fn)
+    return plan.next_state, plan.stabilized

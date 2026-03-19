@@ -227,7 +227,8 @@ Boundary rules:
 2. **`ISSUE-0013-B`**: finish `PipelineState` domain purification.
    - Immediate slice: remove direct `memory_cards` dependency (`utc_now_iso`) from `src/testbot/pipeline_state.py` by introducing a domain-local clock boundary.
 3. **`ISSUE-0013-C`**: split stabilization/retrieval into pure logic + port-backed adapters.
-   - Immediate slice: separate provider-native mapping from retrieval policy decision code paths.
+   - Immediate slice (completed): provider-native mapping is now separated from retrieval policy/bundling logic and stabilization planning is separated from persistence writes via explicit seams.
+   - Remaining scope (not yet complete): formal `ports/` protocol extraction, adapter package relocation, and CI-enforced import-boundary rules are still pending.
 4. **`ISSUE-0013-D`**: add ports (`MemoryRepository`, `VectorStore`, `LanguageModel`, `SourceConnector`) and contract tests.
 5. **`ISSUE-0013-E`**: add import-boundary checks enforcing dependency direction.
    - Immediate slice: land report-only import-linter/ruff checks, then ratchet to readiness-blocking mode.
@@ -239,6 +240,7 @@ Boundary rules:
 - [ ] **`ISSUE-0013-E` complete**: dependency contracts are CI-enforced with owners, failure semantics, and readiness-blocking behavior documented.
 - [~] **`ISSUE-0013-A` initial slice**: `_run_canonical_turn_pipeline` stage closures extracted to application service with delegating façade retained.
 - [~] **`ISSUE-0013-B` immediate slice (scoped progress)**: `pipeline_state.py` now uses a domain-local snapshot time provider and key callers pass clock-backed providers; broader domain-purification and CI dependency enforcement remain open.
+- [~] **`ISSUE-0013-C` immediate slice (scoped progress)**: stabilization and retrieval now have pure-logic seams (`build_stabilization_plan`, `build_evidence_bundle_from_input_records`) and adapter-facing mapping/persistence helpers; full port protocol extraction and package-boundary enforcement are still open.
 
 ## 6.D) Port extraction done criteria (`ISSUE-0013-D`)
 

@@ -74,6 +74,14 @@ class RetrievalResult:
     reasoning: dict[str, object] = field(default_factory=dict)
 
 
+@dataclass(frozen=True)
+class RetrievalInputRecord:
+    ref_id: str
+    score: float
+    content: str
+    metadata: dict[str, object] = field(default_factory=dict)
+
+
 def continuity_evidence_from_prior_state(prior_pipeline_state: PipelineState | None) -> tuple[str, ...]:
     """Extract deterministic retrieval continuity evidence from prior committed state."""
 
@@ -125,10 +133,22 @@ def build_evidence_bundle(
 
 def _to_evidence_record(*, doc: Document, score: float) -> EvidenceRecord:
     metadata = doc.metadata if isinstance(doc.metadata, dict) else {}
+    return evidence_record_from_input(
+        RetrievalInputRecord(
+            ref_id=str(doc.id or metadata.get("doc_id") or ""),
+            score=float(score),
+            content=str(doc.page_content or ""),
+            metadata=metadata,
+        )
+    )
+
+
+def evidence_record_from_input(input_record: RetrievalInputRecord) -> EvidenceRecord:
+    metadata = input_record.metadata if isinstance(input_record.metadata, dict) else {}
     return EvidenceRecord(
-        ref_id=str(doc.id or metadata.get("doc_id") or ""),
-        score=float(score),
-        content=str(doc.page_content or ""),
+        ref_id=str(input_record.ref_id or metadata.get("doc_id") or ""),
+        score=float(input_record.score),
+        content=str(input_record.content or ""),
         source_type=str(metadata.get("source_type") or metadata.get("type") or metadata.get("record_kind") or ""),
         memory_stratum=str(metadata.get("memory_stratum") or ""),
         segment_type=str(metadata.get("segment_type") or ""),
@@ -139,6 +159,10 @@ def _to_evidence_record(*, doc: Document, score: float) -> EvidenceRecord:
 
 def _route_record_channel(*, doc: Document) -> str:
     metadata = doc.metadata if isinstance(doc.metadata, dict) else {}
+    return route_record_channel(metadata=metadata)
+
+
+def route_record_channel(*, metadata: dict[str, object]) -> str:
     record_kind = str(metadata.get("record_kind") or "").lower()
     card_type = str(metadata.get("type") or "").lower()
     promotion_category = str(metadata.get("promotion_category") or "").lower()
@@ -161,15 +185,29 @@ def _route_record_channel(*, doc: Document) -> str:
 def build_evidence_bundle_from_docs_and_scores(
     docs_and_scores: list[tuple[Document, float]],
 ) -> EvidenceBundle:
+    return build_evidence_bundle_from_input_records(
+        [
+            RetrievalInputRecord(
+                ref_id=str(doc.id or (doc.metadata or {}).get("doc_id") or ""),
+                score=float(score),
+                content=str(doc.page_content or ""),
+                metadata=doc.metadata if isinstance(doc.metadata, dict) else {},
+            )
+            for doc, score in docs_and_scores
+        ]
+    )
+
+
+def build_evidence_bundle_from_input_records(input_records: list[RetrievalInputRecord]) -> EvidenceBundle:
     structured_facts: list[EvidenceRecord] = []
     episodic_utterances: list[EvidenceRecord] = []
     repair_anchors_offers: list[EvidenceRecord] = []
     reflections_hypotheses: list[EvidenceRecord] = []
     source_evidence: list[EvidenceRecord] = []
 
-    for doc, score in docs_and_scores:
-        record = _to_evidence_record(doc=doc, score=score)
-        channel = _route_record_channel(doc=doc)
+    for input_record in input_records:
+        record = evidence_record_from_input(input_record)
+        channel = route_record_channel(metadata=input_record.metadata)
         if channel == "source_evidence":
             source_evidence.append(record)
         elif channel == "repair_anchors_offers":
@@ -214,7 +252,7 @@ def apply_memory_strata_precedence(bundle: EvidenceBundle) -> EvidenceBundle:
 
 def build_evidence_bundle_from_hits(hits: list[Document]) -> EvidenceBundle:
     # Hits already represent post-rerank confident records, so use a neutral fixed score.
-    return apply_memory_strata_precedence(build_evidence_bundle_from_docs_and_scores([(doc, 1.0) for doc in hits]))
+    return build_evidence_bundle_from_docs_and_scores([(doc, 1.0) for doc in hits])
 
 
 def retrieval_result(
