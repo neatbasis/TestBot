@@ -1054,6 +1054,96 @@ def step_then_hostile_commit_transition_clears_obligations(context) -> None:
     assert transitions["continuity_posture"] is ContinuityPosture.REEVALUATE
 
 
+@given("a committed clarification turn with pending follow-up route")
+def step_given_committed_clarification_turn_with_followup_route(context) -> None:
+    context.committed_clarification_state = PipelineState(
+        user_input="ask something via satellite",
+        final_answer="Can you clarify whether you want me to proceed via satellite?",
+        resolved_intent=IntentType.CAPABILITIES_HELP.value,
+        prior_unresolved_intent=IntentType.CAPABILITIES_HELP.value,
+        commit_receipt={
+            "pending_repair_state": {
+                "repair_required_by_policy": True,
+                "repair_offered_to_user": True,
+                "offer_type": "repair_offer_followup",
+                "reason": "repair_offer_rendered",
+                "followup_route": "repair_offer_followup",
+            },
+            "remaining_obligations": ["clarify_satellite_request"],
+            "confirmed_user_facts": [],
+        },
+    )
+
+
+@when('the user follows up with immediate affirmation "yes"')
+def step_when_user_follows_immediate_affirmation(context) -> None:
+    context.immediate_affirmation_context = resolve_context(
+        utterance="yes",
+        prior_pipeline_state=context.committed_clarification_state,
+    )
+
+
+@then("immediate follow-up should preserve clarification continuity anchors")
+def step_then_immediate_followup_preserves_clarification_anchors(context) -> None:
+    resolved = context.immediate_affirmation_context
+    assert resolved.continuity_posture is ContinuityPosture.PRESERVE_PRIOR_INTENT
+    assert "clarification_continuity" in resolved.history_anchors
+    assert "commit.assistant_offer_anchor:followup_route=repair_offer_followup" in resolved.history_anchors
+    assert "commit.remaining_obligations:clarify_satellite_request" in resolved.history_anchors
+
+
+@given("a committed repair offer turn with continuation obligations")
+def step_given_committed_repair_offer_with_obligations(context) -> None:
+    context.committed_repair_state = PipelineState(
+        user_input="help repair timeline",
+        final_answer="I can help continue repair reconstruction from what we confirmed.",
+        resolved_intent=IntentType.MEMORY_RECALL.value,
+        prior_unresolved_intent=IntentType.MEMORY_RECALL.value,
+        commit_receipt={
+            "pending_repair_state": {
+                "repair_required_by_policy": True,
+                "repair_offered_to_user": True,
+                "offer_type": "repair_offer_followup",
+                "reason": "repair_offer_rendered",
+                "followup_route": "repair_offer_followup",
+            },
+            "remaining_obligations": ["continue_repair_reconstruction"],
+            "confirmed_user_facts": [],
+        },
+    )
+
+
+@when('an unrelated topic-shift turn is committed before delayed follow-up "yes"')
+def step_when_topic_shift_before_delayed_followup(context) -> None:
+    context.topic_shift_after_repair_state = PipelineState(
+        user_input="switch topic",
+        final_answer="Sure — different topic.",
+        resolved_intent=IntentType.META_CONVERSATION.value,
+        prior_unresolved_intent=IntentType.META_CONVERSATION.value,
+        commit_receipt={
+            "pending_repair_state": {
+                "repair_required_by_policy": False,
+                "repair_offered_to_user": False,
+                "reason": "none",
+            },
+            "remaining_obligations": [],
+            "confirmed_user_facts": [],
+        },
+    )
+    context.delayed_followup_after_topic_shift = resolve_context(
+        utterance="yes",
+        prior_pipeline_state=context.topic_shift_after_repair_state,
+    )
+
+
+@then("delayed follow-up should not preserve repair continuation continuity anchors")
+def step_then_delayed_followup_does_not_preserve_repair_anchors(context) -> None:
+    resolved = context.delayed_followup_after_topic_shift
+    assert resolved.continuity_posture is ContinuityPosture.REEVALUATE
+    assert "clarification_continuity" not in resolved.history_anchors
+    assert "commit.remaining_obligations:continue_repair_reconstruction" not in resolved.history_anchors
+
+
 @when("policy decision objects are resolved from typed evidence states")
 def step_when_policy_decision_objects_typed(context) -> None:
     memory_retrieval = retrieval_result(
@@ -1181,7 +1271,7 @@ def step_then_fallback_reason_should_be(context, fallback_reason: str) -> None:
 
 class _BDDMetaAckLLM:
     class _Response:
-        content = "Got it — I can keep that in mind."
+        content = "General definition (not from your memory): I can acknowledge that note and keep helping with next steps."
 
     def invoke(self, _msgs):
         return self._Response()

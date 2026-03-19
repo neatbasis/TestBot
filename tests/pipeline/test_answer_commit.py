@@ -96,7 +96,7 @@ def test_commit_service_accepts_upstream_commit_inputs_and_fake_fact_merger() ->
     assert committed.confirmed_user_facts == ["name=Fixture", "timezone=UTC"]
 
 
-def test_committed_turn_state_confirmed_user_facts_match_stabilized_fact_candidates_exactly() -> None:
+def test_committed_turn_state_keeps_candidate_facts_separate_from_confirmed_facts() -> None:
     state = PipelineState(
         user_input="My name is ava",
         candidate_facts={"facts": [{"key": "user_name", "value": "ava", "confidence": 0.95}]},
@@ -110,8 +110,8 @@ def test_committed_turn_state_confirmed_user_facts_match_stabilized_fact_candida
     )
 
     assert isinstance(committed, CommittedTurnState)
-    assert committed.confirmed_user_facts == ["name=Ava"]
-    assert committed_state.commit_receipt.get("confirmed_user_facts") == ["name=Ava"]
+    assert committed.confirmed_user_facts == []
+    assert committed_state.commit_receipt.confirmed_user_facts == []
 
 
 def test_answer_provenance_mirrors_validated_evidence_bindings() -> None:

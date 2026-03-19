@@ -1,9 +1,11 @@
 from testbot.domain.canonical_dtos import (
+    AssistantOfferAnchor,
     AnswerCandidate,
     CandidateEncodingSet,
     CommittedTurnState,
     ContextResolvedState,
     EvidenceSet,
+    FocusAnchor,
     IntentResolution,
     PendingRepairState,
     PolicyDecision,
@@ -11,6 +13,7 @@ from testbot.domain.canonical_dtos import (
     ReasoningTrace,
     RenderedResponse,
     TurnObservation,
+    UnresolvedObligation,
     ValidationResult,
     answer_candidate_from_legacy,
     candidate_encoding_set_from_encoded_turn_candidates,
@@ -26,11 +29,13 @@ from testbot.domain.canonical_dtos import (
 )
 
 __all__ = [
+    "AssistantOfferAnchor",
     "AnswerCandidate",
     "CandidateEncodingSet",
     "CommittedTurnState",
     "ContextResolvedState",
     "EvidenceSet",
+    "FocusAnchor",
     "IntentResolution",
     "PendingRepairState",
     "PolicyDecision",
@@ -38,6 +43,7 @@ __all__ = [
     "ReasoningTrace",
     "RenderedResponse",
     "TurnObservation",
+    "UnresolvedObligation",
     "ValidationResult",
     "answer_candidate_from_legacy",
     "candidate_encoding_set_from_encoded_turn_candidates",

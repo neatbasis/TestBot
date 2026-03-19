@@ -56,6 +56,49 @@ def build_stabilization_plan(
     dialogue_state_doc_id: str | None = None,
 ) -> StabilizationPlan:
     """Build pure stabilization decisions without touching storage adapters."""
+    def _fact_with_durable_id(candidate: FactCandidate, index: int) -> FactCandidate:
+        if candidate.candidate_id:
+            return candidate
+        return FactCandidate(
+            key=candidate.key,
+            value=candidate.value,
+            confidence=candidate.confidence,
+            candidate_id=f"{observation.turn_id}:fact:{candidate.key}:{index}",
+            provenance=candidate.provenance,
+        )
+
+    def _speech_with_durable_id(candidate: SpeechActCandidate, index: int) -> SpeechActCandidate:
+        if candidate.candidate_id:
+            return candidate
+        return SpeechActCandidate(
+            label=candidate.label,
+            confidence=candidate.confidence,
+            rationale=candidate.rationale,
+            candidate_id=f"{observation.turn_id}:speech_act:{candidate.label}:{index}",
+            provenance=candidate.provenance,
+        )
+
+    def _dialogue_state_with_durable_id(candidate: DialogueStateCandidate, index: int) -> DialogueStateCandidate:
+        if candidate.candidate_id:
+            return candidate
+        return DialogueStateCandidate(
+            label=candidate.label,
+            confidence=candidate.confidence,
+            candidate_id=f"{observation.turn_id}:dialogue_state:{candidate.label}:{index}",
+            provenance=candidate.provenance,
+        )
+
+    def _repair_with_durable_id(candidate: RepairCandidate, index: int) -> RepairCandidate:
+        if candidate.candidate_id:
+            return candidate
+        return RepairCandidate(
+            label=candidate.label,
+            confidence=candidate.confidence,
+            rationale=candidate.rationale,
+            candidate_id=f"{observation.turn_id}:repair:{candidate.label}:{index}",
+            provenance=candidate.provenance,
+        )
+
     generated_reflection_doc_id = reflection_doc_id or str(uuid.uuid4())
     generated_dialogue_state_doc_id = dialogue_state_doc_id or str(uuid.uuid4())
     utterance_doc_id = observation.turn_id
@@ -125,9 +168,20 @@ def build_stabilization_plan(
         + list(dialogue_state_metadata.get("segment_membership_edge_refs") or [])
     )
     stabilized_candidate_facts = [
-        FactCandidate(key="utterance_raw", value=observation.utterance, confidence=1.0, provenance="stabilize.pre_route"),
-        *encoded.facts,
+        FactCandidate(
+            key="utterance_raw",
+            value=observation.utterance,
+            confidence=1.0,
+            candidate_id=f"{observation.turn_id}:fact:utterance_raw:0",
+            provenance="stabilize.pre_route",
+        ),
+        *[_fact_with_durable_id(candidate, index) for index, candidate in enumerate(encoded.facts, start=1)],
     ]
+    stabilized_speech_acts = [_speech_with_durable_id(candidate, index) for index, candidate in enumerate(encoded.speech_acts)]
+    stabilized_dialogue_state = [
+        _dialogue_state_with_durable_id(candidate, index) for index, candidate in enumerate(encoded.dialogue_state)
+    ]
+    stabilized_repairs = [_repair_with_durable_id(candidate, index) for index, candidate in enumerate(encoded.repairs)]
     stabilized = StabilizedTurnState(
         turn_id=observation.turn_id,
         utterance_card=utterance_card,
@@ -139,9 +193,9 @@ def build_stabilization_plan(
         segment_membership_edge_refs=segment_membership_edge_refs,
         same_turn_exclusion_doc_ids=same_turn_exclusion_doc_ids,
         candidate_facts=stabilized_candidate_facts,
-        candidate_speech_acts=list(encoded.speech_acts),
-        candidate_dialogue_state=list(encoded.dialogue_state),
-        candidate_repairs=list(encoded.repairs),
+        candidate_speech_acts=stabilized_speech_acts,
+        candidate_dialogue_state=stabilized_dialogue_state,
+        candidate_repairs=stabilized_repairs,
     )
     next_state = PipelineState(
         **{
@@ -228,3 +282,45 @@ def stabilize_pre_route(
     )
     persist_stabilization_records(store=store, persistence_records=plan.persistence_records, store_doc_fn=store_doc_fn)
     return plan.next_state, plan.stabilized
+    def _fact_with_durable_id(candidate: FactCandidate, index: int) -> FactCandidate:
+        if candidate.candidate_id:
+            return candidate
+        return FactCandidate(
+            key=candidate.key,
+            value=candidate.value,
+            confidence=candidate.confidence,
+            candidate_id=f"{observation.turn_id}:fact:{candidate.key}:{index}",
+            provenance=candidate.provenance,
+        )
+
+    def _speech_with_durable_id(candidate: SpeechActCandidate, index: int) -> SpeechActCandidate:
+        if candidate.candidate_id:
+            return candidate
+        return SpeechActCandidate(
+            label=candidate.label,
+            confidence=candidate.confidence,
+            rationale=candidate.rationale,
+            candidate_id=f"{observation.turn_id}:speech_act:{candidate.label}:{index}",
+            provenance=candidate.provenance,
+        )
+
+    def _dialogue_state_with_durable_id(candidate: DialogueStateCandidate, index: int) -> DialogueStateCandidate:
+        if candidate.candidate_id:
+            return candidate
+        return DialogueStateCandidate(
+            label=candidate.label,
+            confidence=candidate.confidence,
+            candidate_id=f"{observation.turn_id}:dialogue_state:{candidate.label}:{index}",
+            provenance=candidate.provenance,
+        )
+
+    def _repair_with_durable_id(candidate: RepairCandidate, index: int) -> RepairCandidate:
+        if candidate.candidate_id:
+            return candidate
+        return RepairCandidate(
+            label=candidate.label,
+            confidence=candidate.confidence,
+            rationale=candidate.rationale,
+            candidate_id=f"{observation.turn_id}:repair:{candidate.label}:{index}",
+            provenance=candidate.provenance,
+        )
