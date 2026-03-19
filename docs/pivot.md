@@ -238,6 +238,7 @@ Boundary rules:
 
 - [ ] **`ISSUE-0013-E` complete**: dependency contracts are CI-enforced with owners, failure semantics, and readiness-blocking behavior documented.
 - [~] **`ISSUE-0013-A` initial slice**: `_run_canonical_turn_pipeline` stage closures extracted to application service with delegating façade retained.
+- [~] **`ISSUE-0013-B` immediate slice (scoped progress)**: `pipeline_state.py` now uses a domain-local snapshot time provider and key callers pass clock-backed providers; broader domain-purification and CI dependency enforcement remain open.
 
 ## 6.D) Port extraction done criteria (`ISSUE-0013-D`)
 

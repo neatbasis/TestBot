@@ -2,13 +2,23 @@ from __future__ import annotations
 
 import json
 from dataclasses import asdict, dataclass, field
+from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
-from typing import Any, Mapping
-
-from testbot.memory_cards import utc_now_iso
+from typing import Any, Mapping, Protocol
 
 PIPELINE_SNAPSHOT_SCHEMA_VERSION = 3
+
+
+class SnapshotTimeProvider(Protocol):
+    def now_iso(self) -> str:
+        """Return the current UTC timestamp in ISO-8601 format."""
+
+
+@dataclass(frozen=True)
+class UtcSnapshotTimeProvider:
+    def now_iso(self) -> str:
+        return datetime.now(UTC).isoformat().replace("+00:00", "Z")
 
 
 def _mapping_string(payload: Mapping[str, Any], key: str, default: str = "") -> str:
@@ -527,10 +537,12 @@ def append_pipeline_snapshot(
     state: PipelineState,
     *,
     log_path: Path = Path("./logs/session.jsonl"),
+    time_provider: SnapshotTimeProvider | None = None,
 ) -> None:
     log_path.parent.mkdir(parents=True, exist_ok=True)
+    effective_time_provider = time_provider or UtcSnapshotTimeProvider()
     row = {
-        "ts": utc_now_iso(),
+        "ts": effective_time_provider.now_iso(),
         "event": "pipeline_state_snapshot",
         "schema_version": PIPELINE_SNAPSHOT_SCHEMA_VERSION,
         "stage": stage,

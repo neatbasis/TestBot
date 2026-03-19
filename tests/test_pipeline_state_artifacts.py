@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 
 from testbot.pipeline_state import (
     AlignmentDecision,
@@ -68,4 +69,28 @@ def test_append_pipeline_snapshot_writes_serialized_stage_contracts(tmp_path) ->
 
     row = json.loads(path.read_text(encoding="utf-8").splitlines()[0])
     assert row["schema_version"] == 3
+    assert isinstance(row["ts"], str)
     assert row["state"]["pending_clarification"] == {"question": "Which Friday?", "required": True}
+
+
+@dataclass(frozen=True)
+class _FixedSnapshotClock:
+    now_value: str
+
+    def now_iso(self) -> str:
+        return self.now_value
+
+
+def test_append_pipeline_snapshot_accepts_injected_time_provider_for_parity(tmp_path) -> None:
+    path = tmp_path / "session.jsonl"
+    state = PipelineState(user_input="hello")
+
+    append_pipeline_snapshot(
+        "answer",
+        state,
+        log_path=path,
+        time_provider=_FixedSnapshotClock("2026-03-19T00:00:00Z"),
+    )
+
+    row = json.loads(path.read_text(encoding="utf-8").splitlines()[0])
+    assert row["ts"] == "2026-03-19T00:00:00Z"
