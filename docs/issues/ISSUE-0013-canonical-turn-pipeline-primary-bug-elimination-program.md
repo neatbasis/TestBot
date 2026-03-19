@@ -425,3 +425,8 @@ Progress discipline for each `TASK-CX-*` slice:
   - BDD/spec updates: `features/testbot/intent_grounding.feature` + `features/steps/testbot_intent_grounding_steps.py` include explicit continuity scenario for temporal follow-up promotion.
   - Deterministic test updates: `tests/test_decisioning_stages.py`, `tests/test_runtime_modes.py`, and `tests/test_retrieval_routing.py` include failure-mode/fix-path assertions for temporal follow-up continuity and routing.
   - Evidence: `docs/issues/evidence/2026-03-17-issue-0013-decisioning-temporal-followup-continuity.md`.
+
+- 2026-03-19: Workstream A extraction sequencing advanced by moving alignment scoring into a dedicated pure-logic module.
+  - Extracted module: `src/testbot/logic/alignment.py` now owns `evaluate_alignment_decision` and directly-coupled pure scoring helpers/constants.
+  - Compatibility timeline: `src/testbot/sat_chatbot_memory_v2.py` keeps a temporary shim export for `evaluate_alignment_decision` and emits `DeprecationWarning`; planned shim removal target is after **2026-06-30** once downstream imports complete migration.
+  - Migration evidence: `tests/test_alignment_transitions.py` and `tests/test_answer_contract.py` now import `evaluate_alignment_decision` from `testbot.logic.alignment`.
