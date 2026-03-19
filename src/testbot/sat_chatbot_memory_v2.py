@@ -96,7 +96,6 @@ from ha_ask.config import normalize_rest_api_url
 from testbot.history_packer import PackedHistory, labeled_history_claims, pack_chat_history, render_packed_history
 from testbot.response_planner import build_response_plan, plan_to_dict, render_response_plan_block
 from testbot.reject_taxonomy import RejectSignal, derive_reject_signal
-from testbot.canonical_turn_orchestrator import CanonicalStage, CanonicalTurnContext, CanonicalTurnOrchestrator
 from testbot.turn_observation import observe_turn
 from testbot.candidate_encoding import encode_turn_candidates
 from testbot.stabilization import StabilizedTurnState, stabilize_pre_route
@@ -115,10 +114,6 @@ from testbot.policy_decision import (
     decide as decide_policy,
     decide_from_evidence,
 )
-from testbot.answer_assembly import assemble_answer_contract
-from testbot.answer_validation import validate_answer_assembly_boundary
-from testbot.answer_rendering import render_answer
-from testbot.answer_commit import AnswerCommitService, build_commit_stage_inputs
 from testbot.logic.alignment import (
     ALIGNMENT_OBJECTIVE_VERSION,
     GENERAL_KNOWLEDGE_CONFIDENCE_MIN,
@@ -2871,8 +2866,6 @@ def _resolve_answer_routing_for_stage(
     return state, answer_routing
 
 
-
-
 def _decision_object_from_assembled(assembled: AnswerAssembleResult) -> DecisionObject:
     fallback_action = str(assembled.fallback_action or "").strip().upper()
     decision_lookup = {
@@ -2889,73 +2882,6 @@ def _decision_object_from_assembled(assembled: AnswerAssembleResult) -> Decision
     )
 
 
-
-
-def _run_answer_stages_from_supplied_artifacts(
-    llm: ChatOllama,
-    state: PipelineState,
-    *,
-    chat_history: deque[ChatMsg],
-    hits: list[Document],
-    capability_status: CapabilityStatus,
-    selected_decision: DecisionObject | None = None,
-    runtime_capability_status: RuntimeCapabilityStatus | None = None,
-    clock: Clock | None = None,
-    timezone: str = "Europe/Helsinki",
-) -> PipelineState:
-    state, answer_routing = _resolve_answer_routing_for_stage(
-        state,
-        capability_status=capability_status,
-        selected_decision=selected_decision,
-    )
-    assembled = answer_assemble(
-        llm,
-        state,
-        chat_history=chat_history,
-        hits=hits,
-        capability_status=capability_status,
-        answer_routing=answer_routing,
-        runtime_capability_status=runtime_capability_status,
-        clock=clock,
-        timezone=timezone,
-    )
-    validated = answer_validate(
-        state,
-        assembled=assembled,
-        hits=hits,
-        chat_history=chat_history,
-    )
-    decision_object = selected_decision or _decision_object_from_assembled(assembled)
-    assembly_contract = assemble_answer_contract(decision=decision_object, evidence_bundle=EvidenceBundle())
-    validation_contract = validate_answer_assembly_boundary(
-        assembly_contract,
-        final_answer=validated.final_answer,
-        claims=validated.claims,
-        provenance_types=validated.provenance_types,
-        used_memory_refs=validated.used_memory_refs,
-        used_source_evidence_refs=validated.used_source_evidence_refs,
-        source_evidence_attribution=validated.source_evidence_attribution,
-        basis_statement=validated.basis_statement,
-        invariant_decisions=validated.invariant_decisions,
-        alignment_decision=validated.alignment_decision,
-    )
-    rendered_contract = render_answer(
-        assembly=assembly_contract,
-        validation=validation_contract,
-        preferred_text=validated.final_answer,
-    )
-    commit_inputs = build_commit_stage_inputs(
-        validation=validation_contract,
-        rendered=rendered_contract,
-    )
-    state, _ = AnswerCommitService().commit(
-        state,
-        assembly=assembly_contract,
-        commit_inputs=commit_inputs,
-        commit_stage_id="answer.commit",
-    )
-    return replace(state, draft_answer=assembled.draft_answer)
-
 def run_canonical_answer_stage_flow(
     llm: ChatOllama,
     state: PipelineState,
@@ -2968,17 +2894,75 @@ def run_canonical_answer_stage_flow(
     clock: Clock | None = None,
     timezone: str = "Europe/Helsinki",
 ) -> PipelineState:
-    return _run_answer_stages_from_supplied_artifacts(
-        llm,
-        state,
-        chat_history=chat_history,
-        hits=hits,
-        capability_status=capability_status,
-        selected_decision=selected_decision,
-        runtime_capability_status=runtime_capability_status,
-        clock=clock,
-        timezone=timezone,
+    if selected_decision is not None:
+        warnings.warn(
+            "run_canonical_answer_stage_flow(...) ignores selected_decision; canonical policy.decide stage is authoritative.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+    if timezone != "Europe/Helsinki":
+        warnings.warn(
+            "run_canonical_answer_stage_flow(...) ignores timezone override; canonical turn pipeline clock policy is authoritative.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+
+    class _SeededMemoryStore:
+        def __init__(self, seeded_hits: list[Document]):
+            self._seeded_hits = list(seeded_hits)
+
+        def add_documents(self, documents: list[Document]) -> None:
+            self._seeded_hits.extend(documents)
+
+        def similarity_search_with_score(self, *_args, **_kwargs) -> list[tuple[Document, float]]:
+            return [(doc, 1.0) for doc in self._seeded_hits]
+
+    effective_runtime_status = runtime_capability_status or RuntimeCapabilityStatus(
+        ollama_available=True,
+        ha_available=False,
+        effective_mode="cli",
+        requested_mode="cli",
+        daemon_mode=False,
+        fallback_reason=None,
+        memory_backend="in_memory",
+        debug_enabled=False,
+        debug_verbose=False,
+        text_clarification_available=True,
+        satellite_ask_available=False,
     )
+    effective_snapshot = CapabilitySnapshot(
+        runtime={},
+        requested_mode=effective_runtime_status.requested_mode,
+        daemon_mode=effective_runtime_status.daemon_mode,
+        effective_mode=effective_runtime_status.effective_mode,
+        fallback_reason=effective_runtime_status.fallback_reason,
+        exit_reason=None,
+        ha_error=None,
+        ollama_error=None,
+        runtime_capability_status=effective_runtime_status,
+    )
+    seeded_state = replace(
+        state,
+        classified_intent=state.classified_intent or IntentType.KNOWLEDGE_QUESTION.value,
+        resolved_intent=state.resolved_intent or "",
+        confidence_decision=dict(state.confidence_decision),
+    )
+    final_state, _ = _run_canonical_turn_pipeline(
+        runtime={},
+        llm=llm,
+        store=_SeededMemoryStore(hits),
+        state=seeded_state,
+        utterance=seeded_state.user_input,
+        prior_pipeline_state=None,
+        turn_id=str(uuid.uuid4()),
+        near_tie_delta=0.05,
+        chat_history=chat_history,
+        capability_status=capability_status,
+        capability_snapshot=effective_snapshot,
+        clock=clock or SystemClock(),
+        io_channel="cli",
+    )
+    return final_state
 
 
 

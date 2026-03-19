@@ -177,3 +177,21 @@ For each changelog entry, answer these three questions explicitly:
 
 #### 3) Why this step was taken in this order?
 - Correcting the plan’s status layer before additional extraction work prevents agents from redoing partially completed refactors from scratch and preserves receiver-first migration discipline.
+
+### Entry 12
+
+#### 1) What moved, and where did it land?
+- **Old path/symbol:** lambda/closure stage-runtime captures in `run_canonical_turn_pipeline_service(...)` (`CanonicalStage(..., lambda ctx: ...stage_runtime...)`) inside `src/testbot/application/services/turn_service.py`.
+- **New path/symbol:** explicit dependency receiver `_TurnPipelineStageHandlers(runtime=...)` with named bound handlers and `canonical_stages()` in the same module.
+- **Delegation shim:** none required; stage names and canonical sequence remain unchanged.
+- **Old path/symbol:** seeded answer-stage orchestration helpers in `src/testbot/sat_chatbot_memory_v2.py` (`_run_answer_stages_from_supplied_artifacts(...)` and compatibility execution through `run_canonical_answer_stage_flow(...)`).
+- **New path/symbol:** removed/retired; runtime raw-utterance processing authority is the canonical turn pipeline via `_run_canonical_turn_pipeline(...)` and `run_chat_loop(...)`.
+- **Delegation shim:** `run_answer_stage_flow(...)` remains as a deprecation shim that delegates to `run_canonical_answer_stage_flow(...)`; seeded inputs are now routed through `_run_canonical_turn_pipeline(...)` instead of executing a parallel answer-stage flow.
+
+#### 2) What did not change?
+- The canonical 11-stage order itself did not change (`observe.turn` through `answer.commit`), and the orchestrator remains the single authority for stage sequencing.
+- CLI/satellite chat loop turn execution still routes user utterances through `_run_canonical_turn_pipeline(...)`; this step removes alternate seeded answer-stage execution rather than changing loop routing contracts.
+- Session log schema version and commit receipt contract were not intentionally changed in this migration step.
+
+#### 3) Why this step was taken in this order?
+- Eliminating duplicated answer-stage orchestration and closure-capture wiring first establishes a single auditable runtime path before further entrypoint/package migration work.

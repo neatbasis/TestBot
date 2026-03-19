@@ -6,6 +6,7 @@ from dataclasses import replace
 import arrow
 
 from testbot.application.services.turn_service import (
+    _TurnPipelineStageHandlers,
     TurnPipelineDependencies,
     TurnPipelineStageRuntime,
     encode_candidates_stage,
@@ -96,3 +97,24 @@ def test_encode_candidates_stage_can_run_in_isolation() -> None:
     assert updated.state.rewritten_query == "rewritten from fake"
     assert updated.state.candidate_facts["facts"][0]["key"] == "user_name"
     assert updated.artifacts["encoded_candidates"].rewritten_query == "rewritten from fake"
+
+
+def test_stage_handler_dependency_object_binds_named_handlers_without_lambda_captures() -> None:
+    handlers = _TurnPipelineStageHandlers(runtime=_stage_runtime(utterance="hello"))
+    names = tuple(stage.name for stage in handlers.canonical_stages())
+    handler_names = tuple(stage.handler.__name__ for stage in handlers.canonical_stages())
+
+    assert names == (
+        "observe.turn",
+        "encode.candidates",
+        "stabilize.pre_route",
+        "context.resolve",
+        "intent.resolve",
+        "retrieve.evidence",
+        "policy.decide",
+        "answer.assemble",
+        "answer.validate",
+        "answer.render",
+        "answer.commit",
+    )
+    assert all(name != "<lambda>" for name in handler_names)
