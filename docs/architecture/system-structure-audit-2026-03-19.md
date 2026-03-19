@@ -1,159 +1,182 @@
-# System Structure Audit — 2026-03-19
+# System Structure Audit — 2026-03-19 (Amended)
 
-This document records a code-first architecture audit focused on:
+## Executive summary
 
-1. Entity relationships and authority boundaries.
-2. Knowledge-sharing and provenance semantics.
-3. Repair/validation/commit enforcement.
-4. Cross-cutting drift, observability, and enforcement gaps.
+The prior audit correctly identified `sat_chatbot_memory_v2.py` as a major authority concentration point, but it understated the breadth and exact collapse mechanics.
 
-## Scope
+This amended audit makes the authority census explicit, identifies concrete API-risk symbols, and defines a receiver-first extraction protocol to avoid parallel implementations.
 
-- Runtime modules under `src/testbot/`.
-- Architecture and invariant docs under `docs/`.
-- Enforcement tests/scripts under `tests/` and `scripts/`.
+- **Primary collapse point:** `_run_canonical_turn_pipeline()` is a ~585-line orchestration function with 11 inline closures that close over runtime dependencies from the enclosing scope.
+- **Secondary collapse points:** `answer_assemble()` and `evaluate_alignment_decision()` combine business logic and orchestration concerns in test-visible symbols.
+- **Hidden coupling:** dict-shaped contracts (`confidence_decision`, `commit_receipt`, `candidate_facts`) are written/read across multiple domains without a typed interface.
 
-## 1) Entity relationships — system structure and authority
+## Scope and evidence basis
 
-### State & pipeline integrity
+- Runtime code under `src/testbot/`.
+- Existing enforcement tests/scripts under `tests/` and `scripts/`.
+- Symbol census anchored to `src/testbot/sat_chatbot_memory_v2.py` (current line count: **4613** lines).
 
-- The canonical pipeline has explicit fixed stage order in `CanonicalTurnOrchestrator.STAGE_ORDER` with strict equality checks at constructor time and runtime stage-order checks (`run`).
-- Runtime orchestration in `_run_canonical_turn_pipeline` wires all 11 stages through one `CanonicalTurnContext` containing a single `PipelineState` plus stage artifacts.
-- There is one notable caveat: state mutation uses direct `replace(...)` assignments inside stage handlers and helper stage functions, not an immutable transition object with compile-time transition typing.
-- Additional snapshots use legacy-ish stage labels (`observe`, `rewrite`, `stabilize`, `rerank`, `answer`) alongside canonical labels (`answer.validate`, `answer.render`, `answer.commit`), so observability naming is not fully normalized.
+---
 
-### Authority boundaries
+## 1) Authority census for `sat_chatbot_memory_v2.py`
 
-- Stage modules (`turn_observation`, `candidate_encoding`, `stabilization`, `context_resolution`, `intent_resolution`, `evidence_retrieval`, `policy_decision`, `answer_assembly`, `answer_validation`, `answer_rendering`, `answer_commit`) are mostly domain-focused and typed.
-- `sat_chatbot_memory_v2.py` still holds mixed authority: orchestration, adapter wiring, retrieval execution, policy bridge decisions, fallback behavior, logging, and runtime mode concerns.
-- Retrieval conversion is partially normalized in `evidence_retrieval` (`EvidenceRecord`, `EvidenceBundle`), but adapter-native `Document` objects are still consumed in the orchestrator retrieval/rerank path before normalization.
+The module currently spans at least seven authority domains:
 
-### Dependency direction
+| Domain | Approx lines | What it owns |
+|---|---:|---|
+| A. Boot / entrypoint | 4521–4613 | `main()`, arg/env parsing, mode dispatch |
+| B. Infrastructure probing | 719–816 | HA/Ollama reachability and mode-effective checks |
+| C. Capability snapshot | 487–515, 4478–4519 | `RuntimeCapabilityStatus`, `CapabilitySnapshot`, `build_capability_snapshot()` |
+| D. Source ingestion lifecycle | 255–422 | execute/start/poll/process ingestion + obligation/dead-letter transitions |
+| E. Canonical turn pipeline | 3571–4156 | `_run_canonical_turn_pipeline()` with 11 stage closures |
+| F. Decision / alignment logic | ~1500–3568 | ambiguity/blocker reasoning, answer assembly/validation helpers, alignment scoring |
+| G. Chat loop / I/O | 4158–4396 | chat loop and CLI/satellite runtime loops |
 
-- Import-boundary tests enforce that stage modules avoid infrastructure adapters and client SDKs.
-- Full stage-order composition is allowlisted only in `canonical_turn_orchestrator.py` and `sat_chatbot_memory_v2.py`.
-- Tests intentionally import some internals from `sat_chatbot_memory_v2.py`, so test dependency direction is pragmatic, not strictly API-only.
-- `sat_chatbot_memory_v2.py` remains the effective hidden orchestrator (even with `CanonicalTurnOrchestrator` extracted) because stage handlers and runtime flow are still constructed there.
+Additionally, the same module owns a telemetry sink (`append_session_log`), DTO mapper (`doc_to_candidate_hit`), diagnostics-only intent helper (`resolve_turn_intent`), and multiple constants/regex sets.
 
-### Entity modeling
+---
 
-- Explicitly modeled as typed entities:
-  - Turn: `TurnObservation`, stabilized `turn_id`, `CommittedTurnState`.
-  - Evidence: `EvidenceRecord`, `EvidenceBundle`, `RetrievalResult` + `EvidencePosture`.
-  - Decision: `DecisionObject`, `DecisionClass`, `RetrievalPolicyDecision`.
-  - Obligation/repair: answer-assembly obligations and commit receipt/pending repair fields.
-- Not yet fully explicit as first-class domain types:
-  - Utterance and obligation details are still carried through string fields and dict payloads in `candidate_facts`, `commit_receipt`, and `pending_repair_state`.
+## 2) Real collapse point (specific)
 
-### Identity & continuity
+### 2.1 `_run_canonical_turn_pipeline()` is the primary collapse
 
-- Turn identity starts with explicit `turn_id` at observe stage and is copied into stabilized artifacts and candidate facts.
-- Continuity is recovered from prior commit receipts via committed anchors (`confirmed_user_facts`, `remaining_obligations`, `pending_ingestion_request_id`, repair flags).
-- Some IDs are deterministic (`turn_id` for user utterance), while reflection/dialogue-state IDs are ad hoc `uuid4` values each turn.
+`_run_canonical_turn_pipeline()` defines all canonical stages inline (`_observe_turn` … `_answer_commit`) and instantiates `CanonicalTurnOrchestrator` inside the same function.
 
-## 2) Knowledge sharing — evidence, memory, retrieval
+All stage closures close over shared outer-scope runtime dependencies (`llm`, `store`, `chat_history`, `prior_pipeline_state`, `utterance`, `runtime`, `clock`, `capability_snapshot`, etc.).
 
-### Evidence model
+Practical impact:
 
-- Evidence posture is explicit: `NOT_REQUESTED`, `EMPTY_EVIDENCE`, `SCORED_EMPTY`, `SCORED_NON_EMPTY`.
-- Decision policy uses posture distinctions directly (especially for memory recall vs knowledge question behavior).
+1. Stage isolation testing is harder because individual stage callables are not first-class module symbols.
+2. Stage replacement requires editing the monolithic orchestration function.
+3. Composition authority lives in entrypoint runtime code instead of a dedicated application/service assembly boundary.
 
-### Retrieval semantics
+### 2.2 `answer_assemble()` is a secondary collapse
 
-- Retrieval routing is driven by resolved intent and continuity guards (`decide_retrieval_routing`, identity-continuity forced memory retrieval).
-- Retrieval output is normalized into DTO-style `EvidenceBundle` and `RetrievalResult`, but orchestration still touches backend-native `Document` objects before conversion.
+`answer_assemble()` is public and test-visible, while also blending routing/result formatting/LLM orchestration concerns that ideally belong to separated services.
 
-### Memory vs retrieval
+### 2.3 `evaluate_alignment_decision()` is a third collapse
 
-- Memory strata and evidence channels are semantically separated (`structured_facts`, `episodic_utterances`, `repair_anchors_offers`, `reflections_hypotheses`, `source_evidence`).
-- User facts, episodic memory, and retrieved source evidence are represented separately in several structures, but commit payloads still serialize many distinctions as untyped dict/list values.
+`evaluate_alignment_decision()` is pure scoring logic but currently co-located with entrypoint runtime concerns and module-level constants it implicitly owns.
 
-### Provenance
+---
 
-- The pipeline maintains provenance fields on state (`claims`, `provenance_types`, `used_memory_refs`, `used_source_evidence_refs`, `source_evidence_attribution`, `basis_statement`).
-- Validation + render + commit stages block unvalidated normal answers and require degraded artifacts for failed validation.
-- Remaining gap: because some answer text is generated before full contract checks, unsupported claims can temporarily exist in stage-local objects until validation rejects them.
+## 3) Caller-facing implicit API surface (high-risk symbols)
 
-### Time-awareness
+The module acts as a de-facto API surface. Moving symbols without compatibility shims is high risk.
 
-- Time-awareness exists via intent routing (`time_query`) and rerank/time scoring logic in runtime helpers.
-- Retrieval result posture itself is not recency-weighted semantically; recency influence currently lives in retrieval/rerank scoring logic rather than typed evidence policy fields.
+| Symbol | Role | Move risk |
+|---|---|---|
+| `append_session_log` | Telemetry sink | **High** |
+| `run_canonical_answer_stage_flow` | Public turn runner | **High** |
+| `run_answer_stage_flow` | Parallel public runner | **High** |
+| `answer_assemble` | Orchestration-heavy public helper | **High** |
+| `build_capability_snapshot` | startup capability resolver | Medium |
+| `resolve_turn_intent` | diagnostics/parity helper | Medium |
+| `evaluate_alignment_decision` | scoring logic | Medium |
+| `doc_to_candidate_hit` | DTO conversion | Low |
 
-### Context resolution
+**Most dangerous symbol to move carelessly:** `append_session_log` because it is called across most runtime domains and is likely imported by tests/integration utilities.
 
-- Context resolution is structured (`ResolvedContext` with continuity posture, anchors, ambiguity flags, prior intent).
-- This avoids pure raw-history concatenation; it pulls continuity anchors from prior commit receipts.
+---
 
-## 3) Repair mechanisms — validation, fallback, recovery
+## 4) Hidden coupling through dict-shaped semantic contracts
 
-### Validation gate
+### 4.1 `confidence_decision`
 
-- Canonical path enforces `answer.validate` before render/commit.
-- If `answer_validation_contract.passed` is false, runtime raises before normal render/commit path.
-- Rendering module supports explicit degraded artifacts when validation fails.
+The state field is represented by artifact-compatible mapping wrappers, but in runtime usage many keys are still dynamically extended and consumed by string key conventions across stages and diagnostics.
 
-### Degraded fallback representation
+### 4.2 `commit_receipt`
 
-- Degraded outcomes are explicit structured render contracts (`degraded_response=True` with typed response contract values).
-- Clarifier / alternatives / deny degraded forms are concretely represented and distinguishable.
+Its semantic shape is authored in `answer_commit.py` but consumed by key lookups in runtime loop/context continuity paths without a dedicated typed receipt contract for readers.
 
-### Obligation tracking
+### 4.3 `candidate_facts`
 
-- Commit stage persists obligations and repair state (`resolved_obligations`, `remaining_obligations`, `pending_repair_state`, `pending_ingestion_request_id`).
-- Next-turn context resolution and continuity evidence extraction consume these persisted fields.
+Population and reads cross multiple boundaries with convention-based keys (`facts`, `segment_id`, `turn_id`, constraints, etc.), rather than a single typed domain interface for all stage consumers.
 
-### Failure modes
+---
 
-- Empty vs scored-empty retrieval is deterministic and encoded as posture.
-- Ambiguity and fallback routing rely on deterministic policy and confidence metadata.
-- Conflict handling is partly deterministic (clarify/fallback paths) but some branch details still depend on runtime confidence payload shape in `confidence_decision` dicts.
+## 5) Parallel-implementation trap (current evidence)
 
-### Commit semantics
+The module has multiple near-overlapping public runner entry points:
 
-- Commit persists rendered text, validated provenance, obligations, pending repair state, confirmed user facts, and response contract markers.
-- Commit rejects failed-validation normal answers unless the rendered artifact is explicitly degraded.
+- `run_canonical_answer_stage_flow()`
+- `run_answer_stage_flow()`
+- `_run_full_canonical_turn_from_seeded_artifacts()`
 
-### Repair loops
+These create synchronization risk during extraction/refactor if behavior is updated in one path but not the others.
 
-- Repair loop capability exists:
-  - failed/insufficient evidence can trigger clarify/repair decisions,
-  - commit persists pending repair/obligation state,
-  - context/intent stages read those anchors next turn.
-- This is enforced functionally, though some “repair meaning” still rides on string-coded obligation names.
+There is also duplicated definitional-query form logic presence (local `_is_definitional_query_form` while also importing from `retrieval_routing`), which increases semantic drift risk.
 
-## 4) Cross-cutting risks
+---
 
-### Structural integrity (bypass risk)
+## 6) Receiver-first protocol required before deleting/moving logic
 
-- Canonical orchestrator and conformance tests strongly enforce stage order and artifact dependencies.
-- A direct-answer branch still exists in `policy.decide` (`requires_retrieval=False`) but it does not bypass later `answer.validate`, `answer.render`, and `answer.commit` stages.
+### Step 1 — Freeze API surface
 
-### Illusion vs enforcement
+Add explicit `__all__` in `sat_chatbot_memory_v2.py` (or successor module) to define stable exports and expose accidental internal imports.
 
-- Many architecture claims are code-enforced by orchestrator guards and tests.
-- Some doc-level ontology claims remain only partially encoded as strict types (for example, obligation semantics and some context/evidence details remain dict-like).
+### Step 2 — Resolve two-runner ambiguity
 
-### Invariant enforcement
+Formally define whether `run_answer_stage_flow` is deprecated alias vs distinct behavior. If alias, deprecate and delegate; if distinct, document contract differences.
 
-- Invariants are enforced through a mix of runtime checks (`RuntimeError` contracts), transition validators, import-boundary tests, and conformance scripts.
-- Not all invariants are type-level; substantial enforcement remains test/script-based.
+Also remove duplicate definitional-query helper implementation by selecting one canonical owner.
 
-### Observability
+### Step 3 — Type high-coupling contracts before extraction
 
-- Pipeline snapshots and session logs provide stage-by-stage visibility.
-- Stage naming in snapshots is mixed canonical/legacy and can make per-turn forensics harder than necessary.
+Define typed contracts (`dataclass`/`TypedDict`) for:
 
-### Drift detection
+- confidence decision payload
+- commit receipt payload (reader-safe interface)
+- candidate facts payload
 
-- There are dedicated drift checks for stage order, import boundaries, render shortcut bans, and invariant namespace separation.
-- These checks reduce architectural drift risk substantially.
+Moving code before these receiver interfaces exist is the most likely way to recreate parallel implementations.
 
-## 5) Distilled answer: where structure collapses into narrative
+### Step 4 — Extract leaf-first in dependency order
 
-Primary collapse points are:
+Recommended order:
 
-1. `sat_chatbot_memory_v2.py` as a concentrated orchestration + policy + runtime adapter authority center.
-2. Dict-shaped payload channels (`confidence_decision`, `candidate_facts`, `commit_receipt`, `pending_repair`) where semantics depend on conventions rather than strict types.
-3. Early-stage backend object handling (`Document`) before evidence normalization, which keeps adapter-native shapes in the main runtime path longer than ideal.
+1. telemetry sink (`append_session_log`) to observability module + re-export shim
+2. alignment scoring logic + constants to logic/policy module
+3. stage closures to dedicated turn stage service module
+4. `_run_canonical_turn_pipeline` to application turn service wrapper
+5. source ingestion lifecycle to ingestion service with typed runtime state
+6. startup probes to adapter module
+7. capability snapshot builder/types to application module
+8. keep entrypoint runtime thin (boot/wire/run)
 
-Overall: TestBot now has meaningful structural enforcement for stage order, contracts, and degraded-validation safety, but authority separation and typed domain modeling are incomplete at the orchestration/runtime boundary.
+---
+
+## 7) Target shape after extraction
+
+After extraction, the runtime entrypoint should be thin (~150–200 lines):
+
+- parse args/env
+- construct runtime dependencies
+- resolve capability snapshot
+- wire services (turn + ingestion)
+- run loop
+
+No alignment formulas, no stage closure definitions, and no decision policy internals should remain in entrypoint code.
+
+---
+
+## 8) CI contracts to add alongside extraction
+
+Refactor safety should be enforced in CI as extraction occurs:
+
+| Rule | Enforcement suggestion | Failure behavior |
+|---|---|---|
+| Layer import direction (`entrypoints`, `application`, `logic`, `adapters`) | import-linter | hard fail |
+| Single canonical `append_session_log` owner | linter forbidden-import rule | hard fail |
+| Stage functions independently unit-testable | pytest/unit gates | hard fail |
+| Duplicate helper definitions forbidden | AST/static check | hard fail |
+
+---
+
+## 9) Distilled answer to the meta-question
+
+> **Where does structure collapse into narrative?**
+
+Primary collapse is the **inline stage-closure orchestration pattern** in `_run_canonical_turn_pipeline()` within `sat_chatbot_memory_v2.py`, amplified by public multi-runner overlap and dict-convention semantic contracts.
+
+In short: the system has strong canonical-order and validation enforcement, but architectural authority and semantic typing are still too centralized in one runtime module.
