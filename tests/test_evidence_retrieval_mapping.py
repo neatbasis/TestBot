@@ -10,7 +10,7 @@ from testbot.evidence_retrieval import (
     retrieval_result,
 )
 from testbot.intent_router import IntentType
-from testbot.policy_decision import DecisionClass, decide_from_evidence
+from testbot.policy_decision import DecisionClass, DecisionObject, DecisionReasoning, decide_from_evidence
 from testbot.sat_chatbot_memory_v2 import _retrieval_input_from_document
 
 
@@ -136,3 +136,22 @@ def test_memory_recall_empty_evidence_with_background_ingestion_uses_pending_loo
     assert decision.decision_class is DecisionClass.PENDING_LOOKUP_BACKGROUND_INGESTION
     assert decision.reasoning["background_ingestion_in_progress"] is True
     assert decision.reasoning["evidence_posture"] == "empty_evidence"
+
+
+def test_policy_decision_reasoning_legacy_dict_round_trips_with_typed_access() -> None:
+    legacy_reasoning = {
+        "evidence_posture": "scored_empty",
+        "empty_vs_scored": "scored_empty",
+        "repair_required": True,
+        "background_ingestion_in_progress": False,
+        "retrieval_candidates_considered": 3,
+    }
+    decision = DecisionObject(
+        decision_class=DecisionClass.ASK_FOR_CLARIFICATION,
+        retrieval_branch="memory_retrieval",
+        rationale="test",
+        reasoning=legacy_reasoning,
+    )
+
+    assert isinstance(decision.reasoning, DecisionReasoning)
+    assert decision.reasoning.to_dict() == legacy_reasoning

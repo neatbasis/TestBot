@@ -67,13 +67,25 @@ class DecisionReasoning:
     def __len__(self) -> int:
         return len(self.to_dict())
 
+    def keys(self):
+        return self.to_dict().keys()
+
+    def items(self):
+        return self.to_dict().items()
+
+    def values(self):
+        return self.to_dict().values()
+
 
 @dataclass(frozen=True)
 class DecisionObject:
     decision_class: DecisionClass
     retrieval_branch: str
     rationale: str
-    reasoning: dict[str, object] = field(default_factory=dict)
+    reasoning: DecisionReasoning | dict[str, object] = field(default_factory=DecisionReasoning)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "reasoning", DecisionReasoning.from_mapping(self.reasoning))
 
 
 @dataclass(frozen=True)
@@ -122,13 +134,25 @@ class RetrievalReasoning:
     def __len__(self) -> int:
         return len(self.to_dict())
 
+    def keys(self):
+        return self.to_dict().keys()
+
+    def items(self):
+        return self.to_dict().items()
+
+    def values(self):
+        return self.to_dict().values()
+
 
 @dataclass(frozen=True)
 class RetrievalPolicyDecision:
     retrieval_branch: str
     evidence_posture: EvidencePosture
     rationale: str
-    reasoning: dict[str, object] = field(default_factory=dict)
+    reasoning: RetrievalReasoning | dict[str, object] = field(default_factory=RetrievalReasoning)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(self, "reasoning", RetrievalReasoning.from_mapping(self.reasoning))
 
     @property
     def requires_retrieval(self) -> bool:
@@ -300,7 +324,7 @@ def decide_from_evidence(*, intent: IntentType, retrieval: RetrievalResult, repa
                     "empty_vs_scored": distinction,
                     **RetrievalReasoning.from_mapping(retrieval.reasoning).to_dict(),
                 }
-            ),
+            ).to_dict(),
         )
 
     if intent == IntentType.META_CONVERSATION:
