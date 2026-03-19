@@ -97,21 +97,19 @@ Population and reads cross multiple boundaries with convention-based keys (`fact
 
 ## 5) Parallel-implementation trap (current evidence)
 
-As of **2026-03-19**, the answer-stage public surface is no longer a true parallel implementation split:
+As of **2026-03-19**, canonical answer-stage execution authority is intentionally singular:
 
 - `run_canonical_answer_stage_flow()`
 - `run_answer_stage_flow()`
-- `_run_full_canonical_turn_from_seeded_artifacts()`
 
 `run_answer_stage_flow()` currently emits a `DeprecationWarning` and directly delegates to `run_canonical_answer_stage_flow()`, so functional execution is centralized through the canonical symbol.
 
 **As-of date + code evidence note (auditability):**
-- `run_canonical_answer_stage_flow` is defined in `src/testbot/sat_chatbot_memory_v2.py` around lines **2997–3021**.
-- `run_answer_stage_flow` is defined around lines **3023–3052** and calls `run_canonical_answer_stage_flow(...)` after warning around **3036–3039**.
+- `run_canonical_answer_stage_flow` is defined in `src/testbot/sat_chatbot_memory_v2.py` and delegates directly to `_run_answer_stages_from_supplied_artifacts(...)`.
+- `run_answer_stage_flow` emits a deprecation warning and calls `run_canonical_answer_stage_flow(...)`.
+- `_run_full_canonical_turn_from_seeded_artifacts(...)` has been removed to eliminate seeded-artifact runner overlap from runtime code.
 
 Residual risk now comes primarily from import-surface drift (callers continuing to import the deprecated alias) rather than from ambiguous runtime behavior between two independent implementations.
-
-There is also duplicated definitional-query form logic presence (local `_is_definitional_query_form` while also importing from `retrieval_routing`), which increases semantic drift risk.
 
 ---
 

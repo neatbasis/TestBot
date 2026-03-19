@@ -142,3 +142,24 @@ For each changelog entry, answer these three questions explicitly:
 
 #### 3) Why this step was taken in this order?
 - Extracting pure scoring logic first while preserving a temporary shim minimizes blast radius and enables receiver-first import migration in tests and downstream callsites before removing legacy exports.
+
+### Entry 10
+
+#### 1) What moved, and where did it land?
+- **Old path/symbol:** `_run_full_canonical_turn_from_seeded_artifacts(...)` in `src/testbot/sat_chatbot_memory_v2.py` acted as a second seeded answer-stage runtime path.
+- **New path/symbol:** removed; canonical seeded answer-stage execution authority is now solely `run_canonical_answer_stage_flow(...) -> _run_answer_stages_from_supplied_artifacts(...)`.
+- **Delegation shim:** `run_answer_stage_flow(...)` remains as a deprecated alias and delegates to `run_canonical_answer_stage_flow(...)`.
+
+#### 2) What did not change?
+- Public canonical answer-stage behavior did not intentionally change; `run_canonical_answer_stage_flow(...)` remains the authoritative seeded-artifact execution entrypoint.
+- Backward compatibility for callers still importing `run_answer_stage_flow(...)` is preserved through the existing `DeprecationWarning` + delegation shim.
+
+#### 3) Why this step was taken in this order?
+- Removing the unused parallel seeded-turn helper first eliminates runtime authority overlap before alias retirement, making the remaining migration path measurable and testable.
+
+#### Lifecycle status and removal/migration criteria
+- **`_run_full_canonical_turn_from_seeded_artifacts(...)`:** **Removed on 2026-03-19**. No compatibility API retained; restoration is disallowed unless a new audit-approved issue reintroduces it as explicitly non-authoritative test-only helper.
+- **`run_answer_stage_flow(...)` deprecation shim:** keep until all are true, then remove in the next release cut:
+  1. repository search returns zero non-test call sites importing/calling `run_answer_stage_flow(...)`;
+  2. CI includes a delegation-contract test proving alias passthrough to `run_canonical_answer_stage_flow(...)` while shim exists;
+  3. changelog + architecture audit record the explicit removal date/release for the alias.
