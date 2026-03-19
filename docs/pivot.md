@@ -146,7 +146,7 @@ Additional progress since the initial pass (as of 2026-03-19):
 ### P0 (score 8–9)
 
 1. **Split `sat_chatbot_memory_v2.py` into:**
-   - `entrypoints/chatbot_runtime.py` (argparse / runtime boot only),
+   - `src/testbot/entrypoints/sat_cli.py` (runtime CLI boot / package-authoritative entrypoint),
    - `application/services/turn_service.py` (orchestration),
    - explicit adapter wiring module.
 2. **`src/testbot/pipeline/*.py` (deferred P-band assignment):**
@@ -239,8 +239,9 @@ Boundary rules:
 
 ## 6) Concrete deliverables for next PRs (remaining work)
 
-1. **`ISSUE-0013-A`**: split `sat_chatbot_memory_v2.py` into thin entrypoint + turn service wiring.
-   - Immediate slice is complete: `_run_canonical_turn_pipeline` delegates into the turn service and uses receiver-bound stage handlers; remaining work is thin-entrypoint migration + behavior extraction out of the monolith.
+1. **`ISSUE-0013-A`**: thin-entrypoint migration is **mostly complete** and package-script authority is already switched to `src/testbot/entrypoints/sat_cli.py`.
+   - Landed status: `_run_canonical_turn_pipeline` delegates into the turn service using receiver-bound stage handlers, and script/package invocation authority now routes through the `sat_cli` entrypoint surface.
+   - Remaining work is now scoped to: (1) reducing residual monolith authority, (2) retiring compatibility delegators, (3) continuing behavior extraction, and (4) reducing dict-heavy contracts.
 2. **`ISSUE-0013-B`**: finish `PipelineState` domain purification.
    - Immediate slice: remove direct `memory_cards` dependency (`utc_now_iso`) from `src/testbot/pipeline_state.py` by introducing a domain-local clock boundary.
 3. **`ISSUE-0013-C`**: split stabilization/retrieval into pure logic + port-backed adapters.
@@ -255,7 +256,7 @@ Boundary rules:
 ### Pivot deliverables checklist
 
 - [ ] **`ISSUE-0013-E` complete**: dependency contracts are CI-enforced with owners, failure semantics, and readiness-blocking behavior documented.
-- [~] **`ISSUE-0013-A` initial slice**: `_run_canonical_turn_pipeline` stage closures extracted to application service with delegating façade retained.
+- [~] **`ISSUE-0013-A` mostly complete**: package-script authority is switched to `src/testbot/entrypoints/sat_cli.py`; turn-service delegation is landed, with remaining work limited to monolith-authority reduction, compatibility-delegator retirement, continued behavior extraction, and dict-contract reduction.
 - [~] **`ISSUE-0013-B` immediate slice (scoped progress)**: `pipeline_state.py` now uses a domain-local snapshot time provider and key callers pass clock-backed providers; broader domain-purification and CI dependency enforcement remain open.
 - [~] **`ISSUE-0013-C` immediate slice (scoped progress)**: stabilization and retrieval now have pure-logic seams (`build_stabilization_plan`, `build_evidence_bundle_from_input_records`) and adapter-facing mapping/persistence helpers; full port protocol extraction and package-boundary enforcement are still open.
 - [~] **`answer_commit.py` scoped seam progress (partial)**: commit persistence orchestration now accepts upstream commit payloads via `AnswerCommitService.commit(...)` + `CommitStageInputs`, and orchestration call sites build those inputs before commit; full package relocation/port extraction and boundary enforcement are still pending.
