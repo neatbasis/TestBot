@@ -51,3 +51,17 @@ For each changelog entry, answer these three questions explicitly:
 
 #### 3) Why this step was taken in this order?
 - Typing and enforcing the highest-frequency read paths first creates a safer contract surface for subsequent pipeline extraction while minimizing behavior risk in lower-traffic keys.
+
+### Entry 4
+
+#### 1) What moved, and where did it land?
+- **Old path/symbol:** the architecture audit language in `docs/architecture/system-structure-audit-2026-03-19.md` described `run_answer_stage_flow` as a parallel runner and framed the next step as ambiguity resolution.
+- **New path/symbol:** the same audit now records `run_answer_stage_flow` as a **deprecated alias** delegating to `run_canonical_answer_stage_flow`, includes an as-of evidence note with symbol names and approximate source line ranges, and updates the next step to removal-timeline + import migration planning.
+- **Delegation shim:** runtime delegation remains in code (`run_answer_stage_flow(...) -> run_canonical_answer_stage_flow(...)`) while migration proceeds.
+
+#### 2) What did not change?
+- Runtime answer-stage execution behavior did not change in this step; the update is documentation-only and aligns architectural narrative with existing code behavior.
+- No runtime wire/session-log contracts were modified by this documentation correction.
+
+#### 3) Why this step was taken in this order?
+- Locking audit text to current code evidence first keeps refactor sequencing auditable and ensures the next extraction step is a concrete alias-removal/migration plan rather than rediscovery.
