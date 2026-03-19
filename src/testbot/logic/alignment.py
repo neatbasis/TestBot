@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable
+from typing import Mapping
 
 from testbot.pipeline_state import ConfidenceDecision, ProvenanceType
 from testbot.stage_transitions import (
@@ -68,7 +69,7 @@ def has_general_knowledge_marker(text: str) -> bool:
     return normalized.startswith(GENERAL_KNOWLEDGE_MARKER_PREFIX.lower())
 
 
-def passes_general_knowledge_confidence_gate(confidence_decision: dict[str, object]) -> bool:
+def passes_general_knowledge_confidence_gate(confidence_decision: Mapping[str, object]) -> bool:
     confidence = float(confidence_decision.get("general_knowledge_confidence", 0.0) or 0.0)
     support_count = int(confidence_decision.get("general_knowledge_support", 0) or 0)
     return confidence >= GENERAL_KNOWLEDGE_CONFIDENCE_MIN and support_count >= GENERAL_KNOWLEDGE_SUPPORT_MIN
@@ -78,7 +79,7 @@ def validate_general_knowledge_contract(
     text: str,
     *,
     provenance_types: list[ProvenanceType],
-    confidence_decision: dict[str, object],
+    confidence_decision: Mapping[str, object],
 ) -> bool:
     if not response_contains_claims(text):
         return True
@@ -91,7 +92,7 @@ def assess_general_knowledge_contract(
     text: str,
     *,
     provenance_types: list[ProvenanceType],
-    confidence_decision: dict[str, object],
+    confidence_decision: Mapping[str, object],
     is_clarification_answer: Callable[[str], bool] | None = None,
     is_capabilities_help_answer: Callable[[str], bool] | None = None,
 ) -> tuple[bool, str, str]:
@@ -130,7 +131,7 @@ def evaluate_alignment_decision(
     user_input: str,
     draft_answer: str,
     final_answer: str,
-    confidence_decision: dict[str, object],
+    confidence_decision: Mapping[str, object],
     claims: list[str],
     provenance_types: list[ProvenanceType],
     basis_statement: str,

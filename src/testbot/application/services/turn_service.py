@@ -223,9 +223,8 @@ def stabilize_pre_route_stage(ctx: CanonicalTurnContext, stage: TurnPipelineStag
     planning_descriptor = planning_pathway_for_intent(IntentType(ctx.state.classified_intent), extract_intent_facets(stage.utterance))
     response_plan = build_response_plan(descriptor=planning_descriptor, user_input=stage.utterance)
     reflection_yaml = stage.deps.generate_reflection_yaml(stage.llm, speaker="user", text=stage.utterance)
-    prior_candidate_facts = ctx.state.candidate_facts if isinstance(ctx.state.candidate_facts, dict) else {}
-    prior_segment_id = str(prior_candidate_facts.get("segment_id") or "")
-    prior_segment_type = str(prior_candidate_facts.get("segment_type") or "")
+    prior_segment_id = str(ctx.state.candidate_facts.segment_id or "")
+    prior_segment_type = str(ctx.state.candidate_facts.segment_type or "")
     prior_segment = None
     if prior_segment_id and prior_segment_type:
         continuity_probe = derive_segment_descriptor(
@@ -400,7 +399,7 @@ def retrieve_evidence_stage(ctx: CanonicalTurnContext, stage: TurnPipelineStageR
         retrieval_exclude_doc_ids = same_turn_exclusion_doc_ids
         retrieval_exclude_source_ids = {ctx.artifacts["stabilized_turn_state"].utterance_doc_id}
         retrieval_exclude_turn_scoped_ids = same_turn_exclusion_doc_ids
-        segment_constraints = ctx.state.candidate_facts.get("retrieval_constraints", {})
+        segment_constraints = dict(ctx.state.candidate_facts.retrieval_constraints)
         retrieval_segment_ids = set(segment_constraints.get("segment_ids", []))
         retrieval_segment_types = set(segment_constraints.get("segment_types", []))
 

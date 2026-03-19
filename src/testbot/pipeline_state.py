@@ -283,11 +283,44 @@ class ResponsePlanArtifact(StageArtifact):
 @dataclass(frozen=True)
 class CandidateFactsArtifact(StageArtifact):
     facts: list[dict[str, Any]] = field(default_factory=list)
+    turn_id: str = ""
+    segment_id: str = ""
+    segment_type: str = ""
+    retrieval_constraints: dict[str, Any] = field(default_factory=dict)
+
+    @classmethod
+    def from_mapping(cls, payload: Mapping[str, Any] | None) -> CandidateFactsArtifact:
+        payload = payload or {}
+        if isinstance(payload, cls):
+            return payload
+        facts_payload = payload.get("facts")
+        facts: list[dict[str, Any]] = []
+        if facts_payload is not None:
+            if not isinstance(facts_payload, list):
+                raise TypeError("facts must be a list when present")
+            facts = [dict(item) if isinstance(item, Mapping) else {} for item in facts_payload]
+        known = {
+            "facts": facts,
+            "turn_id": _mapping_string(payload, "turn_id"),
+            "segment_id": _mapping_string(payload, "segment_id"),
+            "segment_type": _mapping_string(payload, "segment_type"),
+            "retrieval_constraints": _mapping_dict(payload, "retrieval_constraints"),
+        }
+        extra = {k: v for k, v in payload.items() if k not in known}
+        return cls(extra=extra, **known)
 
     def _raw_dict(self) -> dict[str, Any]:
         data = dict(self.extra)
         if self.facts:
             data["facts"] = self.facts
+        if self.turn_id:
+            data["turn_id"] = self.turn_id
+        if self.segment_id:
+            data["segment_id"] = self.segment_id
+        if self.segment_type:
+            data["segment_type"] = self.segment_type
+        if self.retrieval_constraints:
+            data["retrieval_constraints"] = self.retrieval_constraints
         return data
 
 

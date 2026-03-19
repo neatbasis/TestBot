@@ -6,7 +6,7 @@ from typing import Callable
 from testbot.answer_assembly import AnswerCandidate
 from testbot.answer_rendering import RenderedAnswer
 from testbot.answer_validation import ValidatedAnswer
-from testbot.pipeline_state import CommitReceiptArtifact, PipelineState
+from testbot.pipeline_state import AlignmentDecision, CommitReceiptArtifact, InvariantDecision, PipelineState
 
 
 @dataclass(frozen=True)
@@ -105,8 +105,8 @@ def build_commit_stage_inputs(
             used_source_evidence_refs=list(validation.used_source_evidence_refs or []),
             source_evidence_attribution=list(validation.source_evidence_attribution or []),
             basis_statement=validation.basis_statement,
-            invariant_decisions=dict(validation.invariant_decisions or {}),
-            alignment_decision=dict(validation.alignment_decision or {}),
+            invariant_decisions=InvariantDecision.from_mapping(validation.invariant_decisions).to_dict(),
+            alignment_decision=AlignmentDecision.from_mapping(validation.alignment_decision).to_dict(),
         ),
         rendering=CommitRenderingPayload(
             rendered_text=rendered.rendered_text,
@@ -176,7 +176,7 @@ class AnswerCommitService:
                 "degraded_response": degraded_response,
             }
         )
-        turn_id = str(state.candidate_facts.get("turn_id") or state.commit_receipt.get("turn_id") or "")
+        turn_id = str(state.candidate_facts.turn_id or state.commit_receipt.extra.get("turn_id") or "")
         committed_turn_state = CommittedTurnState(
             turn_id=turn_id,
             commit_stage=commit_stage_id,

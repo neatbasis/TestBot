@@ -1,15 +1,16 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from typing import Mapping
 
 from testbot.answer_policy import AnswerPolicyInput, AnswerRoutingDecision, resolve_answer_routing
 from testbot.intent_router import IntentType, classify_intent
 from testbot.pipeline_state import PipelineState
-from testbot.policy_decision import DecisionClass, DecisionObject
+from testbot.policy_decision import DecisionClass, DecisionObject, DecisionReasoning
 from testbot.reflection_policy import CapabilityStatus, decide_fallback_action
 
 
-def selected_decision_from_confidence(confidence_decision: dict[str, object]) -> DecisionObject | None:
+def selected_decision_from_confidence(confidence_decision: Mapping[str, object]) -> DecisionObject | None:
     raw = confidence_decision.get("selected_decision_object")
     if not isinstance(raw, dict):
         return None
@@ -22,13 +23,13 @@ def selected_decision_from_confidence(confidence_decision: dict[str, object]) ->
     except ValueError:
         return None
     reasoning = raw.get("reasoning")
-    if not isinstance(reasoning, dict):
+    if not isinstance(reasoning, Mapping):
         reasoning = {}
     return DecisionObject(
         decision_class=decision_class,
         retrieval_branch=retrieval_branch,
         rationale=str(raw.get("rationale") or "selected_decision_override"),
-        reasoning={str(key): value for key, value in reasoning.items()},
+        reasoning=DecisionReasoning.from_mapping({str(key): value for key, value in reasoning.items()}).to_dict(),
     )
 
 

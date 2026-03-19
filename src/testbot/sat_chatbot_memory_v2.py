@@ -1127,8 +1127,7 @@ def _has_prior_identity_candidates_or_continuity_markers(
     if prior_state is None:
         return False
 
-    prior_candidate_facts = prior_state.candidate_facts if isinstance(prior_state.candidate_facts, dict) else {}
-    for fact in prior_candidate_facts.get("facts", []):
+    for fact in prior_state.candidate_facts.facts:
         if not isinstance(fact, dict):
             continue
         if str(fact.get("key") or "").strip() == "user_name":
@@ -3503,7 +3502,7 @@ def _run_chat_loop(
                     "utterance": utterance,
                     "turn_id": turn_id,
                     "source_context": {
-                        "utterance_doc_id": str(state.candidate_facts.get("turn_id") or ""),
+                        "utterance_doc_id": str(state.candidate_facts.turn_id or ""),
                         "same_turn_exclusion_doc_ids": list(state.same_turn_exclusion.get("excluded_doc_ids", [])),
                     },
                     "prior_pipeline_state": prior_pipeline_state,

@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Mapping
 
 from testbot.answer_assembly import AnswerCandidate
-from testbot.pipeline_state import ProvenanceType
+from testbot.pipeline_state import AlignmentDecision, InvariantDecision, ProvenanceType
 
 
 @dataclass(frozen=True)
@@ -53,8 +54,8 @@ def validate_answer_assembly_boundary(
     used_source_evidence_refs: list[str] | None = None,
     source_evidence_attribution: list[dict[str, str]] | None = None,
     basis_statement: str = "",
-    invariant_decisions: dict[str, object] | None = None,
-    alignment_decision: dict[str, object] | None = None,
+    invariant_decisions: Mapping[str, object] | InvariantDecision | None = None,
+    alignment_decision: Mapping[str, object] | AlignmentDecision | None = None,
 ) -> ValidatedAnswer:
     failures: list[str] = []
     for key in REQUIRED_ASSEMBLY_KEYS:
@@ -84,6 +85,9 @@ def validate_answer_assembly_boundary(
     elif rendered_class != expected_rendered_class:
         failures.append("decision_rendered_class_conflict")
 
+    typed_invariant = InvariantDecision.from_mapping(invariant_decisions)
+    typed_alignment = AlignmentDecision.from_mapping(alignment_decision)
+
     return ValidatedAnswer(
         passed=not failures,
         failures=failures,
@@ -94,8 +98,8 @@ def validate_answer_assembly_boundary(
         used_source_evidence_refs=list(used_source_evidence_refs or []),
         source_evidence_attribution=list(source_evidence_attribution or []),
         basis_statement=basis_statement,
-        invariant_decisions=dict(invariant_decisions or {}),
-        alignment_decision=dict(alignment_decision or {}),
+        invariant_decisions=typed_invariant.to_dict(),
+        alignment_decision=typed_alignment.to_dict(),
     )
 
 
