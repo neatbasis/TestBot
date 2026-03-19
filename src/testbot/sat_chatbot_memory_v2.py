@@ -15,8 +15,7 @@ from urllib.parse import urljoin, urlparse
 from urllib.request import Request, urlopen
 from argparse import ArgumentParser, BooleanOptionalAction, Namespace
 from collections import deque
-from dataclasses import asdict, dataclass, is_dataclass, replace
-from enum import Enum
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 import arrow
@@ -25,6 +24,7 @@ from homeassistant_api import Client
 from testbot.clock import Clock, SystemClock
 from testbot.config import Config
 from testbot.memory_cards import make_reflection_card, make_utterance_card, store_doc, utc_now_iso
+from testbot.observability.session_log import SESSION_LOG_SCHEMA_VERSION, append_session_log as _append_session_log
 from testbot.memory_strata import (
     MemoryStratum,
     SegmentDescriptor,
@@ -277,7 +277,6 @@ def _poll_pending_ingestion_obligations(*, runtime: dict[str, object]) -> None:
             attempt_count=attempt_count,
             deadline_at=deadline_at,
         )
-SESSION_LOG_SCHEMA_VERSION = 2
 _LOGGER = logging.getLogger(__name__)
 
 _BACKGROUND_SOURCE_INGEST_EXECUTOR = ThreadPoolExecutor(max_workers=1, thread_name_prefix="source-ingest")
@@ -1010,42 +1009,9 @@ def _print_startup_status(*, snapshot: CapabilitySnapshot) -> None:
 
 
 def append_session_log(event: str, payload: dict, *, log_path: Path = Path("./logs/session.jsonl")) -> None:
-    def _normalize_json_safe(value: object) -> object:
-        if value is None or isinstance(value, (str, int, float, bool)):
-            return value
-        if isinstance(value, Enum):
-            return _normalize_json_safe(value.value)
-        if isinstance(value, dict):
-            return {str(key): _normalize_json_safe(item) for key, item in value.items()}
-        if isinstance(value, (list, tuple)):
-            return [_normalize_json_safe(item) for item in value]
-        if isinstance(value, set):
-            return [_normalize_json_safe(item) for item in sorted(value, key=repr)]
+    """Compatibility shim; canonical owner is testbot.observability.session_log.append_session_log."""
 
-        to_dict = getattr(value, "to_dict", None)
-        if callable(to_dict):
-            try:
-                return _normalize_json_safe(to_dict())
-            except Exception:
-                pass
-
-        if is_dataclass(value):
-            return _normalize_json_safe(asdict(value))
-
-        if hasattr(value, "__dict__"):
-            return _normalize_json_safe(vars(value))
-
-        return repr(value)
-
-    log_path.parent.mkdir(parents=True, exist_ok=True)
-    row = {
-        "ts": utc_now_iso(),
-        "event": event,
-        "schema_version": SESSION_LOG_SCHEMA_VERSION,
-        **_normalize_json_safe(payload),
-    }
-    with log_path.open("a", encoding="utf-8") as f:
-        f.write(json.dumps(row, ensure_ascii=False) + "\n")
+    _append_session_log(event=event, payload=payload, log_path=log_path)
 
 
 def _intent_telemetry_payload(
