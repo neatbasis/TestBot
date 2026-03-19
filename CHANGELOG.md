@@ -195,3 +195,17 @@ For each changelog entry, answer these three questions explicitly:
 
 #### 3) Why this step was taken in this order?
 - Eliminating duplicated answer-stage orchestration and closure-capture wiring first establishes a single auditable runtime path before further entrypoint/package migration work.
+
+### Entry 13
+
+#### 1) What moved, and where did it land?
+- **Old path/symbol:** stale architecture/progress narrative in `docs/pivot.md`, `docs/architecture/system-structure-audit-2026-03-19.md`, and `docs/architecture/plan-execution-checklist.md` still described inline stage-closure capture, partial stage DTO coverage, and pre-schema-version governance status.
+- **New path/symbol:** those same documents now describe current `main` behavior: service-layer canonical orchestration via `_TurnPipelineStageHandlers`, all eleven named canonical stage DTO classes present, seeded compatibility routing through `_run_canonical_turn_pipeline(...)`, and schema-versioned verification manifest progress.
+- **Delegation shim:** not applicable (documentation-only synchronization update).
+
+#### 2) What did not change?
+- No runtime/module behavior changed; this entry only updates planning/audit/checklist documentation to match existing implementation state.
+- Public APIs, canonical stage ordering, and session log/runtime contracts are intentionally unchanged by this step.
+
+#### 3) Why this step was taken in this order?
+- Keeping planning and audit documents synchronized with already-landed extraction work reduces governance drift and prevents follow-on work from being planned against outdated assumptions.

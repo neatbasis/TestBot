@@ -6,7 +6,7 @@ The prior audit correctly identified `sat_chatbot_memory_v2.py` as a major autho
 
 This amended audit makes the authority census explicit, identifies concrete API-risk symbols, and defines a receiver-first extraction protocol to avoid parallel implementations.
 
-- **Primary collapse point:** `_run_canonical_turn_pipeline()` is a ~585-line orchestration function with 11 inline closures that close over runtime dependencies from the enclosing scope.
+- **Primary collapse point:** `sat_chatbot_memory_v2.py` still concentrates runtime authority, but canonical stage execution now routes through `src/testbot/application/services/turn_service.py` using receiver-bound handlers (`_TurnPipelineStageHandlers`) rather than inline closures.
 - **Secondary collapse points:** `answer_assemble()` and `evaluate_alignment_decision()` combine business logic and orchestration concerns in test-visible symbols.
 - **Hidden coupling:** dict-shaped contracts (`confidence_decision`, `commit_receipt`, `candidate_facts`) are written/read across multiple domains without a typed interface.
 
@@ -28,7 +28,7 @@ The module currently spans at least seven authority domains:
 | B. Infrastructure probing | 719–816 | HA/Ollama reachability and mode-effective checks |
 | C. Capability snapshot | 487–515, 4478–4519 | `RuntimeCapabilityStatus`, `CapabilitySnapshot`, `build_capability_snapshot()` |
 | D. Source ingestion lifecycle | 255–422 | execute/start/poll/process ingestion + obligation/dead-letter transitions |
-| E. Canonical turn pipeline | 3571–4156 | `_run_canonical_turn_pipeline()` with 11 stage closures |
+| E. Canonical turn pipeline | 3571–4156 | `_run_canonical_turn_pipeline()` compatibility façade delegating to application turn service |
 | F. Decision / alignment logic | ~1500–3568 | ambiguity/blocker reasoning, answer assembly/validation helpers, alignment scoring |
 | G. Chat loop / I/O | 4158–4396 | chat loop and CLI/satellite runtime loops |
 
@@ -38,17 +38,17 @@ Additionally, the same module owns a telemetry sink (`append_session_log`), DTO 
 
 ## 2) Real collapse point (specific)
 
-### 2.1 `_run_canonical_turn_pipeline()` is the primary collapse
+### 2.1 `_run_canonical_turn_pipeline()` remains an authority surface, but closure capture was reduced
 
-`_run_canonical_turn_pipeline()` defines all canonical stages inline (`_observe_turn` … `_answer_commit`) and instantiates `CanonicalTurnOrchestrator` inside the same function.
+`_run_canonical_turn_pipeline()` is still the monolith-owned compatibility entry, but canonical stage assembly/execution now lives in the application service (`run_canonical_turn_pipeline_service(...)`) with `_TurnPipelineStageHandlers(runtime=stage_runtime)` bound methods.
 
-All stage closures close over shared outer-scope runtime dependencies (`llm`, `store`, `chat_history`, `prior_pipeline_state`, `utterance`, `runtime`, `clock`, `capability_snapshot`, etc.).
+This removes the prior inline lambda/closure-capture pattern for canonical stage wiring while preserving a single runtime dependency receiver object.
 
 Practical impact:
 
-1. Stage isolation testing is harder because individual stage callables are not first-class module symbols.
-2. Stage replacement requires editing the monolithic orchestration function.
-3. Composition authority lives in entrypoint runtime code instead of a dedicated application/service assembly boundary.
+1. Composition authority is still split because runtime dependency construction remains monolith-owned, even though orchestration moved to the service layer.
+2. Stage replacement is now easier in service-layer tests, but monolith behavior ownership remains substantial across retrieval/assembly/validation helpers.
+3. Boot/runtime composition authority still lives in entrypoint runtime code instead of a dedicated thin composition root.
 
 ### 2.2 `answer_assemble()` is a secondary collapse
 
@@ -105,7 +105,7 @@ As of **2026-03-19**, canonical answer-stage execution authority is intentionall
 `run_answer_stage_flow()` currently emits a `DeprecationWarning` and directly delegates to `run_canonical_answer_stage_flow()`, so functional execution is centralized through the canonical symbol.
 
 **As-of date + code evidence note (auditability):**
-- `run_canonical_answer_stage_flow` is defined in `src/testbot/sat_chatbot_memory_v2.py` and delegates directly to `_run_answer_stages_from_supplied_artifacts(...)`.
+- `run_canonical_answer_stage_flow` is defined in `src/testbot/sat_chatbot_memory_v2.py` and routes seeded artifacts through `_run_canonical_turn_pipeline(...)` (which delegates into the canonical turn service).
 - `run_answer_stage_flow` emits a deprecation warning and calls `run_canonical_answer_stage_flow(...)`.
 - `_run_full_canonical_turn_from_seeded_artifacts(...)` has been removed to eliminate seeded-artifact runner overlap from runtime code.
 
@@ -196,6 +196,6 @@ Refactor safety should be enforced in CI as extraction occurs:
 
 > **Where does structure collapse into narrative?**
 
-Primary collapse is the **inline stage-closure orchestration pattern** in `_run_canonical_turn_pipeline()` within `sat_chatbot_memory_v2.py`, amplified by public multi-runner overlap and dict-convention semantic contracts.
+Primary collapse is now the **authority concentration** in `sat_chatbot_memory_v2.py` (boot wiring + substantial behavior helpers + compatibility surface), amplified by dict-convention semantic contracts and incomplete boundary enforcement.
 
 In short: the system has strong canonical-order and validation enforcement, but architectural authority and semantic typing are still too centralized in one runtime module.
