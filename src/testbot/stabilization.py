@@ -10,7 +10,7 @@ from testbot.memory_cards import make_reflection_card, make_utterance_card, stor
 from testbot.memory_strata import MemoryStratum, SegmentDescriptor, apply_persistence_metadata
 from testbot.pipeline_state import PipelineState
 from testbot.turn_observation import TurnObservation
-from testbot.vector_store import MemoryStore
+from testbot.ports import MemoryStorePort
 
 
 @dataclass(frozen=True)
@@ -310,7 +310,7 @@ def build_stabilization_plan(
 
 def persist_stabilization_records(
     *,
-    store: MemoryStore,
+    store: MemoryStorePort,
     persistence_records: tuple[PersistenceRecord, ...],
     store_doc_fn: Callable[..., None],
 ) -> None:
@@ -325,7 +325,7 @@ def persist_stabilization_records(
 
 def stabilize_pre_route(
     *,
-    store: MemoryStore,
+    store: MemoryStorePort,
     state: PipelineState,
     observation: TurnObservation,
     encoded: EncodedTurnCandidates,

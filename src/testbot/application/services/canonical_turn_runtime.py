@@ -8,14 +8,14 @@ from testbot.evidence_retrieval import RetrievalInputRecord
 from testbot.memory_cards import store_doc
 from testbot.pipeline_state import PipelineState
 from testbot.reflection_policy import CapabilityStatus
-from testbot.vector_store import MemoryStore
+from testbot.ports import MemoryStorePort
 
 
 def run_canonical_turn_pipeline(
     *,
     runtime: dict[str, object] | None,
     llm,
-    store: MemoryStore,
+    store: MemoryStorePort,
     state: PipelineState,
     utterance: str,
     prior_pipeline_state: PipelineState | None,

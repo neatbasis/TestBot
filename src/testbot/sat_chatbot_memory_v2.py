@@ -144,8 +144,8 @@ from testbot.logic.decision_helpers import (
 
 from langchain_core.documents import Document
 from langchain_core.prompts import ChatPromptTemplate
-from testbot.vector_store import MemoryStore, build_memory_store, normalize_memory_store_mode
-from testbot.ports import MemorySearchQuery
+from testbot.ports import MemorySearchQuery, MemoryStorePort
+from testbot.adapters.memory_store_factory import build_memory_store, normalize_memory_store_mode
 from langchain_ollama import ChatOllama, OllamaEmbeddings
 
 
@@ -357,7 +357,7 @@ def _emit_deprecated_alias_warning(name: str) -> None:
 def _execute_source_ingestion(
     *,
     runtime: dict[str, object],
-    store: MemoryStore,
+    store: MemoryStorePort,
     background: bool = False,
     ingestion_request_id: str = "",
 ) -> dict[str, object]:
@@ -413,7 +413,7 @@ def _execute_source_ingestion(
 def _start_background_source_ingestion(
     *,
     runtime: dict[str, object],
-    store: MemoryStore,
+    store: MemoryStorePort,
     ingestion_request_id: str = "",
 ) -> dict[str, object]:
     with _BACKGROUND_SOURCE_INGEST_LOCK:
@@ -471,7 +471,7 @@ def _process_background_ingestion_completion(
     *,
     runtime: dict[str, object],
     llm: ChatOllama,
-    store: MemoryStore,
+    store: MemoryStorePort,
     chat_history: deque[ChatMsg],
     near_tie_delta: float,
     capability_status: CapabilityStatus,
@@ -957,7 +957,7 @@ def _build_source_connector(runtime: dict[str, object]) -> SourceConnector | Non
     return None
 
 
-def _run_source_ingestion(*, runtime: dict[str, object], store: MemoryStore) -> None:
+def _run_source_ingestion(*, runtime: dict[str, object], store: MemoryStorePort) -> None:
     result = _execute_source_ingestion(runtime=runtime, store=store, background=False)
     if result.get("ok"):
         append_session_log("source_ingest_completed", dict(result["payload"]))
@@ -1140,7 +1140,7 @@ def encode_stage(llm: ChatOllama, state: PipelineState) -> PipelineState:
 
 
 def stage_retrieve(
-    store: MemoryStore,
+    store: MemoryStorePort,
     state: PipelineState,
     *,
     exclude_doc_ids: set[str] | None = None,
@@ -1226,7 +1226,7 @@ def _document_from_retrieval_input(record: RetrievalInputRecord) -> Document:
 
 
 def _stage_retrieve_for_turn_service(
-    store: MemoryStore,
+    store: MemoryStorePort,
     state: PipelineState,
     *,
     exclude_doc_ids: set[str] | None = None,
@@ -3014,7 +3014,7 @@ def run_answer_stage_flow(
 def answer_commit_persistence(
     *,
     llm: ChatOllama,
-    store: MemoryStore,
+    store: MemoryStorePort,
     state: PipelineState,
     io_channel: str,
     clock: Clock,
@@ -3347,7 +3347,7 @@ def _run_canonical_turn_pipeline(
     *,
     runtime: dict[str, object] | None = None,
     llm: ChatOllama,
-    store: MemoryStore,
+    store: MemoryStorePort,
     state: PipelineState,
     utterance: str,
     prior_pipeline_state: PipelineState | None,
@@ -3405,7 +3405,7 @@ def _run_chat_loop(
     *,
     runtime: dict[str, object] | None = None,
     llm: ChatOllama,
-    store: MemoryStore,
+    store: MemoryStorePort,
     chat_history: deque[ChatMsg],
     near_tie_delta: float,
     io_channel: str,
@@ -3633,7 +3633,7 @@ def _run_satellite_mode(
     *,
     runtime: dict[str, object],
     llm: ChatOllama,
-    store: MemoryStore,
+    store: MemoryStorePort,
     chat_history: deque[ChatMsg],
     near_tie_delta: float,
     api_url: str,
@@ -3743,7 +3743,7 @@ def resolve_mode(requested_mode: str, ha_error: str | None) -> str:
     return _resolve_mode(requested_mode, ha_error)
 
 
-def run_source_ingestion(*, runtime: dict[str, object], store: MemoryStore) -> None:
+def run_source_ingestion(*, runtime: dict[str, object], store: MemoryStorePort) -> None:
     _run_source_ingestion(runtime=runtime, store=store)
 
 
@@ -3813,7 +3813,7 @@ def run_chat_loop(
     *,
     runtime: dict[str, object],
     llm: ChatOllama,
-    store: MemoryStore,
+    store: MemoryStorePort,
     chat_history: deque[ChatMsg],
     near_tie_delta: float,
     io_channel: str,

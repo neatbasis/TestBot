@@ -10,14 +10,14 @@ from langchain_ollama import ChatOllama
 
 from testbot.clock import Clock
 from testbot.sat_chatbot_memory_v2 import CapabilitySnapshot, ChatMsg
-from testbot.vector_store import MemoryStore
+from testbot.ports import MemoryStorePort
 
 
 def run_cli_mode(
     *,
     runtime: dict[str, object],
     llm: ChatOllama,
-    store: MemoryStore,
+    store: MemoryStorePort,
     chat_history: deque[ChatMsg],
     near_tie_delta: float,
     capability_snapshot: CapabilitySnapshot,
@@ -54,7 +54,7 @@ def run_satellite_mode(
     *,
     runtime: dict[str, object],
     llm: ChatOllama,
-    store: MemoryStore,
+    store: MemoryStorePort,
     chat_history: deque[ChatMsg],
     near_tie_delta: float,
     api_url: str,
