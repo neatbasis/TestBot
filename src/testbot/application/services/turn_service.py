@@ -4,30 +4,38 @@ from collections import deque
 from dataclasses import dataclass, replace
 from typing import Any, Callable
 
-from testbot.answer_assembly import assemble_answer_contract
-from testbot.answer_commit import AnswerCommitService, build_commit_stage_inputs
-from testbot.answer_rendering import render_answer
-from testbot.answer_validation import validate_answer_assembly_boundary
 from testbot.canonical_turn_orchestrator import CanonicalStage, CanonicalTurnContext, CanonicalTurnOrchestrator
-from testbot.clock import Clock
-from testbot.evidence_retrieval import (
+from testbot.domain.turn_pipeline import (
+    AnswerCommitService,
+    Clock,
     EvidenceBundle,
+    IntentResolutionInput,
     RetrievalInputRecord,
+    SegmentDescriptor,
+    SegmentType,
+    StabilizedTurnState,
+    assemble_answer_contract,
+    build_commit_stage_inputs,
     build_evidence_bundle_from_input_records,
     continuity_evidence_from_prior_state,
+    derive_segment_descriptor,
+    encode_turn_candidates,
+    observe_turn,
+    render_answer,
+    resolve_intent,
     retrieval_result,
+    stabilize_pre_route,
+    validate_answer_assembly_boundary,
 )
-from testbot.intent_resolution import IntentResolutionInput, resolve as resolve_intent
-from testbot.intent_router import IntentType, extract_intent_facets, planning_pathway_for_intent
-from testbot.memory_strata import SegmentDescriptor, SegmentType, derive_segment_descriptor
-from testbot.logic import StageArtifacts
-from testbot.pipeline_state import PipelineState, append_pipeline_snapshot
-from testbot.policy_decision import DecisionClass, decide as decide_policy, decide_from_evidence
-from testbot.reflection_policy import CapabilityStatus
-from testbot.response_planner import build_response_plan, plan_to_dict
-from testbot.retrieval_routing import decide_retrieval_routing
-from testbot.stabilization import StabilizedTurnState, stabilize_pre_route
-from testbot.stage_transitions import (
+from testbot.logic.turn_pipeline import (
+    CapabilityStatus,
+    DecisionClass,
+    IntentType,
+    decide_from_evidence,
+    decide_policy,
+    decide_retrieval_routing,
+    extract_intent_facets,
+    planning_pathway_for_intent,
     validate_answer_assemble_pre,
     validate_answer_commit_post,
     validate_answer_commit_pre,
@@ -50,7 +58,9 @@ from testbot.stage_transitions import (
     validate_stabilize_pre_route_post,
     validate_stabilize_pre_route_pre,
 )
-from testbot.turn_observation import observe_turn
+from testbot.logic import StageArtifacts
+from testbot.pipeline_state import PipelineState, append_pipeline_snapshot
+from testbot.response_planner import build_response_plan, plan_to_dict
 from testbot.ports import LanguageModel, MemoryStorePort
 
 
@@ -197,8 +207,6 @@ def encode_candidates_stage(ctx: CanonicalTurnContext, stage: TurnPipelineStageR
     stage.deps.validate_and_log_transition(validate_encode_candidates_post(rewritten_state))
     rewritten_query = rewritten_state.rewritten_query
     stage.deps.append_session_log("query_rewrite_output", {"utterance": stage.utterance, "query": rewritten_query})
-
-    from testbot.candidate_encoding import encode_turn_candidates
 
     encoded = encode_turn_candidates(
         ctx.state,
