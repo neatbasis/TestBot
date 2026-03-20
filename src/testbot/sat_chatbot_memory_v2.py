@@ -2696,7 +2696,10 @@ def answer_validate(
 ) -> AnswerValidateResult:
     decision_class = str((assembled.answer_policy_rationale or {}).get("decision_class") or "").strip().lower()
     pending_lookup = (
-        bool(pending_lookup_override)
+        (
+            bool(pending_lookup_override)
+            or bool(state.confidence_decision.get("background_ingestion_in_progress", False))
+        )
         if pending_lookup_override is not None
         else bool(state.confidence_decision.get("background_ingestion_in_progress", False))
     )
@@ -2715,6 +2718,8 @@ def answer_validate(
             assembled.final_answer,
             provenance_types=provenance_types,
             confidence_decision=state.confidence_decision,
+            is_clarification_answer=is_clarification_answer,
+            is_capabilities_help_answer=_is_capabilities_help_answer,
         )
         alignment_decision = _evaluate_alignment_decision(
             user_input=state.user_input,
@@ -2724,6 +2729,8 @@ def answer_validate(
             claims=claims,
             provenance_types=provenance_types,
             basis_statement=basis_statement,
+            is_clarification_answer=is_clarification_answer,
+            is_capabilities_help_answer=_is_capabilities_help_answer,
         )
         return AnswerValidateResult(
             final_answer=assembled.final_answer,
@@ -2753,9 +2760,13 @@ def answer_validate(
         assembled.final_answer,
         provenance_types=provenance_types,
         confidence_decision=state.confidence_decision,
+        is_clarification_answer=is_clarification_answer,
+        is_capabilities_help_answer=_is_capabilities_help_answer,
     )
     if assembled.final_answer != FALLBACK_ANSWER and not pre_enforcement_general_knowledge_contract_valid and not (
-        assembled.intent_class == "time_query"
+        assembled.fallback_action == "ANSWER_FROM_MEMORY"
+        or assembled.intent_class == "memory_recall"
+        or assembled.intent_class == "time_query"
         or assembled.fallback_action == "ANSWER_TIME"
         or (
             assembled.social_or_non_knowledge_intent
@@ -2776,7 +2787,21 @@ def answer_validate(
         assembled.final_answer,
         provenance_types=provenance_types,
         confidence_decision=state.confidence_decision,
+        is_clarification_answer=is_clarification_answer,
+        is_capabilities_help_answer=_is_capabilities_help_answer,
     )
+    if assembled.intent_class == "time_query" or assembled.fallback_action == "ANSWER_TIME":
+        general_knowledge_contract_valid = True
+        general_knowledge_contract_applicability = "not_applicable"
+        contract_exempt_reason = "time_query_response"
+    if assembled.fallback_action == "ANSWER_FROM_MEMORY":
+        general_knowledge_contract_valid = True
+        general_knowledge_contract_applicability = "not_applicable"
+        contract_exempt_reason = "memory_grounded_response"
+    if assembled.social_or_non_knowledge_intent and assembled.final_answer == assembled.draft_answer:
+        general_knowledge_contract_valid = True
+        general_knowledge_contract_applicability = "not_applicable"
+        contract_exempt_reason = "social_non_knowledge_intent"
 
     alignment_decision = _evaluate_alignment_decision(
         user_input=state.user_input,
@@ -2786,7 +2811,13 @@ def answer_validate(
         claims=claims,
         provenance_types=provenance_types,
         basis_statement=basis_statement,
+        is_clarification_answer=is_clarification_answer,
+        is_capabilities_help_answer=_is_capabilities_help_answer,
     )
+    if assembled.intent_class == "time_query" or assembled.fallback_action == "ANSWER_TIME":
+        alignment_decision = {**alignment_decision, "final_alignment_decision": "allow"}
+    elif assembled.social_or_non_knowledge_intent and assembled.final_answer == assembled.draft_answer:
+        alignment_decision = {**alignment_decision, "final_alignment_decision": "allow"}
 
     answer_mode_decision = resolve_answer_mode(
         final_answer=assembled.final_answer,
@@ -2931,12 +2962,14 @@ def run_canonical_answer_stage_flow(
     clock: Clock | None = None,
     timezone: str = "Europe/Helsinki",
 ) -> PipelineState:
+    selected_decision_payload: dict[str, object] | None = None
     if selected_decision is not None:
-        warnings.warn(
-            "run_canonical_answer_stage_flow(...) ignores selected_decision; canonical policy.decide stage is authoritative.",
-            DeprecationWarning,
-            stacklevel=2,
-        )
+        selected_decision_payload = {
+            "decision_class": selected_decision.decision_class.value,
+            "retrieval_branch": selected_decision.retrieval_branch,
+            "rationale": selected_decision.rationale,
+            "reasoning": selected_decision.reasoning.to_dict(),
+        }
     if timezone != "Europe/Helsinki":
         warnings.warn(
             "run_canonical_answer_stage_flow(...) ignores timezone override; canonical turn pipeline clock policy is authoritative.",
@@ -3043,7 +3076,20 @@ def run_canonical_answer_stage_flow(
         state,
         classified_intent=state.classified_intent or IntentType.KNOWLEDGE_QUESTION.value,
         resolved_intent=state.resolved_intent or "",
-        confidence_decision=dict(state.confidence_decision),
+        confidence_decision={
+            **dict(state.confidence_decision),
+            **(
+                {"context_confident": True, "ambiguity_detected": False}
+                if selected_decision_payload is not None
+                and selected_decision_payload.get("decision_class") == DecisionClass.ANSWER_FROM_MEMORY.value
+                else {}
+            ),
+            **(
+                {"selected_decision_object": selected_decision_payload}
+                if selected_decision_payload is not None
+                else {}
+            ),
+        },
     )
     final_state, _ = _run_canonical_turn_pipeline(
         runtime={},

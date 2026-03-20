@@ -185,7 +185,10 @@ def observe_turn_stage(ctx: CanonicalTurnContext, stage: TurnPipelineStageRuntim
         channel=stage.io_channel,
     )
     ctx.artifacts["turn_observation"] = observation
-    ctx.state = replace(ctx.state, last_user_message_ts=observed_at)
+    ctx.state = replace(
+        ctx.state,
+        last_user_message_ts=ctx.state.last_user_message_ts or observed_at,
+    )
     stage.deps.validate_and_log_transition(validate_observe_turn_post(ctx.state))
     append_pipeline_snapshot("observe", ctx.state, time_provider=stage.snapshot_time_provider)
     return ctx
@@ -298,6 +301,13 @@ def intent_resolve_stage(ctx: CanonicalTurnContext, stage: TurnPipelineStageRunt
             fallback_utterance=stage.utterance,
         )
     )
+    preset_resolved_intent = None
+    if ctx.state.resolved_intent:
+        try:
+            preset_resolved_intent = IntentType(ctx.state.resolved_intent)
+        except ValueError:
+            preset_resolved_intent = None
+    resolved_intent = preset_resolved_intent or intent_resolution.resolved_intent
     classifier_confidence = stage.deps.intent_classifier_confidence(
         utterance=stabilized_utterance or stage.utterance,
         predicted_intent=intent_resolution.classified_intent,
@@ -320,7 +330,7 @@ def intent_resolve_stage(ctx: CanonicalTurnContext, stage: TurnPipelineStageRunt
     )
     retrieval_routing = decide_retrieval_routing(
         utterance=recall_query,
-        intent=intent_resolution.resolved_intent,
+        intent=resolved_intent,
         guard_forced_memory_retrieval=guard_forced_memory_retrieval,
     )
     ctx.artifacts["retrieval_requirement"] = {
@@ -332,7 +342,7 @@ def intent_resolve_stage(ctx: CanonicalTurnContext, stage: TurnPipelineStageRunt
     ctx.state = replace(
         ctx.state,
         classified_intent=intent_resolution.classified_intent.value,
-        resolved_intent=intent_resolution.resolved_intent.value,
+        resolved_intent=resolved_intent.value,
         confidence_decision={
             **ctx.state.confidence_decision,
             "intent_predicted": intent_resolution.classified_intent.value,
@@ -344,7 +354,7 @@ def intent_resolve_stage(ctx: CanonicalTurnContext, stage: TurnPipelineStageRunt
             "policy": "intent_retrieval_requirement",
             "decision": "retrieval_requirement_only",
             "intent_classified": intent_resolution.classified_intent.value,
-            "intent_resolved": intent_resolution.resolved_intent.value,
+            "intent_resolved": resolved_intent.value,
             "requires_retrieval": retrieval_routing.requires_retrieval,
             "reason": retrieval_routing.reason,
             "retrieval_branch": retrieval_routing.retrieval_branch,

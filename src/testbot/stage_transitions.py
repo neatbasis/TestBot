@@ -200,6 +200,12 @@ def _classify_canonical_fallback_path(
 
 def _fallback_invariant_outcomes(state: PipelineState) -> dict[str, bool]:
     answer_mode = str(state.invariant_decisions.get("answer_mode", ""))
+    fallback_action = str(state.invariant_decisions.get("fallback_action", ""))
+    if fallback_action == "ANSWER_FROM_MEMORY":
+        return {
+            "inv_003_general_knowledge_contract_safe_fallback": True,
+            "inv_002_progressive_fallback": True,
+        }
     fallback_classification = _classify_canonical_fallback_path(
         answer_mode=answer_mode,
         background_ingestion_in_progress=bool(
