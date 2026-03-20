@@ -125,6 +125,17 @@ def test_domain_type_modules_do_not_depend_on_es_ollama_or_home_assistant_client
     assert not violations, "Domain type client-boundary violations:\n" + "\n".join(violations)
 
 
+def test_domain_modules_do_not_import_logic_owned_intent_or_policy_types() -> None:
+    forbidden = ("testbot.intent_router", "testbot.policy_decision")
+    violations: list[str] = []
+    for path in (SRC_ROOT / "domain").glob("*.py"):
+        imports = _module_imports(path)
+        for imported in sorted(imports):
+            if imported in forbidden:
+                violations.append(f"{path.relative_to(REPO_ROOT)} imports {imported}")
+    assert not violations, "Domain-to-logic import-boundary violations:\n" + "\n".join(violations)
+
+
 def _canonical_stage_order_assignment_paths() -> list[Path]:
     paths: list[Path] = []
     for path in SRC_ROOT.glob("*.py"):

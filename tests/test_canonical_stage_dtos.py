@@ -6,6 +6,9 @@ from testbot.answer_rendering import RenderedAnswer
 from testbot.answer_validation import ValidatedAnswer
 from testbot.candidate_encoding import EncodedTurnCandidates, FactCandidate, SpeechActCandidate
 from testbot.context_resolution import ContinuityPosture, ResolvedContext
+from testbot.domain_contracts import DecisionClass as DomainDecisionClass
+from testbot.domain_contracts import DecisionObject as DomainDecisionObject
+from testbot.domain_contracts import IntentType as DomainIntentType
 from testbot.domain import (
     CandidateEncodingSet,
     ContextResolvedState,
@@ -25,6 +28,7 @@ from testbot.domain import (
 from testbot.evidence_retrieval import EvidenceBundle, EvidenceRecord
 from testbot.policy_decision import DecisionClass, DecisionObject
 from testbot.stabilization import StabilizedTurnState
+from testbot.intent_router import IntentType
 
 
 def test_candidate_encoding_set_has_explicit_constructor_and_legacy_adapter() -> None:
@@ -125,3 +129,9 @@ def test_canonical_dtos_do_not_require_ad_hoc_dict_constructor_fields() -> None:
     for signature in signatures.values():
         for param in signature.parameters.values():
             assert param.kind not in {inspect.Parameter.VAR_KEYWORD, inspect.Parameter.VAR_POSITIONAL}
+
+
+def test_logic_modules_re_export_domain_owned_intent_and_decision_types() -> None:
+    assert IntentType is DomainIntentType
+    assert DecisionClass is DomainDecisionClass
+    assert DecisionObject is DomainDecisionObject
