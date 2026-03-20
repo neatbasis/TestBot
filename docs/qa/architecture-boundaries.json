@@ -195,22 +195,13 @@
     {
       "importer": "testbot.sat_chatbot_memory_v2",
       "imported": "testbot.application.services.turn_service",
-      "issue": "ISSUE-0013",
+      "issue": "ISSUE-0013-A",
       "owner": "runtime-pipeline",
-      "expires_on": "2026-12-31",
-      "review_on": "2026-06-30",
-      "removal_plan": "Remove direct entrypoint-to-service import once sat_chatbot_memory_v2 compatibility delegator is retired from runtime startup path.",
-      "notes": "Legacy runtime entrypoint still wires directly to turn service while boundary extraction completes."
-    },
-    {
-      "importer": "testbot.application.services.turn_service",
-      "imported": "testbot.sat_chatbot_memory_v2",
-      "issue": "ISSUE-0013",
-      "owner": "runtime-pipeline",
-      "expires_on": "2026-12-31",
-      "review_on": "2026-06-30",
-      "removal_plan": "Delete bidirectional shim once canonical entrypoint facade migration closes and sat_chatbot_memory_v2 is downgraded to compatibility-only exports.",
-      "notes": "Bidirectional compatibility shim retained until entrypoint facade migration is complete."
+      "expires_on": "2026-06-30",
+      "review_on": "2026-04-15",
+      "removal_plan": "Delete this exception after compatibility delegator retirement in ISSUE-0013-A and ISSUE-0021 import migration closure; boundary report must show zero entrypoint->private application imports from sat_chatbot_memory_v2.",
+      "notes": "Temporary compatibility seam while runtime authority is extracted from monolith entrypoint surfaces.",
+      "expiration_criteria": "Expire when sat_chatbot_memory_v2.main and _run_canonical_turn_pipeline are compatibility-only wrappers and startup/runtime authority is solely through testbot.entrypoints.sat_cli + application service boundaries."
     }
   ],
   "deprecated_compatibility": {
@@ -218,6 +209,69 @@
       "testbot.answer_render",
       "testbot.answer_validate"
     ],
-    "notes": "Compatibility aliases retained for downstream imports while canonical answer_* modules are adopted."
+    "entries": [
+      {
+        "module": "testbot.answer_render",
+        "canonical_owner": "testbot.answer_rendering",
+        "issue": "ISSUE-0021",
+        "owner": "runtime-pipeline",
+        "review_on": "2026-04-15",
+        "expires_on": "2026-06-30",
+        "expiration_criteria": "Remove once all imports target testbot.answer_rendering and compatibility shim tests are retired.",
+        "notes": "Compatibility alias retained for receiver-first import migration."
+      },
+      {
+        "module": "testbot.answer_validate",
+        "canonical_owner": "testbot.answer_validation",
+        "issue": "ISSUE-0021",
+        "owner": "runtime-pipeline",
+        "review_on": "2026-04-15",
+        "expires_on": "2026-06-30",
+        "expiration_criteria": "Remove once all imports target testbot.answer_validation and compatibility shim tests are retired.",
+        "notes": "Compatibility alias retained for receiver-first import migration."
+      }
+    ],
+    "notes": "Compatibility aliases retained only during tracked migration windows; do not add new imports to these modules."
+  },
+  "violation_policy": {
+    "as_of": "2026-03-20",
+    "report_mode": "warning",
+    "report_mode_rationale": "Keep warning-only until runtime authority regressions and migration blockers tracked in ISSUE-0013/ISSUE-0014/ISSUE-0017/ISSUE-0021 are resolved with canonical gate evidence.",
+    "recurring_violation_classes": [
+      {
+        "class": "forbidden_dependency_direction",
+        "decision": "unintended_fix_in_code",
+        "tracking_issues": [
+          "ISSUE-0013-E",
+          "ISSUE-0021"
+        ],
+        "owner": "runtime-pipeline",
+        "rationale": "Cross-layer imports still bypass declared package dependency direction and must be removed, not normalized into policy.",
+        "expiration_criteria": "Class count reaches zero in architecture-boundary report for two consecutive readiness gate runs."
+      },
+      {
+        "class": "private_surface_import",
+        "decision": "unintended_fix_in_code",
+        "tracking_issues": [
+          "ISSUE-0013-E",
+          "ISSUE-0021"
+        ],
+        "owner": "runtime-pipeline",
+        "rationale": "Imports against non-public modules indicate authority leakage and should transition to declared public surfaces or extracted ports.",
+        "expiration_criteria": "Class count reaches zero in architecture-boundary report for two consecutive readiness gate runs."
+      }
+    ],
+    "blocking_ratchet": {
+      "target_mode": "blocking",
+      "not_before": "2026-04-15",
+      "entry_criteria": [
+        "ISSUE-0014 closure evidence attached for identity continuity and retrieval activation regressions.",
+        "ISSUE-0017 closure evidence attached for answer.commit authority-boundary invariants.",
+        "Two consecutive readiness gate runs report zero forbidden_dependency_direction and private_surface_import violations.",
+        "No increase in temporary_exceptions and all active exceptions include owner, issue, expires_on, and expiration_criteria metadata."
+      ],
+      "owner": "platform-qa",
+      "tracking_issue": "ISSUE-0013-E"
+    }
   }
 }

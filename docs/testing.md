@@ -263,10 +263,13 @@ Promotion is allowed only when all of the following are true:
    - zero unsanctioned `violation` findings,
    - zero expired temporary exceptions,
    - and no net increase in active `temporary_exception` entries.
-2. Every remaining `temporary_exception` includes complete waiver metadata (issue, owner, expiry/review date, removal plan) and is actively tracked.
+2. Every remaining `temporary_exception` includes complete waiver metadata (issue, owner, expiry/review date, removal plan, and expiration criteria) and is actively tracked.
 3. `deprecated_compatibility` count is flat or decreasing, with linked deprecation retirement issues.
-4. Existing blocking checks remain green (no regressions masked by boundary-mode changes).
-5. The mode change decision is recorded in governance artifacts before default automation changes.
+4. Runtime-authority regressions tracked in the active migration chain are closed with evidence (`ISSUE-0014` identity continuity and `ISSUE-0017` answer.commit boundary normalization), and extraction governance items remain synchronized in `ISSUE-0013-E`/`ISSUE-0021`.
+5. Existing blocking checks remain green (no regressions masked by boundary-mode changes).
+6. The mode change decision is recorded in governance artifacts before default automation changes.
+
+Target ratchet window: no earlier than **2026-04-15** after criteria 1-6 are met and documented in issue records + gate artifacts.
 
 ### 5. Current readiness-gate behavior contract
 
