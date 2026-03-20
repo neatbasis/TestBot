@@ -202,7 +202,10 @@ def extract_intent_facets(user_input: str | None) -> IntentFacets:
 
     return IntentFacets(
         temporal=_matches_any(normalized, _TIME_QUERY_PATTERNS),
-        memory=_matches_any(normalized, _MEMORY_RECALL_PATTERNS),
+        memory=(
+            _matches_any(normalized, _MEMORY_RECALL_PATTERNS)
+            and not _matches_any(normalized, _MEMORY_WRITE_PATTERNS)
+        ),
         capability=(
             _matches_any(normalized, _CAPABILITY_FACET_PATTERNS)
             or is_satellite_action_request(normalized)

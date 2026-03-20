@@ -207,6 +207,12 @@ def resolve_answer_mode(
             rationale={"reason": "unknown_fallback", "fallback_action": fallback_action},
         )
 
+    if fallback_action == "ANSWER_TIME":
+        return AnswerModeDecision(
+            answer_mode="assist",
+            rationale={"reason": "time_answer", "fallback_action": fallback_action},
+        )
+
     if is_assist_alternatives_answer or social_or_non_knowledge_intent:
         return AnswerModeDecision(
             answer_mode="assist",

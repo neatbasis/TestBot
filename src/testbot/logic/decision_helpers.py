@@ -87,7 +87,7 @@ def resolve_answer_routing_for_stage(
     if not state.resolved_intent:
         state = replace(state, resolved_intent=resolved_intent.value)
 
-    if selected_decision is not None:
+    if selected_decision is not None and resolved_intent == IntentType.MEMORY_RECALL:
         answer_routing = resolve_answer_routing_from_decision_object(
             selected_decision,
             capability_status=capability_status,
