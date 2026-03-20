@@ -6,6 +6,7 @@ import arrow
 from langchain_core.documents import Document
 
 from testbot.pipeline_state import PipelineState
+from testbot import sat_chatbot_memory_v2 as runtime
 from testbot.sat_chatbot_memory_v2 import run_canonical_answer_stage_flow, stage_rerank
 from testbot.time_parse import parse_target_time
 from testbot.time_reasoning import elapsed_since_last_user_message, resolve_relative_date
@@ -72,6 +73,49 @@ def test_run_canonical_answer_stage_flow_time_query_uses_fake_clock_and_helsinki
 
     assert updated.final_answer == "Tomorrow is 2026-03-12 in Europe/Helsinki."
     assert updated.invariant_decisions["fallback_action"] == "ANSWER_TIME"
+
+
+def test_run_canonical_answer_stage_flow_time_query_ignores_seeded_same_turn_and_synthetic_hits(monkeypatch) -> None:
+    captured_doc_ids: list[str] = []
+
+    def _stub_pipeline(**kwargs):
+        docs_and_scores = kwargs["store"].similarity_search_with_score(
+            "q",
+            k=18,
+            exclude_doc_ids={"time-turn-doc"},
+            exclude_source_ids={"time-turn-doc"},
+            exclude_turn_scoped_ids={"time-turn-doc"},
+        )
+        captured_doc_ids.extend(str(doc.id or "") for doc, _score in docs_and_scores)
+        return kwargs["state"], []
+
+    monkeypatch.setattr(runtime, "_run_canonical_turn_pipeline", _stub_pipeline)
+    frozen_now = arrow.get("2026-03-10T22:30:00+00:00")
+    state = PipelineState(user_input="what is tomorrow?", last_user_message_ts="2026-03-10T22:00:00+00:00")
+    hits = [
+        Document(
+            id="time-turn-doc",
+            page_content="same-turn note",
+            metadata={"doc_id": "time-turn-doc", "turn_doc_id": "time-turn-doc"},
+        ),
+        Document(
+            id="time-seeded-artifact",
+            page_content="serialized stage payload",
+            metadata={"doc_id": "time-seeded-artifact", "pipeline_state_snapshot": True},
+        ),
+    ]
+
+    _ = run_canonical_answer_stage_flow(
+        DummyLLM(),
+        state,
+        chat_history=[],
+        hits=hits,
+        capability_status="ask_unavailable",
+        clock=FakeClock(frozen_now),
+        timezone="Europe/Helsinki",
+    )
+
+    assert captured_doc_ids == []
 
 
 def test_parse_target_time_maps_ambiguous_temporal_phrases_deterministically() -> None:

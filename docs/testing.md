@@ -69,6 +69,10 @@ This strategy is required to keep stage contracts, decision matrix coverage, and
 
 For fast failure triage across behavior specs, runtime anchors, and deterministic tests, use [docs/directives/traceability-matrix.md](directives/traceability-matrix.md#quick-reference-fast-triage).
 
+## Seeded retrieval exclusion evidence
+
+For seeded-store parity checks in `run_canonical_answer_stage_flow` (same-turn exclusions, turn/source hygiene, and synthetic seeded artifact filtering), see `artifacts/seeded_retrieval_failure_counts.json` for before/after failure counts and the targeted deterministic regression command set.
+
 ## Test layers
 
 ### 1) BDD scenarios (`behave`)

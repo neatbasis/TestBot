@@ -9,6 +9,7 @@ from testbot.pipeline_state import PipelineState, ProvenanceType
 from testbot.history_packer import pack_chat_history
 from testbot.stage_transitions import validate_answer_commit_post
 from testbot.logic.alignment import evaluate_alignment_decision
+from testbot import sat_chatbot_memory_v2 as runtime
 from testbot.sat_chatbot_memory_v2 import (
     ASSIST_ALTERNATIVES_ANSWER,
     FALLBACK_ANSWER,
@@ -378,6 +379,57 @@ def test_noisy_heuristic_history_does_not_force_constraints_into_final_answer() 
 
     assert "garage door is broken" not in answer_state.final_answer.lower()
     assert answer_state.invariant_decisions["fallback_action"] in {"ANSWER_UNKNOWN", "OFFER_CAPABILITY_ALTERNATIVES"}
+
+
+def test_seeded_retrieval_exclusions_prevent_answer_mode_and_fallback_drift_from_synthetic_evidence(monkeypatch) -> None:
+    captured_doc_ids: list[str] = []
+
+    def _stub_pipeline(**kwargs):
+        docs_and_scores = kwargs["store"].similarity_search_with_score(
+            "q",
+            k=18,
+            exclude_doc_ids={"same-turn-utterance"},
+            exclude_source_ids={"same-turn-utterance"},
+            exclude_turn_scoped_ids={"same-turn-utterance"},
+        )
+        captured_doc_ids.extend(str(doc.id or "") for doc, _score in docs_and_scores)
+        return kwargs["state"], []
+
+    monkeypatch.setattr(runtime, "_run_canonical_turn_pipeline", _stub_pipeline)
+    state = PipelineState(
+        user_input="what did i decide?",
+        confidence_decision={"context_confident": True, "ambiguity_detected": False},
+        resolved_intent="memory_recall",
+    )
+    hits = [
+        Document(
+            id="same-turn-utterance",
+            page_content="turn-local trace that must not leak",
+            metadata={"doc_id": "same-turn-utterance", "source_doc_id": "same-turn-utterance"},
+        ),
+        Document(
+            id="synthetic-seeded-artifact",
+            page_content="serialized runtime artifact payload",
+            metadata={"doc_id": "synthetic-seeded-artifact", "synthetic_seeded_artifact": True},
+        ),
+        Document(
+            id="stable-memory",
+            page_content="Decision: postpone onboarding review to Friday.",
+            metadata={"doc_id": "stable-memory", "ts": "2026-03-04T09:00:00Z"},
+        ),
+    ]
+
+    _ = run_canonical_answer_stage_flow(
+        _UnlabeledGeneralKnowledgeLLM(),
+        state,
+        chat_history=deque(),
+        hits=hits,
+        capability_status="ask_unavailable",
+        runtime_capability_status=_runtime_status(),
+        clock=None,
+    )
+
+    assert captured_doc_ids == ["stable-memory"]
 
 
 def test_knowing_mode_rejects_heuristic_only_inference_provenance() -> None:
