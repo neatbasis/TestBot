@@ -1,25 +1,54 @@
 ## Authoritative artifacts for current status (pivot)
 
-In order of authority for **current status** during the pivot:
+For deciding **next steps forward**, these documents are authoritative but **not equal weight**. Use this sequence to avoid stale planning signals and avoid duplicating work that has already landed.
 
-0. `docs/pivot.md`
-1. `plan.md`
-2. `docs/architecture/system-structure-audit-2026-03-19.md`
-3. `docs/architecture/plan-execution-checklist.md`
-4. `docs/qa/architecture-boundaries.json`
-5. `artifacts/architecture-boundary-report.current.md`
-6. `artifacts/architecture-boundary-report.current.json`
+### Recommended reading order
 
-Additional pivot-thread and supporting artifacts in active use:
+1. [`docs/architecture/plan-execution-checklist.md`](docs/architecture/plan-execution-checklist.md)  
+   Start here for the current closure contract: remaining workstream obligations, required evidence, done signals, and explicit "do not over-claim" gaps.
+2. [`docs/architecture/system-structure-audit-2026-03-19.md`](docs/architecture/system-structure-audit-2026-03-19.md)  
+   Read second to understand where authority is still collapsed, which symbols are risky to move, and the receiver-first extraction protocol.
+3. [`docs/pivot.md`](docs/pivot.md)  
+   Read third for migration priority, hotspot ranking, issue slicing, and package-map direction.
+4. [`CHANGELOG.md`](CHANGELOG.md)  
+   Read fourth as the ledger of what actually landed so execution does not duplicate completed slices.
+5. [`plan.md`](plan.md)  
+   Read last, selectively, for north-star intent and phase model validation (not as first-choice operational status).
 
-- `scripts/architecture_boundary_report.py`
-- PR #587 remediation/report artifacts (second-pass remediation report)
-- PR #588 remediation/report artifacts (`MemoryStorePort` boundary fix)
-- PR #589 remediation/report artifacts (attempted shared contract ownership move)
-- Compact/revised module census and target package map report
-- Architecture Drift Register
-- Canonical Turn Pipeline documentation
-- `CHANGELOG.md` lifecycle/removal criteria entries for compatibility paths
+### What each document is best for
+
+- [`docs/architecture/plan-execution-checklist.md`](docs/architecture/plan-execution-checklist.md): **Decision driver** — what remains open, what evidence is required, and what cannot be claimed yet.
+- [`docs/architecture/system-structure-audit-2026-03-19.md`](docs/architecture/system-structure-audit-2026-03-19.md): **Architecture-risk explainer** — where authority still lives, what moves are dangerous, and extraction sequencing.
+- [`docs/pivot.md`](docs/pivot.md): **Prioritization map** — hotspot order, migration sequencing, and package/boundary direction.
+- [`CHANGELOG.md`](CHANGELOG.md): **Recent progress ledger** — authoritative record of landed removals, shims, extractions, and closure slices.
+- [`plan.md`](plan.md): **North-star architecture narrative** — intended end-state and phase/workstream framing.
+
+### Cross-document navigation map
+
+Use these links when moving between decisions, risk context, and implementation evidence:
+
+- **Checklist ↔ Audit**: Use the checklist for obligations, then verify structural-risk constraints in the audit before extracting symbols. ([Checklist](docs/architecture/plan-execution-checklist.md), [Audit](docs/architecture/system-structure-audit-2026-03-19.md))
+- **Checklist ↔ Pivot**: Translate unresolved checklist gaps into migration priority using pivot hotspot and package-map order. ([Checklist](docs/architecture/plan-execution-checklist.md), [Pivot](docs/pivot.md))
+- **Checklist ↔ Changelog**: Confirm whether an open-looking item already landed in a recent slice before planning new work. ([Checklist](docs/architecture/plan-execution-checklist.md), [Changelog](CHANGELOG.md))
+- **Audit ↔ Pivot**: Apply audit extraction protocol while choosing pivot-ranked module slices so refactors reduce (not spread) authority collapse. ([Audit](docs/architecture/system-structure-audit-2026-03-19.md), [Pivot](docs/pivot.md))
+- **Audit ↔ Changelog**: Verify whether risk hotspots cited by the audit were already mitigated in later change slices. ([Audit](docs/architecture/system-structure-audit-2026-03-19.md), [Changelog](CHANGELOG.md))
+- **Pivot ↔ Changelog**: Re-rank next migration slices using what has already landed. ([Pivot](docs/pivot.md), [Changelog](CHANGELOG.md))
+- **Plan ↔ Checklist**: Reconcile long-range plan intent against current closure criteria and evidence obligations. ([Plan](plan.md), [Checklist](docs/architecture/plan-execution-checklist.md))
+- **Plan ↔ Audit**: Validate intended boundary model against present structural reality before making architecture claims. ([Plan](plan.md), [Audit](docs/architecture/system-structure-audit-2026-03-19.md))
+- **Plan ↔ Pivot**: Keep migration sequence aligned with north-star architecture targets. ([Plan](plan.md), [Pivot](docs/pivot.md))
+- **Plan ↔ Changelog**: Keep plan status interpretation grounded in what has actually landed. ([Plan](plan.md), [Changelog](CHANGELOG.md))
+
+### Best minimal reading set (time-constrained)
+
+1. [`docs/architecture/plan-execution-checklist.md`](docs/architecture/plan-execution-checklist.md)
+2. [`docs/architecture/system-structure-audit-2026-03-19.md`](docs/architecture/system-structure-audit-2026-03-19.md)
+3. [`CHANGELOG.md`](CHANGELOG.md)
+
+This minimal set is sufficient to decide what remains unresolved, where the architectural bottleneck remains, and what progress already landed.
+
+### Recommended sequencing shorthand
+
+**Checklist → Audit → Pivot → Changelog → Plan**
 
 To turn the concept into reality, you need to do four kinds of work in parallel:
 
