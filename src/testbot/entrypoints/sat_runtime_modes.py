@@ -8,7 +8,7 @@ from ha_ask.config import normalize_rest_api_url
 from homeassistant_api import Client
 from langchain_ollama import ChatOllama
 
-from testbot.clock import Clock
+from testbot.domain import Clock
 from testbot.sat_chatbot_memory_v2 import CapabilitySnapshot, ChatMsg
 from testbot.ports import MemoryStorePort
 

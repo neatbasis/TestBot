@@ -427,6 +427,31 @@ def test_main_kicks_off_source_ingestion_and_applies_debug_verbose_override(monk
     assert calls["ingestion"] == 1
 
 
+def test_main_uses_domain_clock_provider_for_cli_wiring(monkeypatch) -> None:
+    calls = {"cli": 0, "satellite": 0}
+    provided_clock = object()
+    captured: dict[str, object] = {}
+
+    _patch_main_dependencies(
+        monkeypatch,
+        args=SimpleNamespace(mode="cli", daemon=False, debug_verbose=None),
+        ha_error=None,
+        ollama_error=None,
+        calls=calls,
+    )
+    monkeypatch.setattr(sat_cli, "build_system_clock", lambda: provided_clock)
+
+    def _capture_cli(**kwargs):
+        captured["clock"] = kwargs["clock"]
+        calls["cli"] += 1
+
+    monkeypatch.setattr(sat_cli, "run_cli_mode", _capture_cli)
+    runtime.main([])
+
+    assert calls["cli"] == 1
+    assert captured["clock"] is provided_clock
+
+
 def test_main_satellite_mode_reports_cli_as_effective_mode_when_fallback_applies(monkeypatch) -> None:
     calls = {"cli": 0, "satellite": 0}
     startup: dict[str, object] = {}

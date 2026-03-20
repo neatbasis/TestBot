@@ -5,7 +5,7 @@ import sys
 
 from langchain_ollama import ChatOllama, OllamaEmbeddings
 
-from testbot.clock import SystemClock
+from testbot.domain import build_system_clock
 from testbot.entrypoints.sat_runtime_modes import run_cli_mode, run_satellite_mode
 from testbot.observability.session_log import append_session_log
 from testbot.sat_chatbot_memory_v2 import (
@@ -63,7 +63,7 @@ def main(argv: list[str] | None = None) -> None:
     embeddings = OllamaEmbeddings(model=str(runtime["ollama_embedding_model"]), base_url=str(runtime["ollama_base_url"]), **ollama_client_kwargs)
     store = build_runtime_memory_store(runtime=runtime, embeddings=embeddings)
     chat_history = deque(maxlen=10)
-    clock = SystemClock()
+    clock = build_system_clock()
     run_source_ingestion(runtime=runtime, store=store)
 
     if capability_snapshot.effective_mode == "satellite":
