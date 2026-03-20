@@ -1,3 +1,26 @@
+## Authoritative artifacts for current status (pivot)
+
+In order of authority for **current status** during the pivot:
+
+0. `docs/pivot.md`
+1. `plan.md`
+2. `docs/architecture/system-structure-audit-2026-03-19.md`
+3. `docs/architecture/plan-execution-checklist.md`
+4. `docs/qa/architecture-boundaries.json`
+5. `artifacts/architecture-boundary-report.current.md`
+6. `artifacts/architecture-boundary-report.current.json`
+
+Additional pivot-thread and supporting artifacts in active use:
+
+- `scripts/architecture_boundary_report.py`
+- PR #587 remediation/report artifacts (second-pass remediation report)
+- PR #588 remediation/report artifacts (`MemoryStorePort` boundary fix)
+- PR #589 remediation/report artifacts (attempted shared contract ownership move)
+- Compact/revised module census and target package map report
+- Architecture Drift Register
+- Canonical Turn Pipeline documentation
+- `CHANGELOG.md` lifecycle/removal criteria entries for compatibility paths
+
 To turn the concept into reality, you need to do four kinds of work in parallel:
 
 1. **Make the pipeline real in code**
