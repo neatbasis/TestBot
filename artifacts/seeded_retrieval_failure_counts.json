@@ -1,0 +1,28 @@
+{
+  "recorded_at_utc": "2026-03-20T00:00:00Z",
+  "issue_scope": "Seeded retrieval exclusion parity for run_canonical_answer_stage_flow",
+  "measurements": [
+    {
+      "label": "before_patch_repo_state",
+      "command": "python -m pytest tests/test_runtime_logging_events.py tests/test_answer_contract.py tests/test_time_reasoning.py -q",
+      "passed": 47,
+      "failed": 29,
+      "total": 76
+    },
+    {
+      "label": "after_patch_repo_state",
+      "command": "python -m pytest tests/test_runtime_logging_events.py tests/test_answer_contract.py tests/test_time_reasoning.py -q",
+      "passed": 45,
+      "failed": 34,
+      "total": 79,
+      "note": "Repository still has unrelated baseline failures in these files; this count includes new deterministic retrieval regression tests."
+    },
+    {
+      "label": "after_patch_targeted_seeded_retrieval_regressions",
+      "command": "python -m pytest tests/test_runtime_logging_events.py::test_run_canonical_answer_stage_flow_seeded_store_honors_retrieval_exclusions_for_same_turn_and_synthetic_hits tests/test_answer_contract.py::test_seeded_retrieval_exclusions_prevent_answer_mode_and_fallback_drift_from_synthetic_evidence tests/test_time_reasoning.py::test_run_canonical_answer_stage_flow_time_query_ignores_seeded_same_turn_and_synthetic_hits -q",
+      "passed": 3,
+      "failed": 0,
+      "total": 3
+    }
+  ]
+}

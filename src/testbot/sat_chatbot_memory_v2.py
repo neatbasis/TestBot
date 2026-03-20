@@ -2933,8 +2933,69 @@ def run_canonical_answer_stage_flow(
         def add_documents(self, documents: list[Document]) -> None:
             self._seeded_hits.extend(documents)
 
-        def similarity_search_with_score(self, *_args, **_kwargs) -> list[tuple[Document, float]]:
-            return [(doc, 1.0) for doc in self._seeded_hits]
+        @staticmethod
+        def _normalize(values: set[str] | None) -> set[str]:
+            if not values:
+                return set()
+            return {str(value).strip() for value in values if str(value).strip()}
+
+        @staticmethod
+        def _is_excluded(
+            doc: Document,
+            *,
+            exclude_doc_ids: set[str],
+            exclude_source_ids: set[str],
+            exclude_turn_scoped_ids: set[str],
+            segment_ids: set[str],
+            segment_types: set[str],
+        ) -> bool:
+            metadata = doc.metadata if isinstance(doc.metadata, dict) else {}
+            doc_id = str(doc.id or metadata.get("doc_id") or "").strip()
+            source_doc_id = str(metadata.get("source_doc_id") or "").strip()
+            turn_doc_id = str(metadata.get("turn_doc_id") or "").strip()
+            if doc_id and doc_id in exclude_doc_ids:
+                return True
+            if source_doc_id and source_doc_id in exclude_source_ids:
+                return True
+            if exclude_turn_scoped_ids and any(
+                value in exclude_turn_scoped_ids for value in (doc_id, source_doc_id, turn_doc_id) if value
+            ):
+                return True
+            doc_segment_id = str(metadata.get("segment_id") or "").strip()
+            doc_segment_type = str(metadata.get("segment_type") or "").strip()
+            if segment_ids and doc_segment_id not in segment_ids:
+                return True
+            if segment_types and doc_segment_type not in segment_types:
+                return True
+            synthetic_seeded_artifact = bool(
+                metadata.get("pipeline_state_snapshot")
+                or metadata.get("synthetic_seeded_artifact")
+                or metadata.get("seeded_artifact")
+            )
+            if synthetic_seeded_artifact:
+                return True
+            return False
+
+        def similarity_search_with_score(self, *_args, **kwargs) -> list[tuple[Document, float]]:
+            k = int(kwargs.get("k", 4) or 4)
+            exclude_doc_ids = self._normalize(kwargs.get("exclude_doc_ids"))
+            exclude_source_ids = self._normalize(kwargs.get("exclude_source_ids"))
+            exclude_turn_scoped_ids = self._normalize(kwargs.get("exclude_turn_scoped_ids"))
+            segment_ids = self._normalize(kwargs.get("segment_ids"))
+            segment_types = self._normalize(kwargs.get("segment_types"))
+            filtered = [
+                doc
+                for doc in self._seeded_hits
+                if not self._is_excluded(
+                    doc,
+                    exclude_doc_ids=exclude_doc_ids,
+                    exclude_source_ids=exclude_source_ids,
+                    exclude_turn_scoped_ids=exclude_turn_scoped_ids,
+                    segment_ids=segment_ids,
+                    segment_types=segment_types,
+                )
+            ]
+            return [(doc, 1.0) for doc in filtered[:k]]
 
     effective_runtime_status = runtime_capability_status or RuntimeCapabilityStatus(
         ollama_available=True,

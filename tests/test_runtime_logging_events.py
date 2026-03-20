@@ -165,6 +165,56 @@ def test_run_canonical_answer_stage_flow_invoke_failure_uses_deterministic_fallb
     assert events[0][1]["fallback_action"] == "ANSWER_GENERAL_KNOWLEDGE"
 
 
+def test_run_canonical_answer_stage_flow_seeded_store_honors_retrieval_exclusions_for_same_turn_and_synthetic_hits(monkeypatch) -> None:
+    captured_doc_ids: list[str] = []
+
+    def _stub_pipeline(**kwargs):
+        docs_and_scores = kwargs["store"].similarity_search_with_score(
+            "q",
+            k=18,
+            exclude_doc_ids={"turn-user"},
+            exclude_source_ids={"turn-user"},
+            exclude_turn_scoped_ids={"turn-user"},
+        )
+        captured_doc_ids.extend(str(doc.id or "") for doc, _score in docs_and_scores)
+        return kwargs["state"], []
+
+    monkeypatch.setattr(runtime, "_run_canonical_turn_pipeline", _stub_pipeline)
+    state = PipelineState(
+        user_input="what did i just say?",
+        resolved_intent=IntentType.MEMORY_RECALL.value,
+        confidence_decision={"context_confident": True, "ambiguity_detected": False},
+    )
+    hits = [
+        Document(
+            id="turn-user",
+            page_content="turn-local utterance snapshot",
+            metadata={"doc_id": "turn-user", "turn_doc_id": "turn-user"},
+        ),
+        Document(
+            id="seeded-snapshot",
+            page_content="serialized pipeline snapshot artifact",
+            metadata={"doc_id": "seeded-snapshot", "pipeline_state_snapshot": True},
+        ),
+        Document(
+            id="older-memory",
+            page_content="Earlier memory: you asked about release notes.",
+            metadata={"doc_id": "older-memory", "ts": "2026-03-09T12:00:00Z"},
+        ),
+    ]
+
+    _ = run_canonical_answer_stage_flow(
+        _StaticLLM("ignored"),
+        state,
+        chat_history=deque(),
+        hits=hits,
+        capability_status="ask_unavailable",
+        clock=_FIXED_CLOCK,
+    )
+
+    assert captured_doc_ids == ["older-memory"]
+
+
 def test_generate_reflection_yaml_invoke_failure_returns_minimal_yaml_and_logs(monkeypatch) -> None:
     events: list[tuple[str, dict]] = []
     monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: events.append((event, payload)))
