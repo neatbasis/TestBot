@@ -10,6 +10,7 @@ from testbot.entrypoints.sat_runtime_modes import run_cli_mode, run_satellite_mo
 from testbot.observability.session_log import append_session_log
 from testbot.sat_chatbot_memory_v2 import (
     build_capability_snapshot,
+    build_runtime_memory_store,
     parse_args,
     print_startup_status,
     read_runtime_env,
@@ -17,7 +18,6 @@ from testbot.sat_chatbot_memory_v2 import (
     run_source_ingestion,
     sat_say,
 )
-from testbot.adapters.memory_store_factory import build_memory_store
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -61,12 +61,7 @@ def main(argv: list[str] | None = None) -> None:
 
     llm = ChatOllama(model=str(runtime["ollama_model"]), base_url=str(runtime["ollama_base_url"]), **ollama_client_kwargs, temperature=0.0)
     embeddings = OllamaEmbeddings(model=str(runtime["ollama_embedding_model"]), base_url=str(runtime["ollama_base_url"]), **ollama_client_kwargs)
-    store = build_memory_store(
-        embeddings=embeddings,
-        mode=str(runtime["memory_store_mode"]),
-        elasticsearch_url=str(runtime["elasticsearch_url"]),
-        elasticsearch_index=str(runtime["elasticsearch_index"]),
-    )
+    store = build_runtime_memory_store(runtime=runtime, embeddings=embeddings)
     chat_history = deque(maxlen=10)
     clock = SystemClock()
     run_source_ingestion(runtime=runtime, store=store)
