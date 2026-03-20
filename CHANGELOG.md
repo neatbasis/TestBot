@@ -10,6 +10,32 @@ For each changelog entry, answer these three questions explicitly:
 3. **Why this step was taken in this order?**
    - One sentence describing sequencing rationale (dependency order, receiver-first, ambiguity reduction before next extraction, etc.).
 
+## 2026-03-20
+
+### Entry 1
+
+#### 1) What moved, and where did it land?
+- **Old path/symbol:** call sites/tests expected `CanonicalTurnOrchestrator` to be reachable via `src/testbot/sat_chatbot_memory_v2.py`, but the compatibility façade no longer exposed that symbol.
+- **New path/symbol:** `src/testbot/sat_chatbot_memory_v2.py` now provides an explicit compatibility re-export `CanonicalTurnOrchestrator = testbot.canonical_turn_orchestrator.CanonicalTurnOrchestrator`.
+- **Delegation shim:** the compatibility module remains a thin façade only; canonical implementation authority remains in `src/testbot/canonical_turn_orchestrator.py`.
+
+#### 2) What did not change?
+- `CanonicalTurnOrchestrator` stage-order and runtime behavior did not change; this step restores only import-path compatibility.
+- Canonical owner stays `testbot.canonical_turn_orchestrator`, and compatibility intent is documented in-module via `_COMPATIBILITY_REEXPORTS` metadata rather than introducing new orchestration logic in the façade module.
+
+#### 3) Why this step was taken in this order?
+- Restoring the missing compatibility export first unblocks existing runtime/test references while preserving the canonical-owner boundary before any further façade-surface pruning.
+
+#### 4) Compatibility decision audit (sat runtime façade expectations)
+
+| Symbol expectation from `sat_chatbot_memory_v2` | Classification | Decision |
+|---|---|---|
+| `CanonicalTurnOrchestrator` | compatibility re-export | Restored as explicit re-export; canonical owner remains `testbot.canonical_turn_orchestrator`. |
+| `run_canonical_answer_stage_flow` | canonical public API | Keep exported from façade as intentional runtime entrypoint. |
+| `run_answer_stage_flow` | compatibility re-export (deprecated) | Keep temporary shim with deprecation warning metadata (existing removal target 2026-04-01). |
+| `evaluate_alignment_decision` | compatibility re-export (deprecated) | Keep temporary shim with deprecation warning metadata (existing removal target 2026-04-01). |
+| `CanonicalTurnContext`, `CanonicalStage` via façade | obsolete expectation | Not re-exported; direct imports from `testbot.canonical_turn_orchestrator` are required. |
+
 ## 2026-03-19
 
 
