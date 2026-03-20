@@ -135,6 +135,7 @@ from testbot.logic.alignment import (
 from testbot.retrieval_routing import decide_retrieval_routing, is_definitional_query_form
 from testbot.application.services.turn_service import TurnPipelineDependencies
 from testbot.application.services.canonical_turn_runtime import run_canonical_turn_pipeline
+from testbot.canonical_turn_orchestrator import CanonicalTurnOrchestrator as _CanonicalTurnOrchestrator
 from testbot.logic.decision_helpers import (
     decision_object_from_assembled as _decision_object_from_fallback_action,
     resolve_answer_routing_for_stage as _resolve_answer_routing_for_stage_service,
@@ -282,11 +283,16 @@ _LOGGER = logging.getLogger(__name__)
 _BACKGROUND_SOURCE_INGEST_EXECUTOR = ThreadPoolExecutor(max_workers=1, thread_name_prefix="source-ingest")
 _BACKGROUND_SOURCE_INGEST_LOCK = Lock()
 
+CanonicalTurnOrchestrator = _CanonicalTurnOrchestrator
+"""Compatibility re-export; canonical owner remains `testbot.canonical_turn_orchestrator`."""
+
 __all__ = [
     "ASSIST_ALTERNATIVES_ANSWER",
     "AnswerAssembleResult",
     "AnswerValidateResult",
     "CLARIFY_ANSWER",
+    # Compatibility-only façade export; canonical owner remains testbot.canonical_turn_orchestrator.
+    "CanonicalTurnOrchestrator",
     "CapabilitySnapshot",
     "DENY_ANSWER",
     "FALLBACK_ANSWER",
@@ -338,6 +344,17 @@ _DEPRECATED_COMPATIBILITY_ALIASES: dict[str, dict[str, str]] = {
         "canonical_symbol": "testbot.logic.alignment.evaluate_alignment_decision",
         "removal_date": "2026-04-01",
         "removal_criteria": "all callers import from testbot.logic.alignment with compatibility shim coverage retained",
+    },
+}
+
+_COMPATIBILITY_REEXPORTS: dict[str, dict[str, str]] = {
+    "CanonicalTurnOrchestrator": {
+        "canonical_symbol": "testbot.canonical_turn_orchestrator.CanonicalTurnOrchestrator",
+        "status": "compatibility re-export",
+        "owner_decision": "compatibility_only",
+        "introduced_for_compatibility_on": "2026-03-20",
+        "review_after": "2026-06-30",
+        "deprecation_note": "Prefer importing from testbot.canonical_turn_orchestrator in new code.",
     },
 }
 
