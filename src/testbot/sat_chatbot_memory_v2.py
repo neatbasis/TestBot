@@ -303,6 +303,7 @@ __all__ = [
     "answer_assemble",
     "append_session_log",
     "build_capability_snapshot",
+    "build_runtime_memory_store",
     "build_debug_turn_payload",
     "build_provenance_metadata",
     "collect_used_source_evidence_refs",
@@ -834,6 +835,15 @@ def _read_runtime_env() -> dict[str, object]:
         "source_ingest_background_request_id": "",
         "debug_verbose": debug_verbose,
     }
+
+
+def _build_runtime_memory_store(*, runtime: dict[str, object], embeddings: Embeddings) -> MemoryStorePort:
+    return build_memory_store(
+        embeddings=embeddings,
+        mode=str(runtime["memory_store_mode"]),
+        elasticsearch_url=str(runtime["elasticsearch_url"]),
+        elasticsearch_index=str(runtime["elasticsearch_index"]),
+    )
 
 
 def _ha_connection_error(api_url: str, token: str, entity_id: str) -> str | None:
@@ -3816,6 +3826,10 @@ def parse_args(argv: list[str] | None = None) -> Namespace:
 
 def read_runtime_env() -> dict[str, object]:
     return _read_runtime_env()
+
+
+def build_runtime_memory_store(*, runtime: dict[str, object], embeddings: Embeddings) -> MemoryStorePort:
+    return _build_runtime_memory_store(runtime=runtime, embeddings=embeddings)
 
 
 def resolve_mode(requested_mode: str, ha_error: str | None) -> str:

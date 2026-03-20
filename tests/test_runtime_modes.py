@@ -337,7 +337,7 @@ def _patch_main_dependencies(
         monkeypatch.setattr(sat_cli, "print_startup_status", lambda **_kwargs: None)
     monkeypatch.setattr(sat_cli, "ChatOllama", lambda *a, **k: object())
     monkeypatch.setattr(sat_cli, "OllamaEmbeddings", lambda *a, **k: object())
-    monkeypatch.setattr(sat_cli, "build_memory_store", lambda *_args, **_kwargs: object())
+    monkeypatch.setattr(sat_cli, "build_runtime_memory_store", lambda *_args, **_kwargs: object())
     monkeypatch.setattr(sat_cli, "append_session_log", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(
         sat_cli,
