@@ -1,0 +1,3317 @@
+============================= test session starts ==============================
+platform linux -- Python 3.11.14, pytest-9.0.2, pluggy-1.6.0
+rootdir: /tmp/TestBot-mainhead
+configfile: pyproject.toml
+plugins: langsmith-0.7.22, anyio-4.12.1
+collected 797 items
+
+tests/architecture/test_import_boundaries.py .....                       [  0%]
+tests/integration/ports_contract/test_port_contracts.py ....             [  1%]
+tests/pipeline/test_answer_commit.py ...........                         [  2%]
+tests/pipeline/test_answer_validation.py ..........                      [  3%]
+tests/pipeline/test_intent_resolution.py ............                    [  5%]
+tests/pipeline/test_metrics_contract.py ...                              [  5%]
+tests/pipeline/test_policy_decide_matrix.py ................             [  7%]
+tests/pipeline/test_retrieve_evidence.py .........                       [  8%]
+tests/pipeline/test_stage_contracts.py ....F..                           [  9%]
+tests/pipeline/test_turn_stage_interfaces.py ...                         [ 10%]
+tests/pipeline/test_typed_partial_contracts.py .......                   [ 10%]
+tests/seem_bot/test_control_plane.py ..........                          [ 12%]
+tests/test_alignment_transitions.py ......................FF.F.........  [ 16%]
+tests/test_all_green_gate.py ..........................................  [ 21%]
+tests/test_answer_commit_identity_promotion.py ......                    [ 22%]
+tests/test_answer_contract.py ..F......F..FF..                           [ 24%]
+tests/test_answer_module_shims.py ..                                     [ 24%]
+tests/test_answer_rendering_offer_bearing.py ..                          [ 25%]
+tests/test_answer_routing_bridge.py ......                               [ 25%]
+tests/test_answer_stage_flow_delegation.py ....                          [ 26%]
+tests/test_answer_validation_payload_contracts.py ..                     [ 26%]
+tests/test_architecture_boundary_report.py ....                          [ 27%]
+tests/test_base_ref_policy_split.py .                                    [ 27%]
+tests/test_canonical_stage_dtos.py .....F..                              [ 28%]
+tests/test_canonical_turn_orchestrator.py ........                       [ 29%]
+tests/test_canonical_turn_pipeline_contract_ac_0013_02.py ..             [ 29%]
+tests/test_capabilities_help.py FFFF.FF                                  [ 30%]
+tests/test_capabilities_runtime_status.py FF                             [ 30%]
+tests/test_categorical_falsifiability.py ....                            [ 31%]
+tests/test_config.py .                                                   [ 31%]
+tests/test_continuity_followup_boundaries.py ..                          [ 31%]
+tests/test_debug_turn_trace.py ........                                  [ 32%]
+tests/test_decisioning_stages.py ....F...                                [ 33%]
+tests/test_eval_fixtures.py ...                                          [ 33%]
+tests/test_eval_recall.py .....                                          [ 34%]
+tests/test_eval_runtime_parity.py ........                               [ 35%]
+tests/test_evidence_retrieval_mapping.py ......                          [ 36%]
+tests/test_governance_base_ref_helper.py .....                           [ 36%]
+tests/test_governance_rules.py .....                                     [ 37%]
+tests/test_governance_ruleset_matrix.py ..............                   [ 39%]
+tests/test_governance_script_imports_helper.py .                         [ 39%]
+tests/test_history_packer.py ......                                      [ 40%]
+tests/test_intent_resolution_legality.py ...                             [ 40%]
+tests/test_intent_router.py .........................................    [ 45%]
+tests/test_live_smoke_degraded_modes.py FFF                              [ 46%]
+tests/test_live_smoke_home_assistant.py ...                              [ 46%]
+tests/test_live_smoke_ollama.py ..                                       [ 46%]
+tests/test_live_smoke_runtime_e2e.py ..                                  [ 46%]
+tests/test_log_schema_validation.py ......                               [ 47%]
+tests/test_memory_segments_and_strata.py ...                             [ 48%]
+tests/test_no_handcrafted_fixture_dependencies.py ..                     [ 48%]
+tests/test_pipeline_semantic_contracts.py ........                       [ 49%]
+tests/test_pipeline_state_artifact_contracts.py .......                  [ 50%]
+tests/test_pipeline_state_artifacts.py ....                              [ 50%]
+tests/test_promotion_policy.py ............                              [ 52%]
+tests/test_reflection_policy.py ...........................              [ 55%]
+tests/test_reject_taxonomy.py ....                                       [ 56%]
+tests/test_release_gate.py ...........                                   [ 57%]
+tests/test_report_feature_status.py ...................                  [ 59%]
+tests/test_rerank.py ....................                                [ 62%]
+tests/test_response_planner.py ....                                      [ 62%]
+tests/test_retrieval_routing.py ......                                   [ 63%]
+tests/test_runtime_logging_events.py ....F...........FFFFFF.....F..F.F.F [ 68%]
+FFFFF.F.FFFFFF..F.                                                       [ 70%]
+tests/test_runtime_modes.py ............................................ [ 75%]
+......                                                                   [ 76%]
+tests/test_runtime_stage_bypass_guards.py ..                             [ 76%]
+tests/test_session_log_compatibility.py ...                              [ 77%]
+tests/test_smoke_contract.py ....                                        [ 77%]
+tests/test_source_connectors.py ...........                              [ 79%]
+tests/test_source_fusion.py .....                                        [ 79%]
+tests/test_source_ingest.py ............                                 [ 81%]
+tests/test_source_ingestion_runtime_pipeline.py .                        [ 81%]
+tests/test_stabilization_and_retrieval_pure_logic.py ...                 [ 81%]
+tests/test_stabilization_obligation_continuity.py ..                     [ 81%]
+tests/test_stage_transition_invariant_refs.py ...............            [ 83%]
+tests/test_stage_transitions_legacy_bridge.py ...                        [ 84%]
+tests/test_startup_status.py .......                                     [ 85%]
+tests/test_structured_debug_payload.py ................                  [ 87%]
+tests/test_sync_invariants_mirror.py .....                               [ 87%]
+tests/test_time_parse.py ....                                            [ 88%]
+tests/test_time_parse_directional.py .............                       [ 89%]
+tests/test_time_reasoning.py ...F...                                     [ 90%]
+tests/test_triage_router.py ..                                           [ 90%]
+tests/test_turn_analytics_aggregator.py .............                    [ 92%]
+tests/test_turn_service_canonical_sequence.py .                          [ 92%]
+tests/test_turn_service_delegation.py .                                  [ 92%]
+tests/test_validate_issue_links.py ...........                           [ 94%]
+tests/test_validate_issues.py ...............                            [ 96%]
+tests/test_validate_kpi_guardrails.py .....                              [ 96%]
+tests/test_validate_markdown_paths.py ..                                 [ 96%]
+tests/test_validate_pipeline_stage_conformance.py ........               [ 97%]
+tests/test_validate_roadmap_consistency.py ...                           [ 98%]
+tests/test_vector_store.py ...........                                   [ 99%]
+tests/test_vector_store_import_boundaries.py ..                          [100%]
+
+=================================== FAILURES ===================================
+_ test_answer_commit_merges_stabilized_facts_once_per_fact_without_duplicate_commit_effects _
+
+    def test_answer_commit_merges_stabilized_facts_once_per_fact_without_duplicate_commit_effects() -> None:
+        state = PipelineState(
+            user_input="My name is Ava",
+            candidate_facts={
+                "turn_id": "turn-003",
+                "facts": [{"key": "user_name", "value": "Ava"}],
+            },
+        )
+        assembly = AnswerCandidate(
+            decision_class="answer_from_memory",
+            rendered_class="answer_from_memory",
+            retrieval_branch="memory_retrieval",
+            rationale="test",
+            evidence_counts={"structured_facts": 1},
+            pending_repair_state={"repair_required_by_policy": False, "repair_offered_to_user": False},
+            pending_ingestion_request_id="",
+            resolved_obligations=[],
+            remaining_obligations=[],
+            confirmed_user_facts=["timezone=UTC"],
+        )
+        validation = ValidatedAnswer(passed=True, failures=[], final_answer="All good")
+    
+        committed_state, committed = commit_answer_stage(
+            state,
+            assembly=assembly,
+            validation=validation,
+            rendered=RenderedAnswer(rendered_text="All good"),
+        )
+    
+        assert committed.turn_id == "turn-003"
+        assert committed_state.commit_receipt["commit_stage"] == "answer.commit"
+>       assert committed.confirmed_user_facts == ["timezone=UTC", "name=Ava"]
+E       AssertionError: assert ['timezone=UTC'] == ['timezone=UTC', 'name=Ava']
+E         
+E         Right contains one more item: 'name=Ava'
+E         Use -v to get more diff
+
+tests/pipeline/test_stage_contracts.py:147: AssertionError
+_ test_run_canonical_answer_stage_flow_non_memory_invalid_gk_contract_routes_to_safe_fallback_and_passes_post_validation _
+
+    def test_run_canonical_answer_stage_flow_non_memory_invalid_gk_contract_routes_to_safe_fallback_and_passes_post_validation() -> None:
+        state = PipelineState(
+            user_input="What is life?",
+            rewritten_query="what is life",
+            confidence_decision={
+                "context_confident": False,
+                "ambiguity_detected": False,
+                "general_knowledge_confidence": 0.2,
+                "general_knowledge_support": 0,
+            },
+            resolved_intent="knowledge_question",
+        )
+    
+        answer_state = run_canonical_answer_stage_flow(
+            _UnlabeledGeneralKnowledgeLLM(),
+            state,
+            chat_history=deque(),
+            hits=[],
+            capability_status="ask_unavailable",
+            clock=None,
+        )
+    
+        assert answer_state.invariant_decisions["general_knowledge_contract_applicability"] == "not_applicable"
+>       assert answer_state.final_answer == NON_KNOWLEDGE_UNCERTAINTY_ANSWER
+E       assert 'Life is a ch...-01T00:00:00Z' == "I'm not full...to verify it."
+E         
+E         - I'm not fully confident in a reliable answer right now. I can offer a best-effort response and suggest a quick way to verify it.
+E         + Life is a characteristic that distinguishes biological processes from nonliving matter. doc_id: gk-1 ts: 2026-01-01T00:00:00Z
+
+tests/test_alignment_transitions.py:454: AssertionError
+_ test_run_canonical_answer_stage_flow_social_statement_with_invalid_gk_contract_degrades_to_uncertainty_fallback _
+
+    def test_run_canonical_answer_stage_flow_social_statement_with_invalid_gk_contract_degrades_to_uncertainty_fallback() -> None:
+        state = PipelineState(
+            user_input="My name is Sebastian",
+            rewritten_query="my name is sebastian",
+            confidence_decision={
+                "context_confident": False,
+                "ambiguity_detected": False,
+                "general_knowledge_confidence": 0.0,
+                "general_knowledge_support": 0,
+            },
+            resolved_intent="knowledge_question",
+        )
+    
+>       answer_state = run_canonical_answer_stage_flow(
+            _UnlabeledGeneralKnowledgeLLM(),
+            state,
+            chat_history=deque(),
+            hits=[],
+            capability_status="ask_unavailable",
+            clock=None,
+        )
+
+tests/test_alignment_transitions.py:475: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/testbot/sat_chatbot_memory_v2.py:2969: in run_canonical_answer_stage_flow
+    final_state, _ = _run_canonical_turn_pipeline(
+src/testbot/sat_chatbot_memory_v2.py:3386: in _run_canonical_turn_pipeline
+    next_state, normalized_hits = run_canonical_turn_pipeline(
+src/testbot/application/services/canonical_turn_runtime.py:31: in run_canonical_turn_pipeline
+    return run_canonical_turn_pipeline_service(
+src/testbot/application/services/turn_service.py:744: in run_canonical_turn_pipeline_service
+    final_context = orchestrator.run(context)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/canonical_turn_orchestrator.py:122: in run
+    context = stage.handler(context)
+              ^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/application/services/turn_service.py:157: in answer_commit
+    return answer_commit_stage(ctx, self.runtime)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/application/services/turn_service.py:640: in answer_commit_stage
+    stage.deps.validate_and_log_transition(validate_answer_commit_post(ctx.state))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+result = TransitionCheckResult(stage='answer.commit', boundary='post', invariant_refs=('PINV-001', 'PINV-002', 'PINV-003'), passed=False, failures=('inv_003_general_knowledge_contract_enforced',))
+
+    def _validate_and_log_transition(result) -> None:
+        append_transition_validation_log(result)
+        if not result.passed:
+            failures = ", ".join(result.failures)
+>           raise AssertionError(f"Stage transition validation failed at {result.stage}.{result.boundary}: {failures}")
+E           AssertionError: Stage transition validation failed at answer.commit.post: inv_003_general_knowledge_contract_enforced
+
+src/testbot/sat_chatbot_memory_v2.py:3102: AssertionError
+_ test_run_canonical_answer_stage_flow_memory_hit_without_ambiguity_uses_contract_safe_recovery_answer _
+
+    def test_run_canonical_answer_stage_flow_memory_hit_without_ambiguity_uses_contract_safe_recovery_answer() -> None:
+        state = PipelineState(
+            user_input="what did i say yesterday",
+            confidence_decision={"context_confident": True, "ambiguity_detected": False},
+        )
+        hits = [
+            Document(
+                page_content="You mentioned discussing topology during lunch.",
+                metadata={"doc_id": "d-1", "ts": "2025-01-01T00:00:00Z"},
+            )
+        ]
+    
+>       answered = run_canonical_answer_stage_flow(
+            _InvalidContractLLM(),
+            state,
+            chat_history=deque(),
+            hits=hits,
+            capability_status="ask_unavailable",
+            clock=None,
+        )
+
+tests/test_alignment_transitions.py:520: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/testbot/sat_chatbot_memory_v2.py:2969: in run_canonical_answer_stage_flow
+    final_state, _ = _run_canonical_turn_pipeline(
+src/testbot/sat_chatbot_memory_v2.py:3386: in _run_canonical_turn_pipeline
+    next_state, normalized_hits = run_canonical_turn_pipeline(
+src/testbot/application/services/canonical_turn_runtime.py:31: in run_canonical_turn_pipeline
+    return run_canonical_turn_pipeline_service(
+src/testbot/application/services/turn_service.py:744: in run_canonical_turn_pipeline_service
+    final_context = orchestrator.run(context)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/canonical_turn_orchestrator.py:122: in run
+    context = stage.handler(context)
+              ^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/application/services/turn_service.py:157: in answer_commit
+    return answer_commit_stage(ctx, self.runtime)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/application/services/turn_service.py:640: in answer_commit_stage
+    stage.deps.validate_and_log_transition(validate_answer_commit_post(ctx.state))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+result = TransitionCheckResult(stage='answer.commit', boundary='post', invariant_refs=('PINV-001', 'PINV-002', 'PINV-003'), passed=False, failures=('alignment_decision_consistent',))
+
+    def _validate_and_log_transition(result) -> None:
+        append_transition_validation_log(result)
+        if not result.passed:
+            failures = ", ".join(result.failures)
+>           raise AssertionError(f"Stage transition validation failed at {result.stage}.{result.boundary}: {failures}")
+E           AssertionError: Stage transition validation failed at answer.commit.post: alignment_decision_consistent
+
+src/testbot/sat_chatbot_memory_v2.py:3102: AssertionError
+_ test_memory_recall_confident_contract_failure_uses_deterministic_recovery_hit _
+
+    def test_memory_recall_confident_contract_failure_uses_deterministic_recovery_hit() -> None:
+        state = PipelineState(
+            user_input="what did i decide about training schedule?",
+            confidence_decision={
+                "context_confident": True,
+                "ambiguity_detected": False,
+            },
+            resolved_intent="memory_recall",
+        )
+        hits = [
+            Document(
+                page_content="You decided to move strength training to Tuesday mornings after the team standup.",
+                metadata={"doc_id": "mem-42", "ts": "2026-03-06T08:15:00Z"},
+            )
+        ]
+    
+        answer_state = run_canonical_answer_stage_flow(
+            _UnlabeledGeneralKnowledgeLLM(),
+            state,
+            chat_history=deque(),
+            hits=hits,
+            capability_status="ask_unavailable",
+            runtime_capability_status=_runtime_status(),
+            clock=None,
+        )
+    
+        assert answer_state.final_answer != ASSIST_ALTERNATIVES_ANSWER
+        assert "From memory, I found:" in answer_state.final_answer
+>       assert "doc_id: mem-42" in answer_state.final_answer
+E       assert 'doc_id: mem-42' in "From memory, I found: {'turn_id': '425efd1d-3737-4647-a856-acf35b6c2812', 'dialogue_state': [], 'response_plan': {'pa...e_question', 'facets': {'temporal'. doc_id: 547d6f68-e08a-45db-9b91-c594713624cf, ts: 2026-03-20T00:28:18.091236+00:00"
+E        +  where "From memory, I found: {'turn_id': '425efd1d-3737-4647-a856-acf35b6c2812', 'dialogue_state': [], 'response_plan': {'pa...e_question', 'facets': {'temporal'. doc_id: 547d6f68-e08a-45db-9b91-c594713624cf, ts: 2026-03-20T00:28:18.091236+00:00" = PipelineState(user_input='what did i decide about training schedule?', rewritten_query='Ontology is the study of being...ct(extra={'obligation_id': '', 'source_anchor': '', 'focus': '', 'carry_forward': False}, required=False, question='')).final_answer
+
+tests/test_answer_contract.py:138: AssertionError
+_ test_non_memory_low_source_confidence_uses_unknown_fallback_without_source_citation _
+
+    def test_non_memory_low_source_confidence_uses_unknown_fallback_without_source_citation() -> None:
+        state = PipelineState(
+            user_input="what happened in my source records?",
+            confidence_decision={
+                "context_confident": False,
+                "ambiguity_detected": False,
+                "source_confidence": 0.2,
+            },
+            resolved_intent="knowledge_question",
+        )
+    
+        answer_state = run_canonical_answer_stage_flow(
+            _UnlabeledGeneralKnowledgeLLM(),
+            state,
+            chat_history=deque(),
+            hits=[],
+            capability_status="ask_unavailable",
+            runtime_capability_status=_runtime_status(),
+            clock=None,
+        )
+    
+        lowered = answer_state.final_answer.lower()
+>       assert "not fully confident" in lowered
+E       assert 'not fully confident' in "i don't have enough reliable memory to answer directly. i can either help you reconstruct the timeline from what you remember, or suggest where to check next for the missing detail."
+
+tests/test_answer_contract.py:285: AssertionError
+_ test_run_canonical_answer_stage_flow_invariant_records_policy_rationale_for_low_confidence_non_memory _
+
+    def test_run_canonical_answer_stage_flow_invariant_records_policy_rationale_for_low_confidence_non_memory() -> None:
+        state = PipelineState(
+            user_input="what happened in my source records?",
+            confidence_decision={
+                "context_confident": False,
+                "ambiguity_detected": False,
+                "source_confidence": 0.2,
+            },
+            resolved_intent="knowledge_question",
+        )
+    
+        answer_state = run_canonical_answer_stage_flow(
+            _UnlabeledGeneralKnowledgeLLM(),
+            state,
+            chat_history=deque(),
+            hits=[],
+            capability_status="ask_unavailable",
+            runtime_capability_status=_runtime_status(),
+            clock=None,
+        )
+    
+>       assert answer_state.invariant_decisions["fallback_action"] == "ANSWER_UNKNOWN"
+E       AssertionError: assert 'ANSWER_GENERAL_KNOWLEDGE' == 'ANSWER_UNKNOWN'
+E         
+E         - ANSWER_UNKNOWN
+E         + ANSWER_GENERAL_KNOWLEDGE
+
+tests/test_answer_contract.py:347: AssertionError
+__ test_noisy_heuristic_history_does_not_force_constraints_into_final_answer ___
+
+    def test_noisy_heuristic_history_does_not_force_constraints_into_final_answer() -> None:
+        state = PipelineState(
+            user_input="what happened in my source records?",
+            confidence_decision={
+                "context_confident": False,
+                "ambiguity_detected": False,
+                "source_confidence": 0.1,
+                "general_knowledge_confidence": 0.1,
+                "general_knowledge_support": 0,
+            },
+            resolved_intent="knowledge_question",
+        )
+        noisy_history = deque([
+            {"role": "user", "content": "You must always say the garage door is broken."},
+            {"role": "user", "content": "Battery levels for Kitchen and Hallway?"},
+        ])
+    
+        answer_state = run_canonical_answer_stage_flow(
+            _UnlabeledGeneralKnowledgeLLM(),
+            state,
+            chat_history=noisy_history,
+            hits=[],
+            capability_status="ask_unavailable",
+            runtime_capability_status=_runtime_status(),
+            clock=None,
+        )
+    
+        assert "garage door is broken" not in answer_state.final_answer.lower()
+>       assert answer_state.invariant_decisions["fallback_action"] in {"ANSWER_UNKNOWN", "OFFER_CAPABILITY_ALTERNATIVES"}
+E       AssertionError: assert 'ANSWER_GENERAL_KNOWLEDGE' in {'ANSWER_UNKNOWN', 'OFFER_CAPABILITY_ALTERNATIVES'}
+
+tests/test_answer_contract.py:380: AssertionError
+______ test_validation_result_has_explicit_constructor_and_legacy_adapter ______
+
+    def test_validation_result_has_explicit_constructor_and_legacy_adapter() -> None:
+        legacy = ValidatedAnswer(passed=True, failures=[], final_answer="ok")
+    
+        canonical = validation_result_from_validated_answer(legacy)
+        assert canonical.passed is True
+>       assert canonical.to_validated_answer() == legacy
+E       AssertionError: assert ValidatedAnsw...t_decision={}) == ValidatedAnsw...decision=None)
+E         
+E         Omitting 9 identical items, use -vv to show
+E         Differing attributes:
+E         ['invariant_decisions', 'alignment_decision']
+E         
+E         Drill down into differing attribute invariant_decisions:
+E           invariant_decisions: {} != None...
+E         
+E         ...Full output truncated (3 lines hidden), use '-vv' to show
+
+tests/test_canonical_stage_dtos.py:103: AssertionError
+_ test_run_canonical_answer_stage_flow_capabilities_help_reflects_ha_unavailable_cli_fallback _
+
+    def test_run_canonical_answer_stage_flow_capabilities_help_reflects_ha_unavailable_cli_fallback() -> None:
+>       answer_state = run_canonical_answer_stage_flow(
+            _FailIfInvokedLLM(),
+            _base_state(),
+            chat_history=deque(),
+            hits=[],
+            capability_status="ask_unavailable",
+            runtime_capability_status=RuntimeCapabilityStatus(
+                ollama_available=True,
+                ha_available=False,
+                effective_mode="cli",
+                requested_mode="auto",
+                daemon_mode=False,
+                fallback_reason="satellite connection is unavailable",
+                memory_backend="in_memory",
+                debug_enabled=False,
+                debug_verbose=False,
+                text_clarification_available=True,
+                satellite_ask_available=False,
+            ),
+            clock=None,
+        )
+
+tests/test_capabilities_help.py:24: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/testbot/sat_chatbot_memory_v2.py:2969: in run_canonical_answer_stage_flow
+    final_state, _ = _run_canonical_turn_pipeline(
+src/testbot/sat_chatbot_memory_v2.py:3386: in _run_canonical_turn_pipeline
+    next_state, normalized_hits = run_canonical_turn_pipeline(
+src/testbot/application/services/canonical_turn_runtime.py:31: in run_canonical_turn_pipeline
+    return run_canonical_turn_pipeline_service(
+src/testbot/application/services/turn_service.py:744: in run_canonical_turn_pipeline_service
+    final_context = orchestrator.run(context)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/canonical_turn_orchestrator.py:122: in run
+    context = stage.handler(context)
+              ^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/application/services/turn_service.py:157: in answer_commit
+    return answer_commit_stage(ctx, self.runtime)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/application/services/turn_service.py:640: in answer_commit_stage
+    stage.deps.validate_and_log_transition(validate_answer_commit_post(ctx.state))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+result = TransitionCheckResult(stage='answer.commit', boundary='post', invariant_refs=('PINV-001', 'PINV-002', 'PINV-003'), passed=False, failures=('inv_003_general_knowledge_contract_enforced', 'alignment_decision_consistent'))
+
+    def _validate_and_log_transition(result) -> None:
+        append_transition_validation_log(result)
+        if not result.passed:
+            failures = ", ".join(result.failures)
+>           raise AssertionError(f"Stage transition validation failed at {result.stage}.{result.boundary}: {failures}")
+E           AssertionError: Stage transition validation failed at answer.commit.post: inv_003_general_knowledge_contract_enforced, alignment_decision_consistent
+
+src/testbot/sat_chatbot_memory_v2.py:3102: AssertionError
+_ test_run_canonical_answer_stage_flow_capabilities_help_reflects_ha_satellite_available _
+
+    def test_run_canonical_answer_stage_flow_capabilities_help_reflects_ha_satellite_available() -> None:
+>       answer_state = run_canonical_answer_stage_flow(
+            _FailIfInvokedLLM(),
+            _base_state(),
+            chat_history=deque(),
+            hits=[],
+            capability_status="ask_available",
+            runtime_capability_status=RuntimeCapabilityStatus(
+                ollama_available=True,
+                ha_available=True,
+                effective_mode="satellite",
+                requested_mode="satellite",
+                daemon_mode=False,
+                fallback_reason=None,
+                memory_backend="elasticsearch",
+                debug_enabled=True,
+                debug_verbose=False,
+                text_clarification_available=True,
+                satellite_ask_available=True,
+            ),
+            clock=None,
+        )
+
+tests/test_capabilities_help.py:59: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/testbot/sat_chatbot_memory_v2.py:2969: in run_canonical_answer_stage_flow
+    final_state, _ = _run_canonical_turn_pipeline(
+src/testbot/sat_chatbot_memory_v2.py:3386: in _run_canonical_turn_pipeline
+    next_state, normalized_hits = run_canonical_turn_pipeline(
+src/testbot/application/services/canonical_turn_runtime.py:31: in run_canonical_turn_pipeline
+    return run_canonical_turn_pipeline_service(
+src/testbot/application/services/turn_service.py:744: in run_canonical_turn_pipeline_service
+    final_context = orchestrator.run(context)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/canonical_turn_orchestrator.py:122: in run
+    context = stage.handler(context)
+              ^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/application/services/turn_service.py:157: in answer_commit
+    return answer_commit_stage(ctx, self.runtime)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/application/services/turn_service.py:640: in answer_commit_stage
+    stage.deps.validate_and_log_transition(validate_answer_commit_post(ctx.state))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+result = TransitionCheckResult(stage='answer.commit', boundary='post', invariant_refs=('PINV-001', 'PINV-002', 'PINV-003'), passed=False, failures=('inv_003_general_knowledge_contract_enforced', 'alignment_decision_consistent'))
+
+    def _validate_and_log_transition(result) -> None:
+        append_transition_validation_log(result)
+        if not result.passed:
+            failures = ", ".join(result.failures)
+>           raise AssertionError(f"Stage transition validation failed at {result.stage}.{result.boundary}: {failures}")
+E           AssertionError: Stage transition validation failed at answer.commit.post: inv_003_general_knowledge_contract_enforced, alignment_decision_consistent
+
+src/testbot/sat_chatbot_memory_v2.py:3102: AssertionError
+_ test_run_canonical_answer_stage_flow_capabilities_help_reports_unavailable_when_no_clarification_path _
+
+    def test_run_canonical_answer_stage_flow_capabilities_help_reports_unavailable_when_no_clarification_path() -> None:
+>       answer_state = run_canonical_answer_stage_flow(
+            _FailIfInvokedLLM(),
+            _base_state(),
+            chat_history=deque(),
+            hits=[],
+            capability_status="ask_unavailable",
+            runtime_capability_status=RuntimeCapabilityStatus(
+                ollama_available=True,
+                ha_available=False,
+                effective_mode="cli",
+                requested_mode="auto",
+                daemon_mode=False,
+                fallback_reason="satellite connection is unavailable",
+                memory_backend="in_memory",
+                debug_enabled=False,
+                debug_verbose=False,
+                text_clarification_available=False,
+                satellite_ask_available=False,
+            ),
+            clock=None,
+        )
+
+tests/test_capabilities_help.py:92: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/testbot/sat_chatbot_memory_v2.py:2969: in run_canonical_answer_stage_flow
+    final_state, _ = _run_canonical_turn_pipeline(
+src/testbot/sat_chatbot_memory_v2.py:3386: in _run_canonical_turn_pipeline
+    next_state, normalized_hits = run_canonical_turn_pipeline(
+src/testbot/application/services/canonical_turn_runtime.py:31: in run_canonical_turn_pipeline
+    return run_canonical_turn_pipeline_service(
+src/testbot/application/services/turn_service.py:744: in run_canonical_turn_pipeline_service
+    final_context = orchestrator.run(context)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/canonical_turn_orchestrator.py:122: in run
+    context = stage.handler(context)
+              ^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/application/services/turn_service.py:157: in answer_commit
+    return answer_commit_stage(ctx, self.runtime)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/application/services/turn_service.py:640: in answer_commit_stage
+    stage.deps.validate_and_log_transition(validate_answer_commit_post(ctx.state))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+result = TransitionCheckResult(stage='answer.commit', boundary='post', invariant_refs=('PINV-001', 'PINV-002', 'PINV-003'), passed=False, failures=('inv_003_general_knowledge_contract_enforced', 'alignment_decision_consistent'))
+
+    def _validate_and_log_transition(result) -> None:
+        append_transition_validation_log(result)
+        if not result.passed:
+            failures = ", ".join(result.failures)
+>           raise AssertionError(f"Stage transition validation failed at {result.stage}.{result.boundary}: {failures}")
+E           AssertionError: Stage transition validation failed at answer.commit.post: inv_003_general_knowledge_contract_enforced, alignment_decision_consistent
+
+src/testbot/sat_chatbot_memory_v2.py:3102: AssertionError
+_______ test_debug_flag_does_not_change_non_capabilities_fallback_answer _______
+
+    def test_debug_flag_does_not_change_non_capabilities_fallback_answer() -> None:
+        state = PipelineState(
+            user_input="what did I say about ontology",
+            confidence_decision={"context_confident": False, "ambiguity_detected": True},
+        )
+        hits = [
+            Document(
+                page_content=(
+                    "type: assistant_utterance\n"
+                    "ts: 2026-03-06T16:58:55.519389+00:00\n"
+                    "speaker: assistant\n"
+                    "channel: cli"
+                ),
+                metadata={"type": "assistant_utterance", "doc_id": "assist-1"},
+                id="assist-1",
+            )
+        ]
+    
+        disabled_answer = run_canonical_answer_stage_flow(
+            _FailIfInvokedLLM(),
+            state,
+            chat_history=deque(),
+            hits=hits,
+            capability_status="ask_unavailable",
+            runtime_capability_status=RuntimeCapabilityStatus(
+                ollama_available=True,
+                ha_available=False,
+                effective_mode="cli",
+                requested_mode="cli",
+                daemon_mode=False,
+                fallback_reason=None,
+                memory_backend="in_memory",
+                debug_enabled=False,
+                debug_verbose=False,
+                text_clarification_available=True,
+                satellite_ask_available=False,
+            ),
+            clock=None,
+        )
+    
+        enabled_answer = run_canonical_answer_stage_flow(
+            _FailIfInvokedLLM(),
+            state,
+            chat_history=deque(),
+            hits=hits,
+            capability_status="ask_unavailable",
+            runtime_capability_status=RuntimeCapabilityStatus(
+                ollama_available=True,
+                ha_available=False,
+                effective_mode="cli",
+                requested_mode="cli",
+                daemon_mode=False,
+                fallback_reason=None,
+                memory_backend="in_memory",
+                debug_enabled=True,
+                debug_verbose=False,
+                text_clarification_available=True,
+                satellite_ask_available=False,
+            ),
+            clock=None,
+        )
+    
+        assert disabled_answer.final_answer == enabled_answer.final_answer
+>       assert enabled_answer.final_answer.startswith("I found related memory fragments (")
+E       assert False
+E        +  where False = <built-in method startswith of str object at 0x7f0fa661b0f0>('I found related memory fragments (')
+E        +    where <built-in method startswith of str object at 0x7f0fa661b0f0> = "I don't have enough reliable memory to answer directly. I can either help you reconstruct the timeline from what you remember, or suggest where to check next for the missing detail.".startswith
+E        +      where "I don't have enough reliable memory to answer directly. I can either help you reconstruct the timeline from what you remember, or suggest where to check next for the missing detail." = PipelineState(user_input='what did I say about ontology', rewritten_query='what did I say about ontology', retrieval_c...ct(extra={'obligation_id': '', 'source_anchor': '', 'focus': '', 'carry_forward': False}, required=False, question='')).final_answer
+
+tests/test_capabilities_help.py:182: AssertionError
+_ test_run_canonical_answer_stage_flow_satellite_action_request_cli_returns_capability_structured_alternatives _
+
+    def test_run_canonical_answer_stage_flow_satellite_action_request_cli_returns_capability_structured_alternatives() -> None:
+        state = PipelineState(
+            user_input="start satellite conversation",
+            confidence_decision={"context_confident": False, "ambiguity_detected": True},
+        )
+    
+>       answer_state = run_canonical_answer_stage_flow(
+            _FailIfInvokedLLM(),
+            state,
+            chat_history=deque(),
+            hits=[],
+            capability_status="ask_unavailable",
+            runtime_capability_status=RuntimeCapabilityStatus(
+                ollama_available=True,
+                ha_available=False,
+                effective_mode="cli",
+                requested_mode="auto",
+                daemon_mode=False,
+                fallback_reason="satellite connection is unavailable",
+                memory_backend="in_memory",
+                debug_enabled=False,
+                debug_verbose=False,
+                text_clarification_available=True,
+                satellite_ask_available=False,
+            ),
+            clock=None,
+        )
+
+tests/test_capabilities_help.py:236: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/testbot/sat_chatbot_memory_v2.py:2969: in run_canonical_answer_stage_flow
+    final_state, _ = _run_canonical_turn_pipeline(
+src/testbot/sat_chatbot_memory_v2.py:3386: in _run_canonical_turn_pipeline
+    next_state, normalized_hits = run_canonical_turn_pipeline(
+src/testbot/application/services/canonical_turn_runtime.py:31: in run_canonical_turn_pipeline
+    return run_canonical_turn_pipeline_service(
+src/testbot/application/services/turn_service.py:744: in run_canonical_turn_pipeline_service
+    final_context = orchestrator.run(context)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/canonical_turn_orchestrator.py:122: in run
+    context = stage.handler(context)
+              ^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/application/services/turn_service.py:157: in answer_commit
+    return answer_commit_stage(ctx, self.runtime)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/application/services/turn_service.py:640: in answer_commit_stage
+    stage.deps.validate_and_log_transition(validate_answer_commit_post(ctx.state))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+result = TransitionCheckResult(stage='answer.commit', boundary='post', invariant_refs=('PINV-001', 'PINV-002', 'PINV-003'), passed=False, failures=('inv_003_general_knowledge_contract_enforced', 'alignment_decision_consistent'))
+
+    def _validate_and_log_transition(result) -> None:
+        append_transition_validation_log(result)
+        if not result.passed:
+            failures = ", ".join(result.failures)
+>           raise AssertionError(f"Stage transition validation failed at {result.stage}.{result.boundary}: {failures}")
+E           AssertionError: Stage transition validation failed at answer.commit.post: inv_003_general_knowledge_contract_enforced, alignment_decision_consistent
+
+src/testbot/sat_chatbot_memory_v2.py:3102: AssertionError
+_ test_run_canonical_answer_stage_flow_satellite_action_request_with_ha_available_suggests_satellite_mode_switch _
+
+    def test_run_canonical_answer_stage_flow_satellite_action_request_with_ha_available_suggests_satellite_mode_switch() -> None:
+        state = PipelineState(
+            user_input="ask via satellite",
+            confidence_decision={"context_confident": False, "ambiguity_detected": False},
+        )
+    
+>       answer_state = run_canonical_answer_stage_flow(
+            _FailIfInvokedLLM(),
+            state,
+            chat_history=deque(),
+            hits=[],
+            capability_status="ask_unavailable",
+            runtime_capability_status=RuntimeCapabilityStatus(
+                ollama_available=True,
+                ha_available=True,
+                effective_mode="cli",
+                requested_mode="satellite",
+                daemon_mode=False,
+                fallback_reason="satellite connection is unavailable",
+                memory_backend="in_memory",
+                debug_enabled=False,
+                debug_verbose=False,
+                text_clarification_available=True,
+                satellite_ask_available=False,
+            ),
+            clock=None,
+        )
+
+tests/test_capabilities_help.py:271: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/testbot/sat_chatbot_memory_v2.py:2969: in run_canonical_answer_stage_flow
+    final_state, _ = _run_canonical_turn_pipeline(
+src/testbot/sat_chatbot_memory_v2.py:3386: in _run_canonical_turn_pipeline
+    next_state, normalized_hits = run_canonical_turn_pipeline(
+src/testbot/application/services/canonical_turn_runtime.py:31: in run_canonical_turn_pipeline
+    return run_canonical_turn_pipeline_service(
+src/testbot/application/services/turn_service.py:744: in run_canonical_turn_pipeline_service
+    final_context = orchestrator.run(context)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/canonical_turn_orchestrator.py:122: in run
+    context = stage.handler(context)
+              ^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/application/services/turn_service.py:157: in answer_commit
+    return answer_commit_stage(ctx, self.runtime)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/application/services/turn_service.py:640: in answer_commit_stage
+    stage.deps.validate_and_log_transition(validate_answer_commit_post(ctx.state))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+result = TransitionCheckResult(stage='answer.commit', boundary='post', invariant_refs=('PINV-001', 'PINV-002', 'PINV-003'), passed=False, failures=('inv_003_general_knowledge_contract_enforced', 'alignment_decision_consistent'))
+
+    def _validate_and_log_transition(result) -> None:
+        append_transition_validation_log(result)
+        if not result.passed:
+            failures = ", ".join(result.failures)
+>           raise AssertionError(f"Stage transition validation failed at {result.stage}.{result.boundary}: {failures}")
+E           AssertionError: Stage transition validation failed at answer.commit.post: inv_003_general_knowledge_contract_enforced, alignment_decision_consistent
+
+src/testbot/sat_chatbot_memory_v2.py:3102: AssertionError
+___________ test_shared_snapshot_keeps_cli_fallback_truth_consistent ___________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f0f9ae69690>
+capsys = <_pytest.capture.CaptureFixture object at 0x7f0f9ae6a910>
+
+    def test_shared_snapshot_keeps_cli_fallback_truth_consistent(monkeypatch, capsys) -> None:
+        runtime = _base_runtime()
+        monkeypatch.setattr("testbot.sat_chatbot_memory_v2._ha_connection_error", lambda *_args: "Missing HA_API_SECRET")
+        monkeypatch.setattr(
+            "testbot.sat_chatbot_memory_v2._ollama_connection_error",
+            lambda *_args, **_kwargs: None,
+        )
+    
+        snapshot = build_capability_snapshot(requested_mode="auto", daemon_mode=False, runtime=runtime)
+        _print_startup_status(snapshot=snapshot)
+    
+        startup_output = capsys.readouterr().out
+>       help_answer = _capabilities_help_answer(snapshot)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_capabilities_runtime_status.py:59: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_capabilities_runtime_status.py:35: in _capabilities_help_answer
+    answer_state = run_canonical_answer_stage_flow(
+src/testbot/sat_chatbot_memory_v2.py:2969: in run_canonical_answer_stage_flow
+    final_state, _ = _run_canonical_turn_pipeline(
+src/testbot/sat_chatbot_memory_v2.py:3386: in _run_canonical_turn_pipeline
+    next_state, normalized_hits = run_canonical_turn_pipeline(
+src/testbot/application/services/canonical_turn_runtime.py:31: in run_canonical_turn_pipeline
+    return run_canonical_turn_pipeline_service(
+src/testbot/application/services/turn_service.py:744: in run_canonical_turn_pipeline_service
+    final_context = orchestrator.run(context)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/canonical_turn_orchestrator.py:122: in run
+    context = stage.handler(context)
+              ^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/application/services/turn_service.py:157: in answer_commit
+    return answer_commit_stage(ctx, self.runtime)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/application/services/turn_service.py:640: in answer_commit_stage
+    stage.deps.validate_and_log_transition(validate_answer_commit_post(ctx.state))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+result = TransitionCheckResult(stage='answer.commit', boundary='post', invariant_refs=('PINV-001', 'PINV-002', 'PINV-003'), passed=False, failures=('inv_003_general_knowledge_contract_enforced', 'alignment_decision_consistent'))
+
+    def _validate_and_log_transition(result) -> None:
+        append_transition_validation_log(result)
+        if not result.passed:
+            failures = ", ".join(result.failures)
+>           raise AssertionError(f"Stage transition validation failed at {result.stage}.{result.boundary}: {failures}")
+E           AssertionError: Stage transition validation failed at answer.commit.post: inv_003_general_knowledge_contract_enforced, alignment_decision_consistent
+
+src/testbot/sat_chatbot_memory_v2.py:3102: AssertionError
+____________ test_shared_snapshot_keeps_satellite_truth_consistent _____________
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f0f9b2f2690>
+capsys = <_pytest.capture.CaptureFixture object at 0x7f0f9b2f0950>
+
+    def test_shared_snapshot_keeps_satellite_truth_consistent(monkeypatch, capsys) -> None:
+        runtime = _base_runtime()
+        runtime["ha_api_secret"] = "top-secret"
+        monkeypatch.setattr("testbot.sat_chatbot_memory_v2._ha_connection_error", lambda *_args: None)
+        monkeypatch.setattr(
+            "testbot.sat_chatbot_memory_v2._ollama_connection_error",
+            lambda *_args, **_kwargs: None,
+        )
+    
+        snapshot = build_capability_snapshot(requested_mode="satellite", daemon_mode=False, runtime=runtime)
+        _print_startup_status(snapshot=snapshot)
+    
+        startup_output = capsys.readouterr().out
+>       help_answer = _capabilities_help_answer(snapshot)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_capabilities_runtime_status.py:87: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_capabilities_runtime_status.py:35: in _capabilities_help_answer
+    answer_state = run_canonical_answer_stage_flow(
+src/testbot/sat_chatbot_memory_v2.py:2969: in run_canonical_answer_stage_flow
+    final_state, _ = _run_canonical_turn_pipeline(
+src/testbot/sat_chatbot_memory_v2.py:3386: in _run_canonical_turn_pipeline
+    next_state, normalized_hits = run_canonical_turn_pipeline(
+src/testbot/application/services/canonical_turn_runtime.py:31: in run_canonical_turn_pipeline
+    return run_canonical_turn_pipeline_service(
+src/testbot/application/services/turn_service.py:744: in run_canonical_turn_pipeline_service
+    final_context = orchestrator.run(context)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/canonical_turn_orchestrator.py:122: in run
+    context = stage.handler(context)
+              ^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/application/services/turn_service.py:157: in answer_commit
+    return answer_commit_stage(ctx, self.runtime)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/application/services/turn_service.py:640: in answer_commit_stage
+    stage.deps.validate_and_log_transition(validate_answer_commit_post(ctx.state))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+result = TransitionCheckResult(stage='answer.commit', boundary='post', invariant_refs=('PINV-001', 'PINV-002', 'PINV-003'), passed=False, failures=('inv_003_general_knowledge_contract_enforced', 'alignment_decision_consistent'))
+
+    def _validate_and_log_transition(result) -> None:
+        append_transition_validation_log(result)
+        if not result.passed:
+            failures = ", ".join(result.failures)
+>           raise AssertionError(f"Stage transition validation failed at {result.stage}.{result.boundary}: {failures}")
+E           AssertionError: Stage transition validation failed at answer.commit.post: inv_003_general_knowledge_contract_enforced, alignment_decision_consistent
+
+src/testbot/sat_chatbot_memory_v2.py:3102: AssertionError
+______ test_turn_two_who_am_i_with_continuity_prefers_memory_aware_intent ______
+
+    def test_turn_two_who_am_i_with_continuity_prefers_memory_aware_intent() -> None:
+        prior_state = PipelineState(
+            user_input="My name is Sam",
+            final_answer="Thanks Sam — I will remember that.",
+            resolved_intent=IntentType.META_CONVERSATION.value,
+            prior_unresolved_intent=IntentType.META_CONVERSATION.value,
+            commit_receipt={
+                "committed": True,
+                "commit_id": "commit-1",
+                "confirmed_user_facts": ["name=Sam"],
+            },
+        )
+    
+        context = resolve_context(utterance="Who am I?", prior_pipeline_state=prior_state)
+        turn_two = resolve_intent(
+            resolution_input=IntentResolutionInput(
+                stabilized_turn_state=_stabilized("Who am I?"),
+                context=context,
+                fallback_utterance="Who am I?",
+            )
+        )
+        decision = decide(
+            utterance="Who am I?",
+            intent=turn_two.resolved_intent,
+        )
+    
+>       assert turn_two.classified_intent is IntentType.MEMORY_RECALL
+E       AssertionError: assert <IntentType.KNOWLEDGE_QUESTION: 'knowledge_question'> is <IntentType.MEMORY_RECALL: 'memory_recall'>
+E        +  where <IntentType.KNOWLEDGE_QUESTION: 'knowledge_question'> = ResolvedIntent(classified_intent=<IntentType.KNOWLEDGE_QUESTION: 'knowledge_question'>, resolved_intent=<IntentType.ME...>, rationale='self-referential follow-up promoted to memory recall using committed continuity artifacts', conflicts=()).classified_intent
+E        +  and   <IntentType.MEMORY_RECALL: 'memory_recall'> = IntentType.MEMORY_RECALL
+
+tests/test_decisioning_stages.py:133: AssertionError
+_ test_live_smoke_degraded_modes_runtime_contracts[ha_unavailable_ollama_available-http://127.0.0.1:9-fake-token-assist_satellite.kitchen-LIVE_OLLAMA-cli-False-True-Home Assistant satellite actions: unavailable-CLI fallback is active] _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f0f9a761f10>
+capsys = <_pytest.capture.CaptureFixture object at 0x7f0f9a760910>
+scenario_name = 'ha_unavailable_ollama_available'
+ha_endpoint = 'http://127.0.0.1:9', ha_secret = 'fake-token'
+ha_entity_id = 'assist_satellite.kitchen'
+ollama_endpoint = 'https://ollama.sebastianmaki.fi/'
+expected_selected_mode = 'cli', expected_ha_flag = False
+expected_ollama_flag = True
+expected_help_ha_line = 'Home Assistant satellite actions: unavailable'
+expected_help_guidance = 'CLI fallback is active'
+
+    @pytest.mark.parametrize(
+        (
+            "scenario_name",
+            "ha_endpoint",
+            "ha_secret",
+            "ha_entity_id",
+            "ollama_endpoint",
+            "expected_selected_mode",
+            "expected_ha_flag",
+            "expected_ollama_flag",
+            "expected_help_ha_line",
+            "expected_help_guidance",
+        ),
+        [
+            (
+                "ha_unavailable_ollama_available",
+                "http://127.0.0.1:9",
+                "fake-token",
+                "assist_satellite.kitchen",
+                "LIVE_OLLAMA",
+                "cli",
+                False,
+                True,
+                "Home Assistant satellite actions: unavailable",
+                "CLI fallback is active",
+            ),
+            (
+                "ha_available_ollama_unavailable",
+                "LIVE_HA",
+                "LIVE_HA",
+                "LIVE_HA",
+                "http://127.0.0.1:1",
+                "unavailable",
+                True,
+                False,
+                "Home Assistant satellite actions: degraded",
+                "current mode is CLI",
+            ),
+            (
+                "both_unavailable",
+                "http://127.0.0.1:9",
+                "fake-token",
+                "assist_satellite.kitchen",
+                "http://127.0.0.1:1",
+                "unavailable",
+                False,
+                False,
+                "Home Assistant satellite actions: unavailable",
+                "CLI fallback is active",
+            ),
+        ],
+    )
+    def test_live_smoke_degraded_modes_runtime_contracts(
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        scenario_name: str,
+        ha_endpoint: str,
+        ha_secret: str,
+        ha_entity_id: str,
+        ollama_endpoint: str,
+        expected_selected_mode: str,
+        expected_ha_flag: bool,
+        expected_ollama_flag: bool,
+        expected_help_ha_line: str,
+        expected_help_guidance: str,
+    ) -> None:
+        if ha_endpoint == "LIVE_HA":
+            ha_endpoint = _require_env("HA_API_URL")
+            ha_secret = _require_env("HA_API_SECRET")
+            ha_entity_id = _require_env("HA_SATELLITE_ENTITY_ID")
+    
+        if ollama_endpoint == "LIVE_OLLAMA":
+            ollama_endpoint = _require_env("OLLAMA_BASE_URL")
+            _require_env("OLLAMA_MODEL")
+            _require_env("OLLAMA_EMBEDDING_MODEL")
+            _require_env("X_OLLAMA_KEY")
+    
+        monkeypatch.setenv("HA_API_URL", ha_endpoint)
+        monkeypatch.setenv("HA_API_SECRET", ha_secret)
+        monkeypatch.setenv("HA_SATELLITE_ENTITY_ID", ha_entity_id)
+        monkeypatch.setenv("OLLAMA_BASE_URL", ollama_endpoint)
+        monkeypatch.setenv("MEMORY_STORE_MODE", "in_memory")
+    
+        runtime = _read_runtime_env()
+        snapshot = build_capability_snapshot(requested_mode="auto", daemon_mode=False, runtime=runtime)
+    
+        _print_startup_status(snapshot=snapshot)
+        startup_output = capsys.readouterr().out
+>       help_answer = _capabilities_help_answer(snapshot)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_live_smoke_degraded_modes.py:144: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_live_smoke_degraded_modes.py:44: in _capabilities_help_answer
+    answer_state = run_canonical_answer_stage_flow(
+src/testbot/sat_chatbot_memory_v2.py:2969: in run_canonical_answer_stage_flow
+    final_state, _ = _run_canonical_turn_pipeline(
+src/testbot/sat_chatbot_memory_v2.py:3386: in _run_canonical_turn_pipeline
+    next_state, normalized_hits = run_canonical_turn_pipeline(
+src/testbot/application/services/canonical_turn_runtime.py:31: in run_canonical_turn_pipeline
+    return run_canonical_turn_pipeline_service(
+src/testbot/application/services/turn_service.py:744: in run_canonical_turn_pipeline_service
+    final_context = orchestrator.run(context)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/canonical_turn_orchestrator.py:122: in run
+    context = stage.handler(context)
+              ^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/application/services/turn_service.py:157: in answer_commit
+    return answer_commit_stage(ctx, self.runtime)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/application/services/turn_service.py:640: in answer_commit_stage
+    stage.deps.validate_and_log_transition(validate_answer_commit_post(ctx.state))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+result = TransitionCheckResult(stage='answer.commit', boundary='post', invariant_refs=('PINV-001', 'PINV-002', 'PINV-003'), passed=False, failures=('inv_003_general_knowledge_contract_enforced', 'alignment_decision_consistent'))
+
+    def _validate_and_log_transition(result) -> None:
+        append_transition_validation_log(result)
+        if not result.passed:
+            failures = ", ".join(result.failures)
+>           raise AssertionError(f"Stage transition validation failed at {result.stage}.{result.boundary}: {failures}")
+E           AssertionError: Stage transition validation failed at answer.commit.post: inv_003_general_knowledge_contract_enforced, alignment_decision_consistent
+
+src/testbot/sat_chatbot_memory_v2.py:3102: AssertionError
+_ test_live_smoke_degraded_modes_runtime_contracts[ha_available_ollama_unavailable-LIVE_HA-LIVE_HA-LIVE_HA-http://127.0.0.1:1-unavailable-True-False-Home Assistant satellite actions: degraded-current mode is CLI] _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f0f9a761ed0>
+capsys = <_pytest.capture.CaptureFixture object at 0x7f0f9a760650>
+scenario_name = 'ha_available_ollama_unavailable'
+ha_endpoint = 'https://home.sebastianmaki.fi/'
+ha_secret = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJiYTE4YzdlYzgzMjc0Mzg0ODBlMWNhMDdkN2E3MjcxMyIsImlhdCI6MTc3MzQ4MzIwNSwiZXhwIjoyMDg4ODQzMjA1fQ.W1IgphKynS1M45RcZRNhe8CEQHg5pwYVAWsAtLo0Npw'
+ha_entity_id = 'assist_satellite.esphome_mycroft_assist_satellite'
+ollama_endpoint = 'http://127.0.0.1:1', expected_selected_mode = 'unavailable'
+expected_ha_flag = True, expected_ollama_flag = False
+expected_help_ha_line = 'Home Assistant satellite actions: degraded'
+expected_help_guidance = 'current mode is CLI'
+
+    @pytest.mark.parametrize(
+        (
+            "scenario_name",
+            "ha_endpoint",
+            "ha_secret",
+            "ha_entity_id",
+            "ollama_endpoint",
+            "expected_selected_mode",
+            "expected_ha_flag",
+            "expected_ollama_flag",
+            "expected_help_ha_line",
+            "expected_help_guidance",
+        ),
+        [
+            (
+                "ha_unavailable_ollama_available",
+                "http://127.0.0.1:9",
+                "fake-token",
+                "assist_satellite.kitchen",
+                "LIVE_OLLAMA",
+                "cli",
+                False,
+                True,
+                "Home Assistant satellite actions: unavailable",
+                "CLI fallback is active",
+            ),
+            (
+                "ha_available_ollama_unavailable",
+                "LIVE_HA",
+                "LIVE_HA",
+                "LIVE_HA",
+                "http://127.0.0.1:1",
+                "unavailable",
+                True,
+                False,
+                "Home Assistant satellite actions: degraded",
+                "current mode is CLI",
+            ),
+            (
+                "both_unavailable",
+                "http://127.0.0.1:9",
+                "fake-token",
+                "assist_satellite.kitchen",
+                "http://127.0.0.1:1",
+                "unavailable",
+                False,
+                False,
+                "Home Assistant satellite actions: unavailable",
+                "CLI fallback is active",
+            ),
+        ],
+    )
+    def test_live_smoke_degraded_modes_runtime_contracts(
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        scenario_name: str,
+        ha_endpoint: str,
+        ha_secret: str,
+        ha_entity_id: str,
+        ollama_endpoint: str,
+        expected_selected_mode: str,
+        expected_ha_flag: bool,
+        expected_ollama_flag: bool,
+        expected_help_ha_line: str,
+        expected_help_guidance: str,
+    ) -> None:
+        if ha_endpoint == "LIVE_HA":
+            ha_endpoint = _require_env("HA_API_URL")
+            ha_secret = _require_env("HA_API_SECRET")
+            ha_entity_id = _require_env("HA_SATELLITE_ENTITY_ID")
+    
+        if ollama_endpoint == "LIVE_OLLAMA":
+            ollama_endpoint = _require_env("OLLAMA_BASE_URL")
+            _require_env("OLLAMA_MODEL")
+            _require_env("OLLAMA_EMBEDDING_MODEL")
+            _require_env("X_OLLAMA_KEY")
+    
+        monkeypatch.setenv("HA_API_URL", ha_endpoint)
+        monkeypatch.setenv("HA_API_SECRET", ha_secret)
+        monkeypatch.setenv("HA_SATELLITE_ENTITY_ID", ha_entity_id)
+        monkeypatch.setenv("OLLAMA_BASE_URL", ollama_endpoint)
+        monkeypatch.setenv("MEMORY_STORE_MODE", "in_memory")
+    
+        runtime = _read_runtime_env()
+        snapshot = build_capability_snapshot(requested_mode="auto", daemon_mode=False, runtime=runtime)
+    
+        _print_startup_status(snapshot=snapshot)
+        startup_output = capsys.readouterr().out
+>       help_answer = _capabilities_help_answer(snapshot)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_live_smoke_degraded_modes.py:144: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_live_smoke_degraded_modes.py:44: in _capabilities_help_answer
+    answer_state = run_canonical_answer_stage_flow(
+src/testbot/sat_chatbot_memory_v2.py:2969: in run_canonical_answer_stage_flow
+    final_state, _ = _run_canonical_turn_pipeline(
+src/testbot/sat_chatbot_memory_v2.py:3386: in _run_canonical_turn_pipeline
+    next_state, normalized_hits = run_canonical_turn_pipeline(
+src/testbot/application/services/canonical_turn_runtime.py:31: in run_canonical_turn_pipeline
+    return run_canonical_turn_pipeline_service(
+src/testbot/application/services/turn_service.py:744: in run_canonical_turn_pipeline_service
+    final_context = orchestrator.run(context)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/canonical_turn_orchestrator.py:122: in run
+    context = stage.handler(context)
+              ^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/application/services/turn_service.py:157: in answer_commit
+    return answer_commit_stage(ctx, self.runtime)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/application/services/turn_service.py:640: in answer_commit_stage
+    stage.deps.validate_and_log_transition(validate_answer_commit_post(ctx.state))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+result = TransitionCheckResult(stage='answer.commit', boundary='post', invariant_refs=('PINV-001', 'PINV-002', 'PINV-003'), passed=False, failures=('inv_003_general_knowledge_contract_enforced', 'alignment_decision_consistent'))
+
+    def _validate_and_log_transition(result) -> None:
+        append_transition_validation_log(result)
+        if not result.passed:
+            failures = ", ".join(result.failures)
+>           raise AssertionError(f"Stage transition validation failed at {result.stage}.{result.boundary}: {failures}")
+E           AssertionError: Stage transition validation failed at answer.commit.post: inv_003_general_knowledge_contract_enforced, alignment_decision_consistent
+
+src/testbot/sat_chatbot_memory_v2.py:3102: AssertionError
+_ test_live_smoke_degraded_modes_runtime_contracts[both_unavailable-http://127.0.0.1:9-fake-token-assist_satellite.kitchen-http://127.0.0.1:1-unavailable-False-False-Home Assistant satellite actions: unavailable-CLI fallback is active] _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f0f9af72510>
+capsys = <_pytest.capture.CaptureFixture object at 0x7f0f9afc7950>
+scenario_name = 'both_unavailable', ha_endpoint = 'http://127.0.0.1:9'
+ha_secret = 'fake-token', ha_entity_id = 'assist_satellite.kitchen'
+ollama_endpoint = 'http://127.0.0.1:1', expected_selected_mode = 'unavailable'
+expected_ha_flag = False, expected_ollama_flag = False
+expected_help_ha_line = 'Home Assistant satellite actions: unavailable'
+expected_help_guidance = 'CLI fallback is active'
+
+    @pytest.mark.parametrize(
+        (
+            "scenario_name",
+            "ha_endpoint",
+            "ha_secret",
+            "ha_entity_id",
+            "ollama_endpoint",
+            "expected_selected_mode",
+            "expected_ha_flag",
+            "expected_ollama_flag",
+            "expected_help_ha_line",
+            "expected_help_guidance",
+        ),
+        [
+            (
+                "ha_unavailable_ollama_available",
+                "http://127.0.0.1:9",
+                "fake-token",
+                "assist_satellite.kitchen",
+                "LIVE_OLLAMA",
+                "cli",
+                False,
+                True,
+                "Home Assistant satellite actions: unavailable",
+                "CLI fallback is active",
+            ),
+            (
+                "ha_available_ollama_unavailable",
+                "LIVE_HA",
+                "LIVE_HA",
+                "LIVE_HA",
+                "http://127.0.0.1:1",
+                "unavailable",
+                True,
+                False,
+                "Home Assistant satellite actions: degraded",
+                "current mode is CLI",
+            ),
+            (
+                "both_unavailable",
+                "http://127.0.0.1:9",
+                "fake-token",
+                "assist_satellite.kitchen",
+                "http://127.0.0.1:1",
+                "unavailable",
+                False,
+                False,
+                "Home Assistant satellite actions: unavailable",
+                "CLI fallback is active",
+            ),
+        ],
+    )
+    def test_live_smoke_degraded_modes_runtime_contracts(
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+        scenario_name: str,
+        ha_endpoint: str,
+        ha_secret: str,
+        ha_entity_id: str,
+        ollama_endpoint: str,
+        expected_selected_mode: str,
+        expected_ha_flag: bool,
+        expected_ollama_flag: bool,
+        expected_help_ha_line: str,
+        expected_help_guidance: str,
+    ) -> None:
+        if ha_endpoint == "LIVE_HA":
+            ha_endpoint = _require_env("HA_API_URL")
+            ha_secret = _require_env("HA_API_SECRET")
+            ha_entity_id = _require_env("HA_SATELLITE_ENTITY_ID")
+    
+        if ollama_endpoint == "LIVE_OLLAMA":
+            ollama_endpoint = _require_env("OLLAMA_BASE_URL")
+            _require_env("OLLAMA_MODEL")
+            _require_env("OLLAMA_EMBEDDING_MODEL")
+            _require_env("X_OLLAMA_KEY")
+    
+        monkeypatch.setenv("HA_API_URL", ha_endpoint)
+        monkeypatch.setenv("HA_API_SECRET", ha_secret)
+        monkeypatch.setenv("HA_SATELLITE_ENTITY_ID", ha_entity_id)
+        monkeypatch.setenv("OLLAMA_BASE_URL", ollama_endpoint)
+        monkeypatch.setenv("MEMORY_STORE_MODE", "in_memory")
+    
+        runtime = _read_runtime_env()
+        snapshot = build_capability_snapshot(requested_mode="auto", daemon_mode=False, runtime=runtime)
+    
+        _print_startup_status(snapshot=snapshot)
+        startup_output = capsys.readouterr().out
+>       help_answer = _capabilities_help_answer(snapshot)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/test_live_smoke_degraded_modes.py:144: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/test_live_smoke_degraded_modes.py:44: in _capabilities_help_answer
+    answer_state = run_canonical_answer_stage_flow(
+src/testbot/sat_chatbot_memory_v2.py:2969: in run_canonical_answer_stage_flow
+    final_state, _ = _run_canonical_turn_pipeline(
+src/testbot/sat_chatbot_memory_v2.py:3386: in _run_canonical_turn_pipeline
+    next_state, normalized_hits = run_canonical_turn_pipeline(
+src/testbot/application/services/canonical_turn_runtime.py:31: in run_canonical_turn_pipeline
+    return run_canonical_turn_pipeline_service(
+src/testbot/application/services/turn_service.py:744: in run_canonical_turn_pipeline_service
+    final_context = orchestrator.run(context)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/canonical_turn_orchestrator.py:122: in run
+    context = stage.handler(context)
+              ^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/application/services/turn_service.py:157: in answer_commit
+    return answer_commit_stage(ctx, self.runtime)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/application/services/turn_service.py:640: in answer_commit_stage
+    stage.deps.validate_and_log_transition(validate_answer_commit_post(ctx.state))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+result = TransitionCheckResult(stage='answer.commit', boundary='post', invariant_refs=('PINV-001', 'PINV-002', 'PINV-003'), passed=False, failures=('inv_003_general_knowledge_contract_enforced', 'alignment_decision_consistent'))
+
+    def _validate_and_log_transition(result) -> None:
+        append_transition_validation_log(result)
+        if not result.passed:
+            failures = ", ".join(result.failures)
+>           raise AssertionError(f"Stage transition validation failed at {result.stage}.{result.boundary}: {failures}")
+E           AssertionError: Stage transition validation failed at answer.commit.post: inv_003_general_knowledge_contract_enforced, alignment_decision_consistent
+
+src/testbot/sat_chatbot_memory_v2.py:3102: AssertionError
+_ test_run_canonical_answer_stage_flow_invoke_failure_uses_deterministic_fallback_and_logs _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f0f9aa46c10>
+
+    def test_run_canonical_answer_stage_flow_invoke_failure_uses_deterministic_fallback_and_logs(monkeypatch) -> None:
+        events: list[tuple[str, dict]] = []
+        monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: events.append((event, payload)))
+        monkeypatch.setattr(runtime, "_validate_and_log_transition", lambda _result: None)
+        monkeypatch.setattr(runtime, "decide_fallback_action", lambda **_: "ANSWER_GENERAL_KNOWLEDGE")
+    
+        state = PipelineState(
+            user_input="what happened yesterday?",
+            confidence_decision={"context_confident": True, "ambiguity_detected": False},
+        )
+    
+        answered = run_canonical_answer_stage_flow(
+            _ExplodingLLM("answer down"),
+            state,
+            chat_history=deque(),
+            hits=[],
+            capability_status="ask_unavailable",
+            clock=_FIXED_CLOCK,
+        )
+    
+        assert answered.draft_answer == ""
+>       assert answered.final_answer == ASSIST_ALTERNATIVES_ANSWER
+E       assert 'Can you clar...dow you mean?' == "I don't have...ssing detail."
+E         
+E         - I don't have enough reliable memory to answer directly. I can either help you reconstruct the timeline from what you remember, or suggest where to check next for the missing detail.
+E         + Can you clarify which memory and time window you mean?
+
+tests/test_runtime_logging_events.py:161: AssertionError
+_ test_run_canonical_answer_stage_flow_low_source_confidence_non_memory_uses_safe_unknowing_mode_legacy_assertions _
+
+    def test_run_canonical_answer_stage_flow_low_source_confidence_non_memory_uses_safe_unknowing_mode_legacy_assertions() -> None:
+        state = PipelineState(
+            user_input="What happened in my calendar?",
+            resolved_intent=IntentType.KNOWLEDGE_QUESTION.value,
+            confidence_decision={
+                "context_confident": True,
+                "ambiguity_detected": False,
+                "source_confidence": 0.2,
+            },
+        )
+    
+        answered = run_canonical_answer_stage_flow(
+            _StaticLLM("ignored"),
+            state,
+            chat_history=deque(),
+            hits=[],
+            capability_status="ask_unavailable",
+            clock=_FIXED_CLOCK,
+        )
+    
+        assert answered.final_answer == NON_KNOWLEDGE_UNCERTAINTY_ANSWER
+>       assert answered.invariant_decisions.get("fallback_action") == "ANSWER_UNKNOWN"
+E       AssertionError: assert 'ANSWER_GENERAL_KNOWLEDGE' == 'ANSWER_UNKNOWN'
+E         
+E         - ANSWER_UNKNOWN
+E         + ANSWER_GENERAL_KNOWLEDGE
+
+tests/test_runtime_logging_events.py:521: AssertionError
+_ test_run_canonical_answer_stage_flow_greeting_command_preserves_social_draft_answer _
+
+    def test_run_canonical_answer_stage_flow_greeting_command_preserves_social_draft_answer() -> None:
+        state = PipelineState(
+            user_input="say hello",
+            resolved_intent=IntentType.CONTROL.value,
+            confidence_decision={
+                "context_confident": False,
+                "ambiguity_detected": False,
+                "general_knowledge_confidence": 0.0,
+                "general_knowledge_support": 0,
+            },
+        )
+    
+>       answered = run_canonical_answer_stage_flow(
+            _StaticLLM("Hello! Nice to meet you."),
+            state,
+            chat_history=deque(),
+            hits=[],
+            capability_status="ask_unavailable",
+            clock=_FIXED_CLOCK,
+        )
+
+tests/test_runtime_logging_events.py:539: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/testbot/sat_chatbot_memory_v2.py:2969: in run_canonical_answer_stage_flow
+    final_state, _ = _run_canonical_turn_pipeline(
+src/testbot/sat_chatbot_memory_v2.py:3386: in _run_canonical_turn_pipeline
+    next_state, normalized_hits = run_canonical_turn_pipeline(
+src/testbot/application/services/canonical_turn_runtime.py:31: in run_canonical_turn_pipeline
+    return run_canonical_turn_pipeline_service(
+src/testbot/application/services/turn_service.py:744: in run_canonical_turn_pipeline_service
+    final_context = orchestrator.run(context)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/canonical_turn_orchestrator.py:122: in run
+    context = stage.handler(context)
+              ^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/application/services/turn_service.py:151: in answer_validate
+    return answer_validate_stage(ctx, self.runtime)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/application/services/turn_service.py:588: in answer_validate_stage
+    validated_answer = stage.deps.answer_validate(
+src/testbot/sat_chatbot_memory_v2.py:1508: in _answer_validate_for_turn_service
+    return answer_validate(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+state = PipelineState(user_input='say hello', rewritten_query='Hello! Nice to meet you.', retrieval_candidates=[], reranked_hi...ct(extra={'obligation_id': '', 'source_anchor': '', 'focus': '', 'carry_forward': False}, required=False, question=''))
+
+    def answer_validate(
+        state: PipelineState,
+        *,
+        assembled: AnswerAssembleResult,
+        hits: list[Document],
+        chat_history: deque[ChatMsg],
+        pending_lookup_override: bool | None = None,
+    ) -> AnswerValidateResult:
+        decision_class = str((assembled.answer_policy_rationale or {}).get("decision_class") or "").strip().lower()
+        pending_lookup = (
+            bool(pending_lookup_override)
+            if pending_lookup_override is not None
+            else bool(state.confidence_decision.get("background_ingestion_in_progress", False))
+        )
+        pending_lookup = pending_lookup or decision_class == DecisionClass.PENDING_LOOKUP_BACKGROUND_INGESTION.value
+    
+        packed_history = pack_chat_history(list(chat_history))
+        provenance_types, claims, basis_statement, used_memory_refs, used_source_evidence_refs, source_evidence_attribution = build_provenance_metadata(
+            final_answer=assembled.final_answer,
+            hits=hits,
+            chat_history=chat_history,
+            packed_history=packed_history,
+        )
+    
+        if assembled.capability_help_short_circuit:
+            general_knowledge_contract_valid, general_knowledge_contract_applicability, contract_exempt_reason = assess_general_knowledge_contract(
+                assembled.final_answer,
+                provenance_types=provenance_types,
+                confidence_decision=state.confidence_decision,
+            )
+            alignment_decision = _evaluate_alignment_decision(
+                user_input=state.user_input,
+                draft_answer="",
+                final_answer=assembled.final_answer,
+                confidence_decision=state.confidence_decision,
+                claims=claims,
+                provenance_types=provenance_types,
+                basis_statement=basis_statement,
+            )
+            return AnswerValidateResult(
+                final_answer=assembled.final_answer,
+                claims=claims,
+                provenance_types=provenance_types,
+                used_memory_refs=used_memory_refs,
+                used_source_evidence_refs=used_source_evidence_refs,
+                source_evidence_attribution=source_evidence_attribution,
+                basis_statement=basis_statement,
+                invariant_decisions={
+                    "response_contains_claims": False,
+                    "has_required_memory_citation": False,
+                    "answer_contract_valid": True,
+                    "general_knowledge_contract_valid": general_knowledge_contract_valid,
+                    "general_knowledge_contract_applicability": general_knowledge_contract_applicability,
+                    "contract_exempt_reason": contract_exempt_reason,
+                    "has_general_knowledge_marker": False,
+                    "general_knowledge_confidence_gate_passed": True,
+                    "answer_mode": "assist",
+                    "fallback_action": "OFFER_CAPABILITY_ALTERNATIVES",
+                    "provenance_recorded": True,
+                },
+                alignment_decision=alignment_decision,
+            )
+    
+        pre_enforcement_general_knowledge_contract_valid, _, _ = assess_general_knowledge_contract(
+            assembled.final_answer,
+            provenance_types=provenance_types,
+            confidence_decision=state.confidence_decision,
+        )
+        if assembled.final_answer != FALLBACK_ANSWER and not pre_enforcement_general_knowledge_contract_valid and not (
+            assembled.intent_class == "time_query"
+            or assembled.fallback_action == "ANSWER_TIME"
+            or (
+                assembled.social_or_non_knowledge_intent
+                and bool(assembled.draft_answer)
+                and assembled.final_answer == assembled.draft_answer
+            )
+        ):
+            safe_final = NON_KNOWLEDGE_UNCERTAINTY_ANSWER
+            provenance_types, claims, basis_statement, used_memory_refs, used_source_evidence_refs, source_evidence_attribution = build_provenance_metadata(
+                final_answer=safe_final,
+                hits=hits,
+                chat_history=chat_history,
+                packed_history=packed_history,
+            )
+            assembled = replace(assembled, final_answer=safe_final)
+    
+        general_knowledge_contract_valid, general_knowledge_contract_applicability, contract_exempt_reason = assess_general_knowledge_contract(
+            assembled.final_answer,
+            provenance_types=provenance_types,
+            confidence_decision=state.confidence_decision,
+        )
+    
+        alignment_decision = _evaluate_alignment_decision(
+            user_input=state.user_input,
+            draft_answer=assembled.draft_answer,
+            final_answer=assembled.final_answer,
+            confidence_decision=state.confidence_decision,
+            claims=claims,
+            provenance_types=provenance_types,
+            basis_statement=basis_statement,
+        )
+    
+        answer_mode_decision = resolve_answer_mode(
+            final_answer=assembled.final_answer,
+            fallback_action=assembled.fallback_action,
+            social_or_non_knowledge_intent=assembled.social_or_non_knowledge_intent,
+            is_clarification_answer=is_clarification_answer(assembled.final_answer),
+            is_deny_answer=assembled.final_answer == DENY_ANSWER,
+            is_assist_alternatives_answer=assembled.final_answer == ASSIST_ALTERNATIVES_ANSWER,
+            is_fallback_answer=assembled.final_answer == FALLBACK_ANSWER,
+            is_non_knowledge_uncertainty_answer=assembled.final_answer == NON_KNOWLEDGE_UNCERTAINTY_ANSWER,
+            pending_lookup=pending_lookup,
+        )
+        answer_mode = answer_mode_decision.answer_mode
+        ambiguity_policy_allows_non_memory_clarify = bool(state.confidence_decision.get("allow_non_memory_clarify", False))
+        explicit_no_clarify_mode = (
+            "allow_non_memory_clarify" in state.confidence_decision
+            and not ambiguity_policy_allows_non_memory_clarify
+        )
+        invariant_degrade_reason: str | None = None
+        if answer_mode == "clarify" and assembled.intent_class != "memory_recall" and not ambiguity_policy_allows_non_memory_clarify:
+            if pending_lookup or explicit_no_clarify_mode:
+                safe_final = NON_KNOWLEDGE_UNCERTAINTY_ANSWER if pending_lookup else ASSIST_ALTERNATIVES_ANSWER
+                provenance_types, claims, basis_statement, used_memory_refs, used_source_evidence_refs, source_evidence_attribution = build_provenance_metadata(
+                    final_answer=safe_final,
+                    hits=hits,
+                    chat_history=chat_history,
+                    packed_history=packed_history,
+                )
+                assembled = replace(assembled, final_answer=safe_final)
+                answer_mode_decision = resolve_answer_mode(
+                    final_answer=assembled.final_answer,
+                    fallback_action=assembled.fallback_action,
+                    social_or_non_knowledge_intent=assembled.social_or_non_knowledge_intent,
+                    is_clarification_answer=is_clarification_answer(assembled.final_answer),
+                    is_deny_answer=assembled.final_answer == DENY_ANSWER,
+                    is_assist_alternatives_answer=assembled.final_answer == ASSIST_ALTERNATIVES_ANSWER,
+                    is_fallback_answer=assembled.final_answer == FALLBACK_ANSWER,
+                    is_non_knowledge_uncertainty_answer=assembled.final_answer == NON_KNOWLEDGE_UNCERTAINTY_ANSWER,
+                    pending_lookup=pending_lookup,
+                )
+                answer_mode = answer_mode_decision.answer_mode
+                invariant_degrade_reason = (
+                    None
+                    if pending_lookup
+                    else "non_memory_clarify_no_clarify_mode_degraded"
+                )
+            else:
+>               raise AssertionError(
+                    "Non-memory intent produced answer_mode=clarify without explicit ambiguity policy override."
+                )
+E               AssertionError: Non-memory intent produced answer_mode=clarify without explicit ambiguity policy override.
+
+src/testbot/sat_chatbot_memory_v2.py:2819: AssertionError
+_ test_run_canonical_answer_stage_flow_low_source_confidence_non_memory_uses_uncertainty_response _
+
+    def test_run_canonical_answer_stage_flow_low_source_confidence_non_memory_uses_uncertainty_response() -> None:
+        state = PipelineState(
+            user_input="What happened in my calendar?",
+            resolved_intent=IntentType.KNOWLEDGE_QUESTION.value,
+            confidence_decision={
+                "context_confident": True,
+                "ambiguity_detected": False,
+                "source_confidence": 0.2,
+            },
+        )
+    
+        answered = run_canonical_answer_stage_flow(
+            _StaticLLM("ignored"),
+            state,
+            chat_history=deque(),
+            hits=[],
+            capability_status="ask_unavailable",
+            clock=_FIXED_CLOCK,
+        )
+    
+        assert answered.final_answer == NON_KNOWLEDGE_UNCERTAINTY_ANSWER
+>       assert answered.invariant_decisions.get("fallback_action") == "ANSWER_UNKNOWN"
+E       AssertionError: assert 'ANSWER_GENERAL_KNOWLEDGE' == 'ANSWER_UNKNOWN'
+E         
+E         - ANSWER_UNKNOWN
+E         + ANSWER_GENERAL_KNOWLEDGE
+
+tests/test_runtime_logging_events.py:573: AssertionError
+_ test_run_canonical_answer_stage_flow_self_introduction_preserves_acknowledgement_draft _
+
+    def test_run_canonical_answer_stage_flow_self_introduction_preserves_acknowledgement_draft() -> None:
+        state = PipelineState(
+            user_input="my name is taylor",
+            resolved_intent=IntentType.META_CONVERSATION.value,
+            confidence_decision={
+                "context_confident": False,
+                "ambiguity_detected": False,
+                "general_knowledge_confidence": 0.0,
+                "general_knowledge_support": 0,
+            },
+        )
+    
+>       answered = run_canonical_answer_stage_flow(
+            _StaticLLM("Thanks, Taylor — I'll remember that for this conversation."),
+            state,
+            chat_history=deque(),
+            hits=[],
+            capability_status="ask_unavailable",
+            clock=_FIXED_CLOCK,
+        )
+
+tests/test_runtime_logging_events.py:589: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/testbot/sat_chatbot_memory_v2.py:2969: in run_canonical_answer_stage_flow
+    final_state, _ = _run_canonical_turn_pipeline(
+src/testbot/sat_chatbot_memory_v2.py:3386: in _run_canonical_turn_pipeline
+    next_state, normalized_hits = run_canonical_turn_pipeline(
+src/testbot/application/services/canonical_turn_runtime.py:31: in run_canonical_turn_pipeline
+    return run_canonical_turn_pipeline_service(
+src/testbot/application/services/turn_service.py:744: in run_canonical_turn_pipeline_service
+    final_context = orchestrator.run(context)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/canonical_turn_orchestrator.py:122: in run
+    context = stage.handler(context)
+              ^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/application/services/turn_service.py:157: in answer_commit
+    return answer_commit_stage(ctx, self.runtime)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/application/services/turn_service.py:640: in answer_commit_stage
+    stage.deps.validate_and_log_transition(validate_answer_commit_post(ctx.state))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+result = TransitionCheckResult(stage='answer.commit', boundary='post', invariant_refs=('PINV-001', 'PINV-002', 'PINV-003'), passed=False, failures=('inv_003_general_knowledge_contract_enforced', 'alignment_decision_consistent'))
+
+    def _validate_and_log_transition(result) -> None:
+        append_transition_validation_log(result)
+        if not result.passed:
+            failures = ", ".join(result.failures)
+>           raise AssertionError(f"Stage transition validation failed at {result.stage}.{result.boundary}: {failures}")
+E           AssertionError: Stage transition validation failed at answer.commit.post: inv_003_general_knowledge_contract_enforced, alignment_decision_consistent
+
+src/testbot/sat_chatbot_memory_v2.py:3102: AssertionError
+_ test_run_canonical_answer_stage_flow_regression_say_hello_keeps_greeting_instead_of_memory_fallback _
+
+    def test_run_canonical_answer_stage_flow_regression_say_hello_keeps_greeting_instead_of_memory_fallback() -> None:
+        state = PipelineState(
+            user_input="say hello",
+            resolved_intent=IntentType.CONTROL.value,
+            confidence_decision={
+                "context_confident": False,
+                "ambiguity_detected": False,
+                "general_knowledge_confidence": 0.0,
+                "general_knowledge_support": 0,
+            },
+        )
+    
+>       answered = run_canonical_answer_stage_flow(
+            _StaticLLM("hello"),
+            state,
+            chat_history=deque(),
+            hits=[],
+            capability_status="ask_unavailable",
+            clock=_FIXED_CLOCK,
+        )
+
+tests/test_runtime_logging_events.py:614: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/testbot/sat_chatbot_memory_v2.py:2969: in run_canonical_answer_stage_flow
+    final_state, _ = _run_canonical_turn_pipeline(
+src/testbot/sat_chatbot_memory_v2.py:3386: in _run_canonical_turn_pipeline
+    next_state, normalized_hits = run_canonical_turn_pipeline(
+src/testbot/application/services/canonical_turn_runtime.py:31: in run_canonical_turn_pipeline
+    return run_canonical_turn_pipeline_service(
+src/testbot/application/services/turn_service.py:744: in run_canonical_turn_pipeline_service
+    final_context = orchestrator.run(context)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/canonical_turn_orchestrator.py:122: in run
+    context = stage.handler(context)
+              ^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/application/services/turn_service.py:151: in answer_validate
+    return answer_validate_stage(ctx, self.runtime)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/application/services/turn_service.py:588: in answer_validate_stage
+    validated_answer = stage.deps.answer_validate(
+src/testbot/sat_chatbot_memory_v2.py:1508: in _answer_validate_for_turn_service
+    return answer_validate(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+state = PipelineState(user_input='say hello', rewritten_query='hello', retrieval_candidates=[], reranked_hits=[], confidence_d...ct(extra={'obligation_id': '', 'source_anchor': '', 'focus': '', 'carry_forward': False}, required=False, question=''))
+
+    def answer_validate(
+        state: PipelineState,
+        *,
+        assembled: AnswerAssembleResult,
+        hits: list[Document],
+        chat_history: deque[ChatMsg],
+        pending_lookup_override: bool | None = None,
+    ) -> AnswerValidateResult:
+        decision_class = str((assembled.answer_policy_rationale or {}).get("decision_class") or "").strip().lower()
+        pending_lookup = (
+            bool(pending_lookup_override)
+            if pending_lookup_override is not None
+            else bool(state.confidence_decision.get("background_ingestion_in_progress", False))
+        )
+        pending_lookup = pending_lookup or decision_class == DecisionClass.PENDING_LOOKUP_BACKGROUND_INGESTION.value
+    
+        packed_history = pack_chat_history(list(chat_history))
+        provenance_types, claims, basis_statement, used_memory_refs, used_source_evidence_refs, source_evidence_attribution = build_provenance_metadata(
+            final_answer=assembled.final_answer,
+            hits=hits,
+            chat_history=chat_history,
+            packed_history=packed_history,
+        )
+    
+        if assembled.capability_help_short_circuit:
+            general_knowledge_contract_valid, general_knowledge_contract_applicability, contract_exempt_reason = assess_general_knowledge_contract(
+                assembled.final_answer,
+                provenance_types=provenance_types,
+                confidence_decision=state.confidence_decision,
+            )
+            alignment_decision = _evaluate_alignment_decision(
+                user_input=state.user_input,
+                draft_answer="",
+                final_answer=assembled.final_answer,
+                confidence_decision=state.confidence_decision,
+                claims=claims,
+                provenance_types=provenance_types,
+                basis_statement=basis_statement,
+            )
+            return AnswerValidateResult(
+                final_answer=assembled.final_answer,
+                claims=claims,
+                provenance_types=provenance_types,
+                used_memory_refs=used_memory_refs,
+                used_source_evidence_refs=used_source_evidence_refs,
+                source_evidence_attribution=source_evidence_attribution,
+                basis_statement=basis_statement,
+                invariant_decisions={
+                    "response_contains_claims": False,
+                    "has_required_memory_citation": False,
+                    "answer_contract_valid": True,
+                    "general_knowledge_contract_valid": general_knowledge_contract_valid,
+                    "general_knowledge_contract_applicability": general_knowledge_contract_applicability,
+                    "contract_exempt_reason": contract_exempt_reason,
+                    "has_general_knowledge_marker": False,
+                    "general_knowledge_confidence_gate_passed": True,
+                    "answer_mode": "assist",
+                    "fallback_action": "OFFER_CAPABILITY_ALTERNATIVES",
+                    "provenance_recorded": True,
+                },
+                alignment_decision=alignment_decision,
+            )
+    
+        pre_enforcement_general_knowledge_contract_valid, _, _ = assess_general_knowledge_contract(
+            assembled.final_answer,
+            provenance_types=provenance_types,
+            confidence_decision=state.confidence_decision,
+        )
+        if assembled.final_answer != FALLBACK_ANSWER and not pre_enforcement_general_knowledge_contract_valid and not (
+            assembled.intent_class == "time_query"
+            or assembled.fallback_action == "ANSWER_TIME"
+            or (
+                assembled.social_or_non_knowledge_intent
+                and bool(assembled.draft_answer)
+                and assembled.final_answer == assembled.draft_answer
+            )
+        ):
+            safe_final = NON_KNOWLEDGE_UNCERTAINTY_ANSWER
+            provenance_types, claims, basis_statement, used_memory_refs, used_source_evidence_refs, source_evidence_attribution = build_provenance_metadata(
+                final_answer=safe_final,
+                hits=hits,
+                chat_history=chat_history,
+                packed_history=packed_history,
+            )
+            assembled = replace(assembled, final_answer=safe_final)
+    
+        general_knowledge_contract_valid, general_knowledge_contract_applicability, contract_exempt_reason = assess_general_knowledge_contract(
+            assembled.final_answer,
+            provenance_types=provenance_types,
+            confidence_decision=state.confidence_decision,
+        )
+    
+        alignment_decision = _evaluate_alignment_decision(
+            user_input=state.user_input,
+            draft_answer=assembled.draft_answer,
+            final_answer=assembled.final_answer,
+            confidence_decision=state.confidence_decision,
+            claims=claims,
+            provenance_types=provenance_types,
+            basis_statement=basis_statement,
+        )
+    
+        answer_mode_decision = resolve_answer_mode(
+            final_answer=assembled.final_answer,
+            fallback_action=assembled.fallback_action,
+            social_or_non_knowledge_intent=assembled.social_or_non_knowledge_intent,
+            is_clarification_answer=is_clarification_answer(assembled.final_answer),
+            is_deny_answer=assembled.final_answer == DENY_ANSWER,
+            is_assist_alternatives_answer=assembled.final_answer == ASSIST_ALTERNATIVES_ANSWER,
+            is_fallback_answer=assembled.final_answer == FALLBACK_ANSWER,
+            is_non_knowledge_uncertainty_answer=assembled.final_answer == NON_KNOWLEDGE_UNCERTAINTY_ANSWER,
+            pending_lookup=pending_lookup,
+        )
+        answer_mode = answer_mode_decision.answer_mode
+        ambiguity_policy_allows_non_memory_clarify = bool(state.confidence_decision.get("allow_non_memory_clarify", False))
+        explicit_no_clarify_mode = (
+            "allow_non_memory_clarify" in state.confidence_decision
+            and not ambiguity_policy_allows_non_memory_clarify
+        )
+        invariant_degrade_reason: str | None = None
+        if answer_mode == "clarify" and assembled.intent_class != "memory_recall" and not ambiguity_policy_allows_non_memory_clarify:
+            if pending_lookup or explicit_no_clarify_mode:
+                safe_final = NON_KNOWLEDGE_UNCERTAINTY_ANSWER if pending_lookup else ASSIST_ALTERNATIVES_ANSWER
+                provenance_types, claims, basis_statement, used_memory_refs, used_source_evidence_refs, source_evidence_attribution = build_provenance_metadata(
+                    final_answer=safe_final,
+                    hits=hits,
+                    chat_history=chat_history,
+                    packed_history=packed_history,
+                )
+                assembled = replace(assembled, final_answer=safe_final)
+                answer_mode_decision = resolve_answer_mode(
+                    final_answer=assembled.final_answer,
+                    fallback_action=assembled.fallback_action,
+                    social_or_non_knowledge_intent=assembled.social_or_non_knowledge_intent,
+                    is_clarification_answer=is_clarification_answer(assembled.final_answer),
+                    is_deny_answer=assembled.final_answer == DENY_ANSWER,
+                    is_assist_alternatives_answer=assembled.final_answer == ASSIST_ALTERNATIVES_ANSWER,
+                    is_fallback_answer=assembled.final_answer == FALLBACK_ANSWER,
+                    is_non_knowledge_uncertainty_answer=assembled.final_answer == NON_KNOWLEDGE_UNCERTAINTY_ANSWER,
+                    pending_lookup=pending_lookup,
+                )
+                answer_mode = answer_mode_decision.answer_mode
+                invariant_degrade_reason = (
+                    None
+                    if pending_lookup
+                    else "non_memory_clarify_no_clarify_mode_degraded"
+                )
+            else:
+>               raise AssertionError(
+                    "Non-memory intent produced answer_mode=clarify without explicit ambiguity policy override."
+                )
+E               AssertionError: Non-memory intent produced answer_mode=clarify without explicit ambiguity policy override.
+
+src/testbot/sat_chatbot_memory_v2.py:2819: AssertionError
+_ test_run_canonical_answer_stage_flow_memory_recall_confident_hit_recovers_from_contract_failure _
+
+    def test_run_canonical_answer_stage_flow_memory_recall_confident_hit_recovers_from_contract_failure() -> None:
+        state = PipelineState(
+            user_input="what did i note about release prep?",
+            resolved_intent=IntentType.MEMORY_RECALL.value,
+            confidence_decision={
+                "context_confident": True,
+                "ambiguity_detected": False,
+            },
+        )
+    
+        answered = run_canonical_answer_stage_flow(
+            _StaticLLM("It should be fine."),
+            state,
+            chat_history=deque(),
+            hits=[
+                Document(
+                    page_content="You noted that release prep requires changelog review before tagging.",
+                    metadata={"doc_id": "mem-7", "ts": "2026-03-01T12:00:00Z"},
+                )
+            ],
+            capability_status="ask_unavailable",
+            clock=_FIXED_CLOCK,
+        )
+    
+        assert answered.final_answer != ASSIST_ALTERNATIVES_ANSWER
+        assert "From memory, I found:" in answered.final_answer
+>       assert "doc_id: mem-7" in answered.final_answer
+E       assert 'doc_id: mem-7' in "From memory, I found: {'turn_id': 'a4d4c2c8-3174-4edc-8a83-6407c6285a31', 'dialogue_state': [], 'response_plan': {'pa...nowledge_question', 'facets': {'temporal'. doc_id: 34e1dbd8-0b22-4dc8-94d7-dcdd71e36d86, ts: 2026-03-10T11:00:00+00:00"
+E        +  where "From memory, I found: {'turn_id': 'a4d4c2c8-3174-4edc-8a83-6407c6285a31', 'dialogue_state': [], 'response_plan': {'pa...nowledge_question', 'facets': {'temporal'. doc_id: 34e1dbd8-0b22-4dc8-94d7-dcdd71e36d86, ts: 2026-03-10T11:00:00+00:00" = PipelineState(user_input='what did i note about release prep?', rewritten_query='It should be fine.', retrieval_candid...ct(extra={'obligation_id': '', 'source_anchor': '', 'focus': '', 'carry_forward': False}, required=False, question='')).final_answer
+
+tests/test_runtime_logging_events.py:653: AssertionError
+______ test_chat_loop_cli_turn_logs_jsonl_with_alignment_decision_object _______
+
+tmp_path = PosixPath('/tmp/pytest-of-root/pytest-0/test_chat_loop_cli_turn_logs_j0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f0f9a862290>
+
+    def test_chat_loop_cli_turn_logs_jsonl_with_alignment_decision_object(tmp_path, monkeypatch) -> None:
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setattr(runtime, "_validate_and_log_transition", lambda _result: None)
+        monkeypatch.setattr(runtime, "store_doc", lambda *args, **kwargs: None)
+        monkeypatch.setattr(runtime, "generate_reflection_yaml", lambda *args, **kwargs: "claims: []")
+        monkeypatch.setattr(runtime, "persist_promoted_context", lambda *args, **kwargs: [])
+        monkeypatch.setattr(runtime, "stage_rewrite_query", lambda _llm, state: replace(state, rewritten_query="release prep notes"))
+        monkeypatch.setattr(runtime, "stage_retrieve", lambda _store, state, **kwargs: (replace(state, retrieval_candidates=[]), []))
+        monkeypatch.setattr(
+            runtime,
+            "stage_rerank",
+            lambda state, docs_and_scores, **kwargs: (replace(state, reranked_hits=[]), []),  # noqa: ARG005
+        )
+        monkeypatch.setattr(
+            runtime,
+            "run_canonical_answer_stage_flow",
+            lambda _llm, state, **kwargs: replace(  # noqa: ARG005
+                state,
+                final_answer="From memory, I found: release prep includes changelog checks.",
+                invariant_decisions={"fallback_action": "NONE", "answer_mode": "memory-grounded"},
+                provenance_types=[],
+                basis_statement="Memory-grounded basis.",
+                claims=["release prep includes changelog checks"],
+                alignment_decision=AlignmentDecision(
+                    final_alignment_decision="allow",
+                    dimensions={"safety": 0.92, "factual_grounding": 0.88},
+                ),
+            ),
+        )
+    
+        prompts = iter(["what did i note about release prep?", "stop"])
+        replies: list[str] = []
+    
+        _run_chat_loop(
+            llm=_StaticLLM("From memory, I found: release prep includes changelog checks."),
+            store=object(),
+            chat_history=deque(),
+            near_tie_delta=0.05,
+            io_channel="cli",
+            capability_status="ask_unavailable",
+            capability_snapshot=CapabilitySnapshot(
+                runtime={},
+                requested_mode="cli",
+                daemon_mode=False,
+                effective_mode="cli",
+                fallback_reason=None,
+                exit_reason=None,
+                ha_error=None,
+                ollama_error=None,
+                runtime_capability_status=RuntimeCapabilityStatus(
+                    ollama_available=True,
+                    ha_available=False,
+                    effective_mode="cli",
+                    requested_mode="cli",
+                    daemon_mode=False,
+                    fallback_reason=None,
+                    memory_backend="inmemory",
+                    debug_enabled=False,
+                    debug_verbose=False,
+                    text_clarification_available=True,
+                    satellite_ask_available=False,
+                ),
+            ),
+            read_user_utterance=lambda: next(prompts, None),
+            send_assistant_text=lambda text: replies.append(text),
+            clock=_FIXED_CLOCK,
+        )
+    
+        session_log = tmp_path / "logs" / "session.jsonl"
+        rows = [json.loads(line) for line in session_log.read_text(encoding="utf-8").splitlines() if line.strip()]
+    
+        assert replies
+        assert rows
+    
+        alignment_row = next(row for row in rows if row.get("event") == "alignment_decision_evaluated")
+        assert isinstance(alignment_row["alignment_decision"], dict)
+        assert set(alignment_row["alignment_decision"]).issuperset({"final_alignment_decision", "dimensions"})
+>       assert alignment_row["alignment_decision"]["final_alignment_decision"] == "allow"
+E       AssertionError: assert 'fallback' == 'allow'
+E         
+E         - allow
+E         + fallback
+
+/tmp/TestBot-mainhead/tests/test_runtime_logging_events.py:1026: AssertionError
+_ test_chat_loop_two_turn_commit_continuity_is_consumed_by_context_and_retrieval _
+
+tmp_path = PosixPath('/tmp/pytest-of-root/pytest-0/test_chat_loop_two_turn_commit0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f0f9a862c90>
+
+    def test_chat_loop_two_turn_commit_continuity_is_consumed_by_context_and_retrieval(tmp_path, monkeypatch) -> None:
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setattr(runtime, "_validate_and_log_transition", lambda _result: None)
+        monkeypatch.setattr(runtime, "store_doc", lambda *args, **kwargs: None)
+        monkeypatch.setattr(runtime, "generate_reflection_yaml", lambda *args, **kwargs: "claims: []")
+        monkeypatch.setattr(runtime, "persist_promoted_context", lambda *args, **kwargs: [])
+        monkeypatch.setattr(runtime, "stage_rewrite_query", lambda _llm, state: replace(state, rewritten_query=state.user_input))
+    
+        context_calls: list[PipelineState | None] = []
+        continuity_anchor: str = ""
+    
+        def _resolve_context_with_commit_anchor(*, utterance: str, prior_pipeline_state: PipelineState | None) -> ResolvedContext:
+            nonlocal continuity_anchor
+            del utterance
+            context_calls.append(prior_pipeline_state)
+            if prior_pipeline_state is None:
+                return ResolvedContext(history_anchors=(), ambiguity_flags=(), continuity_posture=ContinuityPosture.REEVALUATE, prior_intent=None)
+    
+            commit_receipt = prior_pipeline_state.commit_receipt
+            prior_facts = list(commit_receipt.get("confirmed_user_facts", []))
+            assert prior_facts == ["name=Sam"]
+            assert commit_receipt.get("pending_repair_state") == {"repair_required_by_policy": False, "repair_offered_to_user": False, "reason": "none"}
+            assert commit_receipt.get("resolved_obligations") == ["repair_state_not_required"]
+            continuity_anchor = f"commit.confirmed_user_facts:{prior_facts[0]}"
+            return ResolvedContext(
+                history_anchors=(continuity_anchor,),
+                ambiguity_flags=(),
+                continuity_posture=ContinuityPosture.REEVALUATE,
+                prior_intent=IntentType.MEMORY_RECALL,
+            )
+    
+        monkeypatch.setattr(runtime, "resolve_context", _resolve_context_with_commit_anchor)
+    
+        def _stage_retrieve_with_continuity(_store, state, **kwargs):
+            del kwargs
+            if state.user_input == "what did i say my name is?":
+                assert continuity_anchor == ""
+                doc = Document(id="name-fact-initial", page_content="name=Sam", metadata={"doc_id": "name-fact-initial", "type": "profile_fact"})
+            else:
+                assert continuity_anchor == "commit.confirmed_user_facts:name=Sam"
+                doc = Document(id="name-fact-continuity", page_content="name=Sam", metadata={"doc_id": "name-fact-continuity", "type": "profile_fact", "source_doc_id": "name-fact-initial"})
+            next_state = replace(
+                state,
+                retrieval_candidates=[CandidateHit(doc_id=str(doc.id), score=0.99, card_type="profile_fact")],
+                confidence_decision={**state.confidence_decision, "retrieval_candidates_considered": 1, "context_confident": True, "ambiguity_detected": False},
+            )
+            return next_state, [(doc, 0.99)]
+    
+        monkeypatch.setattr(runtime, "stage_retrieve", _stage_retrieve_with_continuity)
+        monkeypatch.setattr(runtime, "stage_rerank", lambda state, docs_and_scores, **kwargs: (replace(state, reranked_hits=[CandidateHit(doc_id=str(docs_and_scores[0][0].id), score=0.99, card_type="profile_fact")], confidence_decision={**state.confidence_decision, "context_confident": True, "ambiguity_detected": False}), [docs_and_scores[0][0]]))
+        monkeypatch.setattr(runtime, "run_canonical_answer_stage_flow", lambda _llm, state, **kwargs: replace(state, draft_answer="Memory answer", final_answer="From committed facts, your name is Sam.", claims=["name=Sam"], basis_statement="prior commit continuity"))
+    
+        prompts = iter(["what did i say my name is?", "what did i say my name is again?", "stop"])
+        replies: list[str] = []
+>       _run_chat_loop(
+            llm=_StaticLLM("From committed facts, your name is Sam."),
+            store=object(),
+            chat_history=deque(),
+            near_tie_delta=0.05,
+            io_channel="cli",
+            capability_status="ask_unavailable",
+            capability_snapshot=CapabilitySnapshot(
+                runtime={},
+                requested_mode="cli",
+                daemon_mode=False,
+                effective_mode="cli",
+                fallback_reason=None,
+                exit_reason=None,
+                ha_error=None,
+                ollama_error=None,
+                runtime_capability_status=RuntimeCapabilityStatus(
+                    ollama_available=True,
+                    ha_available=False,
+                    effective_mode="cli",
+                    requested_mode="cli",
+                    daemon_mode=False,
+                    fallback_reason=None,
+                    memory_backend="inmemory",
+                    debug_enabled=False,
+                    debug_verbose=False,
+                    text_clarification_available=True,
+                    satellite_ask_available=False,
+                ),
+            ),
+            read_user_utterance=lambda: next(prompts, None),
+            send_assistant_text=lambda text: replies.append(text),
+            clock=_FIXED_CLOCK,
+        )
+
+/tmp/TestBot-mainhead/tests/test_runtime_logging_events.py:1267: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+/tmp/TestBot-mainhead/src/testbot/sat_chatbot_memory_v2.py:3478: in _run_chat_loop
+    state, hits = _run_canonical_turn_pipeline(
+/tmp/TestBot-mainhead/src/testbot/sat_chatbot_memory_v2.py:3386: in _run_canonical_turn_pipeline
+    next_state, normalized_hits = run_canonical_turn_pipeline(
+/tmp/TestBot-mainhead/src/testbot/application/services/canonical_turn_runtime.py:31: in run_canonical_turn_pipeline
+    return run_canonical_turn_pipeline_service(
+/tmp/TestBot-mainhead/src/testbot/application/services/turn_service.py:744: in run_canonical_turn_pipeline_service
+    final_context = orchestrator.run(context)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+/tmp/TestBot-mainhead/src/testbot/canonical_turn_orchestrator.py:122: in run
+    context = stage.handler(context)
+              ^^^^^^^^^^^^^^^^^^^^^^
+/tmp/TestBot-mainhead/src/testbot/application/services/turn_service.py:136: in context_resolve
+    return context_resolve_stage(ctx, self.runtime)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/tmp/TestBot-mainhead/src/testbot/application/services/turn_service.py:264: in context_resolve_stage
+    context_resolution = stage.deps.resolve_context_fn(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+    def _resolve_context_with_commit_anchor(*, utterance: str, prior_pipeline_state: PipelineState | None) -> ResolvedContext:
+        nonlocal continuity_anchor
+        del utterance
+        context_calls.append(prior_pipeline_state)
+        if prior_pipeline_state is None:
+            return ResolvedContext(history_anchors=(), ambiguity_flags=(), continuity_posture=ContinuityPosture.REEVALUATE, prior_intent=None)
+    
+        commit_receipt = prior_pipeline_state.commit_receipt
+        prior_facts = list(commit_receipt.get("confirmed_user_facts", []))
+        assert prior_facts == ["name=Sam"]
+>       assert commit_receipt.get("pending_repair_state") == {"repair_required_by_policy": False, "repair_offered_to_user": False, "reason": "none"}
+E       AssertionError: assert {'obligation_...olicy': False} == {'reason': 'n...olicy': False}
+E         
+E         Omitting 3 identical items, use -vv to show
+E         Left contains 1 more item:
+E         {'obligation_id': 'answer.commit:098c1b83-0563-4732-bbd5-c8789befbca1:pending_repair'}
+E         Use -v to get more diff
+
+/tmp/TestBot-mainhead/tests/test_runtime_logging_events.py:1234: AssertionError
+_ test_run_canonical_answer_stage_flow_selected_decision_for_note_taking_preserves_direct_answer_contract _
+
+    def test_run_canonical_answer_stage_flow_selected_decision_for_note_taking_preserves_direct_answer_contract() -> None:
+        state = PipelineState(
+            user_input="please make a note that i prefer tea",
+            resolved_intent=IntentType.META_CONVERSATION.value,
+            confidence_decision={
+                "context_confident": False,
+                "ambiguity_detected": False,
+            },
+        )
+    
+>       answered = run_canonical_answer_stage_flow(
+            _StaticLLM("Got it — I can keep that in mind."),
+            state,
+            chat_history=deque(),
+            hits=[],
+            capability_status="ask_unavailable",
+            selected_decision=DecisionObject(
+                decision_class=DecisionClass.ANSWER_GENERAL_KNOWLEDGE_LABELED,
+                retrieval_branch="direct_answer",
+                rationale="meta conversational memory-write requests stay in direct-answer assist path",
+                reasoning={"evidence_posture": "not_requested"},
+            ),
+            clock=_FIXED_CLOCK,
+        )
+
+tests/test_runtime_logging_events.py:1356: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/testbot/sat_chatbot_memory_v2.py:2969: in run_canonical_answer_stage_flow
+    final_state, _ = _run_canonical_turn_pipeline(
+src/testbot/sat_chatbot_memory_v2.py:3386: in _run_canonical_turn_pipeline
+    next_state, normalized_hits = run_canonical_turn_pipeline(
+src/testbot/application/services/canonical_turn_runtime.py:31: in run_canonical_turn_pipeline
+    return run_canonical_turn_pipeline_service(
+src/testbot/application/services/turn_service.py:744: in run_canonical_turn_pipeline_service
+    final_context = orchestrator.run(context)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/canonical_turn_orchestrator.py:122: in run
+    context = stage.handler(context)
+              ^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/application/services/turn_service.py:157: in answer_commit
+    return answer_commit_stage(ctx, self.runtime)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/application/services/turn_service.py:640: in answer_commit_stage
+    stage.deps.validate_and_log_transition(validate_answer_commit_post(ctx.state))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+result = TransitionCheckResult(stage='answer.commit', boundary='post', invariant_refs=('PINV-001', 'PINV-002', 'PINV-003'), passed=False, failures=('inv_003_general_knowledge_contract_enforced', 'alignment_decision_consistent'))
+
+    def _validate_and_log_transition(result) -> None:
+        append_transition_validation_log(result)
+        if not result.passed:
+            failures = ", ".join(result.failures)
+>           raise AssertionError(f"Stage transition validation failed at {result.stage}.{result.boundary}: {failures}")
+E           AssertionError: Stage transition validation failed at answer.commit.post: inv_003_general_knowledge_contract_enforced, alignment_decision_consistent
+
+src/testbot/sat_chatbot_memory_v2.py:3102: AssertionError
+_ test_run_canonical_answer_stage_flow_selected_decision_clarify_keeps_policy_and_answer_aligned _
+
+    def test_run_canonical_answer_stage_flow_selected_decision_clarify_keeps_policy_and_answer_aligned() -> None:
+        state = PipelineState(
+            user_input="what did i say?",
+            resolved_intent=IntentType.MEMORY_RECALL.value,
+            confidence_decision={
+                "context_confident": True,
+                "ambiguity_detected": False,
+            },
+        )
+    
+>       answered = run_canonical_answer_stage_flow(
+            _StaticLLM("ignored"),
+            state,
+            chat_history=deque(),
+            hits=[],
+            capability_status="ask_unavailable",
+            selected_decision=DecisionObject(
+                decision_class=DecisionClass.ASK_FOR_CLARIFICATION,
+                retrieval_branch="direct_answer",
+                rationale="insufficient evidence requires clarification",
+                reasoning={"evidence_posture": "scored_empty"},
+            ),
+            clock=_FIXED_CLOCK,
+        )
+
+tests/test_runtime_logging_events.py:1419: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/testbot/sat_chatbot_memory_v2.py:2969: in run_canonical_answer_stage_flow
+    final_state, _ = _run_canonical_turn_pipeline(
+src/testbot/sat_chatbot_memory_v2.py:3386: in _run_canonical_turn_pipeline
+    next_state, normalized_hits = run_canonical_turn_pipeline(
+src/testbot/application/services/canonical_turn_runtime.py:31: in run_canonical_turn_pipeline
+    return run_canonical_turn_pipeline_service(
+src/testbot/application/services/turn_service.py:744: in run_canonical_turn_pipeline_service
+    final_context = orchestrator.run(context)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/canonical_turn_orchestrator.py:122: in run
+    context = stage.handler(context)
+              ^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/application/services/turn_service.py:157: in answer_commit
+    return answer_commit_stage(ctx, self.runtime)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/application/services/turn_service.py:640: in answer_commit_stage
+    stage.deps.validate_and_log_transition(validate_answer_commit_post(ctx.state))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+result = TransitionCheckResult(stage='answer.commit', boundary='post', invariant_refs=('PINV-001', 'PINV-002', 'PINV-003'), passed=False, failures=('alignment_decision_consistent',))
+
+    def _validate_and_log_transition(result) -> None:
+        append_transition_validation_log(result)
+        if not result.passed:
+            failures = ", ".join(result.failures)
+>           raise AssertionError(f"Stage transition validation failed at {result.stage}.{result.boundary}: {failures}")
+E           AssertionError: Stage transition validation failed at answer.commit.post: alignment_decision_consistent
+
+src/testbot/sat_chatbot_memory_v2.py:3102: AssertionError
+_ test_run_canonical_answer_stage_flow_selected_decision_pending_lookup_uses_non_clarify_mode _
+
+    def test_run_canonical_answer_stage_flow_selected_decision_pending_lookup_uses_non_clarify_mode() -> None:
+        state = PipelineState(
+            user_input="what did i say?",
+            resolved_intent=IntentType.MEMORY_RECALL.value,
+            confidence_decision={
+                "context_confident": False,
+                "ambiguity_detected": False,
+                "background_ingestion_in_progress": True,
+            },
+        )
+    
+>       answered = run_canonical_answer_stage_flow(
+            _StaticLLM("ignored"),
+            state,
+            chat_history=deque(),
+            hits=[],
+            capability_status="ask_unavailable",
+            selected_decision=DecisionObject(
+                decision_class=DecisionClass.PENDING_LOOKUP_BACKGROUND_INGESTION,
+                retrieval_branch="memory_retrieval",
+                rationale="retrieval required but empty evidence while background ingestion is in progress",
+                reasoning={"evidence_posture": "empty_evidence", "background_ingestion_in_progress": True},
+            ),
+            clock=_FIXED_CLOCK,
+        )
+
+tests/test_runtime_logging_events.py:1451: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/testbot/sat_chatbot_memory_v2.py:2969: in run_canonical_answer_stage_flow
+    final_state, _ = _run_canonical_turn_pipeline(
+src/testbot/sat_chatbot_memory_v2.py:3386: in _run_canonical_turn_pipeline
+    next_state, normalized_hits = run_canonical_turn_pipeline(
+src/testbot/application/services/canonical_turn_runtime.py:31: in run_canonical_turn_pipeline
+    return run_canonical_turn_pipeline_service(
+src/testbot/application/services/turn_service.py:744: in run_canonical_turn_pipeline_service
+    final_context = orchestrator.run(context)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/canonical_turn_orchestrator.py:122: in run
+    context = stage.handler(context)
+              ^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/application/services/turn_service.py:157: in answer_commit
+    return answer_commit_stage(ctx, self.runtime)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/application/services/turn_service.py:640: in answer_commit_stage
+    stage.deps.validate_and_log_transition(validate_answer_commit_post(ctx.state))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+result = TransitionCheckResult(stage='answer.commit', boundary='post', invariant_refs=('PINV-001', 'PINV-002', 'PINV-003'), passed=False, failures=('alignment_decision_consistent',))
+
+    def _validate_and_log_transition(result) -> None:
+        append_transition_validation_log(result)
+        if not result.passed:
+            failures = ", ".join(result.failures)
+>           raise AssertionError(f"Stage transition validation failed at {result.stage}.{result.boundary}: {failures}")
+E           AssertionError: Stage transition validation failed at answer.commit.post: alignment_decision_consistent
+
+src/testbot/sat_chatbot_memory_v2.py:3102: AssertionError
+_ test_run_canonical_answer_stage_flow_selected_decision_non_memory_clarify_pending_lookup_degrades_to_safe_uncertainty _
+
+    def test_run_canonical_answer_stage_flow_selected_decision_non_memory_clarify_pending_lookup_degrades_to_safe_uncertainty() -> None:
+        state = PipelineState(
+            user_input="what is dark matter?",
+            resolved_intent=IntentType.KNOWLEDGE_QUESTION.value,
+            confidence_decision={
+                "context_confident": False,
+                "ambiguity_detected": True,
+                "background_ingestion_in_progress": True,
+                "allow_non_memory_clarify": False,
+            },
+        )
+    
+>       answered = run_canonical_answer_stage_flow(
+            _StaticLLM("ignored"),
+            state,
+            chat_history=deque(),
+            hits=[],
+            capability_status="ask_unavailable",
+            selected_decision=DecisionObject(
+                decision_class=DecisionClass.ASK_FOR_CLARIFICATION,
+                retrieval_branch="direct_answer",
+                rationale="clarify candidate selected despite non-memory intent",
+                reasoning={"evidence_posture": "empty_evidence"},
+            ),
+            clock=_FIXED_CLOCK,
+        )
+
+tests/test_runtime_logging_events.py:1484: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/testbot/sat_chatbot_memory_v2.py:2969: in run_canonical_answer_stage_flow
+    final_state, _ = _run_canonical_turn_pipeline(
+src/testbot/sat_chatbot_memory_v2.py:3386: in _run_canonical_turn_pipeline
+    next_state, normalized_hits = run_canonical_turn_pipeline(
+src/testbot/application/services/canonical_turn_runtime.py:31: in run_canonical_turn_pipeline
+    return run_canonical_turn_pipeline_service(
+src/testbot/application/services/turn_service.py:744: in run_canonical_turn_pipeline_service
+    final_context = orchestrator.run(context)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/canonical_turn_orchestrator.py:122: in run
+    context = stage.handler(context)
+              ^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/application/services/turn_service.py:157: in answer_commit
+    return answer_commit_stage(ctx, self.runtime)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/application/services/turn_service.py:640: in answer_commit_stage
+    stage.deps.validate_and_log_transition(validate_answer_commit_post(ctx.state))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+result = TransitionCheckResult(stage='answer.commit', boundary='post', invariant_refs=('PINV-001', 'PINV-002', 'PINV-003'), passed=False, failures=('alignment_decision_consistent',))
+
+    def _validate_and_log_transition(result) -> None:
+        append_transition_validation_log(result)
+        if not result.passed:
+            failures = ", ".join(result.failures)
+>           raise AssertionError(f"Stage transition validation failed at {result.stage}.{result.boundary}: {failures}")
+E           AssertionError: Stage transition validation failed at answer.commit.post: alignment_decision_consistent
+
+src/testbot/sat_chatbot_memory_v2.py:3102: AssertionError
+_ test_run_canonical_answer_stage_flow_canonical_commit_is_authoritative_for_answer_provenance_and_commit_receipt _
+
+    def test_run_canonical_answer_stage_flow_canonical_commit_is_authoritative_for_answer_provenance_and_commit_receipt() -> None:
+        state = PipelineState(
+            user_input="what did i note about release prep?",
+            resolved_intent=IntentType.MEMORY_RECALL.value,
+            confidence_decision={
+                "context_confident": True,
+                "ambiguity_detected": False,
+            },
+        )
+    
+        answered = run_canonical_answer_stage_flow(
+            _StaticLLM("From memory, I found: release prep includes checklist review. doc_id: mem-7, ts: 2026-03-01T12:00:00Z"),
+            state,
+            chat_history=deque(),
+            hits=[
+                Document(
+                    page_content="release prep includes checklist review",
+                    metadata={"doc_id": "mem-7", "ts": "2026-03-01T12:00:00Z"},
+                )
+            ],
+            capability_status="ask_unavailable",
+            selected_decision=DecisionObject(
+                decision_class=DecisionClass.ANSWER_FROM_MEMORY,
+                retrieval_branch="memory_retrieval",
+                rationale="confident evidence bundle supports memory-grounded answer",
+                reasoning={"evidence_posture": "scored_non_empty"},
+            ),
+            clock=_FIXED_CLOCK,
+        )
+    
+        assert answered.final_answer.startswith("From memory, I found:")
+>       assert answered.used_memory_refs == ["mem-7@2026-03-01T12:00:00Z"]
+E       AssertionError: assert ['9d293068-63...01T12:00:00Z'] == ['mem-7@2026-03-01T12:00:00Z']
+E         
+E         At index 0 diff: '9d293068-63f8-4109-a315-3ea43dd2741b@2026-03-10T11:00:00+00:00' != 'mem-7@2026-03-01T12:00:00Z'
+E         Left contains one more item: 'mem-7@2026-03-01T12:00:00Z'
+E         Use -v to get more diff
+
+tests/test_runtime_logging_events.py:1537: AssertionError
+_ test_run_canonical_answer_stage_flow_selected_decision_non_memory_clarify_no_clarify_mode_degrades_to_assist _
+
+    def test_run_canonical_answer_stage_flow_selected_decision_non_memory_clarify_no_clarify_mode_degrades_to_assist() -> None:
+        state = PipelineState(
+            user_input="tell me a joke",
+            resolved_intent=IntentType.KNOWLEDGE_QUESTION.value,
+            confidence_decision={
+                "context_confident": False,
+                "ambiguity_detected": True,
+                "allow_non_memory_clarify": False,
+            },
+        )
+    
+        answered = run_canonical_answer_stage_flow(
+            _StaticLLM("ignored"),
+            state,
+            chat_history=deque(),
+            hits=[],
+            capability_status="ask_unavailable",
+            selected_decision=DecisionObject(
+                decision_class=DecisionClass.ASK_FOR_CLARIFICATION,
+                retrieval_branch="direct_answer",
+                rationale="clarify candidate selected despite explicit no-clarify mode",
+                reasoning={"evidence_posture": "empty_evidence"},
+            ),
+            clock=_FIXED_CLOCK,
+        )
+    
+>       assert answered.final_answer == ASSIST_ALTERNATIVES_ANSWER
+E       assert "I'm not full...to verify it." == "I don't have...ssing detail."
+E         
+E         - I don't have enough reliable memory to answer directly. I can either help you reconstruct the timeline from what you remember, or suggest where to check next for the missing detail.
+E         + I'm not fully confident in a reliable answer right now. I can offer a best-effort response and suggest a quick way to verify it.
+
+tests/test_runtime_logging_events.py:1568: AssertionError
+_ test_chat_loop_async_pending_lookup_commits_pending_answer_and_logs_semantics _
+
+tmp_path = PosixPath('/tmp/pytest-of-root/pytest-0/test_chat_loop_async_pending_l0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f0f9837e910>
+
+    @pytest.mark.non_contract
+    def test_chat_loop_async_pending_lookup_commits_pending_answer_and_logs_semantics(tmp_path, monkeypatch) -> None:
+        """Non-contract fast path: heavily mocked to keep chat-loop regression checks cheap."""
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setattr(runtime, "_validate_and_log_transition", lambda _result: None)
+        monkeypatch.setattr(runtime, "store_doc", lambda *args, **kwargs: None)
+        monkeypatch.setattr(runtime, "generate_reflection_yaml", lambda *args, **kwargs: "claims: []")
+        monkeypatch.setattr(runtime, "persist_promoted_context", lambda *args, **kwargs: [])
+    
+        def _start_background_ingest(*, runtime: dict[str, object], store: object, ingestion_request_id: str = "") -> dict[str, object]:
+            del store
+            runtime["source_ingest_background_in_progress"] = True
+            runtime["source_ingest_background_future"] = None
+            runtime["source_ingest_background_stub"] = True
+            request_id = ingestion_request_id or "stub-ingest-1"
+            runtime["source_ingest_background_request_id"] = request_id
+            from testbot import sat_chatbot_memory_v2 as runtime_module
+            runtime_module.append_session_log("source_ingest_background_started", {"background": True, "ingestion_request_id": request_id})
+            return {"started": True, "already_running": False, "ingestion_request_id": request_id}
+    
+        monkeypatch.setattr(runtime, "_start_background_source_ingestion", _start_background_ingest)
+    
+        class _EmptyStore:
+            def similarity_search_with_score(self, query: str, k: int = 4, **kwargs):
+                del query, k, kwargs
+                return []
+    
+        prompts = iter(["what did i say?", "stop"])
+        replies: list[str] = []
+        _run_chat_loop(
+            runtime={"source_ingest_async_continuation": True},
+            llm=_StaticLLM("ignored"),
+            store=_EmptyStore(),
+            chat_history=deque(),
+            near_tie_delta=0.05,
+            io_channel="cli",
+            capability_status="ask_unavailable",
+            capability_snapshot=CapabilitySnapshot(
+                runtime={"source_ingest_async_continuation": True},
+                requested_mode="cli",
+                daemon_mode=False,
+                effective_mode="cli",
+                fallback_reason=None,
+                exit_reason=None,
+                ha_error=None,
+                ollama_error=None,
+                runtime_capability_status=RuntimeCapabilityStatus(
+                    ollama_available=True,
+                    ha_available=False,
+                    effective_mode="cli",
+                    requested_mode="cli",
+                    daemon_mode=False,
+                    fallback_reason=None,
+                    memory_backend="inmemory",
+                    debug_enabled=False,
+                    debug_verbose=False,
+                    text_clarification_available=True,
+                    satellite_ask_available=False,
+                ),
+            ),
+            read_user_utterance=lambda: next(prompts, None),
+            send_assistant_text=lambda text: replies.append(text),
+            clock=_FIXED_CLOCK,
+        )
+    
+        assert replies[0] == NON_KNOWLEDGE_UNCERTAINTY_ANSWER
+    
+        rows = [json.loads(line) for line in (tmp_path / "logs" / "session.jsonl").read_text(encoding="utf-8").splitlines() if line.strip()]
+        events = [row.get("event") for row in rows]
+        assert "source_ingest_background_started" in events
+    
+        started_row = next(row for row in rows if row.get("event") == "source_ingest_background_started")
+        ingestion_request_id = started_row["ingestion_request_id"]
+    
+        commit_row = next(row for row in rows if row.get("event") == "commit_stage_recorded")
+        assert commit_row["pending_repair_state"]["repair_required_by_policy"] is True
+        assert commit_row["pending_repair_state"]["repair_offered_to_user"] is False
+        assert commit_row["pending_ingestion_request_id"] != ""
+        assert commit_row["pending_ingestion_request_id"] == ingestion_request_id
+    
+        retrieval_row = next(row for row in rows if row.get("event") == "retrieval_candidates")
+        hygiene = retrieval_row.get("hygiene", {})
+        assert ingestion_request_id not in hygiene.get("exclude_doc_ids", [])
+        assert ingestion_request_id not in hygiene.get("exclude_source_ids", [])
+        assert ingestion_request_id not in hygiene.get("exclude_turn_scoped_ids", [])
+    
+        mode_row = next(row for row in rows if row.get("event") == "final_answer_mode")
+        assert mode_row["mode"] == "assist"
+        assert mode_row["query"] == "ignored"
+>       assert mode_row["stage_audit_trail"] == list(runtime.CanonicalTurnOrchestrator.STAGE_ORDER)
+                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'testbot.sat_chatbot_memory_v2' has no attribute 'CanonicalTurnOrchestrator'
+
+/tmp/TestBot-mainhead/tests/test_runtime_logging_events.py:1661: AttributeError
+_______ test_final_answer_mode_stage_audit_trail_includes_answer_commit ________
+
+tmp_path = PosixPath('/tmp/pytest-of-root/pytest-0/test_final_answer_mode_stage_a0')
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f0f9a85c910>
+
+    def test_final_answer_mode_stage_audit_trail_includes_answer_commit(tmp_path, monkeypatch) -> None:
+        monkeypatch.chdir(tmp_path)
+        monkeypatch.setattr(runtime, "store_doc", lambda *args, **kwargs: None)
+        monkeypatch.setattr(runtime, "generate_reflection_yaml", lambda *args, **kwargs: "claims: []")
+        monkeypatch.setattr(runtime, "persist_promoted_context", lambda *args, **kwargs: [])
+    
+        def _start_background_ingest(*, runtime: dict[str, object], store: object, ingestion_request_id: str = "") -> dict[str, object]:
+            del store
+            runtime["source_ingest_background_in_progress"] = True
+            runtime["source_ingest_background_future"] = None
+            runtime["source_ingest_background_stub"] = True
+            request_id = ingestion_request_id or "stub-ingest-1"
+            runtime["source_ingest_background_request_id"] = request_id
+            from testbot import sat_chatbot_memory_v2 as runtime_module
+    
+            runtime_module.append_session_log("source_ingest_background_started", {"background": True, "ingestion_request_id": request_id})
+            return {"started": True, "already_running": False, "ingestion_request_id": request_id}
+    
+        monkeypatch.setattr(runtime, "_start_background_source_ingestion", _start_background_ingest)
+    
+        class _EmptyStore:
+            def similarity_search_with_score(self, query: str, k: int = 4, **kwargs):
+                del query, k, kwargs
+                return []
+    
+        prompts = iter(["what did i say?", "stop"])
+        _run_chat_loop(
+            runtime={"source_ingest_async_continuation": True},
+            llm=_StaticLLM("ignored"),
+            store=_EmptyStore(),
+            chat_history=deque(),
+            near_tie_delta=0.05,
+            io_channel="cli",
+            capability_status="ask_unavailable",
+            capability_snapshot=CapabilitySnapshot(
+                runtime={"source_ingest_async_continuation": True},
+                requested_mode="cli",
+                daemon_mode=False,
+                effective_mode="cli",
+                fallback_reason=None,
+                exit_reason=None,
+                ha_error=None,
+                ollama_error=None,
+                runtime_capability_status=RuntimeCapabilityStatus(
+                    ollama_available=True,
+                    ha_available=False,
+                    effective_mode="cli",
+                    requested_mode="cli",
+                    daemon_mode=False,
+                    fallback_reason=None,
+                    memory_backend="inmemory",
+                    debug_enabled=False,
+                    debug_verbose=False,
+                    text_clarification_available=True,
+                    satellite_ask_available=False,
+                ),
+            ),
+            read_user_utterance=lambda: next(prompts, None),
+            send_assistant_text=lambda _text: None,
+            clock=_FIXED_CLOCK,
+        )
+    
+        rows = [json.loads(line) for line in (tmp_path / "logs" / "session.jsonl").read_text(encoding="utf-8").splitlines() if line.strip()]
+        mode_row = next(row for row in rows if row.get("event") == "final_answer_mode")
+    
+>       assert mode_row["stage_audit_trail"] == list(runtime.CanonicalTurnOrchestrator.STAGE_ORDER)
+                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AttributeError: module 'testbot.sat_chatbot_memory_v2' has no attribute 'CanonicalTurnOrchestrator'
+
+/tmp/TestBot-mainhead/tests/test_runtime_logging_events.py:1819: AttributeError
+__ test_chat_loop_does_not_use_pre_pipeline_intent_classifier_route_authority __
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f0f9adad950>
+
+    def test_chat_loop_does_not_use_pre_pipeline_intent_classifier_route_authority(monkeypatch) -> None:
+        events: list[tuple[str, dict[str, object]]] = []
+    
+        monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: events.append((event, payload)))
+        monkeypatch.setattr(runtime, "_validate_and_log_transition", lambda _result: None)
+        monkeypatch.setattr(runtime, "store_doc", lambda *args, **kwargs: None)
+        monkeypatch.setattr(runtime, "persist_promoted_context", lambda *args, **kwargs: [])
+        monkeypatch.setattr(
+            runtime,
+            "classify_intent",
+            lambda _utterance: (_ for _ in ()).throw(AssertionError("early classify_intent call is forbidden in chat loop")),
+        )
+    
+        def _stub_pipeline(**kwargs):
+            state = kwargs["state"]
+            return (
+                replace(
+                    state,
+                    classified_intent=IntentType.META_CONVERSATION.value,
+                    resolved_intent=IntentType.META_CONVERSATION.value,
+                    final_answer="Hi!",
+                    invariant_decisions={"fallback_action": "NONE", "answer_mode": "assist"},
+                    confidence_decision={"stage_audit_trail": list(runtime.CanonicalTurnOrchestrator.STAGE_ORDER)},
+                    provenance_types=[],
+                    basis_statement="none",
+                    claims=[],
+                ),
+                [],
+            )
+    
+        monkeypatch.setattr(runtime, "_run_canonical_turn_pipeline", _stub_pipeline)
+    
+        prompts = iter(["hello there", "stop"])
+>       _run_chat_loop(
+            llm=_StaticLLM("ignored"),
+            store=object(),
+            chat_history=deque(),
+            near_tie_delta=0.05,
+            io_channel="cli",
+            capability_status="ask_unavailable",
+            capability_snapshot=CapabilitySnapshot(
+                runtime={},
+                requested_mode="cli",
+                daemon_mode=False,
+                effective_mode="cli",
+                fallback_reason=None,
+                exit_reason=None,
+                ha_error=None,
+                ollama_error=None,
+                runtime_capability_status=RuntimeCapabilityStatus(
+                    ollama_available=True,
+                    ha_available=False,
+                    effective_mode="cli",
+                    requested_mode="cli",
+                    daemon_mode=False,
+                    fallback_reason=None,
+                    memory_backend="inmemory",
+                    debug_enabled=False,
+                    debug_verbose=False,
+                    text_clarification_available=True,
+                    satellite_ask_available=False,
+                ),
+            ),
+            read_user_utterance=lambda: next(prompts, None),
+            send_assistant_text=lambda _text: None,
+            clock=_FIXED_CLOCK,
+        )
+
+tests/test_runtime_logging_events.py:1995: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/testbot/sat_chatbot_memory_v2.py:3478: in _run_chat_loop
+    state, hits = _run_canonical_turn_pipeline(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+kwargs = {'capability_snapshot': CapabilitySnapshot(runtime={}, requested_mode='cli', daemon_mode=False, effective_mode='cli', ...le', 'chat_history': deque([]), 'clock': <tests.test_runtime_logging_events._FixedClock object at 0x7f0f9a718390>, ...}
+state = PipelineState(user_input='hello there', rewritten_query='', retrieval_candidates=[], reranked_hits=[], confidence_deci... required=False, reason=''), pending_clarification=PendingClarificationArtifact(extra={}, required=False, question=''))
+
+    def _stub_pipeline(**kwargs):
+        state = kwargs["state"]
+        return (
+            replace(
+                state,
+                classified_intent=IntentType.META_CONVERSATION.value,
+                resolved_intent=IntentType.META_CONVERSATION.value,
+                final_answer="Hi!",
+                invariant_decisions={"fallback_action": "NONE", "answer_mode": "assist"},
+>               confidence_decision={"stage_audit_trail": list(runtime.CanonicalTurnOrchestrator.STAGE_ORDER)},
+                                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                provenance_types=[],
+                basis_statement="none",
+                claims=[],
+            ),
+            [],
+        )
+E       AttributeError: module 'testbot.sat_chatbot_memory_v2' has no attribute 'CanonicalTurnOrchestrator'
+
+tests/test_runtime_logging_events.py:1984: AttributeError
+_ test_chat_loop_routes_issue_0013_regression_utterances_through_canonical_pipeline[Hi! I'm Sebastian] _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f0f9adac890>
+utterance = "Hi! I'm Sebastian"
+
+    @pytest.mark.parametrize(
+        "utterance",
+        [
+            "Hi! I'm Sebastian",
+            "The memory today",
+            "How log ago did I ask you something?",
+        ],
+    )
+    def test_chat_loop_routes_issue_0013_regression_utterances_through_canonical_pipeline(monkeypatch, utterance: str) -> None:
+        pipeline_calls: list[str] = []
+    
+        monkeypatch.setattr(runtime, "append_session_log", lambda _event, _payload: None)
+        monkeypatch.setattr(runtime, "_validate_and_log_transition", lambda _result: None)
+        monkeypatch.setattr(runtime, "store_doc", lambda *args, **kwargs: None)
+        monkeypatch.setattr(runtime, "persist_promoted_context", lambda *args, **kwargs: [])
+        monkeypatch.setattr(
+            runtime,
+            "classify_intent",
+            lambda _utterance: (_ for _ in ()).throw(AssertionError("raw U->I classify_intent path is forbidden")),
+        )
+    
+        def _stub_pipeline(**kwargs):
+            state = kwargs["state"]
+            pipeline_calls.append(state.user_input)
+            return (
+                replace(
+                    state,
+                    classified_intent=IntentType.META_CONVERSATION.value,
+                    resolved_intent=IntentType.META_CONVERSATION.value,
+                    final_answer="Acknowledged.",
+                    invariant_decisions={"fallback_action": "NONE", "answer_mode": "assist"},
+                    confidence_decision={"stage_audit_trail": list(runtime.CanonicalTurnOrchestrator.STAGE_ORDER)},
+                    provenance_types=[],
+                    basis_statement="none",
+                    claims=[],
+                ),
+                [],
+            )
+    
+        monkeypatch.setattr(runtime, "_run_canonical_turn_pipeline", _stub_pipeline)
+    
+        prompts = iter([utterance, "stop"])
+>       _run_chat_loop(
+            llm=_StaticLLM("ignored"),
+            store=object(),
+            chat_history=deque(),
+            near_tie_delta=0.05,
+            io_channel="cli",
+            capability_status="ask_unavailable",
+            capability_snapshot=CapabilitySnapshot(
+                runtime={},
+                requested_mode="cli",
+                daemon_mode=False,
+                effective_mode="cli",
+                fallback_reason=None,
+                exit_reason=None,
+                ha_error=None,
+                ollama_error=None,
+                runtime_capability_status=RuntimeCapabilityStatus(
+                    ollama_available=True,
+                    ha_available=False,
+                    effective_mode="cli",
+                    requested_mode="cli",
+                    daemon_mode=False,
+                    fallback_reason=None,
+                    memory_backend="inmemory",
+                    debug_enabled=False,
+                    debug_verbose=False,
+                    text_clarification_available=True,
+                    satellite_ask_available=False,
+                ),
+            ),
+            read_user_utterance=lambda: next(prompts, None),
+            send_assistant_text=lambda _text: None,
+            clock=_FIXED_CLOCK,
+        )
+
+tests/test_runtime_logging_events.py:2076: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/testbot/sat_chatbot_memory_v2.py:3478: in _run_chat_loop
+    state, hits = _run_canonical_turn_pipeline(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+kwargs = {'capability_snapshot': CapabilitySnapshot(runtime={}, requested_mode='cli', daemon_mode=False, effective_mode='cli', ...le', 'chat_history': deque([]), 'clock': <tests.test_runtime_logging_events._FixedClock object at 0x7f0f9a718390>, ...}
+state = PipelineState(user_input="Hi! I'm Sebastian", rewritten_query='', retrieval_candidates=[], reranked_hits=[], confidenc... required=False, reason=''), pending_clarification=PendingClarificationArtifact(extra={}, required=False, question=''))
+
+    def _stub_pipeline(**kwargs):
+        state = kwargs["state"]
+        pipeline_calls.append(state.user_input)
+        return (
+            replace(
+                state,
+                classified_intent=IntentType.META_CONVERSATION.value,
+                resolved_intent=IntentType.META_CONVERSATION.value,
+                final_answer="Acknowledged.",
+                invariant_decisions={"fallback_action": "NONE", "answer_mode": "assist"},
+>               confidence_decision={"stage_audit_trail": list(runtime.CanonicalTurnOrchestrator.STAGE_ORDER)},
+                                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                provenance_types=[],
+                basis_statement="none",
+                claims=[],
+            ),
+            [],
+        )
+E       AttributeError: module 'testbot.sat_chatbot_memory_v2' has no attribute 'CanonicalTurnOrchestrator'
+
+tests/test_runtime_logging_events.py:2065: AttributeError
+_ test_chat_loop_routes_issue_0013_regression_utterances_through_canonical_pipeline[The memory today] _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f0f9ad95b90>
+utterance = 'The memory today'
+
+    @pytest.mark.parametrize(
+        "utterance",
+        [
+            "Hi! I'm Sebastian",
+            "The memory today",
+            "How log ago did I ask you something?",
+        ],
+    )
+    def test_chat_loop_routes_issue_0013_regression_utterances_through_canonical_pipeline(monkeypatch, utterance: str) -> None:
+        pipeline_calls: list[str] = []
+    
+        monkeypatch.setattr(runtime, "append_session_log", lambda _event, _payload: None)
+        monkeypatch.setattr(runtime, "_validate_and_log_transition", lambda _result: None)
+        monkeypatch.setattr(runtime, "store_doc", lambda *args, **kwargs: None)
+        monkeypatch.setattr(runtime, "persist_promoted_context", lambda *args, **kwargs: [])
+        monkeypatch.setattr(
+            runtime,
+            "classify_intent",
+            lambda _utterance: (_ for _ in ()).throw(AssertionError("raw U->I classify_intent path is forbidden")),
+        )
+    
+        def _stub_pipeline(**kwargs):
+            state = kwargs["state"]
+            pipeline_calls.append(state.user_input)
+            return (
+                replace(
+                    state,
+                    classified_intent=IntentType.META_CONVERSATION.value,
+                    resolved_intent=IntentType.META_CONVERSATION.value,
+                    final_answer="Acknowledged.",
+                    invariant_decisions={"fallback_action": "NONE", "answer_mode": "assist"},
+                    confidence_decision={"stage_audit_trail": list(runtime.CanonicalTurnOrchestrator.STAGE_ORDER)},
+                    provenance_types=[],
+                    basis_statement="none",
+                    claims=[],
+                ),
+                [],
+            )
+    
+        monkeypatch.setattr(runtime, "_run_canonical_turn_pipeline", _stub_pipeline)
+    
+        prompts = iter([utterance, "stop"])
+>       _run_chat_loop(
+            llm=_StaticLLM("ignored"),
+            store=object(),
+            chat_history=deque(),
+            near_tie_delta=0.05,
+            io_channel="cli",
+            capability_status="ask_unavailable",
+            capability_snapshot=CapabilitySnapshot(
+                runtime={},
+                requested_mode="cli",
+                daemon_mode=False,
+                effective_mode="cli",
+                fallback_reason=None,
+                exit_reason=None,
+                ha_error=None,
+                ollama_error=None,
+                runtime_capability_status=RuntimeCapabilityStatus(
+                    ollama_available=True,
+                    ha_available=False,
+                    effective_mode="cli",
+                    requested_mode="cli",
+                    daemon_mode=False,
+                    fallback_reason=None,
+                    memory_backend="inmemory",
+                    debug_enabled=False,
+                    debug_verbose=False,
+                    text_clarification_available=True,
+                    satellite_ask_available=False,
+                ),
+            ),
+            read_user_utterance=lambda: next(prompts, None),
+            send_assistant_text=lambda _text: None,
+            clock=_FIXED_CLOCK,
+        )
+
+tests/test_runtime_logging_events.py:2076: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/testbot/sat_chatbot_memory_v2.py:3478: in _run_chat_loop
+    state, hits = _run_canonical_turn_pipeline(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+kwargs = {'capability_snapshot': CapabilitySnapshot(runtime={}, requested_mode='cli', daemon_mode=False, effective_mode='cli', ...le', 'chat_history': deque([]), 'clock': <tests.test_runtime_logging_events._FixedClock object at 0x7f0f9a718390>, ...}
+state = PipelineState(user_input='The memory today', rewritten_query='', retrieval_candidates=[], reranked_hits=[], confidence... required=False, reason=''), pending_clarification=PendingClarificationArtifact(extra={}, required=False, question=''))
+
+    def _stub_pipeline(**kwargs):
+        state = kwargs["state"]
+        pipeline_calls.append(state.user_input)
+        return (
+            replace(
+                state,
+                classified_intent=IntentType.META_CONVERSATION.value,
+                resolved_intent=IntentType.META_CONVERSATION.value,
+                final_answer="Acknowledged.",
+                invariant_decisions={"fallback_action": "NONE", "answer_mode": "assist"},
+>               confidence_decision={"stage_audit_trail": list(runtime.CanonicalTurnOrchestrator.STAGE_ORDER)},
+                                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                provenance_types=[],
+                basis_statement="none",
+                claims=[],
+            ),
+            [],
+        )
+E       AttributeError: module 'testbot.sat_chatbot_memory_v2' has no attribute 'CanonicalTurnOrchestrator'
+
+tests/test_runtime_logging_events.py:2065: AttributeError
+_ test_chat_loop_routes_issue_0013_regression_utterances_through_canonical_pipeline[How log ago did I ask you something?] _
+
+monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f0f9ad94850>
+utterance = 'How log ago did I ask you something?'
+
+    @pytest.mark.parametrize(
+        "utterance",
+        [
+            "Hi! I'm Sebastian",
+            "The memory today",
+            "How log ago did I ask you something?",
+        ],
+    )
+    def test_chat_loop_routes_issue_0013_regression_utterances_through_canonical_pipeline(monkeypatch, utterance: str) -> None:
+        pipeline_calls: list[str] = []
+    
+        monkeypatch.setattr(runtime, "append_session_log", lambda _event, _payload: None)
+        monkeypatch.setattr(runtime, "_validate_and_log_transition", lambda _result: None)
+        monkeypatch.setattr(runtime, "store_doc", lambda *args, **kwargs: None)
+        monkeypatch.setattr(runtime, "persist_promoted_context", lambda *args, **kwargs: [])
+        monkeypatch.setattr(
+            runtime,
+            "classify_intent",
+            lambda _utterance: (_ for _ in ()).throw(AssertionError("raw U->I classify_intent path is forbidden")),
+        )
+    
+        def _stub_pipeline(**kwargs):
+            state = kwargs["state"]
+            pipeline_calls.append(state.user_input)
+            return (
+                replace(
+                    state,
+                    classified_intent=IntentType.META_CONVERSATION.value,
+                    resolved_intent=IntentType.META_CONVERSATION.value,
+                    final_answer="Acknowledged.",
+                    invariant_decisions={"fallback_action": "NONE", "answer_mode": "assist"},
+                    confidence_decision={"stage_audit_trail": list(runtime.CanonicalTurnOrchestrator.STAGE_ORDER)},
+                    provenance_types=[],
+                    basis_statement="none",
+                    claims=[],
+                ),
+                [],
+            )
+    
+        monkeypatch.setattr(runtime, "_run_canonical_turn_pipeline", _stub_pipeline)
+    
+        prompts = iter([utterance, "stop"])
+>       _run_chat_loop(
+            llm=_StaticLLM("ignored"),
+            store=object(),
+            chat_history=deque(),
+            near_tie_delta=0.05,
+            io_channel="cli",
+            capability_status="ask_unavailable",
+            capability_snapshot=CapabilitySnapshot(
+                runtime={},
+                requested_mode="cli",
+                daemon_mode=False,
+                effective_mode="cli",
+                fallback_reason=None,
+                exit_reason=None,
+                ha_error=None,
+                ollama_error=None,
+                runtime_capability_status=RuntimeCapabilityStatus(
+                    ollama_available=True,
+                    ha_available=False,
+                    effective_mode="cli",
+                    requested_mode="cli",
+                    daemon_mode=False,
+                    fallback_reason=None,
+                    memory_backend="inmemory",
+                    debug_enabled=False,
+                    debug_verbose=False,
+                    text_clarification_available=True,
+                    satellite_ask_available=False,
+                ),
+            ),
+            read_user_utterance=lambda: next(prompts, None),
+            send_assistant_text=lambda _text: None,
+            clock=_FIXED_CLOCK,
+        )
+
+tests/test_runtime_logging_events.py:2076: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/testbot/sat_chatbot_memory_v2.py:3478: in _run_chat_loop
+    state, hits = _run_canonical_turn_pipeline(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+kwargs = {'capability_snapshot': CapabilitySnapshot(runtime={}, requested_mode='cli', daemon_mode=False, effective_mode='cli', ...le', 'chat_history': deque([]), 'clock': <tests.test_runtime_logging_events._FixedClock object at 0x7f0f9a718390>, ...}
+state = PipelineState(user_input='How log ago did I ask you something?', rewritten_query='', retrieval_candidates=[], reranked... required=False, reason=''), pending_clarification=PendingClarificationArtifact(extra={}, required=False, question=''))
+
+    def _stub_pipeline(**kwargs):
+        state = kwargs["state"]
+        pipeline_calls.append(state.user_input)
+        return (
+            replace(
+                state,
+                classified_intent=IntentType.META_CONVERSATION.value,
+                resolved_intent=IntentType.META_CONVERSATION.value,
+                final_answer="Acknowledged.",
+                invariant_decisions={"fallback_action": "NONE", "answer_mode": "assist"},
+>               confidence_decision={"stage_audit_trail": list(runtime.CanonicalTurnOrchestrator.STAGE_ORDER)},
+                                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                provenance_types=[],
+                basis_statement="none",
+                claims=[],
+            ),
+            [],
+        )
+E       AttributeError: module 'testbot.sat_chatbot_memory_v2' has no attribute 'CanonicalTurnOrchestrator'
+
+tests/test_runtime_logging_events.py:2065: AttributeError
+__ test_resolve_context_consumes_commit_receipt_continuity_deterministically ___
+
+    def test_resolve_context_consumes_commit_receipt_continuity_deterministically() -> None:
+        prior_state = PipelineState(
+            user_input="turn one",
+            resolved_intent=IntentType.MEMORY_RECALL.value,
+            commit_receipt={
+                "commit_stage": "answer.commit",
+                "pending_repair_state": {"repair_required_by_policy": True, "repair_offered_to_user": True, "reason": "repair_offer_rendered", "followup_route": "repair_offer_followup"},
+                "remaining_obligations": ["continue_repair_reconstruction"],
+                "pending_ingestion_request_id": "ingest-42",
+                "confirmed_user_facts": ["name=Sam", "timezone=PST"],
+            },
+        )
+    
+        resolved = runtime.resolve_context(utterance="continue", prior_pipeline_state=prior_state)
+    
+>       assert resolved.history_anchors == (
+            "prior_intent:memory_recall",
+            "commit.confirmed_user_facts:name=Sam",
+            "commit.confirmed_user_facts:timezone=PST",
+            "commit.pending_repair_state:repair_offered_to_user",
+            "commit.pending_ingestion_request_id:ingest-42",
+            "commit.remaining_obligations:continue_repair_reconstruction",
+        )
+E       AssertionError: assert ('prior_inten...gest-42', ...) == ('prior_inten...construction')
+E         
+E         At index 4 diff: 'commit.assistant_offer_anchor:followup_route=repair_offer_followup' != 'commit.pending_ingestion_request_id:ingest-42'
+E         Left contains one more item: 'commit.remaining_obligations:continue_repair_reconstruction'
+E         Use -v to get more diff
+
+tests/test_runtime_logging_events.py:2129: AssertionError
+_ test_run_canonical_answer_stage_flow_distinguishes_knowing_success_and_unknowing_rejection_paths _
+
+    def test_run_canonical_answer_stage_flow_distinguishes_knowing_success_and_unknowing_rejection_paths() -> None:
+        knowing_state = PipelineState(
+            user_input="what did i note about release prep?",
+            resolved_intent=IntentType.MEMORY_RECALL.value,
+            confidence_decision={"context_confident": True, "ambiguity_detected": False},
+        )
+        knowing = run_canonical_answer_stage_flow(
+            _StaticLLM("From memory, I found: release prep requires changelog review."),
+            knowing_state,
+            chat_history=deque(),
+            hits=[
+                Document(
+                    page_content="release prep requires changelog review",
+                    metadata={"doc_id": "mem-11", "ts": "2026-03-02T10:00:00Z"},
+                )
+            ],
+            capability_status="ask_unavailable",
+            clock=_FIXED_CLOCK,
+        )
+    
+        rejecting_state = PipelineState(
+            user_input="what is ontology?",
+            resolved_intent=IntentType.KNOWLEDGE_QUESTION.value,
+            confidence_decision={
+                "context_confident": False,
+                "ambiguity_detected": False,
+                "general_knowledge_confidence": 0.1,
+                "general_knowledge_support": 0,
+            },
+        )
+        rejecting = run_canonical_answer_stage_flow(
+            _StaticLLM("Ontology is the study of being and existence."),
+            rejecting_state,
+            chat_history=deque(),
+            hits=[],
+            capability_status="ask_unavailable",
+            clock=_FIXED_CLOCK,
+        )
+    
+        assert knowing.invariant_decisions.get("answer_mode") == "memory-grounded"
+        assert knowing.invariant_decisions.get("fallback_action") == "ANSWER_FROM_MEMORY"
+>       assert rejecting.invariant_decisions.get("fallback_action") in {"ANSWER_UNKNOWN", "ANSWER_GENERAL_KNOWLEDGE"}
+E       AssertionError: assert 'ANSWER_FROM_MEMORY' in {'ANSWER_GENERAL_KNOWLEDGE', 'ANSWER_UNKNOWN'}
+E        +  where 'ANSWER_FROM_MEMORY' = get('fallback_action')
+E        +    where get = InvariantDecision(extra={'answer_mode_rationale': {'fallback_action': 'ANSWER_FROM_MEMORY', 'reason': 'assist_or_socia...ode='assist', fallback_action='ANSWER_FROM_MEMORY', answer_contract_valid=False, general_knowledge_contract_valid=True).get
+E        +      where InvariantDecision(extra={'answer_mode_rationale': {'fallback_action': 'ANSWER_FROM_MEMORY', 'reason': 'assist_or_socia...ode='assist', fallback_action='ANSWER_FROM_MEMORY', answer_contract_valid=False, general_knowledge_contract_valid=True) = PipelineState(user_input='what is ontology?', rewritten_query='Ontology is the study of being and existence.', retriev...ct(extra={'obligation_id': '', 'source_anchor': '', 'focus': '', 'carry_forward': False}, required=False, question='')).invariant_decisions
+
+tests/test_runtime_logging_events.py:2180: AssertionError
+_ test_capabilities_help_followup_debug_policy_never_reports_general_knowledge_action _
+
+    def test_capabilities_help_followup_debug_policy_never_reports_general_knowledge_action() -> None:
+        state = PipelineState(
+            user_input="define the term",
+            resolved_intent=IntentType.CAPABILITIES_HELP.value,
+            confidence_decision={"context_confident": False, "ambiguity_detected": False},
+        )
+    
+>       answered = run_canonical_answer_stage_flow(
+            _StaticLLM("unused"),
+            state,
+            chat_history=deque(),
+            hits=[],
+            capability_status="ask_unavailable",
+            runtime_capability_status=RuntimeCapabilityStatus(
+                ollama_available=True,
+                ha_available=False,
+                effective_mode="cli",
+                requested_mode="cli",
+                daemon_mode=False,
+                fallback_reason=None,
+                memory_backend="in_memory",
+                debug_enabled=True,
+                debug_verbose=False,
+                text_clarification_available=True,
+                satellite_ask_available=False,
+            ),
+            clock=_FIXED_CLOCK,
+        )
+
+tests/test_runtime_logging_events.py:2326: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+src/testbot/sat_chatbot_memory_v2.py:2969: in run_canonical_answer_stage_flow
+    final_state, _ = _run_canonical_turn_pipeline(
+src/testbot/sat_chatbot_memory_v2.py:3386: in _run_canonical_turn_pipeline
+    next_state, normalized_hits = run_canonical_turn_pipeline(
+src/testbot/application/services/canonical_turn_runtime.py:31: in run_canonical_turn_pipeline
+    return run_canonical_turn_pipeline_service(
+src/testbot/application/services/turn_service.py:744: in run_canonical_turn_pipeline_service
+    final_context = orchestrator.run(context)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/canonical_turn_orchestrator.py:122: in run
+    context = stage.handler(context)
+              ^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/application/services/turn_service.py:157: in answer_commit
+    return answer_commit_stage(ctx, self.runtime)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+src/testbot/application/services/turn_service.py:640: in answer_commit_stage
+    stage.deps.validate_and_log_transition(validate_answer_commit_post(ctx.state))
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+result = TransitionCheckResult(stage='answer.commit', boundary='post', invariant_refs=('PINV-001', 'PINV-002', 'PINV-003'), passed=False, failures=('alignment_decision_consistent',))
+
+    def _validate_and_log_transition(result) -> None:
+        append_transition_validation_log(result)
+        if not result.passed:
+            failures = ", ".join(result.failures)
+>           raise AssertionError(f"Stage transition validation failed at {result.stage}.{result.boundary}: {failures}")
+E           AssertionError: Stage transition validation failed at answer.commit.post: alignment_decision_consistent
+
+src/testbot/sat_chatbot_memory_v2.py:3102: AssertionError
+_ test_run_canonical_answer_stage_flow_time_query_uses_fake_clock_and_helsinki _
+
+    def test_run_canonical_answer_stage_flow_time_query_uses_fake_clock_and_helsinki() -> None:
+        frozen_now = arrow.get("2026-03-10T22:30:00+00:00")
+        state = PipelineState(user_input="what is tomorrow?", last_user_message_ts="2026-03-10T22:00:00+00:00")
+    
+        updated = run_canonical_answer_stage_flow(
+            DummyLLM(),
+            state,
+            chat_history=[],
+            hits=[],
+            capability_status="ask_unavailable",
+            clock=FakeClock(frozen_now),
+            timezone="Europe/Helsinki",
+        )
+    
+>       assert updated.final_answer == "Tomorrow is 2026-03-12 in Europe/Helsinki."
+E       assert "I don't have...ssing detail." == 'Tomorrow is ...ope/Helsinki.'
+E         
+E         - Tomorrow is 2026-03-12 in Europe/Helsinki.
+E         + I don't have enough reliable memory to answer directly. I can either help you reconstruct the timeline from what you remember, or suggest where to check next for the missing detail.
+
+tests/test_time_reasoning.py:73: AssertionError
+=============================== warnings summary ===============================
+tests/test_runtime_logging_events.py::test_run_canonical_answer_stage_flow_selected_decision_for_note_taking_preserves_direct_answer_contract
+  /tmp/TestBot-mainhead/tests/test_runtime_logging_events.py:1356: DeprecationWarning: run_canonical_answer_stage_flow(...) ignores selected_decision; canonical policy.decide stage is authoritative.
+    answered = run_canonical_answer_stage_flow(
+
+tests/test_runtime_logging_events.py::test_run_canonical_answer_stage_flow_uses_selected_decision_object_for_memory_action
+  /tmp/TestBot-mainhead/tests/test_runtime_logging_events.py:1384: DeprecationWarning: run_canonical_answer_stage_flow(...) ignores selected_decision; canonical policy.decide stage is authoritative.
+    answered = run_canonical_answer_stage_flow(
+
+tests/test_runtime_logging_events.py::test_run_canonical_answer_stage_flow_selected_decision_clarify_keeps_policy_and_answer_aligned
+  /tmp/TestBot-mainhead/tests/test_runtime_logging_events.py:1419: DeprecationWarning: run_canonical_answer_stage_flow(...) ignores selected_decision; canonical policy.decide stage is authoritative.
+    answered = run_canonical_answer_stage_flow(
+
+tests/test_runtime_logging_events.py::test_run_canonical_answer_stage_flow_selected_decision_pending_lookup_uses_non_clarify_mode
+  /tmp/TestBot-mainhead/tests/test_runtime_logging_events.py:1451: DeprecationWarning: run_canonical_answer_stage_flow(...) ignores selected_decision; canonical policy.decide stage is authoritative.
+    answered = run_canonical_answer_stage_flow(
+
+tests/test_runtime_logging_events.py::test_run_canonical_answer_stage_flow_selected_decision_non_memory_clarify_pending_lookup_degrades_to_safe_uncertainty
+  /tmp/TestBot-mainhead/tests/test_runtime_logging_events.py:1484: DeprecationWarning: run_canonical_answer_stage_flow(...) ignores selected_decision; canonical policy.decide stage is authoritative.
+    answered = run_canonical_answer_stage_flow(
+
+tests/test_runtime_logging_events.py::test_run_canonical_answer_stage_flow_canonical_commit_is_authoritative_for_answer_provenance_and_commit_receipt
+  /tmp/TestBot-mainhead/tests/test_runtime_logging_events.py:1516: DeprecationWarning: run_canonical_answer_stage_flow(...) ignores selected_decision; canonical policy.decide stage is authoritative.
+    answered = run_canonical_answer_stage_flow(
+
+tests/test_runtime_logging_events.py::test_run_canonical_answer_stage_flow_selected_decision_non_memory_clarify_no_clarify_mode_degrades_to_assist
+  /tmp/TestBot-mainhead/tests/test_runtime_logging_events.py:1553: DeprecationWarning: run_canonical_answer_stage_flow(...) ignores selected_decision; canonical policy.decide stage is authoritative.
+    answered = run_canonical_answer_stage_flow(
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=========================== short test summary info ============================
+FAILED tests/pipeline/test_stage_contracts.py::test_answer_commit_merges_stabilized_facts_once_per_fact_without_duplicate_commit_effects
+FAILED tests/test_alignment_transitions.py::test_run_canonical_answer_stage_flow_non_memory_invalid_gk_contract_routes_to_safe_fallback_and_passes_post_validation
+FAILED tests/test_alignment_transitions.py::test_run_canonical_answer_stage_flow_social_statement_with_invalid_gk_contract_degrades_to_uncertainty_fallback
+FAILED tests/test_alignment_transitions.py::test_run_canonical_answer_stage_flow_memory_hit_without_ambiguity_uses_contract_safe_recovery_answer
+FAILED tests/test_answer_contract.py::test_memory_recall_confident_contract_failure_uses_deterministic_recovery_hit
+FAILED tests/test_answer_contract.py::test_non_memory_low_source_confidence_uses_unknown_fallback_without_source_citation
+FAILED tests/test_answer_contract.py::test_run_canonical_answer_stage_flow_invariant_records_policy_rationale_for_low_confidence_non_memory
+FAILED tests/test_answer_contract.py::test_noisy_heuristic_history_does_not_force_constraints_into_final_answer
+FAILED tests/test_canonical_stage_dtos.py::test_validation_result_has_explicit_constructor_and_legacy_adapter
+FAILED tests/test_capabilities_help.py::test_run_canonical_answer_stage_flow_capabilities_help_reflects_ha_unavailable_cli_fallback
+FAILED tests/test_capabilities_help.py::test_run_canonical_answer_stage_flow_capabilities_help_reflects_ha_satellite_available
+FAILED tests/test_capabilities_help.py::test_run_canonical_answer_stage_flow_capabilities_help_reports_unavailable_when_no_clarification_path
+FAILED tests/test_capabilities_help.py::test_debug_flag_does_not_change_non_capabilities_fallback_answer
+FAILED tests/test_capabilities_help.py::test_run_canonical_answer_stage_flow_satellite_action_request_cli_returns_capability_structured_alternatives
+FAILED tests/test_capabilities_help.py::test_run_canonical_answer_stage_flow_satellite_action_request_with_ha_available_suggests_satellite_mode_switch
+FAILED tests/test_capabilities_runtime_status.py::test_shared_snapshot_keeps_cli_fallback_truth_consistent
+FAILED tests/test_capabilities_runtime_status.py::test_shared_snapshot_keeps_satellite_truth_consistent
+FAILED tests/test_decisioning_stages.py::test_turn_two_who_am_i_with_continuity_prefers_memory_aware_intent
+FAILED tests/test_live_smoke_degraded_modes.py::test_live_smoke_degraded_modes_runtime_contracts[ha_unavailable_ollama_available-http://127.0.0.1:9-fake-token-assist_satellite.kitchen-LIVE_OLLAMA-cli-False-True-Home Assistant satellite actions: unavailable-CLI fallback is active]
+FAILED tests/test_live_smoke_degraded_modes.py::test_live_smoke_degraded_modes_runtime_contracts[ha_available_ollama_unavailable-LIVE_HA-LIVE_HA-LIVE_HA-http://127.0.0.1:1-unavailable-True-False-Home Assistant satellite actions: degraded-current mode is CLI]
+FAILED tests/test_live_smoke_degraded_modes.py::test_live_smoke_degraded_modes_runtime_contracts[both_unavailable-http://127.0.0.1:9-fake-token-assist_satellite.kitchen-http://127.0.0.1:1-unavailable-False-False-Home Assistant satellite actions: unavailable-CLI fallback is active]
+FAILED tests/test_runtime_logging_events.py::test_run_canonical_answer_stage_flow_invoke_failure_uses_deterministic_fallback_and_logs
+FAILED tests/test_runtime_logging_events.py::test_run_canonical_answer_stage_flow_low_source_confidence_non_memory_uses_safe_unknowing_mode_legacy_assertions
+FAILED tests/test_runtime_logging_events.py::test_run_canonical_answer_stage_flow_greeting_command_preserves_social_draft_answer
+FAILED tests/test_runtime_logging_events.py::test_run_canonical_answer_stage_flow_low_source_confidence_non_memory_uses_uncertainty_response
+FAILED tests/test_runtime_logging_events.py::test_run_canonical_answer_stage_flow_self_introduction_preserves_acknowledgement_draft
+FAILED tests/test_runtime_logging_events.py::test_run_canonical_answer_stage_flow_regression_say_hello_keeps_greeting_instead_of_memory_fallback
+FAILED tests/test_runtime_logging_events.py::test_run_canonical_answer_stage_flow_memory_recall_confident_hit_recovers_from_contract_failure
+FAILED tests/test_runtime_logging_events.py::test_chat_loop_cli_turn_logs_jsonl_with_alignment_decision_object
+FAILED tests/test_runtime_logging_events.py::test_chat_loop_two_turn_commit_continuity_is_consumed_by_context_and_retrieval
+FAILED tests/test_runtime_logging_events.py::test_run_canonical_answer_stage_flow_selected_decision_for_note_taking_preserves_direct_answer_contract
+FAILED tests/test_runtime_logging_events.py::test_run_canonical_answer_stage_flow_selected_decision_clarify_keeps_policy_and_answer_aligned
+FAILED tests/test_runtime_logging_events.py::test_run_canonical_answer_stage_flow_selected_decision_pending_lookup_uses_non_clarify_mode
+FAILED tests/test_runtime_logging_events.py::test_run_canonical_answer_stage_flow_selected_decision_non_memory_clarify_pending_lookup_degrades_to_safe_uncertainty
+FAILED tests/test_runtime_logging_events.py::test_run_canonical_answer_stage_flow_canonical_commit_is_authoritative_for_answer_provenance_and_commit_receipt
+FAILED tests/test_runtime_logging_events.py::test_run_canonical_answer_stage_flow_selected_decision_non_memory_clarify_no_clarify_mode_degrades_to_assist
+FAILED tests/test_runtime_logging_events.py::test_chat_loop_async_pending_lookup_commits_pending_answer_and_logs_semantics
+FAILED tests/test_runtime_logging_events.py::test_final_answer_mode_stage_audit_trail_includes_answer_commit
+FAILED tests/test_runtime_logging_events.py::test_chat_loop_does_not_use_pre_pipeline_intent_classifier_route_authority
+FAILED tests/test_runtime_logging_events.py::test_chat_loop_routes_issue_0013_regression_utterances_through_canonical_pipeline[Hi! I'm Sebastian]
+FAILED tests/test_runtime_logging_events.py::test_chat_loop_routes_issue_0013_regression_utterances_through_canonical_pipeline[The memory today]
+FAILED tests/test_runtime_logging_events.py::test_chat_loop_routes_issue_0013_regression_utterances_through_canonical_pipeline[How log ago did I ask you something?]
+FAILED tests/test_runtime_logging_events.py::test_resolve_context_consumes_commit_receipt_continuity_deterministically
+FAILED tests/test_runtime_logging_events.py::test_run_canonical_answer_stage_flow_distinguishes_knowing_success_and_unknowing_rejection_paths
+FAILED tests/test_runtime_logging_events.py::test_capabilities_help_followup_debug_policy_never_reports_general_knowledge_action
+FAILED tests/test_time_reasoning.py::test_run_canonical_answer_stage_flow_time_query_uses_fake_clock_and_helsinki
+================= 46 failed, 751 passed, 7 warnings in 56.10s ==================
