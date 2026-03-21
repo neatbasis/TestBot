@@ -4,11 +4,11 @@
 
 This follow-up pass extends the prior documentation governance audit (`docs/architecture/documentation-governance-audit-2026-03-21.md`) and advances into previously unaudited Markdown.
 
-- Total Markdown files currently in repository: **107**
+- Total Markdown files currently in repository: **108**
 - Previously audited Markdown files (prior pass): **11**
-- Candidate remaining Markdown files before this pass: **96**
+- Candidate remaining Markdown files before this pass: **97**
 - Newly selected files audited in this pass: **9**
-- Remaining Markdown files not yet audited after this pass: **87**
+- Remaining Markdown files not yet audited after this pass: **88**
 
 Non-Markdown enforcement artifacts reviewed for evidence in this pass:
 - `scripts/all_green_gate.py`
@@ -46,6 +46,7 @@ All Markdown files not listed in 1.1:
 - `./docs/architecture/canonical-turn-pipeline.md`
 - `./docs/architecture/commit-drift-audit-2026-03-19.md`
 - `./docs/architecture/documentation-governance-audit-2026-03-21.md`
+- `./docs/architecture/documentation-governance-follow-up-audit-2026-03-21.md`
 - `./docs/architecture/system-structure-audit-2026-03-19.md`
 - `./docs/directives/CHANGE_POLICY.md`
 - `./docs/directives/decision-policy.md`
@@ -151,7 +152,7 @@ Selection rationale: this batch is the highest-impact previously unaudited gover
 
 ### 1.4 Remaining files not audited in this pass
 
-All candidate remaining files except 1.3 (87 files):
+All candidate remaining files except 1.3 (88 files):
 
 - `./AGENTS.md`
 - `./CHANGELOG.md`
@@ -160,6 +161,7 @@ All candidate remaining files except 1.3 (87 files):
 - `./docs/architecture/canonical-turn-pipeline.md`
 - `./docs/architecture/commit-drift-audit-2026-03-19.md`
 - `./docs/architecture/documentation-governance-audit-2026-03-21.md`
+- `./docs/architecture/documentation-governance-follow-up-audit-2026-03-21.md`
 - `./docs/architecture/system-structure-audit-2026-03-19.md`
 - `./docs/governance/architecture-drift-register.md`
 - `./docs/governance/code-review-governance-automation-dependency-boundaries.md`
@@ -259,7 +261,7 @@ Uncertainty reduced by this pass:
 
 ## 3. Executive summary
 
-After this pass, **20 of 107 Markdown files (18.7%)** are now covered by documentation-governance audits (11 prior + 9 new). The newly audited files that materially affect governance clarity are `README.md`, `docs/directives/traceability-matrix.md`, `docs/directives/decision-policy.md`, `docs/directives/CHANGE_POLICY.md`, and `docs/invariants.md` because they route contributor behavior and claim canonical ownership of policy mappings. New findings include a split between directive policy claims and actual CI enforcement (notably PR-field merge blockers declared in `docs/directives/CHANGE_POLICY.md` without observed blocking automation), plus fan-out risk where `README.md` simultaneously elevates multiple directive authorities. Highest-priority next tasks are auditing `docs/architecture/canonical-turn-pipeline.md`, `docs/invariants/{answer-policy,pipeline}.md`, and governance register/checklist docs to close authoritative-contract uncertainty and verify executable binding.
+After this pass, **20 of 108 Markdown files (18.5%)** are now covered by documentation-governance audits (11 prior + 9 new). The newly audited files that materially affect governance clarity are `README.md`, `docs/directives/traceability-matrix.md`, `docs/directives/decision-policy.md`, `docs/directives/CHANGE_POLICY.md`, and `docs/invariants.md` because they route contributor behavior and claim canonical ownership of policy mappings. New findings include a split between directive policy claims and actual CI enforcement (notably PR-field merge blockers declared in `docs/directives/CHANGE_POLICY.md` without observed blocking automation), plus fan-out risk where `README.md` simultaneously elevates multiple directive authorities. Highest-priority next tasks are auditing `docs/architecture/canonical-turn-pipeline.md`, `docs/invariants/{answer-policy,pipeline}.md`, and governance register/checklist docs to close authoritative-contract uncertainty and verify executable binding.
 
 Coverage progressed by advancing into previously unaudited canonical-entrypoint and directive files; this was not a re-audit of prior scope.
 
@@ -297,6 +299,7 @@ Coverage progressed by advancing into previously unaudited canonical-entrypoint 
 | `./docs/architecture/canonical-turn-pipeline.md` | canonical | Core runtime contract was not audited in this pass; high governance impact | high | Validate claims against runtime stage functions and tests; map which sections are executable-enforced vs descriptive; detect overlaps with traceability matrix | `src/testbot/*stage*`; tests; traceability matrix; gate scripts | Batch B: architecture governance docs |
 | `./docs/architecture/commit-drift-audit-2026-03-19.md` | historical | Might be misused as live authority due to concrete remediation directions | medium | Identify whether any active docs/issues cite this as current policy; determine if header needs explicit historical superseded marker | Cross-links in docs/issues/roadmap | Batch D: historical/admin docs |
 | `./docs/architecture/documentation-governance-audit-2026-03-21.md` | historical | Prior pass artifact may still be treated as active without pass-trail context | medium | Verify whether this file is referenced as current canonical audit; ensure progression links to follow-up audits are explicit | README/docs/architecture index links | Batch D: historical/admin docs |
+| `./docs/architecture/documentation-governance-follow-up-audit-2026-03-21.md` | historical | This in-progress audit artifact should be explicitly classified to avoid future scope-accounting blind spots | low | On a future pass, verify whether later audits reference this file as superseded history; ensure bidirectional links across audit passes remain intact | cross-links between `docs/architecture/documentation-governance-*.md` files | Batch D: historical/admin docs |
 | `./docs/architecture/system-structure-audit-2026-03-19.md` | historical | Could overlap with canonical architecture claims | medium | Compare claims to current architecture docs/tests; classify stale findings vs active governance rules | architecture docs; test suite references | Batch D: historical/admin docs |
 | `./docs/governance/architecture-drift-register.md` | transitional | Likely tracks open governance debt with owner/severity semantics | high | Determine whether register drives prioritization/review decisions; trace links from roadmap/issues; verify if statuses are maintained and bound to checks | issue records; roadmap docs; all_green outputs | Batch C: governance trackers |
 | `./docs/governance/code-review-governance-automation-dependency-boundaries.md` | reference | Review policy may shadow CONTRIBUTING/testing and enforce unofficial rules | high | Compare checklist items to actual CI blockers; identify documentary-only blockers; map overlaps with python checklist doc | CONTRIBUTING/testing; workflow checks; python checklist doc | Batch C: governance trackers |
@@ -382,8 +385,8 @@ Coverage progressed by advancing into previously unaudited canonical-entrypoint 
 
 | Audit pass | Date | Newly audited Markdown files | Total audited Markdown files after pass | Remaining Markdown files after pass | Notes |
 | ---------- | ---- | ---------------------------- | --------------------------------------- | ----------------------------------- | ----- |
-| Documentation governance audit (initial) | 2026-03-21 | 11 | 11 | 96 | Established baseline structural-honesty framing and split-authority findings |
-| Documentation governance follow-up audit (this pass) | 2026-03-21 | 9 | 20 | 87 | Advanced into README + directives + invariants index + operator/contributor routing docs |
+| Documentation governance audit (initial) | 2026-03-21 | 11 | 11 | 97 | Established baseline structural-honesty framing and split-authority findings |
+| Documentation governance follow-up audit (this pass) | 2026-03-21 | 9 | 20 | 88 | Advanced into README + directives + invariants index + operator/contributor routing docs |
 
 ## 8. Minimal next-step sequence
 
