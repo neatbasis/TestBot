@@ -1,13 +1,14 @@
 # Documentation Governance Follow-up Audit — Structural Honesty (2026-03-21)
 
 ## 1. Scope accounting
-This is a continuation audit anchored to `docs/architecture/documentation-governance-audit-2026-03-21.md`. I used the anchor audit out-of-scope Markdown list as the backlog baseline, compared it with the current tracked Markdown set, and then removed files already covered by prior passes before selecting this pass scope.
+This continuation pass is anchored to `docs/architecture/documentation-governance-audit-2026-03-21.md`. I reused the anchor audit’s out-of-scope Markdown backlog, reconciled it against current repository Markdown files, then separated prior scope, this-pass scope, and remaining scope.
 
-- Total Markdown files currently in repo: **108**.
-- Markdown files already covered by previous documentation governance audits (before this pass): **38**.
-- Markdown files newly selected for this audit pass: **5**.
-- Markdown files still not yet audited after selection: **65** (**64** from the anchor backlog + 1 non-anchor file: this follow-up artifact).
-- Non-Markdown enforcement artifacts reviewed for evidence: `scripts/validate_issues.py`, `scripts/validate_issue_links.py`, `scripts/generate_red_tag_index.py`, `scripts/all_green_gate.py`, `.github/workflows/issue-link-validation.yml`.
+- Total Markdown files currently in repo: **107**.
+- Markdown files already covered by previous documentation governance audits (before this pass): **42**.
+- Markdown files newly selected for this audit pass: **6**.
+- Markdown files still not yet audited after selection: **59**.
+- Non-Markdown enforcement artifacts reviewed for evidence: `scripts/all_green_gate.py`, `scripts/validate_issues.py`, `scripts/validate_issue_links.py`, `.github/workflows/issue-link-validation.yml`, `docs/qa/feature-status.yaml`.
+- Backlog reconciliation note: prior scope had to be partially reconstructed from the follow-up audit body/tables; repository delta since anchor audit includes one Markdown removal (`.github/PULL_REQUEST_TEMPLATE.md`) and one Markdown addition (`docs/architecture/documentation-governance-follow-up-audit-2026-03-21.md`).
 
 ### 1.1 Previously audited Markdown files
 - `plan.md`
@@ -19,7 +20,6 @@ This is a continuation audit anchored to `docs/architecture/documentation-govern
 - `docs/issues/governance-control-surface-contract-freeze.md`
 - `docs/architecture-boundaries.md`
 - `CONTRIBUTING.md`
-- `.github/PULL_REQUEST_TEMPLATE.md`
 - `docs/architecture.md`
 - `README.md`
 - `docs/invariants.md`
@@ -48,21 +48,19 @@ This is a continuation audit anchored to `docs/architecture/documentation-govern
 - `docs/issues/ISSUE-0016-startup-degraded-mode-bdd-coverage-gap.md`
 - `docs/issues/ISSUE-0017-invariant-boundary-ambiguity-answer-commit-regression.md`
 - `docs/issues/ISSUE-0018-dual-trigger-event-loop-for-proactive-ingestion-lifecycle.md`
+- `docs/issues/ISSUE-0001-issue-governance-trackable-measurable.md`
+- `docs/issues/ISSUE-0002-behave-dev-deps-reminders.md`
+- `docs/issues/ISSUE-0003-readme-layout-drift.md`
+- `docs/issues/ISSUE-0004-bdd-policy-not-yet-executable.md`
+- `docs/issues/ISSUE-0005-eval-runtime-logic-divergence-risk.md`
 
 ### 1.2 Candidate remaining Markdown files
-(Reconstructed from the anchor out-of-scope list minus previously audited files, plus the additional non-anchor Markdown follow-up artifact now in-repo.)
-
 - `AGENTS.md`
 - `CHANGELOG.md`
 - `docs/architecture/commit-drift-audit-2026-03-19.md`
 - `docs/architecture/documentation-governance-audit-2026-03-21.md`
 - `docs/architecture/documentation-governance-follow-up-audit-2026-03-21.md`
 - `docs/architecture/system-structure-audit-2026-03-19.md`
-- `docs/issues/ISSUE-0001-issue-governance-trackable-measurable.md`
-- `docs/issues/ISSUE-0002-behave-dev-deps-reminders.md`
-- `docs/issues/ISSUE-0003-readme-layout-drift.md`
-- `docs/issues/ISSUE-0004-bdd-policy-not-yet-executable.md`
-- `docs/issues/ISSUE-0005-eval-runtime-logic-divergence-risk.md`
 - `docs/issues/ISSUE-0006-operationalize-docs-issues-area.md`
 - `docs/issues/ISSUE-0007-behave-gate-not-enforced-in-pr-validation.md`
 - `docs/issues/ISSUE-0008-intent-grounding-gate-failures-block-merge.md`
@@ -124,13 +122,14 @@ This is a continuation audit anchored to `docs/architecture/documentation-govern
 - `src/seem_bot/README.md`
 
 ### 1.3 Newly selected files for this audit pass
-- `docs/issues/ISSUE-0001-issue-governance-trackable-measurable.md`
-- `docs/issues/ISSUE-0002-behave-dev-deps-reminders.md`
-- `docs/issues/ISSUE-0003-readme-layout-drift.md`
-- `docs/issues/ISSUE-0004-bdd-policy-not-yet-executable.md`
-- `docs/issues/ISSUE-0005-eval-runtime-logic-divergence-risk.md`
+- `docs/issues/ISSUE-0006-operationalize-docs-issues-area.md`
+- `docs/issues/ISSUE-0007-behave-gate-not-enforced-in-pr-validation.md`
+- `docs/issues/ISSUE-0008-intent-grounding-gate-failures-block-merge.md`
+- `docs/issues/ISSUE-0009-knowing-grounded-answers-partial-provenance-gap.md`
+- `docs/issues/ISSUE-0010-unknowing-safe-fallback-partial-contract-gap.md`
+- `docs/issues/ISSUE-0011-turn-analytics-input-coverage-silent-drop.md`
 
-Selection rationale: these are high-governance-impact issue records near the base of the issue program that define workflow establishment, executable-policy closure claims, and cross-links into README/testing/gate behavior. Auditing them now reduces ambiguity about whether early issue records are merely historical logs or still acting as de facto policy sources.
+Selection rationale: these six files were chosen first from the remaining pool because they are the highest-leverage unresolved governance records (live/open or recently active issue trackers) that can directly influence review/merge readiness interpretation.
 
 ### 1.4 Remaining files not audited in this pass
 - `AGENTS.md`
@@ -139,12 +138,6 @@ Selection rationale: these are high-governance-impact issue records near the bas
 - `docs/architecture/documentation-governance-audit-2026-03-21.md`
 - `docs/architecture/documentation-governance-follow-up-audit-2026-03-21.md`
 - `docs/architecture/system-structure-audit-2026-03-19.md`
-- `docs/issues/ISSUE-0006-operationalize-docs-issues-area.md`
-- `docs/issues/ISSUE-0007-behave-gate-not-enforced-in-pr-validation.md`
-- `docs/issues/ISSUE-0008-intent-grounding-gate-failures-block-merge.md`
-- `docs/issues/ISSUE-0009-knowing-grounded-answers-partial-provenance-gap.md`
-- `docs/issues/ISSUE-0010-unknowing-safe-fallback-partial-contract-gap.md`
-- `docs/issues/ISSUE-0011-turn-analytics-input-coverage-silent-drop.md`
 - `docs/issues/ISSUE-0014-cli-self-identity-semantic-routing-regression.md`
 - `docs/issues/ISSUE-0015-open-issue-review-and-issue-0014-quality-governance-hardening.md`
 - `docs/issues/ISSUE-0019-channel-agnostic-conversation-engine-and-shared-history.md`
@@ -200,42 +193,39 @@ Selection rationale: these are high-governance-impact issue records near the bas
 - `src/seem_bot/README.md`
 
 ## 2. Scope selection rationale
-This pass prioritized `ISSUE-0001` through `ISSUE-0005` because they sit at the front of the issue-governance chain and shape interpretation of how issue policy became “real” in repository behavior.
+This pass prioritized `ISSUE-0006` through `ISSUE-0011` because they are the first contiguous block of un-audited issue-governance records with the strongest operational coupling to current readiness behavior.
 
 Why these files now:
-1. They include explicit acceptance criteria about governance controls (`docs/issues.md`, `RED_TAG`, validator-backed closure), so they can be mistaken as canonical policy if unaudited.
-2. They bridge contributor-facing docs (`README.md`, `docs/testing.md`) and executable checks (`validate_issues`, `validate_issue_links`, `all_green_gate`), making them high leverage for governance clarity.
-3. They precede later issue clusters and therefore determine whether downstream issue records should be read as operational trackers, historical evidence, or policy shadows.
+1. They contain blocker chains, acceptance criteria, and closure language that reviewers can interpret as governance truth.
+2. They are cross-linked with canonical execution surfaces (`docs/testing.md`, `scripts/all_green_gate.py`, validator scripts, and feature-status artifacts), so uncertainty here propagates into contributor behavior.
+3. They are more governance-relevant than evidence snapshots and roadmap retrospectives that are likely historical unless these issue-control semantics are clarified first.
 
-Why these over other remaining files:
-- Higher governance relevance than historical evidence notes and roadmap retrospectives because these issue files contain decision-shaping closure language and policy assertions.
-- Higher uncertainty reduction than isolated reference docs because they directly interact with validator and readiness-gate narratives.
-
-Uncertainty reduced by this pass:
-- whether foundational issue records are still governance-active,
-- where they duplicate canonical policy,
-- and which unresolved issue-doc clusters should be audited next.
+What uncertainty this pass reduces:
+- whether these records are operational trackers, transitional contracts, or historical artifacts,
+- where issue-local claims duplicate canonical gate/check authority,
+- and which remaining documents should be sequenced next for maximum governance clarity.
 
 ## 3. Executive summary
-Documentation governance coverage is now **43/108 Markdown files (39.8%)** after this pass. The newly selected files that materially affect governance clarity are `ISSUE-0001` and `ISSUE-0005`: they make broad claims about validator/gate-backed governance and capability readiness, which can shadow canonical owners if not bounded. New split-authority findings show that issue-local closure language in `ISSUE-0002`/`0004`/`0005` can duplicate canonical testing and enforcement statements from `docs/testing.md` and `scripts/all_green_gate.py`. The most important next tasks are auditing the remaining active issue records (`ISSUE-0006` onward set in remaining pool), then de-authorizing evidence/roadmap artifacts that are not bound to executable controls.
+Coverage is now **48/107 current Markdown files audited (44.9%)**. Newly selected documents that materially affect governance clarity are `ISSUE-0007`, `ISSUE-0008`, `ISSUE-0009`, `ISSUE-0010`, and `ISSUE-0011`, because they carry active capability-state and gate-linked acceptance semantics; `ISSUE-0006` is primarily a historical operationalization record. New split-authority findings center on issue-local gate-check naming and status narratives that can drift from canonical enforcement surfaces. The most important next tasks are auditing the remaining active issue-control set (`ISSUE-0014`, `ISSUE-0015`, `ISSUE-0019`, `ISSUE-0020`, `ISSUE-0021`) and then the QA/runbook surfaces that consume or restate those controls.
 
 ## 4. Audit findings for newly selected documents
 
 | Document | Claimed purpose | Actual role in practice | Evidence | Classification | Governance risk | Action |
 | -------- | --------------- | ----------------------- | -------- | -------------- | --------------- | ------ |
-| `docs/issues/ISSUE-0001-issue-governance-trackable-measurable.md` | Establish canonical, measurable issue governance. | Transitional foundational record; historically launched the issue-governance program, but policy authority now lives in `docs/issues.md` + validators. | Closure notes reference validator-backed enforcement; `scripts/validate_issues.py` enforces issue fields/state semantics across `ISSUE-*.md`; `scripts/validate_issue_links.py` enforces issue linkage and RED_TAG sync paths. | historical | Medium: file can be misread as live policy instead of origin record. | Add explicit “historical origin record; canonical policy now in docs/issues.md” line in a future hygiene pass. |
-| `docs/issues/ISSUE-0002-behave-dev-deps-reminders.md` | Ensure behave/dev dependency reminders are explicit at point-of-use. | Historical remediation ticket that documents a docs-onboarding fix; not an enforcement owner. | File closure cites README/testing wording changes; no issue-specific rule in validators; enforcement is indirect through broader gate/pytest/behave execution guidance. | historical | Medium: issue-local wording can be mistaken as normative testing policy. | Keep as historical trace; reduce duplicated policy by referencing `docs/testing.md` for live test command contract. |
-| `docs/issues/ISSUE-0003-readme-layout-drift.md` | Fix README tree mismatch with tracked repo structure. | Historical documentation-integrity record with low ongoing governance authority. | Verification uses `validate_markdown_paths.py`; no direct validator/workflow reads this issue record for gating decisions. | historical | Low | Keep as resolved evidence; avoid using it as active policy source. |
-| `docs/issues/ISSUE-0004-bdd-policy-not-yet-executable.md` | Close gap between declared BDD policy and executable BDD artifacts. | Historical policy-to-implementation closure record; describes completion state but does not own live BDD governance. | Evidence points to `features/` and step files; canonical test contract is maintained in `docs/testing.md`; issue validators do not enforce issue-local AC semantics beyond field structure. | historical | Medium: can shadow current BDD policy when behavior evolves. | Add or maintain explicit pointer to canonical behavior/test docs for current requirements. |
-| `docs/issues/ISSUE-0005-eval-runtime-logic-divergence-risk.md` | Track capability-level readiness for time-aware ranking and gate parity. | Transitional historical-leaning issue record with strong operational closure claims tied to gate checks; potentially de facto authority if stale. | AC explicitly names gate commands and checks; `scripts/all_green_gate.py` is the actual blocking/warning semantics owner; issue-specific closure not automatically enforced after close. | transitional | High: issue-local readiness language can drift from current gate/test truth. | In future issue hygiene, replace repeated gate semantics with canonical references to current readiness/gate artifacts. |
+| `docs/issues/ISSUE-0006-operationalize-docs-issues-area.md` | Operationalize `docs/issues/` and `docs/issues.md` as governed infrastructure. | Historical origin record; current policy and enforcement authority now resides elsewhere. | Closure notes cite validator-backed adoption; active enforcement runs through issue validators and PR workflow checks, not this file. | historical | medium | Keep as provenance record and avoid citing as current policy owner. |
+| `docs/issues/ISSUE-0007-behave-gate-not-enforced-in-pr-validation.md` | Close governance traceability gaps for partial capability reporting. | Transitional operational tracker tied to feature-status linkage behavior. | Acceptance criteria and verification steps point to `report_feature_status.py`, `validate_issue_links.py`, and `validate_issues.py`; file itself is not consumed by CI. | transitional | high | Keep tracker role; collapse enduring gate semantics into canonical testing/gate docs. |
+| `docs/issues/ISSUE-0008-intent-grounding-gate-failures-block-merge.md` | Track residual deterministic intent-grounding quality needed for full implementation. | Operational issue tracker with active dependency sequencing and capability state implications. | File remains `in_progress`; cross-links execution chain via ISSUE-0013/0012; ACs restate canonical behave/pytest/gate commands. | operational | high | Keep as execution tracker; add explicit canonical-owner pointers for policy assertions. |
+| `docs/issues/ISSUE-0009-knowing-grounded-answers-partial-provenance-gap.md` | Primary traceability record for partial knowing-mode capability. | Operational tracker with extensive transitional residual-blocker notes. | Evidence binds to `docs/qa/feature-status.yaml` and gate summary outputs; residual blockers document check-ID mismatch risk between issue AC text and gate artifacts. | operational | high | Align issue AC check references with a stable canonical check-ID publication surface. |
+| `docs/issues/ISSUE-0010-unknowing-safe-fallback-partial-contract-gap.md` | Primary traceability record for partial unknowing fallback capability. | Operational tracker parallel to ISSUE-0009, with similar transitional blocker framing. | Evidence references feature-status artifacts and gate summary outputs; residual blockers again hinge on check-ID visibility. | operational | high | Same remediation pattern as ISSUE-0009: canonicalize check-ID source and reference it from issues. |
+| `docs/issues/ISSUE-0011-turn-analytics-input-coverage-silent-drop.md` | Close analytics input-coverage diagnostics gaps with measurable implementation checks. | Operational issue record mixing open status with closure-style verification logs. | File remains open but includes detailed command outputs and artifact references; also linked by governance matrices and issue dependency chains. | operational | medium | Require explicit “remaining unmet criteria” section whenever open issues include successful verification evidence. |
 
 ## 5. Newly discovered split-authority or duplication findings
 
 | Topic | Newly selected documents involved | Interaction with previously audited authorities | Why this creates ambiguity | Canonical owner | Required action |
 | ----- | --------------------------------- | ----------------------------------------------- | -------------------------- | --------------- | --------------- |
-| Foundational issue vs canonical issue policy | `ISSUE-0001` | Overlaps with previously audited `docs/issues.md` and validator scripts. | Historical origin issue still reads like active authority without explicit demotion. | `docs/issues.md` + `scripts/validate_issues.py` | Mark ISSUE-0001 as historical origin and point to canonical owners. |
-| Issue-local testing/gate assertions | `ISSUE-0002`, `ISSUE-0004`, `ISSUE-0005` | Overlaps with `docs/testing.md` and `scripts/all_green_gate.py`. | Closed issues restate command expectations that can age independently of gate configuration. | `docs/testing.md` + `scripts/all_green_gate.py` | Replace future issue closure boilerplate with canonical reference blocks instead of restating policy semantics. |
-| Capability readiness closure drift | `ISSUE-0005` | Interacts with QA feature-status docs and readiness gate outputs. | File can imply enduring readiness guarantees even as fixtures/check definitions evolve. | Gate outputs + current QA status artifacts | Require “as-of date + artifact pointer” framing for capability-closure statements in issues. |
+| Gate-check naming and evidence drift in issue acceptance criteria | `ISSUE-0009`, `ISSUE-0010` | Overlaps with previously audited `docs/testing.md` and `scripts/all_green_gate.py`. | Issue text can declare ACs unsatisfied because named checks differ from current gate summary outputs, even when underlying behavior passes. | `scripts/all_green_gate.py` + generated gate summary artifacts | Publish and reference stable check aliases/matrix from canonical gate outputs. |
+| Capability status split between issue narratives and QA status artifacts | `ISSUE-0007`, `ISSUE-0008`, `ISSUE-0009`, `ISSUE-0010` | Interacts with `docs/qa/feature-status.yaml` and `docs/qa/feature-status-report.md`. | Two parallel “current status” narratives can diverge (issue prose vs generated capability status). | `docs/qa/feature-status.yaml` (generated report as derivative) | Treat issues as rationale/work logs; reserve capability-state truth for feature-status artifacts. |
+| Open-issue verification logs mimicking closure authority | `ISSUE-0011` | Interacts with previously audited testing/readiness documentation and governance matrices. | Rich pass evidence in an open issue can be interpreted as done-state unless unmet ACs are explicitly isolated. | Issue schema/status process in `docs/issues.md` | Add required unmet-criteria subsection pattern for open issues with verification logs. |
 
 ## 6. Remaining-document task planning table
 
@@ -247,12 +237,6 @@ Documentation governance coverage is now **43/108 Markdown files (39.8%)** after
 | `docs/architecture/documentation-governance-audit-2026-03-21.md` | historical architecture audit | Can still shape behavior through references, but direct enforcement impact is less certain. | medium | Determine whether this audit artifact is still cited for live decisions; compare findings against latest canonical docs; ensure historical snapshots are not treated as current authority. | Inbound-link scan (`rg`), `docs/issues.md`, `docs/testing.md`, `.github/workflows/*`, governance validators. | Batch 6F: architecture audit artifact positioning |
 | `docs/architecture/documentation-governance-follow-up-audit-2026-03-21.md` | historical architecture audit | Can still shape behavior through references, but direct enforcement impact is less certain. | medium | Determine whether this audit artifact is still cited for live decisions; compare findings against latest canonical docs; ensure historical snapshots are not treated as current authority. | Inbound-link scan (`rg`), `docs/issues.md`, `docs/testing.md`, `.github/workflows/*`, governance validators. | Batch 6F: architecture audit artifact positioning |
 | `docs/architecture/system-structure-audit-2026-03-19.md` | historical architecture audit | Can still shape behavior through references, but direct enforcement impact is less certain. | medium | Determine whether this audit artifact is still cited for live decisions; compare findings against latest canonical docs; ensure historical snapshots are not treated as current authority. | Inbound-link scan (`rg`), `docs/issues.md`, `docs/testing.md`, `.github/workflows/*`, governance validators. | Batch 6F: architecture audit artifact positioning |
-| `docs/issues/ISSUE-0006-operationalize-docs-issues-area.md` | operational/transitional issue record | Likely to influence active contributor/reviewer behavior or closure decisions. | high | Map acceptance criteria and status semantics to `docs/issues.md` + validator-enforced fields; verify whether closure rules duplicate `docs/testing.md` or architecture/invariant canon; classify as operational tracker vs contract shadow. | Inbound-link scan (`rg`), `docs/issues.md`, `docs/testing.md`, `.github/workflows/*`, governance validators. | Batch 6A |
-| `docs/issues/ISSUE-0007-behave-gate-not-enforced-in-pr-validation.md` | operational/transitional issue record | Likely to influence active contributor/reviewer behavior or closure decisions. | high | Map acceptance criteria and status semantics to `docs/issues.md` + validator-enforced fields; verify whether closure rules duplicate `docs/testing.md` or architecture/invariant canon; classify as operational tracker vs contract shadow. | Inbound-link scan (`rg`), `docs/issues.md`, `docs/testing.md`, `.github/workflows/*`, governance validators. | Batch 6A |
-| `docs/issues/ISSUE-0008-intent-grounding-gate-failures-block-merge.md` | operational/transitional issue record | Likely to influence active contributor/reviewer behavior or closure decisions. | high | Map acceptance criteria and status semantics to `docs/issues.md` + validator-enforced fields; verify whether closure rules duplicate `docs/testing.md` or architecture/invariant canon; classify as operational tracker vs contract shadow. | Inbound-link scan (`rg`), `docs/issues.md`, `docs/testing.md`, `.github/workflows/*`, governance validators. | Batch 6A |
-| `docs/issues/ISSUE-0009-knowing-grounded-answers-partial-provenance-gap.md` | operational/transitional issue record | Likely to influence active contributor/reviewer behavior or closure decisions. | high | Map acceptance criteria and status semantics to `docs/issues.md` + validator-enforced fields; verify whether closure rules duplicate `docs/testing.md` or architecture/invariant canon; classify as operational tracker vs contract shadow. | Inbound-link scan (`rg`), `docs/issues.md`, `docs/testing.md`, `.github/workflows/*`, governance validators. | Batch 6A |
-| `docs/issues/ISSUE-0010-unknowing-safe-fallback-partial-contract-gap.md` | operational/transitional issue record | Likely to influence active contributor/reviewer behavior or closure decisions. | high | Map acceptance criteria and status semantics to `docs/issues.md` + validator-enforced fields; verify whether closure rules duplicate `docs/testing.md` or architecture/invariant canon; classify as operational tracker vs contract shadow. | Inbound-link scan (`rg`), `docs/issues.md`, `docs/testing.md`, `.github/workflows/*`, governance validators. | Batch 6A |
-| `docs/issues/ISSUE-0011-turn-analytics-input-coverage-silent-drop.md` | operational/transitional issue record | Likely to influence active contributor/reviewer behavior or closure decisions. | high | Map acceptance criteria and status semantics to `docs/issues.md` + validator-enforced fields; verify whether closure rules duplicate `docs/testing.md` or architecture/invariant canon; classify as operational tracker vs contract shadow. | Inbound-link scan (`rg`), `docs/issues.md`, `docs/testing.md`, `.github/workflows/*`, governance validators. | Batch 6A |
 | `docs/issues/ISSUE-0014-cli-self-identity-semantic-routing-regression.md` | operational/transitional issue record | Likely to influence active contributor/reviewer behavior or closure decisions. | high | Map acceptance criteria and status semantics to `docs/issues.md` + validator-enforced fields; verify whether closure rules duplicate `docs/testing.md` or architecture/invariant canon; classify as operational tracker vs contract shadow. | Inbound-link scan (`rg`), `docs/issues.md`, `docs/testing.md`, `.github/workflows/*`, governance validators. | Batch 6A |
 | `docs/issues/ISSUE-0015-open-issue-review-and-issue-0014-quality-governance-hardening.md` | operational/transitional issue record | Likely to influence active contributor/reviewer behavior or closure decisions. | high | Map acceptance criteria and status semantics to `docs/issues.md` + validator-enforced fields; verify whether closure rules duplicate `docs/testing.md` or architecture/invariant canon; classify as operational tracker vs contract shadow. | Inbound-link scan (`rg`), `docs/issues.md`, `docs/testing.md`, `.github/workflows/*`, governance validators. | Batch 6A |
 | `docs/issues/ISSUE-0019-channel-agnostic-conversation-engine-and-shared-history.md` | operational/transitional issue record | Likely to influence active contributor/reviewer behavior or closure decisions. | high | Map acceptance criteria and status semantics to `docs/issues.md` + validator-enforced fields; verify whether closure rules duplicate `docs/testing.md` or architecture/invariant canon; classify as operational tracker vs contract shadow. | Inbound-link scan (`rg`), `docs/issues.md`, `docs/testing.md`, `.github/workflows/*`, governance validators. | Batch 6A |
@@ -311,19 +295,20 @@ Documentation governance coverage is now **43/108 Markdown files (39.8%)** after
 
 | Audit pass | Date | Newly audited Markdown files | Total audited Markdown files after pass | Remaining Markdown files after pass | Notes |
 | ---------- | ---- | ---------------------------- | --------------------------------------- | ----------------------------------- | ----- |
-| Anchor audit | 2026-03-21 | 11 | 11 | 97 | Established methodology and initial out-of-scope backlog. |
-| Follow-up pass 1 | 2026-03-21 | 9 | 20 | 88 | Audited entrypoint + directives + quickstart/invariants layer. |
-| Follow-up pass 2 | 2026-03-21 | 5 | 25 | 83 | Audited canonical pipeline + boundary evidence/matrix surfaces. |
-| Follow-up pass 3 | 2026-03-21 | 7 | 32 | 76 | Audited governance tracker layer (`docs/governance/*`). |
-| Follow-up pass 4 | 2026-03-21 | 6 | 38 | 70 | Audited RED_TAG + active issue contract layer. |
-| Follow-up pass 5 (this pass) | 2026-03-21 | 5 | 43 | 65 | Audited foundational issue-governance origin set (`ISSUE-0001`..`0005`). |
+| Anchor audit | 2026-03-21 | 11 | 11 | 96 | Established methodology and initial out-of-scope backlog. |
+| Follow-up pass 1 | 2026-03-21 | 9 | 20 | 87 | Audited entrypoint + directives + quickstart/invariants layer. |
+| Follow-up pass 2 | 2026-03-21 | 5 | 25 | 82 | Audited canonical pipeline + boundary evidence/matrix surfaces. |
+| Follow-up pass 3 | 2026-03-21 | 7 | 32 | 75 | Audited governance tracker layer (`docs/governance/*`). |
+| Follow-up pass 4 | 2026-03-21 | 6 | 38 | 69 | Audited RED_TAG + active issue contract layer. |
+| Follow-up pass 5 | 2026-03-21 | 5 | 43 | 64 | Audited foundational issue-governance origin set (`ISSUE-0001`..`0005`). |
+| Follow-up pass 6 (this pass) | 2026-03-21 | 6 | 49 historical audited / 48 current audited | 59 | Audited active issue-control tranche (`ISSUE-0006`..`0011`). |
 
 ## 8. Minimal next-step sequence
 
-1. **Next batch to audit:** Batch 6A focused on remaining active issue records (`ISSUE-0006`, `0007`, `0008`, `0009`, `0010`, `0011`, `0014`, `0015`, `0019`, `0020`, `0021`).
-2. **Why this batch next:** these files still carry live status/blocker/acceptance language that likely affects triage and review decisions more than evidence and retrospective docs.
+1. **Next batch to audit:** `ISSUE-0014`, `ISSUE-0015`, `ISSUE-0019`, `ISSUE-0020`, and `ISSUE-0021`.
+2. **Why that batch should come next:** these remaining issue records still carry live blocker and acceptance semantics that can shadow canonical governance during planning/review.
 3. **Evidence to gather first:**
-   - run issue validators over all issue files,
-   - map inbound references from `docs/issues.md`, `README.md`, and `RED_TAG.md`,
-   - map any workflow or gate references that consume issue metadata versus prose content.
-4. **Repository-level uncertainty reduced by next batch:** determines whether remaining issue files are operational governance contracts, transitional trackers, or historical records, which is the largest unresolved authority surface in the remaining backlog.
+   - inbound-link traces from `docs/issues.md`, `docs/issues/RED_TAG.md`, README/contributor entrypoints, and feature-status artifacts;
+   - current gate/validator mapping for any acceptance-criteria check references;
+   - CI/workflow touchpoints (if any) that consume issue metadata.
+4. **Repository-level uncertainty reduced:** whether the remaining active issue records are purely execution tracking or still functioning as de facto governance authorities, unlocking cleaner classification for subsequent QA/evidence/runbook batches.
