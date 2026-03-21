@@ -1,4 +1,4 @@
-# Documentation Governance Follow-up Audit — Continuation Pass 14 (2026-03-21)
+# Documentation Governance Follow-up Audit — Continuation Pass 15 (2026-03-21)
 
 Anchor document used before scope selection: `docs/architecture/documentation-governance-audit-2026-03-21.md`.
 
@@ -7,15 +7,15 @@ This pass continues the anchor backlog rather than redefining scope. Method, cla
 ## 1. Scope accounting
 
 - **Total Markdown files currently in repo:** 108.
-- **Markdown files already covered by prior documentation governance audits (before this pass):** 84.
+- **Markdown files already covered by previous documentation governance audits (before this pass):** 90.
 - **Markdown files newly selected for this audit pass:** 6.
-- **Markdown files still not yet audited after this pass:** 18.
-- **Non-Markdown enforcement artifacts reviewed for this pass:** `scripts/all_green_gate.py`, `scripts/validate_issue_links.py`, `tests/test_all_green_gate.py` (referenced by selected evidence docs), plus repository link/reference scans.
+- **Markdown files still not yet audited after selection in this pass:** 12.
+- **Non-Markdown enforcement artifacts reviewed for evidence in this pass:** `scripts/all_green_gate.py`, `scripts/report_feature_status.py`, `.github/workflows/issue-link-validation.yml`, plus repository-wide inbound-link scans.
 
 Repository-change accounting relative to anchor backlog:
-- The anchor out-of-scope set remains the authoritative backlog seed.
-- No anchor-backlog document removals/renames were detected in this pass.
-- `docs/architecture/documentation-governance-follow-up-audit-2026-03-21.md` is a continuation ledger added after the anchor; it is already in audited scope from earlier follow-up passes.
+- The anchor out-of-scope list (96 files) was treated as the authoritative follow-up backlog seed.
+- Current-repo comparison found **no removed/renamed** anchor-backlog Markdown files.
+- No new anchor-backlog candidates were introduced; this pass strictly advances the existing remainder.
 
 ### 1.1 Previously audited Markdown files
 
@@ -74,12 +74,18 @@ Repository-change accounting relative to anchor backlog:
 - `docs/issues/ISSUE-0021-legacy-boundary-pattern-deprecation-and-migration.md`
 - `docs/issues/RED_TAG.md`
 - `docs/issues/evidence/2026-03-09-governance-readiness-snapshot.md`
+- `docs/issues/evidence/2026-03-09-platform-qa-dependency-gate-progress.md`
+- `docs/issues/evidence/2026-03-09-release-governance-dependency-gate-progress.md`
+- `docs/issues/evidence/2026-03-09-runtime-pipeline-dependency-gate-progress.md`
 - `docs/issues/evidence/2026-03-10-governance-validator-base-ref-fallback-audit.md`
 - `docs/issues/evidence/2026-03-14-active-issue-triage-matrix.md`
+- `docs/issues/evidence/coordination-failure-contract-drift-matrix.md`
 - `docs/issues/evidence/governance-control-surface-completion-audit-2026-03-16.md`
 - `docs/issues/evidence/governance-freeze-exit-closure-investigation-2026-03-16.md`
 - `docs/issues/evidence/governance-open-questions-audit-2026-03-16.md`
 - `docs/issues/evidence/governance-stabilization-checklist.md`
+- `docs/issues/evidence/governance-stabilization-status-note-2026-03-16.md`
+- `docs/issues/evidence/issue-0022-pass-seven-verification-log.md`
 - `docs/issues/evidence/sprint-00-kpi-review.md`
 - `docs/issues/governance-control-surface-contract-freeze.md`
 - `docs/ops.md`
@@ -106,24 +112,18 @@ Repository-change accounting relative to anchor backlog:
 
 ### 1.2 Candidate remaining Markdown files
 
-These are the still-unaddressed files from the anchor backlog entering this pass:
+These were the still-unaddressed anchor-backlog files before this pass:
 
 - `docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md`
 - `docs/issues/evidence/2026-03-09-issue-0014-cli-confirmed-fact-promotion-trace.md`
 - `docs/issues/evidence/2026-03-09-issue-0014-cli-identity-semantic-preservation-trace.md`
 - `docs/issues/evidence/2026-03-09-issue-0014-cli-self-reference-retrieval-activation-trace.md`
-- `docs/issues/evidence/2026-03-09-platform-qa-dependency-gate-progress.md`
-- `docs/issues/evidence/2026-03-09-release-governance-dependency-gate-progress.md`
-- `docs/issues/evidence/2026-03-09-runtime-pipeline-dependency-gate-progress.md`
 - `docs/issues/evidence/2026-03-10-feature-traceability-tagging-memory-recall.md`
 - `docs/issues/evidence/2026-03-10-issue-0014-repair-offer-followup-chain.md`
 - `docs/issues/evidence/2026-03-16-seem-bot-speaker-attribution-rca.md`
 - `docs/issues/evidence/2026-03-17-issue-0013-decisioning-temporal-followup-continuity.md`
 - `docs/issues/evidence/complexipy-hotspots-legacy-canonical-analysis-2026-03-14.md`
-- `docs/issues/evidence/coordination-failure-contract-drift-matrix.md`
 - `docs/issues/evidence/governance-craap-analysis-main-alignment.md`
-- `docs/issues/evidence/governance-stabilization-status-note-2026-03-16.md`
-- `docs/issues/evidence/issue-0022-pass-seven-verification-log.md`
 - `docs/issues/evidence/memory-recall-root-cause-review-2026-03-06.md`
 - `docs/issues/evidence/memory-recall-root-cause-review-feedback-2026-03-06.md`
 - `docs/issues/evidence/open-pr-assessment-2026-03-17.md`
@@ -135,23 +135,17 @@ These are the still-unaddressed files from the anchor backlog entering this pass
 
 ### 1.3 Newly selected files for this audit pass
 
-- `docs/issues/evidence/2026-03-09-platform-qa-dependency-gate-progress.md`
-- `docs/issues/evidence/2026-03-09-release-governance-dependency-gate-progress.md`
-- `docs/issues/evidence/2026-03-09-runtime-pipeline-dependency-gate-progress.md`
-- `docs/issues/evidence/coordination-failure-contract-drift-matrix.md`
-- `docs/issues/evidence/governance-stabilization-status-note-2026-03-16.md`
-- `docs/issues/evidence/issue-0022-pass-seven-verification-log.md`
-
-Selection rationale (bounded subset rule): these six files were the highest governance-risk items in the remaining pool because they encode dependency-gate status claims, freeze-era coordination contract framing, and verification proof narratives that can shadow canonical policy or readiness truth.
-
-### 1.4 Remaining files not audited in this pass
-
 - `docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md`
 - `docs/issues/evidence/2026-03-09-issue-0014-cli-confirmed-fact-promotion-trace.md`
 - `docs/issues/evidence/2026-03-09-issue-0014-cli-identity-semantic-preservation-trace.md`
 - `docs/issues/evidence/2026-03-09-issue-0014-cli-self-reference-retrieval-activation-trace.md`
 - `docs/issues/evidence/2026-03-10-feature-traceability-tagging-memory-recall.md`
 - `docs/issues/evidence/2026-03-10-issue-0014-repair-offer-followup-chain.md`
+
+Selection rationale: this batch was prioritized because these files are directly linked from active issue records (`ISSUE-0013`/`0014`/`0015`) and can most easily be misread as current behavioral authority (acceptance-criteria proof), not merely historical evidence.
+
+### 1.4 Remaining files not audited in this pass
+
 - `docs/issues/evidence/2026-03-16-seem-bot-speaker-attribution-rca.md`
 - `docs/issues/evidence/2026-03-17-issue-0013-decisioning-temporal-followup-continuity.md`
 - `docs/issues/evidence/complexipy-hotspots-legacy-canonical-analysis-2026-03-14.md`
@@ -167,65 +161,58 @@ Selection rationale (bounded subset rule): these six files were the highest gove
 
 ## 2. Scope selection rationale
 
-This pass chose a governance-impact subset from the remaining issue-evidence pool rather than broad low-risk archival notes.
+Why this scope now:
+- The selected six files are currently cross-linked from active issue governance records and are used as closure evidence for acceptance criteria.
+- They contain “PASS/FAIL” and contract-chain language likely to influence reviewer decisions if readers skip canonical owners.
+- They therefore carry higher near-term governance ambiguity risk than retrospective debug logs and PR-local assessments still in the remainder.
 
-Why these files now:
-- They contain direct dependency-gate and readiness-language claims (three 2026-03-09 dependency-gate progress notes).
-- They describe coordination/freeze contract surfaces that can be mistaken for standing authority (`coordination-failure-contract-drift-matrix`, stabilization status note).
-- They provide verification logs that are referenced by other evidence files and checklist entries (`issue-0022-pass-seven-verification-log`).
+Why these over the other remaining 12:
+- The unselected remainder is mostly RCA, retrospective, PR-local, or debug-session evidence with lower direct influence on current issue closure paths.
+- This pass targets the highest-leverage reduction in “evidence doc mistaken as live policy” risk.
 
-Why these over other remaining files:
-- The remaining trace/debug/RCA artifacts are lower immediate governance ambiguity risk.
-- This selection most directly reduces uncertainty around whether freeze-era evidence is shadowing canonical owners (`docs/issues.md`, freeze contract, `docs/testing.md`, scripts).
-
-Expected uncertainty reduction:
-- Clarifies that these six files are evidence/transitional references and not canonical policy owners.
-- Identifies where bannering/supersession notes are needed to prevent authority fan-out.
+Uncertainty this pass reduces:
+- Whether ISSUE-0014 trace artifacts currently function as de facto behavior authority.
+- Whether feature traceability evidence is authoritative vs merely documenting a one-time script run.
 
 ## 3. Executive summary
 
-Repository Markdown coverage is now **90/108 (83.3%)** after auditing six additional previously unaudited files from the anchor backlog. The newly selected documents that materially affect governance clarity are the three dependency-gate progress notes plus the stabilization status note and drift matrix, because they include status/contract framing that can influence contributor behavior if read as canonical authority. New findings show continued split-authority risk when evidence docs express readiness or contract statements without explicit ownership boundaries. The highest-priority next tasks are to finish the remaining 18 issue-evidence files (especially ISSUE-0014 trace artifacts and memory-recall RCA docs), add explicit non-authoritative labeling where absent, and close the anchor backlog to end continuation-audit uncertainty.
+Repository documentation-governance coverage is now **96/108 Markdown files (88.9%)**, with this pass auditing six additional previously unaudited files from the anchor backlog. The most governance-relevant documents audited now are the four ISSUE-0014 trace/verification files and the repair-offer chain evidence, because they are directly cited in active issue acceptance-criteria sections and could be mistaken for standing behavioral contract authority. New split-authority findings show evidence logs presenting test outcomes and behavioral conclusions without persistent canonical-owner banners, creating review-path ambiguity. The most important next tasks are to audit the remaining 12 evidence documents (starting with RCA + continuity artifacts), then finish explicit archival/non-authoritative labeling recommendations so no anchor-backlog document remains role-ambiguous.
 
 ## 4. Audit findings for newly selected documents
 
 | Document | Claimed purpose | Actual role in practice | Evidence | Classification | Governance risk | Action |
 | -------- | --------------- | ----------------------- | -------- | -------------- | --------------- | ------ |
-| `docs/issues/evidence/2026-03-09-platform-qa-dependency-gate-progress.md` | Progress note for platform-qa dependency gate. | Historical operational evidence note tied to one gate rerun. | Contains one dated command + artifact pointers; no direct inbound references from README/contributor docs; no CI/script consumption path found. | historical | medium | Add explicit “historical evidence only; canonical readiness authority is docs/testing + all_green_gate” line. |
-| `docs/issues/evidence/2026-03-09-release-governance-dependency-gate-progress.md` | Governance consolidation update after evidence refresh. | Transitional evidence note with status framing; not an authority owner. | References issue docs and artifacts; includes “not a product-readiness claim”; still uses readiness phrasing that can shadow canonical contract. | transitional | medium | Keep as dated evidence; add canonical-owner pointer for readiness semantics. |
-| `docs/issues/evidence/2026-03-09-runtime-pipeline-dependency-gate-progress.md` | Corrected gate-failure attribution note. | Historical correction memo for a specific evidence run. | One-time attribution correction linked from ISSUE-0014/0015 checklists; no independent enforcement wiring. | historical | medium | Keep archival; add supersession context to current issue states/checklist if needed. |
-| `docs/issues/evidence/coordination-failure-contract-drift-matrix.md` | Diagnose PR #481–#489 coordination drift and map capability coupling. | Transitional diagnosis/reference used during freeze-era reconciliation; potentially shadow-canonical if unbounded. | Linked by stabilization status and freeze docs; includes sequencing/guardrail recommendations but not executable enforcement bindings. | transitional | high | Add boundary statement: recommendations are evidentiary; canonical live policy remains in issues/freeze/testing docs and scripts. |
-| `docs/issues/evidence/governance-stabilization-status-note-2026-03-16.md` | Active stabilization roll-up and next-plan note. | Transitional status roll-up with de facto narrative authority risk. | Uses “Status: Active” and broad “what we plan to do next” language; heavily cross-links freeze/checklist but is not a gate-enforced owner. | transitional | high | Add explicit stale/dated-state marker and canonical owner map at top. |
-| `docs/issues/evidence/issue-0022-pass-seven-verification-log.md` | Verification command/test log for pass seven. | Historical verification artifact; evidence substrate for related audits/checklist. | Command transcripts and pytest outputs only; referenced by other evidence docs/checklist; no direct policy ownership. | historical | medium | Keep as immutable log; ensure referencing docs avoid treating it as standing policy source. |
+| `docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md` | Phase-1 deterministic verification evidence for ISSUE-0014/0013 dependency gating. | Historical verification snapshot used as issue-linked evidence, not ongoing readiness authority. | Contains dated command outcomes including all-green gate failure; referenced from `ISSUE-0013`, `ISSUE-0014`, `ISSUE-0015`; no CI workflow/script consumes it directly. | historical | high | Add explicit top-line banner: “historical evidence snapshot; canonical readiness truth lives in docs/testing + all_green_gate outputs.” |
+| `docs/issues/evidence/2026-03-09-issue-0014-cli-confirmed-fact-promotion-trace.md` | CLI trace proving confirmed identity fact promotion behavior. | Historical single-test trace artifact supporting one acceptance criterion. | File is a one-command pytest transcript; inbound links originate from ISSUE-0014/0015 evidence bullets only; no policy docs route to it first. | historical | medium | Keep as immutable trace evidence; add one-line non-authoritative/canonical-owner pointer. |
+| `docs/issues/evidence/2026-03-09-issue-0014-cli-identity-semantic-preservation-trace.md` | CLI trace proving semantic preservation for identity follow-ups. | Historical test transcript backing issue closure discussion. | Contains one test invocation + pass output; referenced from ISSUE-0014/0015 acceptance-criteria evidence entries; not wired to gate scripts/workflows. | historical | medium | Keep archival; clarify it does not supersede runtime/test canon. |
+| `docs/issues/evidence/2026-03-09-issue-0014-cli-self-reference-retrieval-activation-trace.md` | CLI trace proving retrieval-path activation for self-reference turn family. | Historical point-in-time proof artifact for issue discussion. | One pytest transcript only; referenced from ISSUE-0014/0015 docs; no enforcement linkage discovered. | historical | medium | Add “evidence only” marker and reference to canonical behavior owners. |
+| `docs/issues/evidence/2026-03-10-feature-traceability-tagging-memory-recall.md` | Report scenario-tagging remediation for memory_recall feature traceability. | Transitional operational evidence for a completed script run; can be misread as ongoing governance source. | Documents before/after outputs from `scripts/report_feature_status.py`; not directly used by CI; relates to `docs/qa/feature-status-report.md` generation. | transitional | medium | Add scope bound (“this note documents one remediation run”) and pointer to canonical feature-status/report script owners. |
+| `docs/issues/evidence/2026-03-10-issue-0014-repair-offer-followup-chain.md` | Demonstrate repair-offer continuity chain behavior across tests and classification checks. | Transitional evidence note combining deterministic results and environment limitation statement. | Referenced in ISSUE-0013/0014 as supporting evidence; includes “not executed” live replay caveat; no direct enforcement binding. | transitional | high | Add canonical-owner matrix at top (`tests/*`, `all_green_gate`, relevant canonical docs) and mark live-replay caveat as dated context. |
 
 ## 5. Newly discovered split-authority or duplication findings
 
 | Topic | Newly selected documents involved | Interaction with previously audited authorities | Why this creates ambiguity | Canonical owner | Required action |
 | ----- | --------------------------------- | ----------------------------------------------- | -------------------------- | --------------- | --------------- |
-| Dependency-gate status claims in evidence notes | `2026-03-09-platform-qa-dependency-gate-progress.md`, `2026-03-09-release-governance-dependency-gate-progress.md`, `2026-03-09-runtime-pipeline-dependency-gate-progress.md` | Overlaps with `docs/testing.md` and `scripts/all_green_gate.py` for readiness/gate truth. | Dated notes can be misread as current readiness authority when cited in issue checklists. | `docs/testing.md` + `scripts/all_green_gate.py` | Add explicit non-authoritative/date-bounded banner to each dependency-gate note. |
-| Freeze-era coordination recommendations vs live policy | `coordination-failure-contract-drift-matrix.md`, `governance-stabilization-status-note-2026-03-16.md` | Interacts with `docs/issues/governance-control-surface-contract-freeze.md` and `docs/issues.md`. | These docs include “recommended sequencing/guardrails” and “active status” wording without enforcement linkage. | `docs/issues.md` + freeze contract + validators | Add canonical-owner pointers and stale-state handling guidance; keep these docs clearly evidentiary. |
+| Acceptance-criteria evidence vs standing behavior contract | `2026-03-09-issue-0014-0013-phase1-deterministic-verification.md`, all three 2026-03-09 ISSUE-0014 trace files | Overlaps with `docs/testing.md`, `docs/architecture/canonical-turn-pipeline.md`, and executable tests. | Issue readers can treat a dated pass transcript as current contract truth. | Canonical docs + executable tests/gates | Add explicit “dated evidence, non-authoritative” preface and canonical-owner links in each trace doc. |
+| Repair-offer continuity narrative vs executable owner set | `2026-03-10-issue-0014-repair-offer-followup-chain.md` | Interacts with ISSUE-0013/0014 issue docs and test files that actually enforce behavior. | Mixed narrative + test summary + environment caveat makes authority boundary unclear. | `tests/*` + `scripts/all_green_gate.py` + canonical architecture/testing docs | Keep narrative as evidence, but add owner map and bounded-time context marker. |
+| Feature-traceability remediation note vs ongoing reporting authority | `2026-03-10-feature-traceability-tagging-memory-recall.md` | Interacts with `docs/qa/feature-status-report.md` and `scripts/report_feature_status.py`. | Remediation note could be interpreted as durable policy rather than one run report. | `scripts/report_feature_status.py` + generated report artifacts | Add explicit “run-specific evidence” boundary and policy-owner pointer. |
 
 ## 6. Remaining-document task planning table
 
 | Remaining document | Suspected role | Why it still needs audit | Priority | Audit tasks required | Dependencies / prerequisite evidence | Recommended future audit batch |
 | ------------------ | -------------- | ------------------------ | -------- | -------------------- | ------------------------------------ | ------------------------------ |
-| `docs/issues/evidence/2026-03-09-issue-0014-0013-phase1-deterministic-verification.md` | historical verification evidence | May still be interpreted as live acceptance criteria proof. | high | Trace inbound references from open ISSUE files; compare assertions against current checklist/testing canonical owners; determine if banner/supersession note is required. | `docs/issues/ISSUE-0013*`, `ISSUE-0014*`, `docs/testing.md`, `scripts/all_green_gate.py` | Batch 14A |
-| `docs/issues/evidence/2026-03-09-issue-0014-cli-confirmed-fact-promotion-trace.md` | historical trace evidence | Could be mistaken for current behavior contract authority. | high | Identify all inbound links; map any normative claims to current tests/docs; classify archival vs transitional and add explicit boundary recommendation. | `rg -n` inbound scan + behavior/testing canon docs | Batch 14A |
-| `docs/issues/evidence/2026-03-09-issue-0014-cli-identity-semantic-preservation-trace.md` | historical trace evidence | Same potential shadow-authority risk as paired ISSUE-0014 traces. | high | Compare trace conclusions with current issue closure criteria and deterministic tests; decide historical/transitional label and supersession pointer. | ISSUE-0014 file + related tests + reference scan | Batch 14A |
-| `docs/issues/evidence/2026-03-09-issue-0014-cli-self-reference-retrieval-activation-trace.md` | historical trace evidence | Same risk of being treated as standing contract proof. | high | Trace references; verify whether any canonical doc relies on it; classify and define “evidence only” action. | issues docs + canonical behavior/testing docs | Batch 14A |
-| `docs/issues/evidence/2026-03-10-feature-traceability-tagging-memory-recall.md` | transitional evidence | May carry implicit governance guidance for feature/status traceability. | medium | Check linkage from feature-status, RED_TAG, and issue docs; compare with current validator ownership and schema rules; classify role. | `docs/issues.md`, `docs/qa/feature-status-report.md`, validators | Batch 14A |
-| `docs/issues/evidence/2026-03-10-issue-0014-repair-offer-followup-chain.md` | historical follow-up evidence | Could still influence active decision flow for ISSUE-0014. | medium | Audit inbound references from open/resolved issue docs; compare chain outcomes to current canonical issue state; classify and recommend boundary notes. | ISSUE-0014/0015 docs + reference scan | Batch 14A |
-| `docs/issues/evidence/2026-03-16-seem-bot-speaker-attribution-rca.md` | historical RCA evidence | RCA outputs may be read as policy unless reconciled with canon. | medium | Determine whether RCA directives were encoded in invariants/tests; classify historical vs residual governance role; define follow-up if drift remains. | `docs/invariants*`, relevant tests, reference scan | Batch 14A |
-| `docs/issues/evidence/2026-03-17-issue-0013-decisioning-temporal-followup-continuity.md` | transitional issue evidence | Might still shape current ISSUE-0013 sequencing expectations. | medium | Trace references from issue files/checklist; reconcile with current execution checklist and issue status; classify and specify supersession marker. | ISSUE-0013 docs + checklist + scan | Batch 14A |
-| `docs/issues/evidence/complexipy-hotspots-legacy-canonical-analysis-2026-03-14.md` | historical analysis evidence | Architecture/governance analysis can be misread as live architecture authority. | medium | Compare findings against latest architecture audits and current owners; classify as historical/reference and identify any stale claims. | architecture audit docs + checklist/testing docs | Batch 14A |
-| `docs/issues/evidence/governance-craap-analysis-main-alignment.md` | historical assessment evidence | Could still be cited in governance decisions despite dated scope. | low | Trace active references; verify whether any canonical process depends on it; classify archival role and banner need. | repo reference scan | Batch 14A |
-| `docs/issues/evidence/memory-recall-root-cause-review-2026-03-06.md` | historical RCA evidence | May contain unresolved policy-like statements not bound to current canon. | medium | Compare recommendations to current invariants/tests/issue workflow; classify and identify unresolved carryover actions. | invariants + tests + issue docs | Batch 14A |
-| `docs/issues/evidence/memory-recall-root-cause-review-feedback-2026-03-06.md` | historical RCA feedback | Companion feedback may encode unclosed directives. | medium | Audit linkage and unresolved actions; reconcile with canonical docs and executable checks; classify role and cleanup needs. | companion RCA doc + invariants/tests | Batch 14A |
-| `docs/issues/evidence/open-pr-assessment-2026-03-17.md` | historical PR-local assessment | PR-local text can be mistaken for standing process requirements. | low | Confirm no contributor/canonical docs depend on it; classify PR-local historical artifact and recommend non-authoritative label if missing. | reference scan from README/docs/issues | Batch 14A |
-| `docs/issues/evidence/production-debug-cli-session-log-notes-2026-03-08-21-23.md` | historical debug evidence | Debug notes can still be cited as contract proof if linked. | low | Trace inbound links and verify absence of policy references; classify debug-only historical role. | `rg -n` inbound scan | Batch 14A |
-| `docs/issues/evidence/production-debug-cli-session-log-notes-2026-03-08-21-52.md` | historical debug evidence | Same risk as paired session-log note. | low | Perform inbound-reference and policy-usage check; classify as debug-only evidence. | `rg -n` inbound scan | Batch 14A |
-| `docs/issues/evidence/production-debug-cli-trace-2026-03-07.md` | historical debug trace | May be over-read as current behavior contract. | low | Confirm no normative dependency from canonical docs/validators; classify archival trace role. | reference scan + canonical docs check | Batch 14A |
-| `docs/issues/evidence/production-debug-cli-trace-and-session-log-2026-03-08.md` | historical debug trace | Same ambiguity risk as related debug traces. | low | Verify reference usage and lack of enforcement linkage; classify archival/debug role. | reference scan | Batch 14A |
-| `docs/issues/evidence/work-history-assessment-2026-03-17.md` | historical narrative evidence | Could influence prioritization despite being retrospective. | low | Trace inbound links from roadmap/plan/issues; determine whether any active decision path depends on it; classify and set boundary language. | reference scan + planning docs | Batch 14A |
+| `docs/issues/evidence/2026-03-16-seem-bot-speaker-attribution-rca.md` | historical RCA evidence | RCA conclusions may still be read as active policy. | high | Trace recommendations against current invariants/tests; verify whether any recommendation became executable checks; classify residual governance influence. | `docs/invariants*`, related tests, link scan from `ISSUE-*` | Batch 15A |
+| `docs/issues/evidence/2026-03-17-issue-0013-decisioning-temporal-followup-continuity.md` | transitional issue-continuity evidence | Referenced from active ISSUE-0013 context; may shape sequencing decisions. | high | Map all inbound links; compare its guidance against current checklist + ISSUE-0013 state; determine superseded vs still-relied-on claims. | `docs/issues/ISSUE-0013*`, `docs/architecture/plan-execution-checklist.md` | Batch 15A |
+| `docs/issues/evidence/complexipy-hotspots-legacy-canonical-analysis-2026-03-14.md` | transitional/historical technical-debt evidence | Linked by ISSUE-0012/0013 tasks and may affect prioritization claims. | high | Reconcile listed task/debt assertions with current issue statuses; determine whether any claim shadows canonical architecture/debt trackers. | `docs/issues/ISSUE-0012*`, `ISSUE-0013*`, governance docs | Batch 15A |
+| `docs/issues/evidence/governance-craap-analysis-main-alignment.md` | historical governance assessment | Might still be cited in governance alignment arguments. | medium | Identify active references; test whether any canonical process/checklist relies on this file; classify archival role and stale-risk level. | repo reference graph (`rg -n`) | Batch 15A |
+| `docs/issues/evidence/memory-recall-root-cause-review-2026-03-06.md` | historical RCA | Could contain unresolved normative directives not reflected in canon. | high | Extract all recommendation statements; compare to current invariants/tests/issues; mark implemented vs orphaned directives. | invariants, tests, ISSUE-0009/0010 docs | Batch 15A |
+| `docs/issues/evidence/memory-recall-root-cause-review-feedback-2026-03-06.md` | historical RCA feedback | Companion feedback may carry actionable governance instructions. | high | Crosswalk feedback items to root-cause doc and current canonical owners; identify unresolved governance deltas. | companion RCA doc + canonical docs/tests | Batch 15A |
+| `docs/issues/evidence/open-pr-assessment-2026-03-17.md` | historical PR-local evidence | PR-local recommendations can be mistaken for standing process. | low | Verify no canonical doc links it as policy; classify PR-local historical and define labeling recommendation if needed. | contributor docs + link scan | Batch 15B |
+| `docs/issues/evidence/production-debug-cli-session-log-notes-2026-03-08-21-23.md` | historical debug notes | Debug notes are linked from session/issue docs and could be over-read as contract proof. | medium | Check inbound links and surrounding phrasing; confirm no canonical-owner substitution; classify debug-only role. | `docs/sessions/*`, `docs/issues/ISSUE-0014*` | Batch 15B |
+| `docs/issues/evidence/production-debug-cli-session-log-notes-2026-03-08-21-52.md` | historical debug notes | Same ambiguity risk as paired session log. | medium | Perform identical link/context audit and classify debug-only governance role. | same as above | Batch 15B |
+| `docs/issues/evidence/production-debug-cli-trace-2026-03-07.md` | historical debug trace | Referenced by ISSUE-0009/0010 acceptance text; may still influence contract interpretation. | medium | Trace ISSUE-0009/0010 references; verify whether deterministic tests supersede this trace; classify and propose boundary banner. | `ISSUE-0009`, `ISSUE-0010`, relevant tests | Batch 15B |
+| `docs/issues/evidence/production-debug-cli-trace-and-session-log-2026-03-08.md` | historical debug trace bundle | Potential overlap with newer traces/session notes creates evidence duplication ambiguity. | low | Compare with other debug artifacts; decide whether this is superseded aggregate evidence and document role. | related debug evidence files + issue links | Batch 15B |
+| `docs/issues/evidence/work-history-assessment-2026-03-17.md` | historical retrospective narrative | Retrospective may still influence roadmap priority narratives. | low | Scan roadmap/plan/issues for dependencies; classify purely historical vs active-planning reference. | `plan.md`, `docs/roadmap/*`, issue links | Batch 15B |
 
 ## 7. Coverage progression summary
 
@@ -245,20 +232,20 @@ Repository Markdown coverage is now **90/108 (83.3%)** after auditing six additi
 | Follow-up pass 11 | 2026-03-21 | 5 | 72 | 36 | Roadmap/status + BDD/session/audit narrative tranche. |
 | Follow-up pass 12 | 2026-03-21 | 6 | 78 | 30 | Started issue-evidence de-authority sweep. |
 | Follow-up pass 13 | 2026-03-21 | 6 | 84 | 24 | Closed non-evidence remainder and freeze-era synthesis tranche. |
-| Follow-up pass 14 (this pass) | 2026-03-21 | 6 | 90 | 18 | Dependency-gate progress notes + freeze coordination/status + verification-log tranche. |
+| Follow-up pass 14 | 2026-03-21 | 6 | 90 | 18 | Dependency-gate progress notes + freeze coordination/status + verification-log tranche. |
+| Follow-up pass 15 (this pass) | 2026-03-21 | 6 | 96 | 12 | ISSUE-0014 trace/verification + feature-traceability + repair-offer continuity tranche. |
 
 ## 8. Minimal next-step sequence
 
-1. **Audit batch next:** remaining 18 files listed in Section 1.4 (Batch 14A), prioritizing the four ISSUE-0014 trace/verification artifacts first.
-2. **Why this batch next:** these are the only remaining anchor-backlog documents; completing them closes continuation-series scope.
+1. **Audit next batch:** Batch 15A (six files): speaker-attribution RCA, ISSUE-0013 temporal continuity evidence, complexipy hotspot analysis, CRAAP alignment note, and both memory-recall RCA documents.
+2. **Why this batch next:** these files have the highest residual chance of being interpreted as active decision guidance (RCA recommendations, ongoing debt/continuity framing).
 3. **Evidence to gather first:**
-   - inbound-reference graph from `docs/issues.md`, `docs/issues/RED_TAG.md`, `docs/issues/ISSUE-*.md`, `README.md`, and `plan.md`;
-   - script/CI consumption check (`scripts/*.py`, `.github/workflows/*.yml`) to confirm enforcement linkage absence/presence;
-   - comparison against canonical owners (`docs/testing.md`, checklist, issues workflow, validators/gate).
-4. **Repository uncertainty reduced by that pass:** whether any residual issue-evidence artifact still functions as de facto live governance authority.
-5. **Series completion criterion for continuation audits:** when all files from the anchor out-of-scope backlog are audited or explicitly resolved in this ledger, with zero remaining unaudited anchor-backlog Markdown files.
+   - inbound-reference map from `docs/issues/ISSUE-*.md`, `docs/issues/RED_TAG.md`, `docs/architecture/plan-execution-checklist.md`, and `docs/testing.md`;
+   - executable-binding scan across `.github/workflows/*.yml`, `scripts/*.py`, and test paths named in each document;
+   - update-history comparison for docs that still describe “active” state.
+4. **Repository-level uncertainty reduced:** whether any remaining RCA/analysis documents still operate as de facto governance authority instead of historical evidence.
 
 Practical completeness check for this pass:
-- Prior/current/remaining scopes are explicitly separated.
-- Coverage advanced into previously unaudited files only.
-- Every still-unaudited file has one concrete, actionable future audit task.
+- Prior scope, current scope, and remaining scope are explicitly separated.
+- Coverage advanced only into previously unaudited anchor-backlog Markdown files.
+- Every remaining anchor-backlog Markdown file has a concrete future audit task.
