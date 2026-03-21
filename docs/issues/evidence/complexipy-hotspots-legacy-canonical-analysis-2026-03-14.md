@@ -1,5 +1,13 @@
 # Complexipy hotspot investigation (legacy/canonical mixing)
 
+> [!WARNING]
+> **Evidence governance status:** `transitional` (non-canonical).
+> **Canonical authority:** **No** — this file is evidence and planning support, not standing governance or merge authority.
+> **Canonical owners for current truth:** complexity and readiness scripts under `scripts/`; executable thresholds/baselines under `artifacts/`; runtime behavior in `src/testbot/`; tests in `tests/`; active issue plans in `docs/issues/ISSUE-*.md`.
+> **Recommendation handling rule:** superseded when encoded in canonical scripts/tests/artifacts/issues.
+> **Re-audit trigger:** re-audit this file before merge if an active issue, plan, or PR review path links it as a current baseline or decision input that can affect implementation priority or merge/readiness judgment.
+> **Sunset / hand-off condition:** after baseline policy and ratchet logic are encoded in executable checks/artifacts, this document is archival hotspot context only.
+
 Date: 2026-03-14
 
 ## Scope

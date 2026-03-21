@@ -1,5 +1,13 @@
 # Memory recall feature: code review and root-cause analysis (2026-03-06)
 
+> [!WARNING]
+> **Evidence governance status:** `transitional` (non-canonical).
+> **Canonical authority:** **No** — this RCA is evidence and diagnosis, not canonical behavior/policy authority.
+> **Canonical owners for current truth:** `docs/invariants.md`; `docs/testing.md`; runtime modules in `src/testbot/`; BDD specs in `features/`; deterministic tests in `tests/`; quality gates in `scripts/` and `.github/workflows/`.
+> **Recommendation handling rule:** superseded when encoded in canonical docs/tests/scripts/workflows.
+> **Re-audit trigger:** re-audit this file before merge if it is linked from an active issue, plan, or review checklist as justification for current implementation or merge/readiness decisions.
+> **Sunset / hand-off condition:** after memory-recall contract and parity checks are encoded in canonical artifacts, this file is archival diagnostic context only.
+
 ## Scope reviewed
 - Runtime recall path: retrieval, rerank, confidence gating, and answer fallback routing.
 - BDD/eval harness behavior for memory recall scenarios.

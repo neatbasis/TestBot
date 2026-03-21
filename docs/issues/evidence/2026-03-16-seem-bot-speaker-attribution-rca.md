@@ -1,5 +1,13 @@
 # seem-bot speaker attribution root cause analysis (2026-03-16)
 
+> [!WARNING]
+> **Evidence governance status:** `transitional` (non-canonical).
+> **Canonical authority:** **No** — this file is evidence, not standing policy, merge criteria, or implementation contract.
+> **Canonical owners for current truth:** `docs/invariants.md`; `docs/architecture/canonical-turn-pipeline.md`; `features/*.feature`; `tests/`; `scripts/all_green_gate.py`; active issue records in `docs/issues/ISSUE-*.md`.
+> **Recommendation handling rule:** candidate until encoded in canonical docs/tests/scripts/workflows/issues.
+> **Re-audit trigger:** re-audit this file before merge if it is newly linked (or relinked after drift) from an active issue, execution plan, PR checklist, or review artifact in a way that could influence implementation choices or merge/readiness decisions.
+> **Sunset / hand-off condition:** once speaker-attribution protections are encoded and verified in executable artifacts, treat this file as archival incident context only.
+
 ## Incident summary
 A CLI session showed `seem-bot` incorrectly claiming ownership of a prior user statement ("I was making a joke earlier when I said the rope might be tired").
 
