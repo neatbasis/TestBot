@@ -10,11 +10,10 @@ from testbot.answer_rendering import RenderedAnswer
 from testbot.answer_validation import ValidatedAnswer
 from testbot.candidate_encoding import DialogueStateCandidate, EncodedTurnCandidates, FactCandidate, RepairCandidate, SpeechActCandidate
 from testbot.context_resolution import ContinuityPosture, ResolvedContext
+from testbot.domain_contracts import DecisionClass, DecisionObject, IntentType
 from testbot.evidence_retrieval import EvidenceBundle, EvidenceRecord
 from testbot.intent_resolution import ResolvedIntent
-from testbot.intent_router import IntentType
 from testbot.pipeline_state import AlignmentDecision, InvariantDecision, ProvenanceType
-from testbot.policy_decision import DecisionClass, DecisionObject
 from testbot.stabilization import StabilizedTurnState
 from testbot.turn_observation import TurnObservation as LegacyTurnObservation
 
