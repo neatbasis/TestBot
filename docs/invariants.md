@@ -17,4 +17,8 @@ This split is a **registry and mirror-scope refactor**.
 
 - Canonical mirror sync now targets only response-policy invariants in `docs/invariants/answer-policy.md`.
 - Canonical pipeline stage semantics now live in `docs/invariants/pipeline.md`.
-- Some downstream directive/report artifacts may still reference legacy IDs during migration; those references are intentionally deferred follow-up work and must not be interpreted as mixed-ontology canonical design.
+- Allowed lagging legacy-reference surfaces during migration are limited to:
+  - `docs/ops.md` (schema/history narrative for legacy `INV-*` → `PINV-*` migration notes),
+  - `docs/governance/drift-traceability-matrix.md` (historical drift snapshots that may retain prior wording),
+  - dated audit records under `docs/architecture/*audit*.md` and `docs/regression-progression-audit-*.md`.
+- Exit condition for migration tolerance: all active (non-historical) directive/governance traceability docs reference current `PINV-*` ontology without legacy-ID fallback language, and readiness checks no longer report legacy-ID ontology drift for canonical stage-semantics rows.

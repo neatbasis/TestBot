@@ -31,7 +31,7 @@ How to triage quickly:
 
 ## DTO boundary crosswalk for canonical stages
 
-This crosswalk complements the canonical stage-group traceability rows above by focusing on boundary-level DTO/state honesty at each canonical stage handoff. It is subordinate to this matrix’s canonical behavior → stage → deterministic-test authority, and it does not replace pipeline narrative authority in `docs/architecture/canonical-turn-pipeline.md`. When prose here diverges from the typed contract surface in `src/testbot/domain/canonical_dtos.py` and `src/testbot/logic/stage_artifacts.py`, those code contracts govern runtime behavior and tests.
+This crosswalk complements the canonical stage-group traceability rows above by focusing on boundary-level DTO/state honesty at each canonical stage handoff. It is subordinate to this matrix’s canonical behavior → stage → deterministic-test authority, and it does not replace pipeline narrative authority in `docs/architecture/canonical-turn-pipeline.md`. It is a mapping artifact (traceability surface), not a second canonical owner of DTO boundary semantics. When prose here diverges from the typed contract surface in `src/testbot/domain/canonical_dtos.py` and `src/testbot/logic/stage_artifacts.py`, those code contracts govern runtime behavior and tests.
 
 | Canonical stage | Input DTO / state | Output DTO / state | Required boundary facts | Must preserve | Forbidden boundary violation | Invariant / contract linkage | Runtime guard / evidence | <!-- PINV-000 header linkage marker for stage-conformance tooling -->
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -49,7 +49,7 @@ This crosswalk complements the canonical stage-group traceability rows above by 
 
 ### DTO inventory and landing targets (pivot-aligned)
 
-The crosswalk above is stage-boundary-first. This inventory is DTO-type-first and lists where each canonical DTO belongs under the pivot package-direction model (`domain/` for canonical contracts, `logic/` for orchestration-boundary typed artifact access, and `ports/` DTO signatures for external protocol boundaries).
+The crosswalk above is stage-boundary-first. This inventory is DTO-type-first and lists where each canonical DTO belongs under the pivot package-direction model (`domain/` for canonical contracts, `logic/` for orchestration-boundary typed artifact access, and `ports/` DTO signatures for external protocol boundaries). This table traces DTO placement and invariant linkage; it does not establish a competing DTO contract authority.
 
 | DTO / typed state contract | Canonical role in pipeline | Authoritative contract surface today | Where it should land (pivot target) | Notes on boundary usage | Invariant linkage | <!-- PINV-000 header linkage marker for stage-conformance tooling -->
 | --- | --- | --- | --- | --- | --- |

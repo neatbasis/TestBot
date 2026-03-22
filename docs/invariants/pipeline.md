@@ -2,6 +2,12 @@
 
 This registry defines canonical cross-stage semantic invariants for the canonical turn pipeline. Stage-local boundary details remain owned by `docs/architecture/canonical-turn-pipeline.md` and `docs/directives/traceability-matrix.md`; this file owns stable invariant classes that span stage families.
 
+This ownership split is explicit:
+- `docs/architecture/canonical-turn-pipeline.md` owns canonical stage sequence, typed chain, and stage-local contract narrative.
+- `docs/invariants/pipeline.md` owns cross-stage invariant classes (`PINV-*`) and their semantic scope.
+- `docs/directives/traceability-matrix.md` maps behavior/stages/tests/guards to the existing canonical contracts and does not define competing invariant or DTO authority.
+
+
 ## Pipeline invariant ID scheme
 
 Pipeline invariants use the dedicated `PINV-*` namespace to avoid ambiguity with response-policy invariants (`INV-*`).
@@ -20,6 +26,25 @@ Pipeline invariants use the dedicated `PINV-*` namespace to avoid ambiguity with
 | PINV-010 | **Validation gates semantic rendering**: semantic answer text renders as normal output only from validated state; failed validation may transition only to explicit degraded fallback artifacts. | `answer.validate → answer.render` safety boundary. |
 | PINV-011 | **Commit preserves continuity-critical state**: commit persists assistant utterance memory card, provenance, pending repair state, resolved/remaining obligations, and confirmed user facts required for next-turn continuity. | `answer.commit` continuity and replayability semantics. |
 | PINV-012 | **Grounding/provenance claims are artifact-backed**: rendered or committed grounding/provenance/confidence claims must map to trace-backed artifacts or evidence references available in canonical pipeline state. | Claim-legitimacy semantics for render/commit outputs. |
+
+## Invariant enforcement/evidence status
+
+The table below separates invariant statement authority from current enforcement maturity so normative strength is not overstated.
+
+| Pipeline Invariant ID | Enforcement/evidence status | Primary current evidence anchors |
+|---|---|---|
+| PINV-001 | **Runtime-evidenced + validator-checked** | `canonical_turn_orchestrator.py` stage order + `scripts/validate_pipeline_stage_conformance.py` stage-order checks. |
+| PINV-002 | **Runtime-evidenced + validator-checked** | stage transition pre/post guards + `stage_transition_validation` (`observe.turn`) + conformance validator linkage checks. |
+| PINV-003 | **Runtime-evidenced + validator-checked** | candidate-encoding/stabilization transition guards + conformance linkage checks. |
+| PINV-004 | **Runtime-evidenced + validator-checked** | stabilize pre/post guards + durable pre-route artifact checks + conformance linkage checks. |
+| PINV-005 | **Runtime-evidenced (partial) + docs-validated** | `context.resolve` transition checks + continuity/repair scenarios in BDD + linkage checks in conformance validator. |
+| PINV-006 | **Runtime-evidenced (partial) + docs-validated** | `intent.resolve` transition checks + `intent_classified`/intent-field coherence logging + conformance linkage checks. |
+| PINV-007 | **Runtime-evidenced (partial) + docs-validated** | retrieval transition checks + retrieval event keys (`retrieval_candidates`, branch/posture logs) + conformance linkage checks. |
+| PINV-008 | **Runtime-evidenced (partial) + docs-validated** | retrieve/policy transition checks + policy decision events (`fallback_action_selected`, alignment logs) + linkage checks. |
+| PINV-009 | **Runtime-evidenced (partial) + docs-validated** | policy/assemble/validate stage checks + decision/answer alignment events + linkage checks. |
+| PINV-010 | **Runtime-evidenced + validator-checked** | answer validate/render transition safety checks + explicit degraded fallback semantics + linkage checks. |
+| PINV-011 | **Runtime-evidenced (partial) + docs-validated** | commit transition/persistence paths (`answer_commit_persistence`, `promoted_context_persisted`) + linkage checks. |
+| PINV-012 | **Documented semantic contract + runtime evidence hooks (partial)** | provenance/grounding log events (`provenance_summary`, contract validators) + linkage checks; full falsifiability remains migration follow-up. |
 
 ## Conformance enforcement
 
