@@ -2,7 +2,7 @@
 
 This index keeps invariant ontologies separated so traceability remains explicit and non-ambiguous:
 
-- **Pipeline semantics/state-transition invariants (`PINV-*`)** cover stage ordering, artifact preconditions, and anti-projection safeguards in [`docs/invariants/pipeline.md`](invariants/pipeline.md).
+- **Pipeline semantics/state-transition invariants (`PINV-*`)** cover canonical ordering plus cross-stage semantic boundary guarantees (observe-before-infer, multiplicity preservation, stabilize-before-route, context/intent authority, typed evidence posture, decision/validation/commit continuity, and trace-backed claim legitimacy) in [`docs/invariants/pipeline.md`](invariants/pipeline.md).
 - **Response-policy/UX contract invariants (`INV-*`)** cover citation/marker/fallback answer behavior in [`docs/invariants/answer-policy.md`](invariants/answer-policy.md).
 
 ID namespace rule: `PINV-*` is reserved for canonical pipeline semantics, while `INV-*` is reserved for user-visible response-policy behavior.
