@@ -324,3 +324,33 @@ Start with non-blocking checks, then promote based on sustained evidence:
 4. Add a non-blocking CI/readiness check that emits an integrity summary artifact.
 
 This first slice should keep scope minimal while producing measurable signal for whether the metacognitive integrity pivot is working.
+
+## 12) Pivot questions this agenda is intended to answer
+
+This section links the metacognitive agenda to unresolved pivot work so research outputs can directly constrain implementation and governance choices.
+
+1. **What is the minimum trace/state/schema required for faithful self-explanation?**
+   - Pivot linkage: dict-heavy contracts and residual artifact-map conventions in `ISSUE-0013-A` / Workstream A.
+   - Agenda linkage: question clusters A and C; ontology + required artifacts + schema-focused first slice.
+
+2. **What should be treated as directly observed versus inferred, and how must that be tagged?**
+   - Pivot linkage: domain purification and state-boundary cleanup in `ISSUE-0013-B`, plus cross-stage publication boundaries.
+   - Agenda linkage: question cluster B and epistemic-tag operational definitions (`observed`, `derived`, `predicted`).
+
+3. **What evidence obligations must ports and contract tests preserve?**
+   - Pivot linkage: formal port extraction and adapter contract hardening in `ISSUE-0013-D`.
+   - Agenda linkage: primarily cluster A (trace-grounded explanation fidelity), secondarily cluster D (mismatch detection/repair support).
+
+4. **Which integrity checks should become CI gates, and which should remain advisory?**
+   - Pivot linkage: enforcement ratchet from report-only to blocking for dependency/boundary controls in `ISSUE-0013-E`.
+   - Agenda linkage: cluster F governance/enforcement questions plus staged rollout guidance (`warning` -> `optional` -> `blocking`).
+
+5. **How should uncertainty and mismatch be handled while preserving user progress?**
+   - Pivot linkage: decision/validation/commit-chain hardening and degraded fallback semantics.
+   - Agenda linkage: clusters D and E (confabulation repair policy, uncertainty signaling, and low-confidence action policy).
+
+6. **How should deferred surfaces be prioritized by integrity risk, not only structural coupling?**
+   - Pivot linkage: per-file census scoring backlog in `ISSUE-0013-F` before P-band assignment.
+   - Agenda linkage: clusters D/E/F to layer integrity-criticality over coupling/blast-radius scoring.
+
+Out of scope for this agenda: purely mechanical decomposition tasks (for example module moves, entrypoint rewiring, or linter wiring details) that do not hinge on epistemic/evidence semantics.
