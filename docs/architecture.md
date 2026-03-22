@@ -57,5 +57,8 @@ For normative contract details, use these documents directly:
 - [docs/invariants/answer-policy.md](invariants/answer-policy.md)
 - [docs/directives/product-principles.md](directives/product-principles.md)
 
+## Research and planning references
+For metacognitive integrity planning tied to trace-grounded self-report behavior, see [docs/architecture/metacognitive-integrity-research-agenda.md](architecture/metacognitive-integrity-research-agenda.md).
+
 ## Usage guidance
 Use this page as a navigation and orientation entry point. When implementing or reviewing behavior, consult the canonical references above for binding requirements.
