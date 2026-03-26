@@ -99,6 +99,45 @@ def test_parse_args_debug_verbose_opt_out() -> None:
     assert args.debug_verbose is False
 
 
+def test_ha_connection_error_normalizes_url_before_connect(monkeypatch) -> None:
+    captured: dict[str, str] = {}
+
+    class _FakeClient:
+        def __init__(self, api_url: str, token: str) -> None:
+            captured["api_url"] = api_url
+            captured["token"] = token
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+    monkeypatch.setattr(runtime, "Client", _FakeClient)
+
+    error = runtime._ha_connection_error("http://localhost:8123", "secret", "assist_satellite.kitchen")
+
+    assert error is None
+    assert captured["api_url"] == "http://localhost:8123/api/"
+    assert captured["token"] == "secret"
+
+
+def test_ha_connection_error_preserves_exception_class_and_message(monkeypatch) -> None:
+    class _BoomClient:
+        def __init__(self, *_args, **_kwargs) -> None:
+            pass
+
+        def __enter__(self):
+            raise RuntimeError("boom")
+
+        def __exit__(self, *_args):
+            return False
+
+    monkeypatch.setattr(runtime, "Client", _BoomClient)
+
+    error = runtime._ha_connection_error("http://localhost:8123", "secret", "assist_satellite.kitchen")
+
+    assert error == "RuntimeError: boom"
 
 
 def _load_live_smoke_module():

@@ -3,7 +3,7 @@ from __future__ import annotations
 from ask import AskClient
 from ask.config import Config
 
-from testbot.adapters.ask_gateway import AskGateway, STOP_DECISION_ID
+from testbot.adapters.ask_gateway import AskGateway, STOP_DECISION_ID, normalize_ha_rest_url
 
 
 def test_ask_gateway_builds_client_from_runtime_mapping() -> None:
@@ -49,3 +49,7 @@ def test_ask_gateway_satellite_prompt_uses_stable_stop_decision_id() -> None:
     assert spec.answers[0].id == STOP_DECISION_ID
     assert result.decision_id == STOP_DECISION_ID
     assert result.sentence == ""
+
+
+def test_normalize_ha_rest_url_matches_ask_normalization() -> None:
+    assert normalize_ha_rest_url("http://localhost:8123") == "http://localhost:8123/api/"

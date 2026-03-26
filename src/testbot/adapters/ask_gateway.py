@@ -11,6 +11,11 @@ from ask.config import normalize_rest_api_url
 STOP_DECISION_ID = "stop_satellite_loop"
 
 
+def normalize_ha_rest_url(api_url: str) -> str:
+    """Normalize a Home Assistant base URL to the canonical REST API endpoint."""
+    return normalize_rest_api_url(api_url)
+
+
 @dataclass(frozen=True)
 class AskTurnInput:
     decision_id: str | None
@@ -66,7 +71,7 @@ class AskGateway:
         return str(self._client.config.satellite_entity_id or "")
 
     def normalized_ha_rest_url(self) -> str:
-        return normalize_rest_api_url(str(self._client.config.ha_api_url or ""))
+        return normalize_ha_rest_url(str(self._client.config.ha_api_url or ""))
 
     def request_satellite_turn_input(self, *, question: str, timeout_s: float = 60.0) -> AskTurnInput:
         spec = AskSpec(
@@ -89,4 +94,4 @@ def _optional_str(value: object) -> str | None:
     return text or None
 
 
-__all__ = ["AskGateway", "AskTurnInput", "STOP_DECISION_ID"]
+__all__ = ["AskGateway", "AskTurnInput", "STOP_DECISION_ID", "normalize_ha_rest_url"]

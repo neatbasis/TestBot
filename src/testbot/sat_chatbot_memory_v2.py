@@ -91,7 +91,6 @@ from testbot.source_connectors import (
     WikipediaSummarySourceConnector,
 )
 from testbot.source_ingest import SourceIngestor
-from ask.config import normalize_rest_api_url
 from testbot.history_packer import PackedHistory, labeled_history_claims, pack_chat_history, render_packed_history
 from testbot.response_planner import build_response_plan, plan_to_dict, render_response_plan_block
 from testbot.reject_taxonomy import RejectSignal, derive_reject_signal
@@ -133,7 +132,7 @@ from testbot.logic.alignment import (
     validate_general_knowledge_contract,
 )
 from testbot.retrieval_routing import decide_retrieval_routing, is_definitional_query_form
-from testbot.adapters.ask_gateway import AskGateway
+from testbot.adapters.ask_gateway import AskGateway, normalize_ha_rest_url
 from testbot.application.services.turn_service import TurnPipelineDependencies
 from testbot.application.services.canonical_turn_runtime import run_canonical_turn_pipeline
 from testbot.canonical_turn_orchestrator import CanonicalTurnOrchestrator as _CanonicalTurnOrchestrator
@@ -853,7 +852,7 @@ def _ha_connection_error(api_url: str, token: str, entity_id: str) -> str | None
     if not entity_id:
         return "Missing HA_SATELLITE_ENTITY_ID"
     try:
-        with Client(normalize_rest_api_url(api_url), token):
+        with Client(normalize_ha_rest_url(api_url), token):
             return None
     except Exception as exc:  # pragma: no cover - network/credential dependent
         return f"{type(exc).__name__}: {exc}"
