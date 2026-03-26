@@ -7,6 +7,8 @@ from ask import Answer, AskClient, AskSpec
 from ask.config import Config
 from ask.config import normalize_rest_api_url
 
+from testbot.interaction_standards import InteractionRequirements
+
 
 STOP_DECISION_ID = "stop_satellite_loop"
 
@@ -73,13 +75,44 @@ class AskGateway:
     def normalized_ha_rest_url(self) -> str:
         return normalize_ha_rest_url(str(self._client.config.ha_api_url or ""))
 
+    def satellite_turn_interaction_requirements(self) -> InteractionRequirements:
+        return InteractionRequirements(
+            stable_id_required=True,
+            deterministic_field_collection_required=True,
+            open_text_preferred=True,
+            sentence_style_fit="plain_sentence",
+            machine_actionable=True,
+        )
+
     def request_satellite_turn_input(self, *, question: str, timeout_s: float = 60.0) -> AskTurnInput:
-        spec = AskSpec(
+        interaction_requirements = self.satellite_turn_interaction_requirements()
+        interaction_requirements.validate()
+        formatted_question = _format_question(
             question=question,
-            answers=(
-                Answer(id=STOP_DECISION_ID, sentences=("stop", "exit", "quit"), title="Stop"),
-            ),
-            timeout_s=timeout_s,
+            sentence_style_fit=interaction_requirements.sentence_style_fit,
+            open_text_preferred=interaction_requirements.open_text_preferred,
+        )
+        answers = (
+            (
+                Answer(
+                    id=STOP_DECISION_ID,
+                    sentences=("stop", "exit", "quit"),
+                    title="Stop" if interaction_requirements.machine_actionable else "Cancel",
+                ),
+            )
+            if interaction_requirements.stable_id_required
+            else None
+        )
+        effective_timeout_s = (
+            float(int(timeout_s))
+            if interaction_requirements.deterministic_field_collection_required
+            else timeout_s
+        )
+
+        spec = AskSpec(
+            question=formatted_question,
+            answers=answers,
+            timeout_s=effective_timeout_s,
         )
         result = self._client.ask_question(channel="satellite", spec=spec)
         return AskTurnInput(
@@ -92,6 +125,17 @@ class AskGateway:
 def _optional_str(value: object) -> str | None:
     text = str(value or "").strip()
     return text or None
+
+
+def _format_question(*, question: str, sentence_style_fit: str, open_text_preferred: bool) -> str:
+    base = question.strip()
+    if sentence_style_fit == "structured_sentence":
+        base = f"Respond with one clear sentence: {base}"
+    if not base.endswith(("?", ".", "!")):
+        base = f"{base}."
+    if open_text_preferred:
+        return base
+    return f"{base} Prefer one of the listed actions when possible."
 
 
 __all__ = ["AskGateway", "AskTurnInput", "STOP_DECISION_ID", "normalize_ha_rest_url"]
