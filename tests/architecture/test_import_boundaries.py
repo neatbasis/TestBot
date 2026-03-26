@@ -83,6 +83,23 @@ DEPRECATED_EXPORT_SCAN_ROOTS: tuple[Path, ...] = (
     REPO_ROOT / "scripts",
 )
 
+ASK_ADAPTER_IMPORT_ALLOWLIST: tuple[Path, ...] = (
+    SRC_ROOT / "adapters" / "ask_gateway.py",
+)
+
+ASK_FORBIDDEN_MODULE_PATTERNS: tuple[str, ...] = (
+    "ask",
+    "ask.config",
+)
+
+ASK_LOW_LEVEL_HELPERS: tuple[str, ...] = (
+    "AskClient",
+    "AskSpec",
+    "Answer",
+    "Config",
+    "normalize_rest_api_url",
+)
+
 
 def _module_imports(path: Path) -> set[str]:
     tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
@@ -218,4 +235,46 @@ def test_deprecated_sat_runtime_exports_are_only_imported_by_approved_compatibil
     assert not violations, (
         "Deprecated sat_chatbot_memory_v2 compatibility exports are restricted to approved compatibility tests:\n"
         + "\n".join(violations)
+    )
+
+
+def test_only_ask_adapter_modules_import_ask_packages() -> None:
+    violations: list[str] = []
+    for path in SRC_ROOT.rglob("*.py"):
+        if path in ASK_ADAPTER_IMPORT_ALLOWLIST:
+            continue
+        imports = _module_imports(path)
+        for imported in sorted(imports):
+            for pattern in ASK_FORBIDDEN_MODULE_PATTERNS:
+                if _contains_pattern(imported, pattern):
+                    violations.append(f"{path.relative_to(REPO_ROOT)} imports forbidden dependency {imported}")
+
+    assert not violations, (
+        "High-level modules must not import ask internals directly. Route all Ask interactions "
+        "through testbot.adapters.ask_gateway.AskGateway:\n" + "\n".join(violations)
+    )
+
+
+def test_high_level_modules_do_not_call_low_level_ask_helpers_directly() -> None:
+    violations: list[str] = []
+    for path in SRC_ROOT.rglob("*.py"):
+        if path in ASK_ADAPTER_IMPORT_ALLOWLIST:
+            continue
+
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            if isinstance(node.func, ast.Name) and node.func.id in ASK_LOW_LEVEL_HELPERS:
+                violations.append(
+                    f"{path.relative_to(REPO_ROOT)} directly calls {node.func.id}() (low-level Ask helper)"
+                )
+            elif isinstance(node.func, ast.Attribute) and node.func.attr in ASK_LOW_LEVEL_HELPERS:
+                violations.append(
+                    f"{path.relative_to(REPO_ROOT)} directly calls {node.func.attr}() (low-level Ask helper)"
+                )
+
+    assert not violations, (
+        "Use AskGateway as the required seam for Ask operations; do not invoke ask/ask.config helper APIs "
+        "from high-level modules:\n" + "\n".join(violations)
     )
