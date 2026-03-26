@@ -39,7 +39,7 @@ def _local_ok_server() -> str:
 def _smoke_env() -> dict[str, str]:
     return {
         "HA_API_URL": "http://127.0.0.1:8123",
-        "HA_API_SECRET": "ha-test-supersecret-token",
+        "HA_API_TOKEN": "ha-test-supersecret-token",
         "HA_SATELLITE_ENTITY_ID": "assist_satellite.test",
         "OLLAMA_BASE_URL": "http://127.0.0.1:11434",
         "OLLAMA_MODEL": "llama3.1:latest",

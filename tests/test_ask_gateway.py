@@ -10,7 +10,7 @@ def test_ask_gateway_builds_client_from_runtime_mapping() -> None:
     gateway = AskGateway.from_runtime(
         {
             "ha_api_url": "http://localhost:8123",
-            "ha_api_secret": "secret-token",
+            "ha_api_token": "secret-token",
             "ha_satellite_entity_id": "assist_satellite.kitchen",
             "ha_notify_action": "mobile_app_phone",
             "discord_turn_service_url": "http://discord-turn.internal",

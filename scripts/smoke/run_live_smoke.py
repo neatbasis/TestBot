@@ -17,7 +17,7 @@ from typing import Any
 
 REQUIRED_ENV_KEYS = (
     "HA_API_URL",
-    "HA_API_SECRET",
+    "HA_API_TOKEN",
     "HA_SATELLITE_ENTITY_ID",
     "OLLAMA_BASE_URL",
     "OLLAMA_MODEL",
@@ -64,9 +64,9 @@ def _load_required_env() -> dict[str, str]:
             "Invalid OLLAMA_BASE_URL in "
             "process environment: must be a full http(s) URL."
         )
-    if len(env_values["HA_API_SECRET"].strip()) < 8:
+    if len(env_values["HA_API_TOKEN"].strip()) < 8:
         raise ValueError(
-            "Invalid HA_API_SECRET in "
+            "Invalid HA_API_TOKEN in "
             "process environment: value is too short to be a usable credential/token."
         )
     for key in ("SMOKE_CONNECT_TIMEOUT_S", "SMOKE_REQUEST_TIMEOUT_S"):

@@ -14,7 +14,7 @@ pytestmark = pytest.mark.live_smoke
 
 require_live_smoke_config(
     suite_name="live_smoke Home Assistant integration tests",
-    required_fields=("HA_API_URL", "HA_API_SECRET", "HA_SATELLITE_ENTITY_ID"),
+    required_fields=("HA_API_URL", "HA_API_TOKEN", "HA_SATELLITE_ENTITY_ID"),
 )
 
 
@@ -27,7 +27,7 @@ def _require_env(name: str) -> str:
 
 def _ha_client() -> Client:
     api_url = _require_env("HA_API_URL")
-    token = _require_env("HA_API_SECRET")
+    token = _require_env("HA_API_TOKEN")
     return Client(normalize_rest_api_url(api_url), token)
 
 
@@ -47,7 +47,7 @@ def test_live_smoke_home_assistant_states_contains_configured_satellite_entity()
     except HomeassistantAPIError as exc:
         pytest.fail(
             f"Unable to fetch state for configured HA_SATELLITE_ENTITY_ID={entity_id!r}: {exc}. "
-            "Verify HA_API_URL, HA_API_SECRET permissions, and entity id configuration."
+            "Verify HA_API_URL, HA_API_TOKEN permissions, and entity id configuration."
         )
 
     assert state.entity_id == entity_id, (

@@ -810,7 +810,7 @@ def _read_runtime_env() -> dict[str, object]:
     debug_verbose = os.getenv("TESTBOT_DEBUG_VERBOSE", "0") == "1"
     return {
         "ha_api_url": config.HA_API_URL,
-        "ha_api_secret": config.HA_API_SECRET,
+        "ha_api_token": config.HA_API_TOKEN,
         "ha_satellite_entity_id": config.HA_SATELLITE_ENTITY_ID,
         "ollama_base_url": config.OLLAMA_BASE_URL,
         "ollama_model": config.OLLAMA_MODEL,
@@ -849,7 +849,7 @@ def _build_runtime_memory_store(*, runtime: dict[str, object], embeddings: Embed
 
 def _ha_connection_error(api_url: str, token: str, entity_id: str) -> str | None:
     if not token:
-        return "Missing HA_API_SECRET"
+        return "Missing HA_API_TOKEN"
     if not entity_id:
         return "Missing HA_SATELLITE_ENTITY_ID"
     try:
@@ -1027,7 +1027,7 @@ def _print_startup_status(*, snapshot: CapabilitySnapshot) -> None:
     print(f"Debug tracing: {debug_mode} (TESTBOT_DEBUG), verbose payloads: {debug_verbose} (TESTBOT_DEBUG_VERBOSE/--debug-verbose)")
     if snapshot.ha_error:
         print(f"Home Assistant: unavailable ({snapshot.ha_error})")
-        print("Install warning [YELLOW]: Home Assistant capability is degraded; configure HA_API_SECRET and HA_SATELLITE_ENTITY_ID to enable satellite mode.")
+        print("Install warning [YELLOW]: Home Assistant capability is degraded; configure HA_API_TOKEN and HA_SATELLITE_ENTITY_ID to enable satellite mode.")
         print("Developer note: satellite interface disabled; CLI fallback will be used unless --daemon is set.")
     else:
         print(f"Home Assistant: available ({runtime['ha_api_url']}, entity={runtime['ha_satellite_entity_id']})")
@@ -3776,7 +3776,7 @@ def _build_runtime_capability_status(
 def build_capability_snapshot(*, requested_mode: str, daemon_mode: bool, runtime: dict[str, object]) -> CapabilitySnapshot:
     ha_error = _ha_connection_error(
         str(runtime["ha_api_url"]),
-        str(runtime["ha_api_secret"]),
+        str(runtime["ha_api_token"]),
         str(runtime["ha_satellite_entity_id"]),
     )
     ollama_error = _ollama_connection_error(

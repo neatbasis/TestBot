@@ -42,7 +42,7 @@ class Config:
     OLLAMA_EMBEDDING_MODEL: str
     X_OLLAMA_KEY: str
     HA_API_URL: str
-    HA_API_SECRET: str
+    HA_API_TOKEN: str
     HA_SATELLITE_ENTITY_ID: str
     MEMORY_NEAR_TIE_DELTA: float
     SOURCE_INGEST_ENABLED: bool
@@ -64,7 +64,7 @@ class Config:
             OLLAMA_EMBEDDING_MODEL=os.getenv("OLLAMA_EMBEDDING_MODEL", "nomic-embed-text:latest"),
             X_OLLAMA_KEY=os.getenv("X_OLLAMA_KEY", ""),
             HA_API_URL=os.getenv("HA_API_URL", "http://localhost:8123"),
-            HA_API_SECRET=os.getenv("HA_API_SECRET", ""),
+            HA_API_TOKEN=os.getenv("HA_API_TOKEN", ""),
             HA_SATELLITE_ENTITY_ID=os.getenv("HA_SATELLITE_ENTITY_ID", ""),
             MEMORY_NEAR_TIE_DELTA=_float_from_env("MEMORY_NEAR_TIE_DELTA", 0.02),
             SOURCE_INGEST_ENABLED=(os.getenv("SOURCE_INGEST_ENABLED", "0") == "1"),

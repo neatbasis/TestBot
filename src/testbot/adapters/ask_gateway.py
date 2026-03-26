@@ -51,7 +51,7 @@ class AskGateway:
     def from_runtime(cls, runtime: Mapping[str, object]) -> "AskGateway":
         return cls.from_home_assistant(
             ha_api_url=str(runtime["ha_api_url"]),
-            ha_api_token=str(runtime["ha_api_secret"]),
+            ha_api_token=str(runtime["ha_api_token"]),
             satellite_entity_id=str(runtime["ha_satellite_entity_id"]),
             notify_action=str(runtime.get("ha_notify_action") or "") or None,
             discord_turn_service_url=str(runtime.get("discord_turn_service_url") or "") or None,

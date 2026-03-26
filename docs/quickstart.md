@@ -69,7 +69,7 @@ Use ISSUE-0012 only as linked historical delivery-planning context.
 
    ```env
    HA_API_URL=http://homeassistant.local:8123
-   HA_API_SECRET=YOUR_LONG_LIVED_TOKEN
+   HA_API_TOKEN=YOUR_LONG_LIVED_TOKEN
    HA_SATELLITE_ENTITY_ID=assist_satellite.your_satellite_entity
 
    OLLAMA_BASE_URL=http://localhost:11434
