@@ -7,6 +7,8 @@ from ask import Answer, AskClient, AskSpec
 from ask.config import Config
 from ask.config import normalize_rest_api_url
 
+from testbot.interaction_standards import InteractionRequirements
+
 
 STOP_DECISION_ID = "stop_satellite_loop"
 
@@ -73,12 +75,32 @@ class AskGateway:
     def normalized_ha_rest_url(self) -> str:
         return normalize_ha_rest_url(str(self._client.config.ha_api_url or ""))
 
+    def satellite_turn_interaction_requirements(self) -> InteractionRequirements:
+        return InteractionRequirements(
+            stable_id_required=True,
+            deterministic_field_collection_required=True,
+            open_text_preferred=True,
+            sentence_style_fit="plain_sentence",
+            machine_actionable=True,
+        )
+
     def request_satellite_turn_input(self, *, question: str, timeout_s: float = 60.0) -> AskTurnInput:
+        interaction_requirements = self.satellite_turn_interaction_requirements()
+        answers = (
+            (
+                Answer(
+                    id=STOP_DECISION_ID,
+                    sentences=("stop", "exit", "quit"),
+                    title="Stop",
+                ),
+            )
+            if interaction_requirements.stable_id_required
+            else None
+        )
+
         spec = AskSpec(
             question=question,
-            answers=(
-                Answer(id=STOP_DECISION_ID, sentences=("stop", "exit", "quit"), title="Stop"),
-            ),
+            answers=answers,
             timeout_s=timeout_s,
         )
         result = self._client.ask_question(channel="satellite", spec=spec)
