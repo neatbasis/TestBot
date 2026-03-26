@@ -10,6 +10,7 @@ from types import SimpleNamespace
 from urllib.error import HTTPError
 
 from testbot.entrypoints import sat_cli
+from testbot.adapters.ask_gateway import AskTurnInput, STOP_DECISION_ID
 from testbot.entrypoints import sat_runtime_modes
 from testbot.sat_chatbot_memory_v2 import CLARIFY_ANSWER, parse_args, resolve_mode, resolve_turn_intent
 from testbot import sat_chatbot_memory_v2 as runtime
@@ -17,7 +18,7 @@ from testbot import sat_chatbot_memory_v2 as runtime
 
 
 
-def test_run_satellite_mode_uses_single_ask_prompt(monkeypatch) -> None:
+def test_run_satellite_mode_uses_gateway_with_stable_stop_id(monkeypatch) -> None:
     spoken: list[str] = []
 
     class _FakeClient:
@@ -27,27 +28,39 @@ def test_run_satellite_mode_uses_single_ask_prompt(monkeypatch) -> None:
         def __exit__(self, *_args):
             return False
 
-    monkeypatch.setattr(sat_runtime_modes, "normalize_rest_api_url", lambda url: url)
     monkeypatch.setattr(sat_runtime_modes, "Client", lambda *_args, **_kwargs: _FakeClient())
     monkeypatch.setattr(runtime, "sat_say", lambda _client, _entity_id, text: spoken.append(text))
-    monkeypatch.setattr(sat_runtime_modes, "ask_question", lambda **_kwargs: {"sentence": "stop"})
+
+    class _FakeGateway:
+        ha_api_token = "token"
+        satellite_entity_id = "assist_satellite.kitchen"
+
+        def normalized_ha_rest_url(self) -> str:
+            return "http://localhost:8123/api"
+
+        def request_satellite_turn_input(self, *, question: str, timeout_s: float = 60.0) -> AskTurnInput:
+            assert question == "Ask one memory-grounded question."
+            assert timeout_s == 60.0
+            return AskTurnInput(decision_id=STOP_DECISION_ID, sentence="", error=None)
+
 
     def _fake_run_chat_loop(*, read_user_utterance, send_assistant_text, **_kwargs):
-        utterance = read_user_utterance()
-        assert utterance == "stop"
+        assert read_user_utterance() == "stop"
         send_assistant_text("ack")
 
     monkeypatch.setattr(runtime, "_run_chat_loop", _fake_run_chat_loop)
+    monkeypatch.setattr(runtime, "AskGateway", SimpleNamespace(from_runtime=lambda _runtime: _FakeGateway()))
 
     runtime._run_satellite_mode(
-        runtime={},
+        runtime={
+            "ha_api_url": "http://localhost:8123",
+            "ha_api_secret": "token",
+            "ha_satellite_entity_id": "assist_satellite.kitchen",
+        },
         llm=SimpleNamespace(),
         store=SimpleNamespace(),
         chat_history=deque(),
         near_tie_delta=0.05,
-        api_url="http://localhost:8123",
-        token="token",
-        entity_id="assist_satellite.kitchen",
         capability_snapshot=SimpleNamespace(),
         clock=SimpleNamespace(),
     )

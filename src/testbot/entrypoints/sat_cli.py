@@ -5,6 +5,7 @@ import sys
 
 from langchain_ollama import ChatOllama, OllamaEmbeddings
 
+from testbot.adapters.ask_gateway import AskGateway
 from testbot.domain import build_system_clock
 from testbot.entrypoints.sat_runtime_modes import run_cli_mode, run_satellite_mode
 from testbot.observability.session_log import append_session_log
@@ -74,10 +75,8 @@ def main(argv: list[str] | None = None) -> None:
             chat_history=chat_history,
             near_tie_delta=float(runtime["memory_near_tie_delta"]),
             capability_snapshot=capability_snapshot,
-            api_url=str(runtime["ha_api_url"]),
-            token=str(runtime["ha_api_secret"]),
-            entity_id=str(runtime["ha_satellite_entity_id"]),
             clock=clock,
+            ask_gateway=AskGateway.from_runtime(runtime),
             run_chat_loop=run_chat_loop,
             satellite_say=sat_say,
         )
