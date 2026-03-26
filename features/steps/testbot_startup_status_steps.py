@@ -14,7 +14,7 @@ def _make_snapshot(*, requested_mode: str, daemon_mode: bool, ha_error: str | No
         "ollama_model": "llama3.1:latest",
         "ollama_embedding_model": "nomic-embed-text",
         "ha_api_url": "http://localhost:8123",
-        "ha_api_secret": "secret",
+        "ha_api_token": "secret",
         "ha_satellite_entity_id": "assist_satellite.kitchen",
         "memory_store_backend": "in_memory",
     }
@@ -54,7 +54,7 @@ def step_given_startup_mode(context, mode: str, daemon: str) -> None:
 
 @given("Home Assistant connection is unavailable during startup checks")
 def step_given_ha_unavailable(context) -> None:
-    context.startup_ha_error = "Missing HA_API_SECRET"
+    context.startup_ha_error = "Missing HA_API_TOKEN"
 
 
 @given("Ollama connection is available during startup checks")

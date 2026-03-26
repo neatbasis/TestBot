@@ -23,7 +23,7 @@ require_live_smoke_config(
     suite_name="live_smoke runtime end-to-end tests",
     required_fields=(
         "HA_API_URL",
-        "HA_API_SECRET",
+        "HA_API_TOKEN",
         "HA_SATELLITE_ENTITY_ID",
         "OLLAMA_BASE_URL",
         "OLLAMA_MODEL",
@@ -43,7 +43,7 @@ def _require_env(name: str) -> str:
 def _require_live_runtime_env() -> None:
     for env_name in (
         "HA_API_URL",
-        "HA_API_SECRET",
+        "HA_API_TOKEN",
         "HA_SATELLITE_ENTITY_ID",
         "OLLAMA_BASE_URL",
         "OLLAMA_MODEL",

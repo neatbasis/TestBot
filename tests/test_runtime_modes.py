@@ -54,7 +54,7 @@ def test_run_satellite_mode_uses_gateway_with_stable_stop_id(monkeypatch) -> Non
     runtime._run_satellite_mode(
         runtime={
             "ha_api_url": "http://localhost:8123",
-            "ha_api_secret": "token",
+            "ha_api_token": "token",
             "ha_satellite_entity_id": "assist_satellite.kitchen",
         },
         llm=SimpleNamespace(),
@@ -126,7 +126,7 @@ def test_runtime_env_loads_ollama_values_from_process_env(monkeypatch) -> None:
 
 def test_runtime_and_live_smoke_resolve_ollama_env_from_same_process_env(monkeypatch) -> None:
     monkeypatch.setenv("HA_API_URL", "http://127.0.0.1:8123")
-    monkeypatch.setenv("HA_API_SECRET", "ha-test-supersecret-token")
+    monkeypatch.setenv("HA_API_TOKEN", "ha-test-supersecret-token")
     monkeypatch.setenv("HA_SATELLITE_ENTITY_ID", "assist_satellite.test")
     monkeypatch.setenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434")
     monkeypatch.setenv("OLLAMA_MODEL", "llama3.1:latest")
@@ -172,7 +172,7 @@ def test_build_capability_snapshot_passes_x_ollama_key_to_connectivity_probe(mon
         daemon_mode=False,
         runtime={
             "ha_api_url": "http://localhost:8123",
-            "ha_api_secret": "token",
+            "ha_api_token": "token",
             "ha_satellite_entity_id": "assist_satellite.kitchen",
             "ollama_base_url": "http://localhost:11434",
             "ollama_model": "llama3.1:latest",
@@ -312,7 +312,7 @@ def _patch_main_dependencies(
 ) -> None:
     runtime_env = {
         "ha_api_url": "http://localhost:8123",
-        "ha_api_secret": "token",
+        "ha_api_token": "token",
         "ha_satellite_entity_id": "assist_satellite.kitchen",
         "ollama_base_url": "http://localhost:11434",
         "ollama_model": "llama3.1:latest",

@@ -18,7 +18,7 @@ class _FailIfInvokedLLM:
 def _base_runtime() -> dict[str, object]:
     return {
         "ha_api_url": "http://localhost:8123",
-        "ha_api_secret": "",
+        "ha_api_token": "",
         "ha_satellite_entity_id": "assist_satellite.kitchen",
         "ollama_base_url": "http://localhost:11434",
         "ollama_model": "llama3.1:latest",
@@ -46,7 +46,7 @@ def _capabilities_help_answer(snapshot) -> str:
 
 def test_shared_snapshot_keeps_cli_fallback_truth_consistent(monkeypatch, capsys) -> None:
     runtime = _base_runtime()
-    monkeypatch.setattr("testbot.sat_chatbot_memory_v2._ha_connection_error", lambda *_args: "Missing HA_API_SECRET")
+    monkeypatch.setattr("testbot.sat_chatbot_memory_v2._ha_connection_error", lambda *_args: "Missing HA_API_TOKEN")
     monkeypatch.setattr(
         "testbot.sat_chatbot_memory_v2._ollama_connection_error",
         lambda *_args, **_kwargs: None,
@@ -73,7 +73,7 @@ def test_shared_snapshot_keeps_cli_fallback_truth_consistent(monkeypatch, capsys
 
 def test_shared_snapshot_keeps_satellite_truth_consistent(monkeypatch, capsys) -> None:
     runtime = _base_runtime()
-    runtime["ha_api_secret"] = "top-secret"
+    runtime["ha_api_token"] = "top-secret"
     monkeypatch.setattr("testbot.sat_chatbot_memory_v2._ha_connection_error", lambda *_args: None)
     monkeypatch.setattr(
         "testbot.sat_chatbot_memory_v2._ollama_connection_error",

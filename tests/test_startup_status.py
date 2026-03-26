@@ -9,7 +9,7 @@ def _snapshot(*, effective_mode: str | None, ha_error: str | None, ollama_error:
         "ollama_model": "llama3.1:latest",
         "ollama_embedding_model": "nomic-embed-text:latest",
         "ha_api_url": "http://localhost:8123",
-        "ha_api_secret": "secret",
+        "ha_api_token": "secret",
         "ha_satellite_entity_id": "assist_satellite.kitchen",
         "memory_store_backend": memory_backend,
     }
@@ -42,7 +42,7 @@ def test_startup_status_prints_yellow_install_warning_when_ha_unavailable(capsys
     print_startup_status(
         snapshot=_snapshot(
             effective_mode="cli",
-            ha_error="Missing HA_API_SECRET",
+            ha_error="Missing HA_API_TOKEN",
             ollama_error=None,
             fallback_reason="satellite connection is unavailable",
         )
@@ -69,7 +69,7 @@ def test_startup_status_prints_degraded_cli_fallback_note_and_continuity_message
     print_startup_status(
         snapshot=_snapshot(
             effective_mode="cli",
-            ha_error="Missing HA_API_SECRET",
+            ha_error="Missing HA_API_TOKEN",
             ollama_error=None,
             fallback_reason="satellite connection is unavailable",
         )
@@ -83,7 +83,7 @@ def test_startup_status_prints_degraded_cli_fallback_note_and_continuity_message
 def test_startup_status_includes_requested_and_effective_modes_for_fallback(capsys) -> None:
     snapshot = _snapshot(
         effective_mode="cli",
-        ha_error="Missing HA_API_SECRET",
+        ha_error="Missing HA_API_TOKEN",
         ollama_error=None,
         fallback_reason="satellite connection is unavailable",
     )
@@ -121,7 +121,7 @@ def test_startup_status_prints_active_memory_backend(capsys) -> None:
     print_startup_status(
         snapshot=_snapshot(
             effective_mode="cli",
-            ha_error="Missing HA_API_SECRET",
+            ha_error="Missing HA_API_TOKEN",
             ollama_error=None,
             fallback_reason="satellite connection is unavailable",
             memory_backend="elasticsearch",
@@ -151,7 +151,7 @@ def test_startup_status_reports_verbose_debug_toggle_state(capsys) -> None:
     print_startup_status(
         snapshot=_snapshot(
             effective_mode="cli",
-            ha_error="Missing HA_API_SECRET",
+            ha_error="Missing HA_API_TOKEN",
             ollama_error=None,
             fallback_reason="satellite connection is unavailable",
             debug_enabled=True,
