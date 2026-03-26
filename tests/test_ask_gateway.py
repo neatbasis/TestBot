@@ -4,6 +4,7 @@ from ask import AskClient
 from ask.config import Config
 
 from testbot.adapters.ask_gateway import AskGateway, STOP_DECISION_ID, normalize_ha_rest_url
+from testbot.interaction_standards import InteractionRequirements
 
 
 def test_ask_gateway_builds_client_from_runtime_mapping() -> None:
@@ -53,3 +54,15 @@ def test_ask_gateway_satellite_prompt_uses_stable_stop_decision_id() -> None:
 
 def test_normalize_ha_rest_url_matches_ask_normalization() -> None:
     assert normalize_ha_rest_url("http://localhost:8123") == "http://localhost:8123/api/"
+
+
+def test_satellite_turn_interaction_requirements_contract() -> None:
+    gateway = AskGateway.from_runtime(
+        {
+            "ha_api_url": "http://localhost:8123",
+            "ha_api_token": "secret-token",
+            "ha_satellite_entity_id": "assist_satellite.kitchen",
+        }
+    )
+
+    assert gateway.satellite_turn_interaction_requirements() == InteractionRequirements()
