@@ -3,11 +3,10 @@ from __future__ import annotations
 from collections import deque
 from collections.abc import Callable
 
-from ha_ask import AskSpec, ask_question
-from ha_ask.config import normalize_rest_api_url
 from homeassistant_api import Client
 from langchain_ollama import ChatOllama
 
+from testbot.adapters.ask_gateway import AskGateway, STOP_DECISION_ID
 from testbot.domain import Clock
 from testbot.sat_chatbot_memory_v2 import CapabilitySnapshot, ChatMsg
 from testbot.ports import MemoryStorePort
@@ -57,34 +56,27 @@ def run_satellite_mode(
     store: MemoryStorePort,
     chat_history: deque[ChatMsg],
     near_tie_delta: float,
-    api_url: str,
-    token: str,
-    entity_id: str,
     capability_snapshot: CapabilitySnapshot,
     clock: Clock,
+    ask_gateway: AskGateway,
     run_chat_loop: Callable[..., None],
     satellite_say: Callable[[Client, str, str], None],
 ) -> None:
-    rest = normalize_rest_api_url(api_url)
-    with Client(rest, token) as client:
+    with Client(ask_gateway.normalized_ha_rest_url(), ask_gateway.ha_api_token) as client:
+        entity_id = ask_gateway.satellite_entity_id
         satellite_say(client, entity_id, "v0 memory loop online. Say 'stop' to exit.")
 
         def _read() -> str | None:
-            res = ask_question(
-                channel="satellite",
-                spec=AskSpec(
-                    question="Ask one memory-grounded question.",
-                    answers=None,
-                    timeout_s=60.0,
-                ),
-                api_url=api_url,
-                token=token,
-                satellite_entity_id=entity_id,
+            ask_result = ask_gateway.request_satellite_turn_input(
+                question="Ask one memory-grounded question.",
+                timeout_s=60.0,
             )
-            if res.get("error"):
-                satellite_say(client, entity_id, f"I didn't get that. Error: {res['error']}")
+            if ask_result.error:
+                satellite_say(client, entity_id, f"I didn't get that. Error: {ask_result.error}")
                 return ""
-            return str(res.get("sentence") or "")
+            if ask_result.decision_id == STOP_DECISION_ID:
+                return "stop"
+            return ask_result.sentence
 
         def _send(text: str) -> None:
             satellite_say(client, entity_id, text)

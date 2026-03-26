@@ -8,7 +8,7 @@ from tests.live_smoke_support import require_live_smoke_config
 from homeassistant_api import Client
 from homeassistant_api.errors import HomeassistantAPIError
 
-from ha_ask.config import normalize_rest_api_url
+from ask.config import normalize_rest_api_url
 
 pytestmark = pytest.mark.live_smoke
 

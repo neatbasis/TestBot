@@ -91,7 +91,7 @@ from testbot.source_connectors import (
     WikipediaSummarySourceConnector,
 )
 from testbot.source_ingest import SourceIngestor
-from ha_ask.config import normalize_rest_api_url
+from ask.config import normalize_rest_api_url
 from testbot.history_packer import PackedHistory, labeled_history_claims, pack_chat_history, render_packed_history
 from testbot.response_planner import build_response_plan, plan_to_dict, render_response_plan_block
 from testbot.reject_taxonomy import RejectSignal, derive_reject_signal
@@ -133,6 +133,7 @@ from testbot.logic.alignment import (
     validate_general_knowledge_contract,
 )
 from testbot.retrieval_routing import decide_retrieval_routing, is_definitional_query_form
+from testbot.adapters.ask_gateway import AskGateway
 from testbot.application.services.turn_service import TurnPipelineDependencies
 from testbot.application.services.canonical_turn_runtime import run_canonical_turn_pipeline
 from testbot.canonical_turn_orchestrator import CanonicalTurnOrchestrator as _CanonicalTurnOrchestrator
@@ -3725,9 +3726,6 @@ def _run_satellite_mode(
     store: MemoryStorePort,
     chat_history: deque[ChatMsg],
     near_tie_delta: float,
-    api_url: str,
-    token: str,
-    entity_id: str,
     capability_snapshot: CapabilitySnapshot,
     clock: Clock,
 ) -> None:
@@ -3739,11 +3737,9 @@ def _run_satellite_mode(
         store=store,
         chat_history=chat_history,
         near_tie_delta=near_tie_delta,
-        api_url=api_url,
-        token=token,
-        entity_id=entity_id,
         capability_snapshot=capability_snapshot,
         clock=clock,
+        ask_gateway=AskGateway.from_runtime(runtime),
         run_chat_loop=_run_chat_loop,
         satellite_say=sat_say,
     )
