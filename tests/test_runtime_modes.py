@@ -250,6 +250,44 @@ def test_run_cli_mode_uses_terminal_channel_ask_gateway(monkeypatch) -> None:
     )
 
 
+def test_run_cli_mode_passes_non_stop_sentence_through_unchanged() -> None:
+    sentence = "What did I ask you about source ingestion earlier?"
+
+    class _FakeGateway:
+        def request_turn_input(
+            self,
+            *,
+            channel: str,
+            question: str,
+            timeout_s: float = 60.0,
+            interaction_requirements: InteractionRequirements,
+        ) -> AskTurnInput:
+            assert channel == "terminal"
+            assert question == "Ask one memory-grounded question."
+            return AskTurnInput(decision_id=None, sentence=sentence, error=None)
+
+    observed: dict[str, object] = {}
+
+    def _fake_run_chat_loop(*, read_user_utterance, capability_status, **_kwargs):
+        observed["capability_status"] = capability_status
+        observed["utterance"] = read_user_utterance()
+
+    sat_runtime_modes.run_cli_mode(
+        runtime={},
+        llm=SimpleNamespace(),
+        store=SimpleNamespace(),
+        chat_history=deque(),
+        near_tie_delta=0.05,
+        capability_snapshot=SimpleNamespace(),
+        clock=SimpleNamespace(),
+        ask_gateway=_FakeGateway(),
+        run_chat_loop=_fake_run_chat_loop,
+    )
+
+    assert observed["capability_status"] == "ask_available"
+    assert observed["utterance"] == sentence
+
+
 @pytest.mark.parametrize(
     ("decision_id", "sentence"),
     [
