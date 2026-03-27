@@ -10,9 +10,6 @@ import uuid
 import warnings
 from concurrent.futures import Future, ThreadPoolExecutor
 from threading import Lock
-from urllib.error import URLError
-from urllib.parse import urljoin, urlparse
-from urllib.request import Request, urlopen
 from argparse import ArgumentParser, BooleanOptionalAction, Namespace
 from collections import deque
 from dataclasses import dataclass, replace
@@ -132,8 +129,20 @@ from testbot.logic.alignment import (
     validate_general_knowledge_contract,
 )
 from testbot.retrieval_routing import decide_retrieval_routing, is_definitional_query_form
-from testbot.adapters.ask_gateway import AskGateway, normalize_ha_rest_url
+from testbot.adapters.ask_gateway import AskGateway
 from testbot.application.services.turn_service import TurnPipelineDependencies
+from testbot.runtime_capability_service import (
+    CapabilitySnapshotData as CapabilitySnapshot,
+    RuntimeCapabilityStatusData as RuntimeCapabilityStatus,
+    build_capability_snapshot as build_capability_snapshot_from_service,
+    build_runtime_capability_status as build_runtime_capability_status_from_service,
+    ha_connection_error as ha_connection_error_from_service,
+    ollama_connection_error as ollama_connection_error_from_service,
+    resolve_effective_mode as resolve_effective_mode_from_service,
+    resolve_mode as resolve_mode_from_service,
+    validate_ollama_base_url as validate_ollama_base_url_from_service,
+)
+from testbot.startup_status_presenter import print_startup_status as print_startup_status_from_presenter
 from testbot.application.services.canonical_turn_runtime import run_canonical_turn_pipeline
 from testbot.canonical_turn_orchestrator import CanonicalTurnOrchestrator as _CanonicalTurnOrchestrator
 from testbot.logic.decision_helpers import (
@@ -605,34 +614,6 @@ RETRIEVAL_SCORE_THRESHOLD = 0.0
 
 
 @dataclass(frozen=True)
-class RuntimeCapabilityStatus:
-    ollama_available: bool
-    ha_available: bool
-    effective_mode: str
-    requested_mode: str
-    daemon_mode: bool
-    fallback_reason: str | None
-    memory_backend: str
-    debug_enabled: bool
-    debug_verbose: bool
-    text_clarification_available: bool
-    satellite_ask_available: bool
-
-
-@dataclass(frozen=True)
-class CapabilitySnapshot:
-    runtime: dict[str, object]
-    requested_mode: str
-    daemon_mode: bool
-    effective_mode: str | None
-    fallback_reason: str | None
-    exit_reason: str | None
-    ha_error: str | None
-    ollama_error: str | None
-    runtime_capability_status: RuntimeCapabilityStatus
-
-
-@dataclass(frozen=True)
 class AnswerAssembleResult:
     draft_answer: str
     final_answer: str
@@ -847,22 +828,11 @@ def _build_runtime_memory_store(*, runtime: dict[str, object], embeddings: Embed
 
 
 def _ha_connection_error(api_url: str, token: str, entity_id: str) -> str | None:
-    if not token:
-        return "Missing HA_API_TOKEN"
-    if not entity_id:
-        return "Missing HA_SATELLITE_ENTITY_ID"
-    try:
-        with Client(normalize_ha_rest_url(api_url), token):
-            return None
-    except Exception as exc:  # pragma: no cover - network/credential dependent
-        return f"{type(exc).__name__}: {exc}"
+    return ha_connection_error_from_service(api_url, token, entity_id, client_factory=Client)
 
 
 def _validate_ollama_base_url(base_url: str) -> str | None:
-    parsed = urlparse(base_url.strip())
-    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
-        return f"Invalid OLLAMA_BASE_URL '{base_url}'; must be full http(s) URL"
-    return None
+    return validate_ollama_base_url_from_service(base_url)
 
 
 def _ollama_connection_error(
@@ -872,57 +842,16 @@ def _ollama_connection_error(
     *,
     x_ollama_key: str | None = None,
 ) -> str | None:
-    def _model_aliases(model_name: str) -> set[str]:
-        trimmed = model_name.strip()
-        if not trimmed:
-            return set()
-        if ":" in trimmed:
-            base_name, _, tag = trimmed.rpartition(":")
-            if tag == "latest":
-                return {trimmed, base_name}
-            return {trimmed}
-        return {trimmed, f"{trimmed}:latest"}
-
-    base_url_error = _validate_ollama_base_url(base_url)
-    if base_url_error is not None:
-        return base_url_error
-
-    tags_url = urljoin(base_url.rstrip("/") + "/", "api/tags")
-    request = Request(tags_url)
-    if x_ollama_key:
-        request.add_header("X-Ollama-Key", x_ollama_key)
-
-    try:
-        with urlopen(request, timeout=3.0) as resp:  # noqa: S310
-            payload = json.loads(resp.read().decode("utf-8"))
-    except URLError as exc:  # pragma: no cover - network dependent
-        return f"Cannot reach Ollama endpoint {base_url}: {type(exc.reason).__name__}: {exc.reason}"
-    except Exception as exc:  # pragma: no cover - network dependent
-        return f"Cannot reach Ollama endpoint {base_url}: {type(exc).__name__}: {exc}"
-
-    models = payload.get("models", []) if isinstance(payload, dict) else []
-    available = {
-        str(item.get("model") or item.get("name") or "")
-        for item in models
-        if isinstance(item, dict)
-    }
-    if available.isdisjoint(_model_aliases(chat_model)):
-        return (
-            f"Configured chat model '{chat_model}' is not installed on Ollama. "
-            f"Run: ollama pull {chat_model}"
-        )
-    if available.isdisjoint(_model_aliases(embedding_model)):
-        return (
-            f"Configured embedding model '{embedding_model}' is not installed on Ollama. "
-            f"Run: ollama pull {embedding_model}"
-        )
-    return None
+    return ollama_connection_error_from_service(
+        base_url,
+        chat_model,
+        embedding_model,
+        x_ollama_key=x_ollama_key,
+    )
 
 
 def _resolve_mode(requested_mode: str, ha_error: str | None) -> str:
-    if requested_mode == "auto":
-        return "satellite" if ha_error is None else "cli"
-    return requested_mode
+    return resolve_mode_from_service(requested_mode, ha_error)
 
 
 def _resolve_effective_mode(
@@ -932,18 +861,12 @@ def _resolve_effective_mode(
     ha_error: str | None,
     ollama_error: str | None,
 ) -> tuple[str | None, str | None, str | None]:
-    if ollama_error is not None:
-        return None, None, f"Ollama is unavailable: {ollama_error}"
-
-    if requested_mode == "auto" and ha_error is not None and daemon_mode:
-        return None, None, f"Home Assistant is unavailable: {ha_error}"
-
-    selected_mode = _resolve_mode(requested_mode, ha_error)
-    if selected_mode == "satellite" and ha_error is not None:
-        if daemon_mode:
-            return None, None, f"Home Assistant is unavailable: {ha_error}"
-        return "cli", "satellite connection is unavailable", None
-    return selected_mode, None, None
+    return resolve_effective_mode_from_service(
+        requested_mode=requested_mode,
+        daemon_mode=daemon_mode,
+        ha_error=ha_error,
+        ollama_error=ollama_error,
+    )
 
 
 
@@ -998,42 +921,7 @@ def _run_source_ingestion(*, runtime: dict[str, object], store: MemoryStorePort)
         )
 
 def _print_startup_status(*, snapshot: CapabilitySnapshot) -> None:
-    runtime = snapshot.runtime
-    print("=== TestBot startup status ===")
-    effective_mode = snapshot.effective_mode or "unavailable"
-    if snapshot.fallback_reason:
-        print(
-            "Selected mode: "
-            f"{effective_mode} (requested={snapshot.requested_mode}, "
-            f"fallback reason={snapshot.fallback_reason}, daemon={snapshot.daemon_mode})"
-        )
-    else:
-        print(f"Selected mode: {effective_mode} (requested={snapshot.requested_mode}, daemon={snapshot.daemon_mode})")
-    print(
-        f"Ollama endpoint: {runtime['ollama_base_url']} "
-        f"chat_model={runtime['ollama_model']} embed_model={runtime['ollama_embedding_model']}"
-    )
-    if snapshot.ollama_error:
-        print(f"Ollama: unavailable ({snapshot.ollama_error})")
-        print("Install warning [RED]: Ollama capability is unavailable; verify OLLAMA_BASE_URL and pull required models before restarting.")
-        print("Developer note: runtime will exit early because model and embedding checks are required at startup.")
-    else:
-        print("Ollama: available (chat + embedding models verified)")
-        print("Install warning [GREEN]: Ollama capability is active; keep OLLAMA_MODEL and OLLAMA_EMBEDDING_MODEL provisioned.")
-    print(f"Memory backend: {runtime['memory_store_backend']}")
-    debug_mode = "enabled" if snapshot.runtime_capability_status.debug_enabled else "disabled"
-    debug_verbose = "enabled" if snapshot.runtime_capability_status.debug_verbose else "disabled"
-    print(f"Debug tracing: {debug_mode} (TESTBOT_DEBUG), verbose payloads: {debug_verbose} (TESTBOT_DEBUG_VERBOSE/--debug-verbose)")
-    if snapshot.ha_error:
-        print(f"Home Assistant: unavailable ({snapshot.ha_error})")
-        print("Install warning [YELLOW]: Home Assistant capability is degraded; configure HA_API_TOKEN and HA_SATELLITE_ENTITY_ID to enable satellite mode.")
-        print("Developer note: satellite interface disabled; CLI fallback will be used unless --daemon is set.")
-    else:
-        print(f"Home Assistant: available ({runtime['ha_api_url']}, entity={runtime['ha_satellite_entity_id']})")
-        print("Install warning [GREEN]: Home Assistant capability is active; keep Home Assistant credentials configured when reinstalling or reprovisioning.")
-        print("Developer note: satellite ask/speak loop is enabled.")
-    print("Continuity: memory cards are shared across interfaces in-process via one vector store.")
-    print("==============================")
+    print_startup_status_from_presenter(snapshot=snapshot)
 
 
 def append_session_log(event: str, payload: dict, *, log_path: Path = Path("./logs/session.jsonl")) -> None:
@@ -3754,64 +3642,24 @@ def _build_runtime_capability_status(
     ha_error: str | None,
     ollama_error: str | None,
 ) -> RuntimeCapabilityStatus:
-    effective = effective_mode or "unavailable"
-    can_text_clarify = effective in {"cli", "satellite"}
-    can_satellite_ask = ha_error is None and effective == "satellite"
-    return RuntimeCapabilityStatus(
-        ollama_available=ollama_error is None,
-        ha_available=ha_error is None,
-        effective_mode=effective,
+    return build_runtime_capability_status_from_service(
         requested_mode=requested_mode,
+        effective_mode=effective_mode,
         daemon_mode=daemon_mode,
         fallback_reason=fallback_reason,
-        memory_backend=str(runtime.get("memory_store_backend", "unknown")),
-        debug_enabled=os.getenv("TESTBOT_DEBUG", "0") == "1",
-        debug_verbose=bool(runtime.get("debug_verbose", False)),
-        text_clarification_available=can_text_clarify,
-        satellite_ask_available=can_satellite_ask,
+        runtime=runtime,
+        ha_error=ha_error,
+        ollama_error=ollama_error,
     )
 
 
 def build_capability_snapshot(*, requested_mode: str, daemon_mode: bool, runtime: dict[str, object]) -> CapabilitySnapshot:
-    ha_error = _ha_connection_error(
-        str(runtime["ha_api_url"]),
-        str(runtime["ha_api_token"]),
-        str(runtime["ha_satellite_entity_id"]),
-    )
-    ollama_error = _ollama_connection_error(
-        str(runtime["ollama_base_url"]),
-        str(runtime["ollama_model"]),
-        str(runtime["ollama_embedding_model"]),
-        x_ollama_key=str(runtime.get("x_ollama_key") or ""),
-    )
-
-    effective_mode, fallback_reason, exit_reason = _resolve_effective_mode(
+    return build_capability_snapshot_from_service(
         requested_mode=requested_mode,
         daemon_mode=daemon_mode,
-        ha_error=ha_error,
-        ollama_error=ollama_error,
-    )
-
-    runtime_capability_status = _build_runtime_capability_status(
-        requested_mode=requested_mode,
-        effective_mode=effective_mode,
-        daemon_mode=daemon_mode,
-        fallback_reason=fallback_reason,
         runtime=runtime,
-        ha_error=ha_error,
-        ollama_error=ollama_error,
-    )
-
-    return CapabilitySnapshot(
-        runtime=runtime,
-        requested_mode=requested_mode,
-        daemon_mode=daemon_mode,
-        effective_mode=effective_mode,
-        fallback_reason=fallback_reason,
-        exit_reason=exit_reason,
-        ha_error=ha_error,
-        ollama_error=ollama_error,
-        runtime_capability_status=runtime_capability_status,
+        ha_connection_error_fn=_ha_connection_error,
+        ollama_connection_error_fn=_ollama_connection_error,
     )
 
 

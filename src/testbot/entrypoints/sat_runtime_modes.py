@@ -8,8 +8,11 @@ from langchain_ollama import ChatOllama
 
 from testbot.adapters.ask_gateway import AskGateway, STOP_DECISION_ID
 from testbot.domain import Clock
-from testbot.sat_chatbot_memory_v2 import CapabilitySnapshot, ChatMsg
+from testbot.interaction_planner import select_interaction_requirements
+from testbot.runtime_capability_service import CapabilitySnapshotData as CapabilitySnapshot
 from testbot.ports import MemoryStorePort
+
+ChatMsg = dict[str, str]
 
 
 def run_cli_mode(
@@ -66,10 +69,17 @@ def run_satellite_mode(
         entity_id = ask_gateway.satellite_entity_id
         satellite_say(client, entity_id, "v0 memory loop online. Say 'stop' to exit.")
 
+        interaction_plan = select_interaction_requirements(
+            need_profile="satellite_turn_input",
+            channel_context="satellite",
+            task_flow_context="memory_chat_loop",
+        )
+
         def _read() -> str | None:
             ask_result = ask_gateway.request_satellite_turn_input(
                 question="Ask one memory-grounded question.",
                 timeout_s=60.0,
+                interaction_requirements=interaction_plan.interaction_requirements,
             )
             if ask_result.error:
                 satellite_say(client, entity_id, f"I didn't get that. Error: {ask_result.error}")
