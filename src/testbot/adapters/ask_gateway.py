@@ -7,6 +7,7 @@ from ask import Answer, AskClient, AskSpec
 from ask.config import Config
 from ask.config import normalize_rest_api_url
 
+from testbot.ask_channel_capabilities import AskChannel, validate_channel_interaction_requirements
 from testbot.interaction_standards import InteractionRequirements
 
 
@@ -76,14 +77,18 @@ class AskGateway:
     def normalized_ha_rest_url(self) -> str:
         return normalize_ha_rest_url(str(self._client.config.ha_api_url or ""))
 
-    def satellite_turn_spec(
+    def turn_spec(
         self,
         *,
+        channel: AskChannel,
         question: str,
         timeout_s: float = 60.0,
         interaction_requirements: InteractionRequirements,
     ) -> AskSpec:
-        interaction_requirements.validate()
+        validate_channel_interaction_requirements(
+            channel=channel,
+            interaction_requirements=interaction_requirements,
+        )
         formatted_question = _format_question(
             question=question,
             sentence_style_fit=interaction_requirements.sentence_style_fit,
@@ -112,6 +117,41 @@ class AskGateway:
             timeout_s=effective_timeout_s,
         )
 
+    def request_turn_input(
+        self,
+        *,
+        channel: AskChannel,
+        question: str,
+        timeout_s: float = 60.0,
+        interaction_requirements: InteractionRequirements,
+    ) -> AskTurnInput:
+        spec = self.turn_spec(
+            channel=channel,
+            question=question,
+            timeout_s=timeout_s,
+            interaction_requirements=interaction_requirements,
+        )
+        result = self._client.ask_question(channel=channel, spec=spec)
+        return AskTurnInput(
+            decision_id=_optional_str(result.get("id")),
+            sentence=_optional_str(result.get("sentence")) or "",
+            error=_optional_str(result.get("error")),
+        )
+
+    def satellite_turn_spec(
+        self,
+        *,
+        question: str,
+        timeout_s: float = 60.0,
+        interaction_requirements: InteractionRequirements,
+    ) -> AskSpec:
+        return self.turn_spec(
+            channel="satellite",
+            question=question,
+            timeout_s=timeout_s,
+            interaction_requirements=interaction_requirements,
+        )
+
     def request_satellite_turn_input(
         self,
         *,
@@ -119,16 +159,25 @@ class AskGateway:
         timeout_s: float = 60.0,
         interaction_requirements: InteractionRequirements,
     ) -> AskTurnInput:
-        spec = self.satellite_turn_spec(
+        return self.request_turn_input(
+            channel="satellite",
             question=question,
             timeout_s=timeout_s,
             interaction_requirements=interaction_requirements,
         )
-        result = self._client.ask_question(channel="satellite", spec=spec)
-        return AskTurnInput(
-            decision_id=_optional_str(result.get("id")),
-            sentence=_optional_str(result.get("sentence")) or "",
-            error=_optional_str(result.get("error")),
+
+    def request_terminal_turn_input(
+        self,
+        *,
+        question: str,
+        timeout_s: float = 60.0,
+        interaction_requirements: InteractionRequirements,
+    ) -> AskTurnInput:
+        return self.request_turn_input(
+            channel="terminal",
+            question=question,
+            timeout_s=timeout_s,
+            interaction_requirements=interaction_requirements,
         )
 
 
