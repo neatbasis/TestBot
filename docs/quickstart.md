@@ -135,6 +135,7 @@ menu selection, reference examples, and freeform entry.
 `SOURCE_*` environment variables remain deployment/runtime configuration inputs
 for connector-specific parameters (paths/topics/limits), not the primary
 capability enable toggle.
+Startup execution runs through canonical owner `testbot.source_ingestion_startup.run_source_ingestion(...)`; background/lifecycle extraction remains follow-up scope.
 
 Prefer connector inputs that encode the system's intended reasoning basis:
 

@@ -18,6 +18,7 @@ from testbot.entrypoints.sat_runtime_modes import run_cli_mode, run_satellite_mo
 from testbot.observability.session_log import append_session_log
 from testbot.runtime_capability_service import build_capability_snapshot
 from testbot.source_ingestion_entry import apply_source_ingestion_entry
+from testbot.source_ingestion_startup import run_source_ingestion
 from testbot.startup_status_presenter import print_startup_status
 
 # Legacy bridge imports are intentionally grouped and replaced incrementally
@@ -26,7 +27,6 @@ from testbot.entrypoints.runtime_legacy_bridge import (
     build_runtime_memory_store,
     read_runtime_env,
     run_chat_loop,
-    run_source_ingestion,
     sat_say,
 )
 from testbot.runtime_cli_args import parse_args

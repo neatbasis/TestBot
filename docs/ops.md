@@ -216,11 +216,12 @@ Use Ask-style entry patterns (`python -m ask.demo_terminal_scenarios`) as the UX
 
 - **User-facing ingestion choices:** `--source-ingestion menu|reference|freeform|off|<direct-connector>`
 - **Deployment/runtime configuration:** `SOURCE_MARKDOWN_PATH`, `SOURCE_WIKIPEDIA_TOPIC`, `SOURCE_WIKIPEDIA_LANGUAGE`, `SOURCE_ARXIV_QUERY`, `SOURCE_INGEST_LIMIT`, `SOURCE_INGEST_CURSOR`
-- **Internal plumbing:** runtime ingestion lifecycle state in memory (`source_ingest_background_*`, pending/dead-letter registries)
+- **Canonical startup execution layer:** `testbot.source_ingestion_startup.run_source_ingestion(...)`
+- **Internal plumbing (still deferred):** runtime ingestion lifecycle state in memory (`source_ingest_background_*`, pending/dead-letter registries)
 
-Deferred scope note: this pass establishes the canonical user-facing ingestion
-entry surface only; bridge/runtime ingestion plumbing extraction remains tracked
-as separate follow-up work.
+Deferred scope note: this pass includes canonical startup-ingestion execution plus
+the user-facing entry surface; deeper bridge/runtime ingestion lifecycle extraction
+remains tracked as separate follow-up work.
 
 Use CLI selection for capability intent:
 
