@@ -44,6 +44,15 @@ _RETRYABLE_ERROR_MARKERS = (
     "reset",
 )
 _LAST_SUCCESSFUL_ASK_CHANNEL_CONTEXT_KEY = "last_successful_ask_channel_context"
+_LOW_INFORMATION_TRANSCRIPT_ARTIFACT_PHRASES = frozenset(
+    {
+        "thank you",
+        "thanks for watching",
+        "thank you for watching",
+        "thanks for listening",
+        "thank you for listening",
+    }
+)
 
 
 def _as_channel_context(resolved_channel: str | None) -> ChannelContext | None:
@@ -81,6 +90,17 @@ def _is_terminal_stop_signal(*, decision_id: str | None, sentence: str) -> bool:
 def _is_retryable_ask_error(error: str) -> bool:
     normalized_error = error.strip().lower()
     return any(marker in normalized_error for marker in _RETRYABLE_ERROR_MARKERS)
+
+
+def _normalize_transcript_artifact_phrase(text: str) -> str:
+    return " ".join(text.strip().lower().split())
+
+
+def _is_low_information_transcript_artifact(sentence: str) -> bool:
+    normalized_sentence = _normalize_transcript_artifact_phrase(sentence)
+    if not normalized_sentence:
+        return False
+    return normalized_sentence in _LOW_INFORMATION_TRANSCRIPT_ARTIFACT_PHRASES
 
 
 def run_cli_mode(
@@ -183,6 +203,9 @@ def run_satellite_mode(
                 return "stop"
             if not ask_result.sentence.strip():
                 satellite_say(client, entity_id, "I heard silence. Please try again.")
+                return ""
+            if _is_low_information_transcript_artifact(ask_result.sentence):
+                satellite_say(client, entity_id, "I heard a low-information transcript artifact. Please try again.")
                 return ""
             _persist_recent_successful_channel_context(runtime=runtime, ask_result_channel=ask_result.resolved_channel)
             return ask_result.sentence

@@ -566,6 +566,213 @@ def test_run_satellite_mode_persists_last_successful_ask_channel_as_satellite(mo
     assert runtime_state["last_successful_ask_channel_context"] == "satellite"
 
 
+@pytest.mark.parametrize(
+    "artifact_sentence",
+    [
+        "thank you for watching",
+        "  THANK   YOU   FOR   WATCHING  ",
+        "thanks for listening",
+    ],
+)
+def test_run_satellite_mode_rejects_low_information_transcript_artifacts(
+    monkeypatch: pytest.MonkeyPatch, artifact_sentence: str
+) -> None:
+    runtime_state: dict[str, object] = {
+        "ha_base_url": "http://localhost:8123",
+        "ha_api_token": "token",
+        "ha_satellite_entity_id": "assist_satellite.kitchen",
+    }
+
+    spoken: list[str] = []
+
+    class _FakeClient:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+    monkeypatch.setattr(sat_runtime_modes, "Client", lambda *_args, **_kwargs: _FakeClient())
+
+    class _FakeGateway:
+        ha_api_token = "token"
+        satellite_entity_id = "assist_satellite.kitchen"
+
+        def normalized_ha_rest_url(self) -> str:
+            return "http://localhost:8123/api"
+
+        def request_turn_input_for_policy(
+            self,
+            *,
+            interaction_policy: InteractionPolicyRequest,
+            question: str,
+            timeout_s: float = 60.0,
+            recent_successful_channel_context: str | None = None,
+        ) -> AskTurnInput:
+            assert recent_successful_channel_context is None
+            return AskTurnInput(
+                decision_id=None,
+                sentence=artifact_sentence,
+                error=None,
+                resolved_channel="satellite",
+                resolution_source="explicit_policy_channel",
+            )
+
+    observed: dict[str, object] = {}
+
+    def _fake_run_chat_loop(*, read_user_utterance, **_kwargs):
+        observed["utterance"] = read_user_utterance()
+
+    sat_runtime_modes.run_satellite_mode(
+        runtime=runtime_state,
+        llm=SimpleNamespace(),
+        store=SimpleNamespace(),
+        chat_history=deque(),
+        near_tie_delta=0.05,
+        capability_snapshot=SimpleNamespace(),
+        clock=SimpleNamespace(),
+        ask_gateway=_FakeGateway(),
+        run_chat_loop=_fake_run_chat_loop,
+        satellite_say=lambda _client, _entity_id, text: spoken.append(text),
+    )
+
+    assert observed["utterance"] == ""
+    assert spoken == [
+        "v0 memory loop online. Say 'stop' to exit.",
+        "I heard a low-information transcript artifact. Please try again.",
+    ]
+    assert "last_successful_ask_channel_context" not in runtime_state
+
+
+def test_run_satellite_mode_artifact_rejection_does_not_overwrite_recent_successful_channel_context(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    runtime_state: dict[str, object] = {
+        "ha_base_url": "http://localhost:8123",
+        "ha_api_token": "token",
+        "ha_satellite_entity_id": "assist_satellite.kitchen",
+        "last_successful_ask_channel_context": "satellite",
+    }
+    captured_recent: dict[str, object] = {}
+
+    class _FakeClient:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+    monkeypatch.setattr(sat_runtime_modes, "Client", lambda *_args, **_kwargs: _FakeClient())
+
+    class _FakeGateway:
+        ha_api_token = "token"
+        satellite_entity_id = "assist_satellite.kitchen"
+
+        def normalized_ha_rest_url(self) -> str:
+            return "http://localhost:8123/api"
+
+        def request_turn_input_for_policy(
+            self,
+            *,
+            interaction_policy: InteractionPolicyRequest,
+            question: str,
+            timeout_s: float = 60.0,
+            recent_successful_channel_context: str | None = None,
+        ) -> AskTurnInput:
+            captured_recent["value"] = recent_successful_channel_context
+            return AskTurnInput(
+                decision_id=None,
+                sentence="thank you",
+                error=None,
+                resolved_channel="satellite",
+                resolution_source="recent_successful_ask_channel",
+            )
+
+    observed: dict[str, object] = {}
+
+    def _fake_run_chat_loop(*, read_user_utterance, **_kwargs):
+        observed["utterance"] = read_user_utterance()
+
+    sat_runtime_modes.run_satellite_mode(
+        runtime=runtime_state,
+        llm=SimpleNamespace(),
+        store=SimpleNamespace(),
+        chat_history=deque(),
+        near_tie_delta=0.05,
+        capability_snapshot=SimpleNamespace(),
+        clock=SimpleNamespace(),
+        ask_gateway=_FakeGateway(),
+        run_chat_loop=_fake_run_chat_loop,
+        satellite_say=lambda *_args, **_kwargs: None,
+    )
+
+    assert captured_recent["value"] == "satellite"
+    assert observed["utterance"] == ""
+    assert runtime_state["last_successful_ask_channel_context"] == "satellite"
+
+
+def test_run_satellite_mode_keeps_meaningful_sentence_when_non_artifact(monkeypatch: pytest.MonkeyPatch) -> None:
+    runtime_state: dict[str, object] = {
+        "ha_base_url": "http://localhost:8123",
+        "ha_api_token": "token",
+        "ha_satellite_entity_id": "assist_satellite.kitchen",
+    }
+    sentence = "What changed in runtime acceptance policy?"
+
+    class _FakeClient:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+    monkeypatch.setattr(sat_runtime_modes, "Client", lambda *_args, **_kwargs: _FakeClient())
+
+    class _FakeGateway:
+        ha_api_token = "token"
+        satellite_entity_id = "assist_satellite.kitchen"
+
+        def normalized_ha_rest_url(self) -> str:
+            return "http://localhost:8123/api"
+
+        def request_turn_input_for_policy(
+            self,
+            *,
+            interaction_policy: InteractionPolicyRequest,
+            question: str,
+            timeout_s: float = 60.0,
+            recent_successful_channel_context: str | None = None,
+        ) -> AskTurnInput:
+            return AskTurnInput(
+                decision_id=None,
+                sentence=sentence,
+                error=None,
+                resolved_channel="satellite",
+                resolution_source="explicit_policy_channel",
+            )
+
+    observed: dict[str, object] = {}
+
+    def _fake_run_chat_loop(*, read_user_utterance, **_kwargs):
+        observed["utterance"] = read_user_utterance()
+
+    sat_runtime_modes.run_satellite_mode(
+        runtime=runtime_state,
+        llm=SimpleNamespace(),
+        store=SimpleNamespace(),
+        chat_history=deque(),
+        near_tie_delta=0.05,
+        capability_snapshot=SimpleNamespace(),
+        clock=SimpleNamespace(),
+        ask_gateway=_FakeGateway(),
+        run_chat_loop=_fake_run_chat_loop,
+        satellite_say=lambda *_args, **_kwargs: None,
+    )
+
+    assert observed["utterance"] == sentence
+    assert runtime_state["last_successful_ask_channel_context"] == "satellite"
+
+
 def test_run_cli_mode_uses_recent_successful_channel_when_policy_channel_unavailable() -> None:
     runtime_state: dict[str, object] = {"last_successful_ask_channel_context": "cli"}
     captured_recent: dict[str, object] = {}
