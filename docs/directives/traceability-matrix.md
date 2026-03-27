@@ -171,7 +171,7 @@ Documentation naming note: when updating directive or architecture docs, follow 
   - Confidence level: **Advisory** (unless CI/scripts explicitly require all tools).
 - Entry point contract for launching the bot (`testbot` script).
   - Source location: `[project.scripts]` in `pyproject.toml`.
-  - Enforcement mechanism: installer creates CLI entry point bound to `testbot.entrypoints.sat_cli:main`.
+  - Enforcement mechanism: installer creates CLI entry point bound to `testbot.entrypoints.cli:main`.
   - Confidence level: **Enforced** (packaging-level).
 
 ### A.4 Eval directives (`scripts/eval_recall.py`, `eval/cases.jsonl`)
