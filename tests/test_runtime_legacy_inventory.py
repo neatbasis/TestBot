@@ -7,9 +7,9 @@ INVENTORY_PATH = Path("docs/architecture/runtime-entrypoint-legacy-inventory-202
 REQUIRES_MIGRATION_FIELDS = {"transitional_warn", "temporary_keep", "extract_later"}
 REQUIRED_COLUMNS = {
     "Current owner",
-    "Intended canonical replacement",
+    "Canonical replacement",
     "Removal condition",
-    "Blocking dependency",
+    "Blocker",
     "Recommended next PR scope",
 }
 

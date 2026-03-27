@@ -32,6 +32,30 @@ def parse_args(argv: list[str] | None = None) -> Namespace:
             "Defaults to TESTBOT_DEBUG_VERBOSE environment setting."
         ),
     )
+    parser.add_argument(
+        "--source-ingestion",
+        choices=("env", "menu", "reference", "freeform", "off", "fixture", "local_markdown", "wikipedia", "arxiv"),
+        default="env",
+        help=(
+            "User-facing source-ingestion selection. "
+            "'menu' shows an Ask-demo-style entry menu; "
+            "'reference' applies a known-good reference example; "
+            "'freeform' accepts <connector>:<value>; "
+            "'env' keeps deployment SOURCE_* settings; "
+            "'off' disables ingestion; direct connector choices force that connector."
+        ),
+    )
+    parser.add_argument(
+        "--source-reference",
+        choices=("wikipedia_hilbert", "local_alignment_docs", "arxiv_category_theory"),
+        default="wikipedia_hilbert",
+        help="Reference example key used when --source-ingestion reference is selected.",
+    )
+    parser.add_argument(
+        "--source-freeform",
+        default="",
+        help="Freeform ingestion request in '<connector>:<value>' format used by --source-ingestion freeform.",
+    )
     return parser.parse_args(argv)
 
 

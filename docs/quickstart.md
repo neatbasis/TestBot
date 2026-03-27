@@ -103,10 +103,10 @@ Daemon behavior (no CLI fallback when Home Assistant is unavailable):
 testbot --mode satellite --daemon
 ```
 
-Alternative direct module run:
+Alternative module run (same canonical entrypoint):
 
 ```bash
-python src/testbot/sat_chatbot_memory_v2.py
+python -m testbot.entrypoints.sat_cli
 ```
 
 Say `stop` to end the loop.
@@ -120,7 +120,21 @@ Say `stop` to end the loop.
 
 ## Optional: source ingestion connectors
 
-Enable one connector at startup with `SOURCE_INGEST_ENABLED=1`.
+Primary user-facing control surface: `--source-ingestion`.
+The flow follows Ask's terminal demo pattern (`python -m ask.demo_terminal_scenarios`):
+menu selection, reference examples, and freeform entry.
+
+### Client entry modes (primary UX)
+
+- `--source-ingestion menu` → interactive menu in client (`reference`, `freeform`, `direct connector`, `off`)
+- `--source-ingestion reference --source-reference wikipedia_hilbert` → apply known-good reference example
+- `--source-ingestion freeform --source-freeform 'wikipedia:Hilbert space'` → start from freeform request
+- `--source-ingestion wikipedia|arxiv|local_markdown|fixture` → explicit direct connector mode
+- `--source-ingestion off` → explicit disable
+
+`SOURCE_*` environment variables remain deployment/runtime configuration inputs
+for connector-specific parameters (paths/topics/limits), not the primary
+capability enable toggle.
 
 Prefer connector inputs that encode the system's intended reasoning basis:
 
@@ -131,22 +145,18 @@ Prefer connector inputs that encode the system's intended reasoning basis:
 Local markdown file/directory ingestion:
 
 ```bash
-SOURCE_INGEST_ENABLED=1 \
-SOURCE_CONNECTOR_TYPE=local_markdown \
 SOURCE_MARKDOWN_PATH=./docs/alignment-canon \
 SOURCE_INGEST_LIMIT=20 \
-testbot --mode cli
+testbot --mode cli --source-ingestion local_markdown
 ```
 
 Wikipedia summary retrieval:
 
 ```bash
-SOURCE_INGEST_ENABLED=1 \
-SOURCE_CONNECTOR_TYPE=wikipedia \
 SOURCE_WIKIPEDIA_TOPIC="Hilbert space" \
 SOURCE_WIKIPEDIA_LANGUAGE=en \
 SOURCE_INGEST_LIMIT=1 \
-testbot --mode cli
+testbot --mode cli --source-ingestion wikipedia
 ```
 
 Alternative ontology topics: `Category theory`, `Transformer`, `Kernel method`.
@@ -154,11 +164,27 @@ Alternative ontology topics: `Category theory`, `Transformer`, `Kernel method`.
 arXiv metadata/content extraction:
 
 ```bash
-SOURCE_INGEST_ENABLED=1 \
-SOURCE_CONNECTOR_TYPE=arxiv \
 SOURCE_ARXIV_QUERY='all:"category theory" AND cat:cs.LG' \
 SOURCE_INGEST_LIMIT=5 \
-testbot --mode cli
+testbot --mode cli --source-ingestion arxiv
+```
+
+Start with interactive menu:
+
+```bash
+testbot --mode cli --source-ingestion menu
+```
+
+Apply a known-good reference example:
+
+```bash
+testbot --mode cli --source-ingestion reference --source-reference wikipedia_hilbert
+```
+
+Start from freeform request:
+
+```bash
+testbot --mode cli --source-ingestion freeform --source-freeform 'arxiv:all:"category theory" AND cat:cs.LG'
 ```
 
 Alternative query:

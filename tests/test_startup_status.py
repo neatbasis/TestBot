@@ -3,7 +3,19 @@ from __future__ import annotations
 from testbot.sat_chatbot_memory_v2 import CapabilitySnapshot, RuntimeCapabilityStatus, print_startup_status
 
 
-def _snapshot(*, effective_mode: str | None, ha_error: str | None, ollama_error: str | None, fallback_reason: str | None = None, memory_backend: str = "in_memory", debug_enabled: bool = False, debug_verbose: bool = False) -> CapabilitySnapshot:
+def _snapshot(
+    *,
+    effective_mode: str | None,
+    ha_error: str | None,
+    ollama_error: str | None,
+    fallback_reason: str | None = None,
+    memory_backend: str = "in_memory",
+    debug_enabled: bool = False,
+    debug_verbose: bool = False,
+    source_ingest_enabled: bool = False,
+    source_connector_type: str = "fixture",
+    source_ingest_selection_source: str = "environment",
+) -> CapabilitySnapshot:
     runtime = {
         "ollama_base_url": "http://localhost:11434",
         "ollama_model": "llama3.1:latest",
@@ -12,6 +24,9 @@ def _snapshot(*, effective_mode: str | None, ha_error: str | None, ollama_error:
         "ha_api_token": "secret",
         "ha_satellite_entity_id": "assist_satellite.kitchen",
         "memory_store_backend": memory_backend,
+        "source_ingest_enabled": source_ingest_enabled,
+        "source_connector_type": source_connector_type,
+        "source_ingest_selection_source": source_ingest_selection_source,
     }
     return CapabilitySnapshot(
         runtime=runtime,
@@ -161,3 +176,19 @@ def test_startup_status_reports_verbose_debug_toggle_state(capsys) -> None:
 
     output = capsys.readouterr().out
     assert "Debug tracing: enabled (TESTBOT_DEBUG), verbose payloads: enabled (TESTBOT_DEBUG_VERBOSE/--debug-verbose)" in output
+
+
+def test_startup_status_reports_source_ingestion_selection_state(capsys) -> None:
+    print_startup_status(
+        snapshot=_snapshot(
+            effective_mode="cli",
+            ha_error=None,
+            ollama_error=None,
+            source_ingest_enabled=True,
+            source_connector_type="wikipedia",
+            source_ingest_selection_source="cli",
+        )
+    )
+
+    output = capsys.readouterr().out
+    assert "Source ingestion: enabled (connector=wikipedia, selected_via=cli)" in output

@@ -70,6 +70,17 @@ def render_startup_status_lines(*, snapshot: CapabilitySnapshotView) -> list[str
         )
 
     lines.append(f"Memory backend: {runtime['memory_store_backend']}")
+    source_ingest_enabled = bool(runtime.get("source_ingest_enabled", False))
+    source_connector = str(runtime.get("source_connector_type") or "none").strip().lower() or "none"
+    source_selection_source = str(runtime.get("source_ingest_selection_source") or "environment").strip().lower()
+    if source_ingest_enabled:
+        lines.append(
+            f"Source ingestion: enabled (connector={source_connector}, selected_via={source_selection_source})"
+        )
+    else:
+        lines.append(
+            f"Source ingestion: disabled (selected_via={source_selection_source})"
+        )
     debug_mode = "enabled" if snapshot.runtime_capability_status.debug_enabled else "disabled"
     debug_verbose = "enabled" if snapshot.runtime_capability_status.debug_verbose else "disabled"
     lines.append(

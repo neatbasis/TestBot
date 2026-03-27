@@ -208,7 +208,26 @@ Link this evidence from `docs/issues/RED_TAG.md` triage updates.
 
 ## Source ingestion connectors
 
-TestBot can ingest external sources before the chat loop starts when `SOURCE_INGEST_ENABLED=1`.
+Primary user-facing selector is `--source-ingestion` on runtime startup.
+Do not treat ad-hoc `SOURCE_INGEST_ENABLED` docs toggles as the primary control path.
+Use Ask-style entry patterns (`python -m ask.demo_terminal_scenarios`) as the UX baseline.
+
+### Control-surface split (authoritative)
+
+- **User-facing ingestion choices:** `--source-ingestion menu|reference|freeform|off|<direct-connector>`
+- **Deployment/runtime configuration:** `SOURCE_MARKDOWN_PATH`, `SOURCE_WIKIPEDIA_TOPIC`, `SOURCE_WIKIPEDIA_LANGUAGE`, `SOURCE_ARXIV_QUERY`, `SOURCE_INGEST_LIMIT`, `SOURCE_INGEST_CURSOR`
+- **Internal plumbing:** runtime ingestion lifecycle state in memory (`source_ingest_background_*`, pending/dead-letter registries)
+
+Use CLI selection for capability intent:
+
+- `--source-ingestion off`
+- `--source-ingestion menu`
+- `--source-ingestion reference --source-reference wikipedia_hilbert`
+- `--source-ingestion freeform --source-freeform 'wikipedia:Hilbert space'`
+- `--source-ingestion local_markdown`
+- `--source-ingestion wikipedia`
+- `--source-ingestion arxiv`
+- `--source-ingestion fixture`
 
 Use connector examples that reflect the system's reasoning ontology (invariants, composition, and provenance), not just generic topical lookup.
 
@@ -221,22 +240,18 @@ Recommended epistemic split:
 ### Local markdown connector
 
 ```bash
-SOURCE_INGEST_ENABLED=1 \
-SOURCE_CONNECTOR_TYPE=local_markdown \
 SOURCE_MARKDOWN_PATH=./docs/alignment-canon \
 SOURCE_INGEST_LIMIT=20 \
-python src/testbot/sat_chatbot_memory_v2.py --mode cli
+python -m testbot.entrypoints.sat_cli --mode cli --source-ingestion local_markdown
 ```
 
 ### Wikipedia summary connector
 
 ```bash
-SOURCE_INGEST_ENABLED=1 \
-SOURCE_CONNECTOR_TYPE=wikipedia \
 SOURCE_WIKIPEDIA_TOPIC="Hilbert space" \
 SOURCE_WIKIPEDIA_LANGUAGE=en \
 SOURCE_INGEST_LIMIT=1 \
-python src/testbot/sat_chatbot_memory_v2.py --mode cli
+python -m testbot.entrypoints.sat_cli --mode cli --source-ingestion wikipedia
 ```
 
 Other high-signal ontology topics: `Category theory`, `Kernel method`, `Transformer`.
@@ -244,11 +259,9 @@ Other high-signal ontology topics: `Category theory`, `Kernel method`, `Transfor
 ### arXiv connector
 
 ```bash
-SOURCE_INGEST_ENABLED=1 \
-SOURCE_CONNECTOR_TYPE=arxiv \
 SOURCE_ARXIV_QUERY='all:"category theory" AND cat:cs.LG' \
 SOURCE_INGEST_LIMIT=5 \
-python src/testbot/sat_chatbot_memory_v2.py --mode cli
+python -m testbot.entrypoints.sat_cli --mode cli --source-ingestion arxiv
 ```
 
 Alternative query example:
