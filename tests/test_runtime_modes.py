@@ -776,6 +776,45 @@ def test_run_satellite_mode_keeps_meaningful_sentence_when_non_artifact(monkeypa
     assert runtime_state["last_successful_ask_channel_context"] == "satellite"
 
 
+def test_artifact_context_matrix_is_explicit_and_deterministic() -> None:
+    question = "Ask one memory-grounded question."
+
+    high_artifact_low_context = sat_runtime_modes._classify_artifact_vs_context(
+        sentence="thank you for watching",
+        question=question,
+    )
+    assert high_artifact_low_context.likely_artifact is True
+    assert high_artifact_low_context.context_consistent is False
+    assert high_artifact_low_context.should_reject is True
+    assert "exact_known_phrase" in high_artifact_low_context.artifact_reasons
+
+    high_artifact_higher_context = sat_runtime_modes._classify_artifact_vs_context(
+        sentence="thanks for watching, can you answer my memory question about source ingestion?",
+        question=question,
+    )
+    assert high_artifact_higher_context.likely_artifact is True
+    assert high_artifact_higher_context.context_consistent is True
+    assert high_artifact_higher_context.should_reject is False
+
+    repeated_loop = sat_runtime_modes._classify_artifact_vs_context(
+        sentence="thank you thank you thank you thank you",
+        question=question,
+    )
+    assert repeated_loop.likely_artifact is True
+    assert repeated_loop.context_consistent is False
+    assert repeated_loop.should_reject is True
+    assert "repeated_low_information_loop" in repeated_loop.artifact_reasons
+
+    normal_meaningful_sentence = sat_runtime_modes._classify_artifact_vs_context(
+        sentence="What changed in runtime acceptance policy?",
+        question=question,
+    )
+    assert normal_meaningful_sentence.likely_artifact is False
+    assert normal_meaningful_sentence.context_consistent is True
+    assert normal_meaningful_sentence.should_reject is False
+    assert normal_meaningful_sentence.artifact_reasons == ()
+
+
 def test_run_satellite_mode_allows_context_consistent_sentence_with_artifact_substring(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

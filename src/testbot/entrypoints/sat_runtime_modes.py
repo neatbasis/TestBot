@@ -46,13 +46,17 @@ _RETRYABLE_ERROR_MARKERS = (
     "reset",
 )
 _LAST_SUCCESSFUL_ASK_CHANNEL_CONTEXT_KEY = "last_successful_ask_channel_context"
-_LOW_INFORMATION_TRANSCRIPT_ARTIFACT_PHRASES = frozenset(
+_KNOWN_ARTIFACT_EXACT_PHRASES = frozenset(
     {
         "thanks for watching",
         "thank you for watching",
         "see you next time",
         "thanks for listening",
         "thank you for listening",
+    }
+)
+_KNOWN_ARTIFACT_FRAGMENT_PHRASES = frozenset(
+    {
         "subtitles by",
         "captions by",
         "translated by",
@@ -79,6 +83,7 @@ _CONTEXT_TOKEN_STOPWORDS = frozenset(
 class ArtifactAcceptanceDecision:
     likely_artifact: bool
     context_consistent: bool
+    artifact_reasons: tuple[str, ...]
 
     @property
     def should_reject(self) -> bool:
@@ -138,13 +143,22 @@ def _looks_like_repeated_low_information_loop(normalized_sentence: str) -> bool:
     return two_word_chunk * (len(words) // 2) == words
 
 
-def _is_likely_low_information_transcript_artifact(sentence: str) -> bool:
+def _artifact_evidence_reasons(sentence: str) -> tuple[str, ...]:
     normalized_sentence = _normalize_transcript_artifact_phrase(sentence)
     if not normalized_sentence:
-        return False
+        return ()
+    reasons: list[str] = []
     if _looks_like_repeated_low_information_loop(normalized_sentence):
-        return True
-    return any(phrase in normalized_sentence for phrase in _LOW_INFORMATION_TRANSCRIPT_ARTIFACT_PHRASES)
+        reasons.append("repeated_low_information_loop")
+    if normalized_sentence in _KNOWN_ARTIFACT_EXACT_PHRASES:
+        reasons.append("exact_known_phrase")
+    if any(
+        phrase in normalized_sentence and normalized_sentence != phrase for phrase in _KNOWN_ARTIFACT_EXACT_PHRASES
+    ):
+        reasons.append("contains_known_artifact_fragment")
+    if any(phrase in normalized_sentence for phrase in _KNOWN_ARTIFACT_FRAGMENT_PHRASES):
+        reasons.append("contains_known_artifact_fragment")
+    return tuple(reasons)
 
 
 def _extract_context_tokens(text: str) -> set[str]:
@@ -152,28 +166,47 @@ def _extract_context_tokens(text: str) -> set[str]:
     return {token for token in tokens if token not in _CONTEXT_TOKEN_STOPWORDS}
 
 
-def _is_context_consistent_with_invited_response(
-    *, sentence: str, question: str, interaction_request: InteractionPolicyRequest
-) -> bool:
+def _contains_meaningful_content_beyond_artifact_phrase(sentence: str) -> bool:
+    normalized_sentence = _normalize_transcript_artifact_phrase(sentence)
+    residual = normalized_sentence
+    for phrase in _KNOWN_ARTIFACT_EXACT_PHRASES.union(_KNOWN_ARTIFACT_FRAGMENT_PHRASES):
+        residual = residual.replace(phrase, " ")
+    residual_tokens = _extract_context_tokens(residual)
+    if len(residual_tokens) < 3:
+        return False
+    filler_tokens = {
+        "thank",
+        "thanks",
+        "watching",
+        "listening",
+        "next",
+        "time",
+        "community",
+    }
+    return any(token not in filler_tokens for token in residual_tokens)
+
+
+def _is_context_consistent_with_invited_response(*, sentence: str, question: str) -> bool:
     sentence_tokens = _extract_context_tokens(sentence)
     if not sentence_tokens:
         return False
     prompt_tokens = _extract_context_tokens(question)
-    prompt_tokens.update(_extract_context_tokens(interaction_request.task_flow_context))
-    prompt_tokens.update(_extract_context_tokens(interaction_request.intent))
-    return bool(sentence_tokens.intersection(prompt_tokens))
+    if sentence_tokens.intersection(prompt_tokens):
+        return True
+    return _contains_meaningful_content_beyond_artifact_phrase(sentence)
 
 
 def _classify_artifact_vs_context(
-    *, sentence: str, question: str, interaction_request: InteractionPolicyRequest
+    *, sentence: str, question: str
 ) -> ArtifactAcceptanceDecision:
+    artifact_reasons = _artifact_evidence_reasons(sentence)
     return ArtifactAcceptanceDecision(
-        likely_artifact=_is_likely_low_information_transcript_artifact(sentence),
+        likely_artifact=bool(artifact_reasons),
         context_consistent=_is_context_consistent_with_invited_response(
             sentence=sentence,
             question=question,
-            interaction_request=interaction_request,
         ),
+        artifact_reasons=artifact_reasons,
     )
 
 
@@ -283,7 +316,6 @@ def run_satellite_mode(
             artifact_decision = _classify_artifact_vs_context(
                 sentence=ask_result.sentence,
                 question=question,
-                interaction_request=interaction_plan.request,
             )
             if artifact_decision.should_reject:
                 satellite_say(client, entity_id, "I heard a low-information transcript artifact. Please try again.")
