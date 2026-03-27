@@ -34,6 +34,7 @@ The table below is the source of truth for *remaining* legacy surfaces in this t
 - Removed three low-blast-radius bridge shims (`build_capability_snapshot`, `print_startup_status`, `parse_args`) now that `sat_cli` imports canonical modules directly.
 - Removed corresponding wrapper exports from `runtime_legacy_bridge.py` so bridge ownership is narrower and explicit.
 - Added a regression guard in `tests/test_runtime_modes.py` asserting these symbols stay out of bridge imports.
+- Runtime config now resolves Home Assistant instance URL from `HA_BASE_URL` only in this CLI/runtime path; legacy `HA_API_URL` env alias support was removed to avoid ambiguous naming.
 
 ## Transitional visibility
 

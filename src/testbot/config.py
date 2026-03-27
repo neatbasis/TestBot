@@ -4,33 +4,15 @@ from dataclasses import dataclass
 
 
 _LOGGER = logging.getLogger(__name__)
-_HA_API_URL_ALIAS_WARNING_EMITTED = False
 
 
 def _resolve_ha_base_url() -> str:
-    """Resolve Home Assistant base URL with canonical-first env precedence.
+    """Resolve Home Assistant base URL from the canonical env contract.
 
-    Precedence:
-    1. ``HA_BASE_URL`` (preferred canonical name)
-    2. ``HA_API_URL`` (temporary compatibility alias; deprecated)
-    3. default ``http://localhost:8123``
+    Only ``HA_BASE_URL`` is supported for this configuration surface.
+    When unset, runtime falls back to ``http://localhost:8123``.
     """
-    canonical = os.getenv("HA_BASE_URL")
-    if canonical:
-        return canonical
-
-    alias = os.getenv("HA_API_URL")
-    if alias:
-        global _HA_API_URL_ALIAS_WARNING_EMITTED
-        if not _HA_API_URL_ALIAS_WARNING_EMITTED:
-            _LOGGER.warning(
-                "HA_API_URL is deprecated for Home Assistant base URL; prefer HA_BASE_URL. "
-                "Compatibility alias remains temporarily supported."
-            )
-            _HA_API_URL_ALIAS_WARNING_EMITTED = True
-        return alias
-
-    return "http://localhost:8123"
+    return os.getenv("HA_BASE_URL", "http://localhost:8123")
 
 
 def _float_from_env(name: str, default: float) -> float:
@@ -68,7 +50,7 @@ class Config:
     OLLAMA_MODEL: str
     OLLAMA_EMBEDDING_MODEL: str
     X_OLLAMA_KEY: str
-    HA_API_URL: str
+    HA_BASE_URL: str
     HA_API_TOKEN: str
     HA_SATELLITE_ENTITY_ID: str
     MEMORY_NEAR_TIE_DELTA: float
@@ -90,7 +72,7 @@ class Config:
             OLLAMA_MODEL=os.getenv("OLLAMA_MODEL", "llama3.1:latest"),
             OLLAMA_EMBEDDING_MODEL=os.getenv("OLLAMA_EMBEDDING_MODEL", "nomic-embed-text:latest"),
             X_OLLAMA_KEY=os.getenv("X_OLLAMA_KEY", ""),
-            HA_API_URL=_resolve_ha_base_url(),
+            HA_BASE_URL=_resolve_ha_base_url(),
             HA_API_TOKEN=os.getenv("HA_API_TOKEN", ""),
             HA_SATELLITE_ENTITY_ID=os.getenv("HA_SATELLITE_ENTITY_ID", ""),
             MEMORY_NEAR_TIE_DELTA=_float_from_env("MEMORY_NEAR_TIE_DELTA", 0.02),
