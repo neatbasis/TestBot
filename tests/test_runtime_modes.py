@@ -35,7 +35,7 @@ def test_sat_runtime_modes_does_not_depend_on_runtime_legacy_bridge_symbols() ->
 
 def test_runtime_legacy_bridge_warns_on_monolith_compat_usage() -> None:
     with pytest.deprecated_call(match="runtime_legacy_bridge depends on testbot.sat_chatbot_memory_v2"):
-        sat_cli.parse_args([])
+        sat_cli.read_runtime_env()
 
 
 def test_sat_cli_uses_explicit_runtime_legacy_bridge_import() -> None:
@@ -49,8 +49,10 @@ def test_sat_cli_uses_explicit_runtime_legacy_bridge_import() -> None:
     bridge_import_names = bridge_import_match.group("names")
     assert "build_capability_snapshot" not in bridge_import_names
     assert "print_startup_status" not in bridge_import_names
+    assert "parse_args" not in bridge_import_names
     assert "from testbot.runtime_capability_service import build_capability_snapshot" in source
     assert "from testbot.startup_status_presenter import print_startup_status" in source
+    assert "from testbot.runtime_cli_args import parse_args" in source
     assert "from testbot.sat_chatbot_memory_v2 import" not in source
 
 

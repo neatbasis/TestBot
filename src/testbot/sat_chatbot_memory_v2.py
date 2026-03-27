@@ -10,7 +10,7 @@ import uuid
 import warnings
 from concurrent.futures import Future, ThreadPoolExecutor
 from threading import Lock
-from argparse import ArgumentParser, BooleanOptionalAction, Namespace
+from argparse import Namespace
 from collections import deque
 from dataclasses import dataclass, replace
 from pathlib import Path
@@ -141,6 +141,7 @@ from testbot.runtime_capability_service import (
     validate_ollama_base_url as validate_ollama_base_url_from_service,
 )
 from testbot.startup_status_presenter import print_startup_status as print_startup_status_from_presenter
+from testbot.runtime_cli_args import parse_args as parse_runtime_cli_args
 from testbot.application.services.canonical_turn_runtime import run_canonical_turn_pipeline
 from testbot.canonical_turn_orchestrator import CanonicalTurnOrchestrator as _CanonicalTurnOrchestrator
 from testbot.logic.decision_helpers import (
@@ -786,28 +787,7 @@ def _parse_env_int(name: str, default: int) -> int:
 
 
 def _parse_args(argv: list[str] | None = None) -> Namespace:
-    parser = ArgumentParser(description="Run TestBot with satellite or CLI chat interfaces.")
-    parser.add_argument(
-        "--mode",
-        choices=("auto", "satellite", "cli"),
-        default="auto",
-        help="Input/output mode. auto prefers satellite and falls back to CLI.",
-    )
-    parser.add_argument(
-        "--daemon",
-        action="store_true",
-        help="Do not fall back to CLI if satellite mode is unavailable; exit instead.",
-    )
-    parser.add_argument(
-        "--debug-verbose",
-        action=BooleanOptionalAction,
-        default=None,
-        help=(
-            "Enable verbose debug trace payloads when TESTBOT_DEBUG=1. "
-            "Defaults to TESTBOT_DEBUG_VERBOSE environment setting."
-        ),
-    )
-    return parser.parse_args(argv)
+    return parse_runtime_cli_args(argv)
 
 
 def _read_runtime_env() -> dict[str, object]:
