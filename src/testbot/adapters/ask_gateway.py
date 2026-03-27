@@ -8,7 +8,13 @@ from ask.config import Config
 from ask.config import normalize_rest_api_url
 
 from testbot.ask_channel_capabilities import AskChannel, validate_channel_interaction_requirements
-from testbot.interaction_policy import COLLECT_TURN_INPUT_INTENT, InteractionPolicyRequest
+from testbot.interaction_policy import (
+    COLLECT_TURN_INPUT_INTENT,
+    ChannelContext,
+    InteractionPolicyRequest,
+    ResolutionSource,
+    resolve_channel_context,
+)
 from testbot.interaction_standards import InteractionRequirements
 
 
@@ -25,6 +31,10 @@ class AskTurnInput:
     decision_id: str | None
     sentence: str
     error: str | None
+    resolved_channel: AskChannel | None = None
+    resolution_source: ResolutionSource | None = None
+    fallback_used: bool = False
+    fallback_reason: str | None = None
 
 
 class AskGateway:
@@ -137,6 +147,10 @@ class AskGateway:
             decision_id=_optional_str(result.get("id")),
             sentence=_optional_str(result.get("sentence")) or "",
             error=_optional_str(result.get("error")),
+            resolved_channel=channel,
+            resolution_source="explicit_policy_channel",
+            fallback_used=False,
+            fallback_reason=None,
         )
 
     def request_turn_input_for_policy(
@@ -145,14 +159,35 @@ class AskGateway:
         interaction_policy: InteractionPolicyRequest,
         question: str,
         timeout_s: float = 60.0,
+        allowed_channel_contexts: frozenset[ChannelContext] | None = None,
+        explicit_override_channel_context: ChannelContext | None = None,
+        recent_successful_channel_context: ChannelContext | None = None,
     ) -> AskTurnInput:
         if interaction_policy.intent != COLLECT_TURN_INPUT_INTENT:
             raise ValueError(f"Unsupported interaction policy intent: {interaction_policy.intent}")
-        return self.request_turn_input(
-            channel="satellite" if interaction_policy.channel_context == "satellite" else "terminal",
+        channel_resolution = resolve_channel_context(
+            interaction_policy=interaction_policy,
+            allowed_channels=allowed_channel_contexts or frozenset({"satellite", "cli"}),
+            explicit_override_channel_context=explicit_override_channel_context,
+            recent_successful_channel_context=recent_successful_channel_context,
+        )
+        resolved_channel: AskChannel = (
+            "satellite" if channel_resolution.resolved_channel_context == "satellite" else "terminal"
+        )
+        result = self.request_turn_input(
+            channel=resolved_channel,
             question=question,
             timeout_s=timeout_s,
             interaction_requirements=interaction_policy.interaction_requirements,
+        )
+        return AskTurnInput(
+            decision_id=result.decision_id,
+            sentence=result.sentence,
+            error=result.error,
+            resolved_channel=resolved_channel,
+            resolution_source=channel_resolution.resolution_source,
+            fallback_used=channel_resolution.fallback_used,
+            fallback_reason=channel_resolution.fallback_reason,
         )
 
     def satellite_turn_spec(

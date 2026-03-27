@@ -17,6 +17,13 @@ from urllib.request import Request, urlopen
 from homeassistant_api import Client
 
 from testbot.adapters.ask_gateway import normalize_ha_rest_url
+from testbot.interaction_policy import (
+    COLLECT_TURN_INPUT_INTENT,
+    InteractionPolicyRequest,
+    ResolutionSource,
+    resolve_channel_context,
+)
+from testbot.interaction_standards import InteractionRequirements
 
 
 @dataclass(frozen=True, slots=True)
@@ -32,6 +39,10 @@ class RuntimeCapabilityStatusData:
     debug_verbose: bool
     text_clarification_available: bool
     satellite_ask_available: bool
+    resolved_channel: str = "terminal"
+    resolution_source: ResolutionSource = "named_fallback"
+    fallback_used: bool = True
+    resolution_fallback_reason: str | None = "policy_override_recent_unavailable"
 
 
 @dataclass(frozen=True, slots=True)
@@ -169,8 +180,20 @@ def build_runtime_capability_status(
     ollama_error: str | None,
 ) -> RuntimeCapabilityStatusData:
     effective = effective_mode or "unavailable"
-    can_text_clarify = effective in {"cli", "satellite"}
-    can_satellite_ask = ha_error is None and effective == "satellite"
+    allowed_channels = frozenset({"satellite", "cli"} if effective == "satellite" and ha_error is None else {"cli"})
+    interaction_policy = InteractionPolicyRequest(
+        intent=COLLECT_TURN_INPUT_INTENT,
+        channel_context="satellite" if effective == "satellite" else "cli",
+        task_flow_context="memory_chat_loop",
+        interaction_requirements=InteractionRequirements(),
+        policy_id="runtime.capability_status.ask_input.v1",
+    )
+    channel_resolution = resolve_channel_context(
+        interaction_policy=interaction_policy,
+        allowed_channels=allowed_channels,
+    )
+    can_text_clarify = channel_resolution.resolved_channel_context in {"cli", "satellite"}
+    can_satellite_ask = channel_resolution.resolved_channel_context == "satellite"
     return RuntimeCapabilityStatusData(
         ollama_available=ollama_error is None,
         ha_available=ha_error is None,
@@ -183,6 +206,10 @@ def build_runtime_capability_status(
         debug_verbose=bool(runtime.get("debug_verbose", False)),
         text_clarification_available=can_text_clarify,
         satellite_ask_available=can_satellite_ask,
+        resolved_channel="satellite" if channel_resolution.resolved_channel_context == "satellite" else "terminal",
+        resolution_source=channel_resolution.resolution_source,
+        fallback_used=channel_resolution.fallback_used,
+        resolution_fallback_reason=channel_resolution.fallback_reason,
     )
 
 
