@@ -32,6 +32,13 @@ class SourceIngestionSelection:
     freeform_request: str = ""
 
 
+def _record_selection_metadata(*, runtime: dict[str, object], selection: SourceIngestionSelection) -> None:
+    runtime["source_ingest_selection_mode"] = selection.mode
+    runtime["source_ingest_selection_source"] = selection.selected_via
+    runtime["source_ingest_reference_key"] = selection.reference_key
+    runtime["source_ingest_freeform_request"] = selection.freeform_request
+
+
 def _reference_examples() -> tuple[SourceIngestionReferenceExample, ...]:
     return (
         SourceIngestionReferenceExample(
@@ -74,13 +81,14 @@ REFERENCE_EXAMPLE_KEYS: tuple[str, ...] = tuple(example.key for example in _refe
 def _apply_direct_connector(*, runtime: dict[str, object], connector_type: str, selected_via: str) -> SourceIngestionSelection:
     runtime["source_ingest_enabled"] = True
     runtime["source_connector_type"] = connector_type
-    runtime["source_ingest_selection_source"] = selected_via
-    return SourceIngestionSelection(
+    selection = SourceIngestionSelection(
         mode=connector_type,
         enabled=True,
         connector_type=connector_type,
         selected_via=selected_via,
     )
+    _record_selection_metadata(runtime=runtime, selection=selection)
+    return selection
 
 
 def apply_reference_example(*, runtime: dict[str, object], reference_key: str, selected_via: str = "reference") -> SourceIngestionSelection:
@@ -91,13 +99,15 @@ def apply_reference_example(*, runtime: dict[str, object], reference_key: str, s
 
     runtime.update(selected.runtime_overrides)
     selection = _apply_direct_connector(runtime=runtime, connector_type=selected.connector_type, selected_via=selected_via)
-    return SourceIngestionSelection(
+    selection = SourceIngestionSelection(
         mode="reference",
         enabled=selection.enabled,
         connector_type=selection.connector_type,
         selected_via=selected_via,
         reference_key=selected.key,
     )
+    _record_selection_metadata(runtime=runtime, selection=selection)
+    return selection
 
 
 def apply_freeform_request(*, runtime: dict[str, object], request: str, selected_via: str = "freeform") -> SourceIngestionSelection:
@@ -126,13 +136,15 @@ def apply_freeform_request(*, runtime: dict[str, object], request: str, selected
     else:
         raise ValueError(f"Unsupported freeform connector '{connector}'.")
 
-    return SourceIngestionSelection(
+    selection = SourceIngestionSelection(
         mode="freeform",
         enabled=selection.enabled,
         connector_type=selection.connector_type,
         selected_via=selected_via,
         freeform_request=raw_request,
     )
+    _record_selection_metadata(runtime=runtime, selection=selection)
+    return selection
 
 
 def run_source_ingestion_entry_menu(
@@ -141,12 +153,14 @@ def run_source_ingestion_entry_menu(
     input_fn: Callable[[str], str] = input,
     print_fn: Callable[[str], None] = print,
 ) -> SourceIngestionSelection:
-    print_fn("Source ingestion setup")
-    print_fn("======================")
-    print_fn("1. Apply a reference example")
-    print_fn("2. Start from freeform request")
+    print_fn("Source ingestion setup (canonical entry)")
+    print_fn("========================================")
+    print_fn("Choose how to start source ingestion:")
+    print_fn("1. Apply a reference example (known-good onboarding start)")
+    print_fn("2. Start from freeform request (<connector>:<value>)")
     print_fn("3. Choose a direct connector")
     print_fn("4. Keep ingestion disabled")
+    print_fn("Next: startup will run ingestion once using the selected mode.")
 
     choice = input_fn("Select source-ingestion entry mode [1-4]: ").strip()
 
@@ -175,8 +189,9 @@ def run_source_ingestion_entry_menu(
 
     if choice == "4":
         runtime["source_ingest_enabled"] = False
-        runtime["source_ingest_selection_source"] = "menu"
-        return SourceIngestionSelection(mode="off", enabled=False, connector_type="", selected_via="menu")
+        selection = SourceIngestionSelection(mode="off", enabled=False, connector_type="", selected_via="menu")
+        _record_selection_metadata(runtime=runtime, selection=selection)
+        return selection
 
     raise ValueError(f"Unknown source-ingestion menu choice '{choice}'.")
 
@@ -190,18 +205,20 @@ def apply_source_ingestion_entry(
 ) -> SourceIngestionSelection:
     mode = str(getattr(args, "source_ingestion", "env") or "env").strip().lower()
     if mode == "env":
-        runtime["source_ingest_selection_source"] = "environment"
-        return SourceIngestionSelection(
+        selection = SourceIngestionSelection(
             mode="env",
             enabled=bool(runtime.get("source_ingest_enabled", False)),
             connector_type=str(runtime.get("source_connector_type", "")).strip().lower(),
             selected_via="environment",
         )
+        _record_selection_metadata(runtime=runtime, selection=selection)
+        return selection
 
     if mode == "off":
         runtime["source_ingest_enabled"] = False
-        runtime["source_ingest_selection_source"] = "cli"
-        return SourceIngestionSelection(mode="off", enabled=False, connector_type="", selected_via="cli")
+        selection = SourceIngestionSelection(mode="off", enabled=False, connector_type="", selected_via="cli")
+        _record_selection_metadata(runtime=runtime, selection=selection)
+        return selection
 
     if mode == "reference":
         reference_key = str(getattr(args, "source_reference", REFERENCE_EXAMPLE_KEYS[0]) or REFERENCE_EXAMPLE_KEYS[0]).strip()

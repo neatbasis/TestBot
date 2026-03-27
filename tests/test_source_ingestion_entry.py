@@ -65,3 +65,22 @@ def test_apply_source_ingestion_entry_freeform_mode_prompts_when_missing_inline_
     assert selection.mode == "freeform"
     assert selection.connector_type == "wikipedia"
     assert runtime["source_wikipedia_topic"] == "Category theory"
+
+
+def test_menu_copy_exposes_canonical_entry_modes() -> None:
+    runtime: dict[str, object] = {}
+    printed: list[str] = []
+
+    selection = apply_source_ingestion_entry(
+        args=SimpleNamespace(source_ingestion="menu"),
+        runtime=runtime,
+        input_fn=lambda _prompt: "4",
+        print_fn=lambda line: printed.append(line),
+    )
+
+    joined = "\n".join(printed)
+    assert "Apply a reference example" in joined
+    assert "Start from freeform request" in joined
+    assert "Choose a direct connector" in joined
+    assert "Keep ingestion disabled" in joined
+    assert selection.mode == "off"

@@ -15,6 +15,9 @@ def _snapshot(
     source_ingest_enabled: bool = False,
     source_connector_type: str = "fixture",
     source_ingest_selection_source: str = "environment",
+    source_ingest_selection_mode: str = "env",
+    source_ingest_reference_key: str = "",
+    source_ingest_freeform_request: str = "",
 ) -> CapabilitySnapshot:
     runtime = {
         "ollama_base_url": "http://localhost:11434",
@@ -27,6 +30,9 @@ def _snapshot(
         "source_ingest_enabled": source_ingest_enabled,
         "source_connector_type": source_connector_type,
         "source_ingest_selection_source": source_ingest_selection_source,
+        "source_ingest_selection_mode": source_ingest_selection_mode,
+        "source_ingest_reference_key": source_ingest_reference_key,
+        "source_ingest_freeform_request": source_ingest_freeform_request,
     }
     return CapabilitySnapshot(
         runtime=runtime,
@@ -187,8 +193,10 @@ def test_startup_status_reports_source_ingestion_selection_state(capsys) -> None
             source_ingest_enabled=True,
             source_connector_type="wikipedia",
             source_ingest_selection_source="cli",
+            source_ingest_selection_mode="reference",
+            source_ingest_reference_key="wikipedia_hilbert",
         )
     )
 
     output = capsys.readouterr().out
-    assert "Source ingestion: enabled (connector=wikipedia, selected_via=cli)" in output
+    assert "Source ingestion: enabled (connector=wikipedia, mode=reference, selected_via=cli, reference=wikipedia_hilbert)" in output

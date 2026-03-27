@@ -142,6 +142,28 @@ Prefer connector inputs that encode the system's intended reasoning basis:
 - stable public ontology references,
 - frontier research signals with explicit preprint trust semantics.
 
+### Recommended onboarding flow (canonical)
+
+Start with interactive menu:
+
+```bash
+testbot --mode cli --source-ingestion menu
+```
+
+Apply a known-good reference example:
+
+```bash
+testbot --mode cli --source-ingestion reference --source-reference wikipedia_hilbert
+```
+
+Start from freeform request:
+
+```bash
+testbot --mode cli --source-ingestion freeform --source-freeform 'arxiv:all:"category theory" AND cat:cs.LG'
+```
+
+### Deployment/runtime parameterized connector runs
+
 Local markdown file/directory ingestion:
 
 ```bash
@@ -167,24 +189,6 @@ arXiv metadata/content extraction:
 SOURCE_ARXIV_QUERY='all:"category theory" AND cat:cs.LG' \
 SOURCE_INGEST_LIMIT=5 \
 testbot --mode cli --source-ingestion arxiv
-```
-
-Start with interactive menu:
-
-```bash
-testbot --mode cli --source-ingestion menu
-```
-
-Apply a known-good reference example:
-
-```bash
-testbot --mode cli --source-ingestion reference --source-reference wikipedia_hilbert
-```
-
-Start from freeform request:
-
-```bash
-testbot --mode cli --source-ingestion freeform --source-freeform 'arxiv:all:"category theory" AND cat:cs.LG'
 ```
 
 Alternative query:

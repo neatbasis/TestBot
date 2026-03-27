@@ -39,4 +39,5 @@ Why this action:
 
 - Updated quickstart and ops command examples to call the canonical runtime entrypoint module (`python -m testbot.entrypoints.sat_cli`) instead of the deprecated monolith file path.
 - Added a minimal regression guard test that fails if those docs reintroduce `python src/testbot/sat_chatbot_memory_v2.py`.
+- Added canonical user-facing source-ingestion entry selection (`menu`/`reference`/`freeform`/direct connector) without changing bridge-owned ingestion plumbing.
 - Kept the broader runtime bridge and callable compatibility shims unchanged in this pass to maintain narrow scope.
