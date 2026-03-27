@@ -6,6 +6,15 @@ from dataclasses import dataclass
 _LOGGER = logging.getLogger(__name__)
 
 
+def _resolve_ha_base_url() -> str:
+    """Resolve Home Assistant base URL from the canonical env contract.
+
+    Only ``HA_BASE_URL`` is supported for this configuration surface.
+    When unset, runtime falls back to ``http://localhost:8123``.
+    """
+    return os.getenv("HA_BASE_URL", "http://localhost:8123")
+
+
 def _float_from_env(name: str, default: float) -> float:
     raw = os.getenv(name)
     if raw is None:
@@ -41,7 +50,7 @@ class Config:
     OLLAMA_MODEL: str
     OLLAMA_EMBEDDING_MODEL: str
     X_OLLAMA_KEY: str
-    HA_API_URL: str
+    HA_BASE_URL: str
     HA_API_TOKEN: str
     HA_SATELLITE_ENTITY_ID: str
     MEMORY_NEAR_TIE_DELTA: float
@@ -63,7 +72,7 @@ class Config:
             OLLAMA_MODEL=os.getenv("OLLAMA_MODEL", "llama3.1:latest"),
             OLLAMA_EMBEDDING_MODEL=os.getenv("OLLAMA_EMBEDDING_MODEL", "nomic-embed-text:latest"),
             X_OLLAMA_KEY=os.getenv("X_OLLAMA_KEY", ""),
-            HA_API_URL=os.getenv("HA_API_URL", "http://localhost:8123"),
+            HA_BASE_URL=_resolve_ha_base_url(),
             HA_API_TOKEN=os.getenv("HA_API_TOKEN", ""),
             HA_SATELLITE_ENTITY_ID=os.getenv("HA_SATELLITE_ENTITY_ID", ""),
             MEMORY_NEAR_TIE_DELTA=_float_from_env("MEMORY_NEAR_TIE_DELTA", 0.02),

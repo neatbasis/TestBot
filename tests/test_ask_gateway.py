@@ -10,7 +10,7 @@ from testbot.interaction_standards import InteractionRequirements
 def test_ask_gateway_builds_client_from_runtime_mapping() -> None:
     gateway = AskGateway.from_runtime(
         {
-            "ha_api_url": "http://localhost:8123",
+            "ha_base_url": "http://localhost:8123",
             "ha_api_token": "secret-token",
             "ha_satellite_entity_id": "assist_satellite.kitchen",
             "ha_notify_action": "mobile_app_phone",
@@ -103,7 +103,7 @@ def test_satellite_turn_interaction_requirements_shape_spec_details() -> None:
 def test_satellite_turn_spec_omits_stable_ids_when_not_required() -> None:
     gateway = AskGateway.from_runtime(
         {
-            "ha_api_url": "http://localhost:8123",
+            "ha_base_url": "http://localhost:8123",
             "ha_api_token": "secret-token",
             "ha_satellite_entity_id": "assist_satellite.kitchen",
         }

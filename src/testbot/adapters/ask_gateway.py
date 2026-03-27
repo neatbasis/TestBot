@@ -13,9 +13,9 @@ from testbot.interaction_standards import InteractionRequirements
 STOP_DECISION_ID = "stop_satellite_loop"
 
 
-def normalize_ha_rest_url(api_url: str) -> str:
+def normalize_ha_rest_url(base_url: str) -> str:
     """Normalize a Home Assistant base URL to the canonical REST API endpoint."""
-    return normalize_rest_api_url(api_url)
+    return normalize_rest_api_url(base_url)
 
 
 @dataclass(frozen=True)
@@ -40,14 +40,14 @@ class AskGateway:
     def from_home_assistant(
         cls,
         *,
-        ha_api_url: str,
+        ha_base_url: str,
         ha_api_token: str,
         satellite_entity_id: str,
         notify_action: str | None = None,
         discord_turn_service_url: str | None = None,
     ) -> "AskGateway":
         cfg = Config(
-            ha_api_url=ha_api_url,
+            ha_api_url=ha_base_url,
             ha_api_token=ha_api_token,
             satellite_entity_id=satellite_entity_id,
             notify_action=notify_action,
@@ -58,7 +58,7 @@ class AskGateway:
     @classmethod
     def from_runtime(cls, runtime: Mapping[str, object]) -> "AskGateway":
         return cls.from_home_assistant(
-            ha_api_url=str(runtime["ha_api_url"]),
+            ha_base_url=str(runtime["ha_base_url"]),
             ha_api_token=str(runtime["ha_api_token"]),
             satellite_entity_id=str(runtime["ha_satellite_entity_id"]),
             notify_action=str(runtime.get("ha_notify_action") or "") or None,

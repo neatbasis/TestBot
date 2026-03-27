@@ -195,7 +195,7 @@ def build_capability_snapshot(
     ollama_connection_error_fn: Callable[..., str | None] = ollama_connection_error,
 ) -> CapabilitySnapshotData:
     ha_error = ha_connection_error_fn(
-        str(runtime["ha_api_url"]),
+        str(runtime["ha_base_url"]),
         str(runtime["ha_api_token"]),
         str(runtime["ha_satellite_entity_id"]),
     )

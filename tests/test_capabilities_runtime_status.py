@@ -17,7 +17,7 @@ class _FailIfInvokedLLM:
 
 def _base_runtime() -> dict[str, object]:
     return {
-        "ha_api_url": "http://localhost:8123",
+        "ha_base_url": "http://localhost:8123",
         "ha_api_token": "",
         "ha_satellite_entity_id": "assist_satellite.kitchen",
         "ollama_base_url": "http://localhost:11434",

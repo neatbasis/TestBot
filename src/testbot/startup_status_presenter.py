@@ -13,7 +13,7 @@ class StartupRuntimeView(TypedDict):
     ollama_model: str
     ollama_embedding_model: str
     memory_store_backend: str
-    ha_api_url: str
+    ha_base_url: str
     ha_satellite_entity_id: str
 
 
@@ -79,14 +79,14 @@ def render_startup_status_lines(*, snapshot: CapabilitySnapshotView) -> list[str
     if snapshot.ha_error:
         lines.append(f"Home Assistant: unavailable ({snapshot.ha_error})")
         lines.append(
-            "Install warning [YELLOW]: Home Assistant capability is degraded; configure HA_API_TOKEN and HA_SATELLITE_ENTITY_ID to enable satellite mode."
+            "Install warning [YELLOW]: Home Assistant capability is degraded; configure HA_BASE_URL, HA_API_TOKEN, and HA_SATELLITE_ENTITY_ID to enable satellite mode."
         )
         lines.append(
             "Developer note: satellite interface disabled; CLI fallback will be used unless --daemon is set."
         )
     else:
         lines.append(
-            f"Home Assistant: available ({runtime['ha_api_url']}, entity={runtime['ha_satellite_entity_id']})"
+            f"Home Assistant: available ({runtime['ha_base_url']}, entity={runtime['ha_satellite_entity_id']})"
         )
         lines.append(
             "Install warning [GREEN]: Home Assistant capability is active; keep Home Assistant credentials configured when reinstalling or reprovisioning."

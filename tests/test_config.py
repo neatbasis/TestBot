@@ -42,3 +42,57 @@ def test_config_loads_from_process_environment() -> None:
         "custom-model",
         "x-ollama-test-key",
     ]
+
+
+def test_config_reads_home_assistant_base_url_from_ha_base_url_env() -> None:
+    command = [
+        sys.executable,
+        "-c",
+        (
+            "from testbot.config import Config; "
+            "config = Config.from_env(); "
+            "print(config.HA_BASE_URL)"
+        ),
+    ]
+
+    completed = subprocess.run(
+        command,
+        capture_output=True,
+        text=True,
+        env={
+            "HA_BASE_URL": "http://ha-base-url:8123",
+            "PYTHONPATH": str(Path.cwd() / "src"),
+            "PATH": os.environ.get("PATH", ""),
+        },
+        check=False,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    assert completed.stdout.strip() == "http://ha-base-url:8123"
+
+
+def test_config_ignores_legacy_ha_api_url_env_and_uses_default_base_url() -> None:
+    command = [
+        sys.executable,
+        "-c",
+        (
+            "from testbot.config import Config; "
+            "config = Config.from_env(); "
+            "print(config.HA_BASE_URL)"
+        ),
+    ]
+
+    completed = subprocess.run(
+        command,
+        capture_output=True,
+        text=True,
+        env={
+            "HA_API_URL": "http://legacy-ha-api-url:8123",
+            "PYTHONPATH": str(Path.cwd() / "src"),
+            "PATH": os.environ.get("PATH", ""),
+        },
+        check=False,
+    )
+
+    assert completed.returncode == 0, completed.stderr
+    assert completed.stdout.strip() == "http://localhost:8123"
