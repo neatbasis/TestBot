@@ -20,12 +20,7 @@ class StartupRuntimeView(TypedDict):
 class RuntimeCapabilityStatusView(Protocol):
     debug_enabled: bool
     debug_verbose: bool
-    text_clarification_available: bool
-    satellite_ask_available: bool
-    ask_runtime_state: str
-    available_ask_channels: tuple[str, ...]
-    primary_ask_channel: str | None
-    ask_runtime_reason: str | None
+    ask_runtime: object
 
 
 class CapabilitySnapshotView(Protocol):
@@ -96,12 +91,13 @@ def render_startup_status_lines(*, snapshot: CapabilitySnapshotView) -> list[str
         lines.append(
             f"Source ingestion: disabled ({selection_detail_text})"
         )
-    ask_runtime_state = getattr(snapshot.runtime_capability_status, "ask_runtime_state", "terminal_only")
-    ask_channels = getattr(snapshot.runtime_capability_status, "available_ask_channels", ("terminal",))
-    ask_primary = getattr(snapshot.runtime_capability_status, "primary_ask_channel", "terminal")
-    ask_reason = getattr(snapshot.runtime_capability_status, "ask_runtime_reason", None)
-    ask_runtime_available = "available" if snapshot.runtime_capability_status.text_clarification_available else "unavailable"
-    satellite_channel_available = "available" if snapshot.runtime_capability_status.satellite_ask_available else "unavailable"
+    ask_runtime = getattr(snapshot.runtime_capability_status, "ask_runtime", snapshot.runtime_capability_status)
+    ask_runtime_state = getattr(ask_runtime, "ask_runtime_state", "terminal_only")
+    ask_channels = getattr(ask_runtime, "available_ask_channels", ("terminal",))
+    ask_primary = getattr(ask_runtime, "primary_ask_channel", "terminal")
+    ask_reason = getattr(ask_runtime, "ask_runtime_reason", None)
+    ask_runtime_available = "available" if bool(ask_channels) else "unavailable"
+    satellite_channel_available = "available" if "satellite" in ask_channels else "unavailable"
     ask_channel_text = ", ".join(ask_channels) if ask_channels else "none"
     ask_detail_segments = [f"state={ask_runtime_state}", f"channels={ask_channel_text}"]
     if ask_primary is not None:
