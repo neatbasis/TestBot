@@ -71,7 +71,7 @@ def test_config_reads_home_assistant_base_url_from_ha_base_url_env() -> None:
     assert completed.stdout.strip() == "http://ha-base-url:8123"
 
 
-def test_config_ignores_ha_api_url_alias_and_uses_default_base_url() -> None:
+def test_config_ignores_legacy_ha_api_url_env_and_uses_default_base_url() -> None:
     command = [
         sys.executable,
         "-c",

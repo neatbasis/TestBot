@@ -13,9 +13,9 @@ from testbot.interaction_standards import InteractionRequirements
 STOP_DECISION_ID = "stop_satellite_loop"
 
 
-def normalize_ha_rest_url(api_url: str) -> str:
+def normalize_ha_rest_url(base_url: str) -> str:
     """Normalize a Home Assistant base URL to the canonical REST API endpoint."""
-    return normalize_rest_api_url(api_url)
+    return normalize_rest_api_url(base_url)
 
 
 @dataclass(frozen=True)
