@@ -9,7 +9,9 @@ from testbot.adapters.ask_gateway import AskGateway
 from testbot.domain import build_system_clock
 from testbot.entrypoints.sat_runtime_modes import run_cli_mode, run_satellite_mode
 from testbot.observability.session_log import append_session_log
-from testbot.sat_chatbot_memory_v2 import (
+
+# Temporary compatibility surface: keep monolith runtime wiring explicit and centralized.
+from testbot.entrypoints.runtime_legacy_bridge import (
     build_capability_snapshot,
     build_runtime_memory_store,
     parse_args,
