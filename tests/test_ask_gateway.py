@@ -217,6 +217,49 @@ def test_request_turn_input_for_policy_uses_policy_channel_and_requirements() ->
 
     assert captured["channel"] == "satellite"
     assert result.sentence == "continue"
+    assert result.resolved_channel == "satellite"
+    assert result.resolution_source == "explicit_policy_channel"
+    assert result.fallback_used is False
+    assert result.fallback_reason is None
+
+
+def test_request_turn_input_for_policy_uses_recent_successful_channel_before_named_fallback() -> None:
+    captured: dict[str, object] = {}
+
+    class _FakeAskClient(AskClient):
+        def __init__(self) -> None:
+            super().__init__(
+                Config(
+                    ha_api_url="http://localhost:8123",
+                    ha_api_token="secret",
+                    satellite_entity_id="assist_satellite.kitchen",
+                )
+            )
+
+        def ask_question(self, *, channel, spec, **_kwargs):  # type: ignore[override]
+            captured["channel"] = channel
+            captured["spec"] = spec
+            return {"id": "accepted", "sentence": "continue", "error": None}
+
+    gateway = AskGateway(_FakeAskClient())
+    result = gateway.request_turn_input_for_policy(
+        interaction_policy=InteractionPolicyRequest(
+            intent="collect_turn_input",
+            channel_context="satellite",
+            task_flow_context="memory_chat_loop",
+            interaction_requirements=InteractionRequirements(),
+            policy_id="satellite.memory_chat_loop.turn_input.v1",
+        ),
+        allowed_channel_contexts=frozenset({"cli"}),
+        recent_successful_channel_context="cli",
+        question="Proceed?",
+    )
+
+    assert captured["channel"] == "terminal"
+    assert result.resolved_channel == "terminal"
+    assert result.resolution_source == "recent_successful_ask_channel"
+    assert result.fallback_used is True
+    assert result.fallback_reason == "policy_and_override_unavailable"
 
 
 def test_request_turn_input_for_policy_rejects_unsupported_intent() -> None:

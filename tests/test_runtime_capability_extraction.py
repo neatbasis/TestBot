@@ -3,7 +3,11 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 from testbot import sat_chatbot_memory_v2 as runtime
-from testbot.runtime_capability_service import CapabilitySnapshotData, RuntimeCapabilityStatusData
+from testbot.runtime_capability_service import (
+    CapabilitySnapshotData,
+    RuntimeCapabilityStatusData,
+    build_runtime_capability_status,
+)
 
 
 def test_build_capability_snapshot_delegates_to_runtime_capability_service(monkeypatch) -> None:
@@ -68,3 +72,21 @@ def test_print_startup_status_delegates_to_presenter(monkeypatch) -> None:
     runtime.print_startup_status(snapshot=snapshot)
 
     assert captured["snapshot"] is snapshot
+
+
+def test_build_runtime_capability_status_reports_actual_channel_resolution() -> None:
+    status = build_runtime_capability_status(
+        requested_mode="satellite",
+        effective_mode="satellite",
+        daemon_mode=False,
+        fallback_reason=None,
+        runtime={"memory_store_backend": "in_memory", "debug_verbose": False},
+        ha_error="Missing HA_API_TOKEN",
+        ollama_error=None,
+    )
+
+    assert status.resolved_channel == "terminal"
+    assert status.resolution_source == "named_fallback"
+    assert status.fallback_used is True
+    assert status.resolution_fallback_reason == "policy_override_recent_unavailable"
+    assert status.satellite_ask_available is False
