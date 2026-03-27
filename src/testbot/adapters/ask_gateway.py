@@ -8,6 +8,7 @@ from ask.config import Config
 from ask.config import normalize_rest_api_url
 
 from testbot.ask_channel_capabilities import AskChannel, validate_channel_interaction_requirements
+from testbot.interaction_policy import COLLECT_TURN_INPUT_INTENT, InteractionPolicyRequest
 from testbot.interaction_standards import InteractionRequirements
 
 
@@ -136,6 +137,22 @@ class AskGateway:
             decision_id=_optional_str(result.get("id")),
             sentence=_optional_str(result.get("sentence")) or "",
             error=_optional_str(result.get("error")),
+        )
+
+    def request_turn_input_for_policy(
+        self,
+        *,
+        interaction_policy: InteractionPolicyRequest,
+        question: str,
+        timeout_s: float = 60.0,
+    ) -> AskTurnInput:
+        if interaction_policy.intent != COLLECT_TURN_INPUT_INTENT:
+            raise ValueError(f"Unsupported interaction policy intent: {interaction_policy.intent}")
+        return self.request_turn_input(
+            channel="satellite" if interaction_policy.channel_context == "satellite" else "terminal",
+            question=question,
+            timeout_s=timeout_s,
+            interaction_requirements=interaction_policy.interaction_requirements,
         )
 
     def satellite_turn_spec(

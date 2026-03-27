@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import pytest
 from ask import AskClient
 from ask.config import Config
 
 from testbot.adapters.ask_gateway import AskGateway, STOP_DECISION_ID, normalize_ha_rest_url
+from testbot.interaction_policy import InteractionPolicyRequest
 from testbot.interaction_standards import InteractionRequirements
 
 
@@ -181,3 +183,59 @@ def test_request_terminal_turn_input_delegates_to_terminal_channel() -> None:
     assert captured["channel"] == "terminal"
     assert result.decision_id == "declined"
     assert result.sentence == "no"
+
+
+def test_request_turn_input_for_policy_uses_policy_channel_and_requirements() -> None:
+    captured: dict[str, object] = {}
+
+    class _FakeAskClient(AskClient):
+        def __init__(self) -> None:
+            super().__init__(
+                Config(
+                    ha_api_url="http://localhost:8123",
+                    ha_api_token="secret",
+                    satellite_entity_id="assist_satellite.kitchen",
+                )
+            )
+
+        def ask_question(self, *, channel, spec, **_kwargs):  # type: ignore[override]
+            captured["channel"] = channel
+            captured["spec"] = spec
+            return {"id": "accepted", "sentence": "continue", "error": None}
+
+    gateway = AskGateway(_FakeAskClient())
+    result = gateway.request_turn_input_for_policy(
+        interaction_policy=InteractionPolicyRequest(
+            intent="collect_turn_input",
+            channel_context="satellite",
+            task_flow_context="memory_chat_loop",
+            interaction_requirements=InteractionRequirements(),
+            policy_id="satellite.memory_chat_loop.turn_input.v1",
+        ),
+        question="Proceed?",
+    )
+
+    assert captured["channel"] == "satellite"
+    assert result.sentence == "continue"
+
+
+def test_request_turn_input_for_policy_rejects_unsupported_intent() -> None:
+    gateway = AskGateway.from_runtime(
+        {
+            "ha_base_url": "http://localhost:8123",
+            "ha_api_token": "secret-token",
+            "ha_satellite_entity_id": "assist_satellite.kitchen",
+        }
+    )
+
+    with pytest.raises(ValueError, match="Unsupported interaction policy intent"):
+        gateway.request_turn_input_for_policy(
+            interaction_policy=InteractionPolicyRequest(
+                intent="unsupported_intent",  # type: ignore[arg-type]
+                channel_context="cli",
+                task_flow_context="memory_chat_loop",
+                interaction_requirements=InteractionRequirements(),
+                policy_id="test.unsupported.v1",
+            ),
+            question="Proceed?",
+        )

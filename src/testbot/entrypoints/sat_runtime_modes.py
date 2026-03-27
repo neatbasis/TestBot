@@ -1,7 +1,7 @@
 """Runtime mode runners.
 
 Interaction/profile selection remains planner-owned via
-``testbot.interaction_planner.select_interaction_requirements``.
+``testbot.interaction_planner.select_interaction_policy_request``.
 This module intentionally avoids direct monolith imports.
 """
 
@@ -15,7 +15,7 @@ from langchain_ollama import ChatOllama
 
 from testbot.adapters.ask_gateway import AskGateway, STOP_DECISION_ID
 from testbot.domain import Clock
-from testbot.interaction_planner import select_interaction_requirements
+from testbot.interaction_planner import COLLECT_TURN_INPUT_INTENT, select_interaction_policy_request
 from testbot.ports import MemoryStorePort
 
 _TERMINAL_STOP_DECISION_IDS = frozenset(
@@ -73,18 +73,17 @@ def run_cli_mode(
     # Input collection is Ask-backed in CLI mode; output remains direct print() for now.
     # This split is intentional until output-channel unification is explicitly scheduled.
 
-    interaction_plan = select_interaction_requirements(
-        need_profile="ask_turn_input",
+    interaction_plan = select_interaction_policy_request(
+        interaction_intent=COLLECT_TURN_INPUT_INTENT,
         channel_context="cli",
         task_flow_context="memory_chat_loop",
     )
 
     def _read() -> str | None:
-        ask_result = ask_gateway.request_turn_input(
-            channel="terminal",
+        ask_result = ask_gateway.request_turn_input_for_policy(
+            interaction_policy=interaction_plan.request,
             question="Ask one memory-grounded question.",
             timeout_s=60.0,
-            interaction_requirements=interaction_plan.interaction_requirements,
         )
         if _is_terminal_stop_signal(decision_id=ask_result.decision_id, sentence=ask_result.sentence):
             return "stop"
@@ -134,18 +133,17 @@ def run_satellite_mode(
         entity_id = ask_gateway.satellite_entity_id
         satellite_say(client, entity_id, "v0 memory loop online. Say 'stop' to exit.")
 
-        interaction_plan = select_interaction_requirements(
-            need_profile="ask_turn_input",
+        interaction_plan = select_interaction_policy_request(
+            interaction_intent=COLLECT_TURN_INPUT_INTENT,
             channel_context="satellite",
             task_flow_context="memory_chat_loop",
         )
 
         def _read() -> str | None:
-            ask_result = ask_gateway.request_turn_input(
-                channel="satellite",
+            ask_result = ask_gateway.request_turn_input_for_policy(
+                interaction_policy=interaction_plan.request,
                 question="Ask one memory-grounded question.",
                 timeout_s=60.0,
-                interaction_requirements=interaction_plan.interaction_requirements,
             )
             if ask_result.error:
                 satellite_say(client, entity_id, f"I didn't get that. Error: {ask_result.error}")
