@@ -17,7 +17,6 @@ from __future__ import annotations
 
 import warnings
 from collections import deque
-from typing import Protocol
 
 from homeassistant_api import Client
 from langchain_core.embeddings import Embeddings
@@ -28,10 +27,6 @@ from testbot.domain import Clock
 from testbot.ports import MemoryStorePort
 
 ChatMsg = dict[str, str]
-
-
-class CapabilitySnapshotLike(Protocol):
-    """Compatibility snapshot shape carried through entrypoint wiring."""
 
 
 _LEGACY_RUNTIME_WARNING_EMITTED = False
@@ -79,7 +74,7 @@ def run_source_ingestion(*, runtime: dict[str, object], store: MemoryStorePort) 
     _legacy_runtime.run_source_ingestion(runtime=runtime, store=store)
 
 
-def print_startup_status(*, snapshot: CapabilitySnapshotLike) -> None:
+def print_startup_status(*, snapshot: object) -> None:
     _warn_legacy_runtime_bridge()
     _legacy_runtime.print_startup_status(snapshot=snapshot)
 
@@ -93,7 +88,7 @@ def run_chat_loop(
     near_tie_delta: float,
     io_channel: str,
     capability_status: str,
-    capability_snapshot: CapabilitySnapshotLike,
+    capability_snapshot: object,
     read_user_utterance,
     send_assistant_text,
     clock: Clock,
@@ -120,7 +115,6 @@ def sat_say(client: Client, entity_id: str, text: str) -> None:
 
 
 __all__ = [
-    "CapabilitySnapshotLike",
     "build_capability_snapshot",
     "build_runtime_memory_store",
     "parse_args",

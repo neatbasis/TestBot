@@ -27,6 +27,11 @@ def test_sat_runtime_modes_does_not_import_monolith_runtime_for_profile_selectio
     assert "from testbot.sat_chatbot_memory_v2" not in source
 
 
+def test_sat_runtime_modes_does_not_depend_on_runtime_legacy_bridge_symbols() -> None:
+    source = Path(sat_runtime_modes.__file__).read_text()
+    assert "from testbot.entrypoints.runtime_legacy_bridge import" not in source
+
+
 def test_runtime_legacy_bridge_warns_on_monolith_compat_usage() -> None:
     with pytest.deprecated_call(match="runtime_legacy_bridge depends on testbot.sat_chatbot_memory_v2"):
         sat_cli.parse_args([])
