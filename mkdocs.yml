@@ -1,0 +1,29 @@
+site_name: TestBot Governance Docs
+site_description: Curated governance and architecture authority documentation.
+site_url: https://example.invalid/testbot
+strict: true
+docs_dir: docs/site
+
+theme:
+  name: mkdocs
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths:
+            - scripts
+            - src
+          options:
+            show_source: false
+            show_root_heading: true
+
+nav:
+  - Home: index.md
+  - Governance:
+      - Governance Authority Map: governance/governance-authority-map.md
+  - Architecture:
+      - Governance Authority Remediation Plan: architecture/governance-authority-remediation.md
+  - API:
+      - Governance Tooling API: api/governance-tooling.md
