@@ -9,6 +9,8 @@ from __future__ import annotations
 
 from collections import deque
 from collections.abc import Callable
+from dataclasses import dataclass
+import re
 
 from homeassistant_api import Client
 from langchain_ollama import ChatOllama
@@ -44,15 +46,48 @@ _RETRYABLE_ERROR_MARKERS = (
     "reset",
 )
 _LAST_SUCCESSFUL_ASK_CHANNEL_CONTEXT_KEY = "last_successful_ask_channel_context"
-_LOW_INFORMATION_TRANSCRIPT_ARTIFACT_PHRASES = frozenset(
+_KNOWN_ARTIFACT_EXACT_PHRASES = frozenset(
     {
-        "thank you",
         "thanks for watching",
         "thank you for watching",
+        "see you next time",
         "thanks for listening",
         "thank you for listening",
     }
 )
+_KNOWN_ARTIFACT_FRAGMENT_PHRASES = frozenset(
+    {
+        "subtitles by",
+        "captions by",
+        "translated by",
+        "amara.org community",
+    }
+)
+_CONTEXT_TOKEN_PATTERN = re.compile(r"[a-z0-9']+")
+_CONTEXT_TOKEN_STOPWORDS = frozenset(
+    {
+        "a",
+        "an",
+        "and",
+        "ask",
+        "for",
+        "one",
+        "please",
+        "the",
+        "to",
+    }
+)
+
+
+@dataclass(frozen=True)
+class ArtifactAcceptanceDecision:
+    likely_artifact: bool
+    context_consistent: bool
+    artifact_reasons: tuple[str, ...]
+
+    @property
+    def should_reject(self) -> bool:
+        return self.likely_artifact and not self.context_consistent
 
 
 def _as_channel_context(resolved_channel: str | None) -> ChannelContext | None:
@@ -96,11 +131,83 @@ def _normalize_transcript_artifact_phrase(text: str) -> str:
     return " ".join(text.strip().lower().split())
 
 
-def _is_low_information_transcript_artifact(sentence: str) -> bool:
+def _looks_like_repeated_low_information_loop(normalized_sentence: str) -> bool:
+    words = normalized_sentence.split()
+    if len(words) < 4:
+        return False
+    if len(set(words)) == 1:
+        return True
+    if len(words) % 2 != 0:
+        return False
+    two_word_chunk = words[:2]
+    return two_word_chunk * (len(words) // 2) == words
+
+
+def _artifact_evidence_reasons(sentence: str) -> tuple[str, ...]:
     normalized_sentence = _normalize_transcript_artifact_phrase(sentence)
     if not normalized_sentence:
+        return ()
+    reasons: list[str] = []
+    if _looks_like_repeated_low_information_loop(normalized_sentence):
+        reasons.append("repeated_low_information_loop")
+    if normalized_sentence in _KNOWN_ARTIFACT_EXACT_PHRASES:
+        reasons.append("exact_known_phrase")
+    if any(
+        phrase in normalized_sentence and normalized_sentence != phrase for phrase in _KNOWN_ARTIFACT_EXACT_PHRASES
+    ):
+        reasons.append("contains_known_artifact_fragment")
+    if any(phrase in normalized_sentence for phrase in _KNOWN_ARTIFACT_FRAGMENT_PHRASES):
+        reasons.append("contains_known_artifact_fragment")
+    return tuple(reasons)
+
+
+def _extract_context_tokens(text: str) -> set[str]:
+    tokens = {token for token in _CONTEXT_TOKEN_PATTERN.findall(text.lower()) if len(token) > 2}
+    return {token for token in tokens if token not in _CONTEXT_TOKEN_STOPWORDS}
+
+
+def _contains_meaningful_content_beyond_artifact_phrase(sentence: str) -> bool:
+    normalized_sentence = _normalize_transcript_artifact_phrase(sentence)
+    residual = normalized_sentence
+    for phrase in _KNOWN_ARTIFACT_EXACT_PHRASES.union(_KNOWN_ARTIFACT_FRAGMENT_PHRASES):
+        residual = residual.replace(phrase, " ")
+    residual_tokens = _extract_context_tokens(residual)
+    if len(residual_tokens) < 3:
         return False
-    return normalized_sentence in _LOW_INFORMATION_TRANSCRIPT_ARTIFACT_PHRASES
+    filler_tokens = {
+        "thank",
+        "thanks",
+        "watching",
+        "listening",
+        "next",
+        "time",
+        "community",
+    }
+    return any(token not in filler_tokens for token in residual_tokens)
+
+
+def _is_context_consistent_with_invited_response(*, sentence: str, question: str) -> bool:
+    sentence_tokens = _extract_context_tokens(sentence)
+    if not sentence_tokens:
+        return False
+    prompt_tokens = _extract_context_tokens(question)
+    if sentence_tokens.intersection(prompt_tokens):
+        return True
+    return _contains_meaningful_content_beyond_artifact_phrase(sentence)
+
+
+def _classify_artifact_vs_context(
+    *, sentence: str, question: str
+) -> ArtifactAcceptanceDecision:
+    artifact_reasons = _artifact_evidence_reasons(sentence)
+    return ArtifactAcceptanceDecision(
+        likely_artifact=bool(artifact_reasons),
+        context_consistent=_is_context_consistent_with_invited_response(
+            sentence=sentence,
+            question=question,
+        ),
+        artifact_reasons=artifact_reasons,
+    )
 
 
 def run_cli_mode(
@@ -189,10 +296,11 @@ def run_satellite_mode(
         )
 
         def _read() -> str | None:
+            question = "Ask one memory-grounded question."
             recent_successful_channel_context = _read_recent_successful_channel_context(runtime)
             ask_result = ask_gateway.request_turn_input_for_policy(
                 interaction_policy=interaction_plan.request,
-                question="Ask one memory-grounded question.",
+                question=question,
                 timeout_s=60.0,
                 recent_successful_channel_context=recent_successful_channel_context,
             )
@@ -204,7 +312,12 @@ def run_satellite_mode(
             if not ask_result.sentence.strip():
                 satellite_say(client, entity_id, "I heard silence. Please try again.")
                 return ""
-            if _is_low_information_transcript_artifact(ask_result.sentence):
+            # Downstream runtime rejection only; upstream ASR/VAD and decode mitigations stay deferred.
+            artifact_decision = _classify_artifact_vs_context(
+                sentence=ask_result.sentence,
+                question=question,
+            )
+            if artifact_decision.should_reject:
                 satellite_say(client, entity_id, "I heard a low-information transcript artifact. Please try again.")
                 return ""
             _persist_recent_successful_channel_context(runtime=runtime, ask_result_channel=ask_result.resolved_channel)

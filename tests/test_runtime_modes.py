@@ -572,6 +572,9 @@ def test_run_satellite_mode_persists_last_successful_ask_channel_as_satellite(mo
         "thank you for watching",
         "  THANK   YOU   FOR   WATCHING  ",
         "thanks for listening",
+        "see you next time",
+        "subtitles by",
+        "thank you thank you thank you thank you",
     ],
 )
 def test_run_satellite_mode_rejects_low_information_transcript_artifacts(
@@ -682,7 +685,7 @@ def test_run_satellite_mode_artifact_rejection_does_not_overwrite_recent_success
             captured_recent["value"] = recent_successful_channel_context
             return AskTurnInput(
                 decision_id=None,
-                sentence="thank you",
+                sentence="thank you for listening",
                 error=None,
                 resolved_channel="satellite",
                 resolution_source="recent_successful_ask_channel",
@@ -770,6 +773,111 @@ def test_run_satellite_mode_keeps_meaningful_sentence_when_non_artifact(monkeypa
     )
 
     assert observed["utterance"] == sentence
+    assert runtime_state["last_successful_ask_channel_context"] == "satellite"
+
+
+def test_artifact_context_matrix_is_explicit_and_deterministic() -> None:
+    question = "Ask one memory-grounded question."
+
+    high_artifact_low_context = sat_runtime_modes._classify_artifact_vs_context(
+        sentence="thank you for watching",
+        question=question,
+    )
+    assert high_artifact_low_context.likely_artifact is True
+    assert high_artifact_low_context.context_consistent is False
+    assert high_artifact_low_context.should_reject is True
+    assert "exact_known_phrase" in high_artifact_low_context.artifact_reasons
+
+    high_artifact_higher_context = sat_runtime_modes._classify_artifact_vs_context(
+        sentence="thanks for watching, can you answer my memory question about source ingestion?",
+        question=question,
+    )
+    assert high_artifact_higher_context.likely_artifact is True
+    assert high_artifact_higher_context.context_consistent is True
+    assert high_artifact_higher_context.should_reject is False
+
+    repeated_loop = sat_runtime_modes._classify_artifact_vs_context(
+        sentence="thank you thank you thank you thank you",
+        question=question,
+    )
+    assert repeated_loop.likely_artifact is True
+    assert repeated_loop.context_consistent is False
+    assert repeated_loop.should_reject is True
+    assert "repeated_low_information_loop" in repeated_loop.artifact_reasons
+
+    normal_meaningful_sentence = sat_runtime_modes._classify_artifact_vs_context(
+        sentence="What changed in runtime acceptance policy?",
+        question=question,
+    )
+    assert normal_meaningful_sentence.likely_artifact is False
+    assert normal_meaningful_sentence.context_consistent is True
+    assert normal_meaningful_sentence.should_reject is False
+    assert normal_meaningful_sentence.artifact_reasons == ()
+
+
+def test_run_satellite_mode_allows_context_consistent_sentence_with_artifact_substring(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    runtime_state: dict[str, object] = {
+        "ha_base_url": "http://localhost:8123",
+        "ha_api_token": "token",
+        "ha_satellite_entity_id": "assist_satellite.kitchen",
+    }
+    sentence = "Thanks for watching, my memory question is about source ingestion."
+    spoken: list[str] = []
+
+    class _FakeClient:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+    monkeypatch.setattr(sat_runtime_modes, "Client", lambda *_args, **_kwargs: _FakeClient())
+
+    class _FakeGateway:
+        ha_api_token = "token"
+        satellite_entity_id = "assist_satellite.kitchen"
+
+        def normalized_ha_rest_url(self) -> str:
+            return "http://localhost:8123/api"
+
+        def request_turn_input_for_policy(
+            self,
+            *,
+            interaction_policy: InteractionPolicyRequest,
+            question: str,
+            timeout_s: float = 60.0,
+            recent_successful_channel_context: str | None = None,
+        ) -> AskTurnInput:
+            return AskTurnInput(
+                decision_id=None,
+                sentence=sentence,
+                error=None,
+                resolved_channel="satellite",
+                resolution_source="explicit_policy_channel",
+            )
+
+    observed: dict[str, object] = {}
+
+    def _fake_run_chat_loop(*, read_user_utterance, **_kwargs):
+        observed["utterance"] = read_user_utterance()
+
+    sat_runtime_modes.run_satellite_mode(
+        runtime=runtime_state,
+        llm=SimpleNamespace(),
+        store=SimpleNamespace(),
+        chat_history=deque(),
+        near_tie_delta=0.05,
+        capability_snapshot=SimpleNamespace(),
+        clock=SimpleNamespace(),
+        ask_gateway=_FakeGateway(),
+        run_chat_loop=_fake_run_chat_loop,
+        satellite_say=lambda _client, _entity_id, text: spoken.append(text),
+    )
+
+    assert observed["utterance"] == sentence
+    assert spoken == ["v0 memory loop online. Say 'stop' to exit."]
     assert runtime_state["last_successful_ask_channel_context"] == "satellite"
 
 
