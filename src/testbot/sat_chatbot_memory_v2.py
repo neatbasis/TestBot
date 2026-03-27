@@ -1,4 +1,10 @@
-# sat_chatbot_memory_v2.py
+"""Compatibility façade for the legacy SAT runtime module.
+
+This module intentionally retains only a governed compatibility surface
+while canonical ownership lives in extracted runtime/service modules.
+Keep wrappers thin and add new runtime behavior in canonical owners.
+"""
+
 from __future__ import annotations
 
 import json
@@ -83,13 +89,6 @@ from testbot.intent_router import (
     planning_pathway_for_intent,
 )
 from testbot.time_reasoning import elapsed_since_last_user_message, resolve_relative_date
-from testbot.source_connectors import (
-    ArxivSourceConnector,
-    FixtureSourceConnector,
-    LocalMarkdownSourceConnector,
-    SourceConnector,
-    WikipediaSummarySourceConnector,
-)
 from testbot.source_ingest import SourceIngestor
 from testbot.history_packer import PackedHistory, labeled_history_claims, pack_chat_history, render_packed_history
 from testbot.response_planner import build_response_plan, plan_to_dict, render_response_plan_block
@@ -146,7 +145,10 @@ from testbot.runtime_capability_service import (
 )
 from testbot.startup_status_presenter import print_startup_status as print_startup_status_from_presenter
 from testbot.runtime_cli_args import parse_args as parse_runtime_cli_args
-from testbot.source_ingestion_startup import run_source_ingestion as run_startup_source_ingestion
+from testbot.source_ingestion_startup import (
+    build_source_connector as build_startup_source_connector,
+    run_source_ingestion as run_startup_source_ingestion,
+)
 from testbot.application.services.canonical_turn_runtime import run_canonical_turn_pipeline
 from testbot.canonical_turn_orchestrator import CanonicalTurnOrchestrator as _CanonicalTurnOrchestrator
 from testbot.logic.decision_helpers import (
@@ -438,28 +440,6 @@ def _format_capabilities_help_answer(*, status: RuntimeCapabilityStatus, capabil
 def _format_satellite_action_alternatives(*, status: RuntimeCapabilityStatus) -> str:
     return answer_stage_runtime_service.format_satellite_action_alternatives(status=status)
 
-def _parse_env_float(name: str, default: float) -> float:
-    raw = os.getenv(name)
-    if raw is None:
-        return default
-    try:
-        return float(raw)
-    except (TypeError, ValueError):
-        _LOGGER.warning("Invalid %s=%r; using default=%s", name, raw, default)
-        return default
-
-
-def _parse_env_int(name: str, default: int) -> int:
-    raw = os.getenv(name)
-    if raw is None:
-        return default
-    try:
-        return int(raw)
-    except (TypeError, ValueError):
-        _LOGGER.warning("Invalid %s=%r; using default=%s", name, raw, default)
-        return default
-
-
 def _parse_args(argv: list[str] | None = None) -> Namespace:
     return parse_runtime_cli_args(argv)
 
@@ -550,42 +530,9 @@ def _resolve_effective_mode(
 
 
 
-def _build_source_connector(runtime: dict[str, object]) -> SourceConnector | None:
-    if not bool(runtime.get("source_ingest_enabled", False)):
-        return None
-    connector_type = str(runtime.get("source_connector_type", "fixture")).strip().lower()
-
-    if connector_type == "fixture":
-        fixture_path = str(runtime.get("source_fixture_path") or "").strip()
-        if not fixture_path:
-            append_session_log("source_ingest_skipped", {"reason": "missing_fixture_path", "connector_type": connector_type})
-            return None
-        return FixtureSourceConnector.from_json_file(source_type="fixture", fixture_path=fixture_path)
-
-    if connector_type in {"local_markdown", "markdown"}:
-        markdown_path = str(runtime.get("source_markdown_path") or "").strip()
-        if not markdown_path:
-            append_session_log("source_ingest_skipped", {"reason": "missing_markdown_path", "connector_type": connector_type})
-            return None
-        return LocalMarkdownSourceConnector(markdown_path=markdown_path)
-
-    if connector_type in {"wikipedia", "wiki"}:
-        topic = str(runtime.get("source_wikipedia_topic") or "").strip()
-        language = str(runtime.get("source_wikipedia_language") or "en").strip() or "en"
-        if not topic:
-            append_session_log("source_ingest_skipped", {"reason": "missing_wikipedia_topic", "connector_type": connector_type})
-            return None
-        return WikipediaSummarySourceConnector(topic=topic, language=language)
-
-    if connector_type == "arxiv":
-        query = str(runtime.get("source_arxiv_query") or "").strip()
-        if not query:
-            append_session_log("source_ingest_skipped", {"reason": "missing_arxiv_query", "connector_type": connector_type})
-            return None
-        return ArxivSourceConnector(query=query)
-
-    append_session_log("source_ingest_skipped", {"reason": "unsupported_connector_type", "connector_type": connector_type})
-    return None
+def _build_source_connector(runtime: dict[str, object]):
+    """Compatibility wrapper; canonical owner is testbot.source_ingestion_startup.build_source_connector."""
+    return build_startup_source_connector(runtime=runtime, append_session_log=append_session_log)
 
 
 def _run_source_ingestion(*, runtime: dict[str, object], store: MemoryStorePort) -> None:
