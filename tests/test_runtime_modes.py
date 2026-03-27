@@ -14,6 +14,7 @@ import pytest
 
 from testbot.entrypoints import sat_cli
 from testbot.adapters.ask_gateway import AskTurnInput, STOP_DECISION_ID
+from testbot.interaction_policy import InteractionPolicyRequest
 from testbot.interaction_standards import InteractionRequirements
 from testbot.entrypoints import sat_runtime_modes
 from testbot.sat_chatbot_memory_v2 import CLARIFY_ANSWER, parse_args, resolve_mode, resolve_turn_intent
@@ -105,18 +106,17 @@ def test_run_satellite_mode_uses_gateway_with_stable_stop_id(monkeypatch) -> Non
         def normalized_ha_rest_url(self) -> str:
             return "http://localhost:8123/api"
 
-        def request_turn_input(
+        def request_turn_input_for_policy(
             self,
             *,
-            channel: str,
+            interaction_policy: InteractionPolicyRequest,
             question: str,
             timeout_s: float = 60.0,
-            interaction_requirements: InteractionRequirements,
         ) -> AskTurnInput:
-            assert channel == "satellite"
+            assert interaction_policy.channel_context == "satellite"
             assert question == "Ask one memory-grounded question."
             assert timeout_s == 60.0
-            assert interaction_requirements == InteractionRequirements()
+            assert interaction_policy.interaction_requirements == InteractionRequirements()
             return AskTurnInput(decision_id=STOP_DECISION_ID, sentence="", error=None)
 
 
@@ -169,8 +169,17 @@ def test_run_satellite_mode_uses_planner_selected_requirements(monkeypatch) -> N
 
     monkeypatch.setattr(
         sat_runtime_modes,
-        "select_interaction_requirements",
-        lambda **_kwargs: SimpleNamespace(interaction_requirements=planned_requirements),
+        "select_interaction_policy_request",
+        lambda **_kwargs: SimpleNamespace(
+            request=InteractionPolicyRequest(
+                intent="collect_turn_input",
+                channel_context="satellite",
+                task_flow_context="memory_chat_loop",
+                interaction_requirements=planned_requirements,
+                policy_id="test.policy.v1",
+            ),
+            interaction_requirements=planned_requirements,
+        ),
     )
 
     class _FakeGateway:
@@ -180,18 +189,17 @@ def test_run_satellite_mode_uses_planner_selected_requirements(monkeypatch) -> N
         def normalized_ha_rest_url(self) -> str:
             return "http://localhost:8123/api"
 
-        def request_turn_input(
+        def request_turn_input_for_policy(
             self,
             *,
-            channel: str,
+            interaction_policy: InteractionPolicyRequest,
             question: str,
             timeout_s: float = 60.0,
-            interaction_requirements: InteractionRequirements,
         ) -> AskTurnInput:
-            assert channel == "satellite"
+            assert interaction_policy.channel_context == "satellite"
             assert question == "Ask one memory-grounded question."
             assert timeout_s == 60.0
-            assert interaction_requirements == planned_requirements
+            assert interaction_policy.interaction_requirements == planned_requirements
             return AskTurnInput(decision_id=STOP_DECISION_ID, sentence="", error=None)
 
     def _fake_run_chat_loop(*, read_user_utterance, **_kwargs):
@@ -213,18 +221,17 @@ def test_run_satellite_mode_uses_planner_selected_requirements(monkeypatch) -> N
 
 def test_run_cli_mode_uses_terminal_channel_ask_gateway(monkeypatch) -> None:
     class _FakeGateway:
-        def request_turn_input(
+        def request_turn_input_for_policy(
             self,
             *,
-            channel: str,
+            interaction_policy: InteractionPolicyRequest,
             question: str,
             timeout_s: float = 60.0,
-            interaction_requirements: InteractionRequirements,
         ) -> AskTurnInput:
-            assert channel == "terminal"
+            assert interaction_policy.channel_context == "cli"
             assert question == "Ask one memory-grounded question."
             assert timeout_s == 60.0
-            assert interaction_requirements == InteractionRequirements(
+            assert interaction_policy.interaction_requirements == InteractionRequirements(
                 stable_id_required=False,
                 deterministic_field_collection_required=False,
                 open_text_preferred=True,
@@ -254,15 +261,14 @@ def test_run_cli_mode_passes_non_stop_sentence_through_unchanged() -> None:
     sentence = "What did I ask you about source ingestion earlier?"
 
     class _FakeGateway:
-        def request_turn_input(
+        def request_turn_input_for_policy(
             self,
             *,
-            channel: str,
+            interaction_policy: InteractionPolicyRequest,
             question: str,
             timeout_s: float = 60.0,
-            interaction_requirements: InteractionRequirements,
         ) -> AskTurnInput:
-            assert channel == "terminal"
+            assert interaction_policy.channel_context == "cli"
             assert question == "Ask one memory-grounded question."
             return AskTurnInput(decision_id=None, sentence=sentence, error=None)
 
@@ -302,13 +308,12 @@ def test_run_cli_mode_passes_non_stop_sentence_through_unchanged() -> None:
 )
 def test_run_cli_mode_collapses_terminal_stop_signals_to_stop(decision_id: str | None, sentence: str) -> None:
     class _FakeGateway:
-        def request_turn_input(
+        def request_turn_input_for_policy(
             self,
             *,
-            channel: str,
+            interaction_policy: InteractionPolicyRequest,
             question: str,
             timeout_s: float = 60.0,
-            interaction_requirements: InteractionRequirements,
         ) -> AskTurnInput:
             return AskTurnInput(decision_id=decision_id, sentence=sentence, error=None)
 
@@ -336,13 +341,12 @@ def test_run_cli_mode_collapses_terminal_stop_signals_to_stop(decision_id: str |
 
 def test_run_cli_mode_reports_retryable_ask_errors_as_retry_prompt() -> None:
     class _FakeGateway:
-        def request_turn_input(
+        def request_turn_input_for_policy(
             self,
             *,
-            channel: str,
+            interaction_policy: InteractionPolicyRequest,
             question: str,
             timeout_s: float = 60.0,
-            interaction_requirements: InteractionRequirements,
         ) -> AskTurnInput:
             return AskTurnInput(decision_id=None, sentence="", error="temporary timeout from ask")
 
@@ -373,13 +377,12 @@ def test_run_cli_mode_reports_retryable_ask_errors_as_retry_prompt() -> None:
 
 def test_run_cli_mode_stops_on_non_retryable_ask_errors() -> None:
     class _FakeGateway:
-        def request_turn_input(
+        def request_turn_input_for_policy(
             self,
             *,
-            channel: str,
+            interaction_policy: InteractionPolicyRequest,
             question: str,
             timeout_s: float = 60.0,
-            interaction_requirements: InteractionRequirements,
         ) -> AskTurnInput:
             return AskTurnInput(decision_id=None, sentence="", error="permission denied")
 
@@ -410,13 +413,12 @@ def test_run_cli_mode_stops_on_non_retryable_ask_errors() -> None:
 
 def test_run_cli_mode_handles_empty_ask_reply_as_silence() -> None:
     class _FakeGateway:
-        def request_turn_input(
+        def request_turn_input_for_policy(
             self,
             *,
-            channel: str,
+            interaction_policy: InteractionPolicyRequest,
             question: str,
             timeout_s: float = 60.0,
-            interaction_requirements: InteractionRequirements,
         ) -> AskTurnInput:
             return AskTurnInput(decision_id=None, sentence="   ", error=None)
 

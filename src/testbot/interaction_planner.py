@@ -1,76 +1,102 @@
-"""Interaction-profile planner.
+"""Interaction-policy planner.
 
-Planner owns selection of `InteractionRequirements`; translation is handled downstream by AskGateway.
+Planner owns policy selection; AskGateway translates selected policy requirements to AskSpec.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal
 
 from testbot.interaction_standards import InteractionRequirements
-
-NeedProfile = Literal["ask_turn_input"]
-ChannelContext = Literal["satellite", "cli"]
-TaskFlowContext = Literal["memory_chat_loop", "general"]
+from testbot.interaction_policy import (
+    COLLECT_TURN_INPUT_INTENT,
+    ChannelContext,
+    InteractionIntent,
+    InteractionPolicyRequest,
+    TaskFlowContext,
+)
 
 
 @dataclass(frozen=True, slots=True)
 class InteractionPlan:
-    """Selected interaction contract and deterministic planner trace fields."""
+    """Selected interaction-policy request and deterministic planner trace fields."""
 
-    interaction_requirements: InteractionRequirements
+    request: InteractionPolicyRequest
     rationale: str | None = None
     rule_id: str | None = None
 
+    @property
+    def interaction_requirements(self) -> InteractionRequirements:
+        return self.request.interaction_requirements
 
-def select_interaction_requirements(
+
+def select_interaction_policy_request(
     *,
-    need_profile: NeedProfile,
+    interaction_intent: InteractionIntent,
     channel_context: ChannelContext,
     task_flow_context: TaskFlowContext,
 ) -> InteractionPlan:
-    """Select interaction requirements for the current turn.
+    """Select interaction policy request for the current turn.
 
     Intentionally minimal v1 policy: one active satellite memory-loop rule,
     one explicit CLI free-text variant, and a deterministic fallback.
     """
 
     if (
-        need_profile == "ask_turn_input"
+        interaction_intent == COLLECT_TURN_INPUT_INTENT
         and channel_context == "satellite"
         and task_flow_context == "memory_chat_loop"
     ):
         return InteractionPlan(
-            interaction_requirements=InteractionRequirements(),
+            request=InteractionPolicyRequest(
+                intent=interaction_intent,
+                channel_context=channel_context,
+                task_flow_context=task_flow_context,
+                interaction_requirements=InteractionRequirements(),
+                policy_id="satellite.memory_chat_loop.turn_input.v1",
+            ),
             rationale="Satellite memory loop turn input requires deterministic, machine-actionable collection.",
             rule_id="satellite.memory_chat_loop.turn_input.v1",
         )
 
-    if need_profile == "ask_turn_input" and channel_context == "cli":
+    if interaction_intent == COLLECT_TURN_INPUT_INTENT and channel_context == "cli":
         return InteractionPlan(
-            interaction_requirements=InteractionRequirements(
-                stable_id_required=False,
-                deterministic_field_collection_required=False,
-                open_text_preferred=True,
-                sentence_style_fit="plain_sentence",
-                machine_actionable=False,
+            request=InteractionPolicyRequest(
+                intent=interaction_intent,
+                channel_context=channel_context,
+                task_flow_context=task_flow_context,
+                interaction_requirements=InteractionRequirements(
+                    stable_id_required=False,
+                    deterministic_field_collection_required=False,
+                    open_text_preferred=True,
+                    sentence_style_fit="plain_sentence",
+                    machine_actionable=False,
+                ),
+                policy_id="cli.turn_input.free_text.v1",
             ),
             rationale="CLI turn input prefers free-text prompts without machine-action stop actions.",
             rule_id="cli.turn_input.free_text.v1",
         )
 
     return InteractionPlan(
-        interaction_requirements=InteractionRequirements(),
+        request=InteractionPolicyRequest(
+            intent=interaction_intent,
+            channel_context=channel_context,
+            task_flow_context=task_flow_context,
+            interaction_requirements=InteractionRequirements(),
+            policy_id="fallback.default.v1",
+        ),
         rationale="Fallback interaction profile.",
         rule_id="fallback.default.v1",
     )
 
 
 __all__ = [
+    "COLLECT_TURN_INPUT_INTENT",
     "ChannelContext",
+    "InteractionIntent",
     "InteractionPlan",
-    "NeedProfile",
+    "InteractionPolicyRequest",
     "TaskFlowContext",
-    "select_interaction_requirements",
+    "select_interaction_policy_request",
 ]
