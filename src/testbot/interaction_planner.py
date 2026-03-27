@@ -10,7 +10,7 @@ from typing import Literal
 
 from testbot.interaction_standards import InteractionRequirements
 
-NeedProfile = Literal["satellite_turn_input"]
+NeedProfile = Literal["ask_turn_input"]
 ChannelContext = Literal["satellite", "cli"]
 TaskFlowContext = Literal["memory_chat_loop", "general"]
 
@@ -37,7 +37,7 @@ def select_interaction_requirements(
     """
 
     if (
-        need_profile == "satellite_turn_input"
+        need_profile == "ask_turn_input"
         and channel_context == "satellite"
         and task_flow_context == "memory_chat_loop"
     ):
@@ -47,7 +47,7 @@ def select_interaction_requirements(
             rule_id="satellite.memory_chat_loop.turn_input.v1",
         )
 
-    if need_profile == "satellite_turn_input" and channel_context == "cli":
+    if need_profile == "ask_turn_input" and channel_context == "cli":
         return InteractionPlan(
             interaction_requirements=InteractionRequirements(
                 stable_id_required=False,

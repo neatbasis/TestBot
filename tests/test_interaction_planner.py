@@ -6,7 +6,7 @@ from testbot.interaction_standards import InteractionRequirements
 
 def test_select_interaction_requirements_satellite_memory_loop_rule() -> None:
     plan = select_interaction_requirements(
-        need_profile="satellite_turn_input",
+        need_profile="ask_turn_input",
         channel_context="satellite",
         task_flow_context="memory_chat_loop",
     )
@@ -18,7 +18,7 @@ def test_select_interaction_requirements_satellite_memory_loop_rule() -> None:
 
 def test_select_interaction_requirements_fallback_rule() -> None:
     plan = select_interaction_requirements(
-        need_profile="satellite_turn_input",
+        need_profile="ask_turn_input",
         channel_context="cli",
         task_flow_context="general",
     )

@@ -105,13 +105,15 @@ def test_run_satellite_mode_uses_gateway_with_stable_stop_id(monkeypatch) -> Non
         def normalized_ha_rest_url(self) -> str:
             return "http://localhost:8123/api"
 
-        def request_satellite_turn_input(
+        def request_turn_input(
             self,
             *,
+            channel: str,
             question: str,
             timeout_s: float = 60.0,
             interaction_requirements: InteractionRequirements,
         ) -> AskTurnInput:
+            assert channel == "satellite"
             assert question == "Ask one memory-grounded question."
             assert timeout_s == 60.0
             assert interaction_requirements == InteractionRequirements()
@@ -178,13 +180,15 @@ def test_run_satellite_mode_uses_planner_selected_requirements(monkeypatch) -> N
         def normalized_ha_rest_url(self) -> str:
             return "http://localhost:8123/api"
 
-        def request_satellite_turn_input(
+        def request_turn_input(
             self,
             *,
+            channel: str,
             question: str,
             timeout_s: float = 60.0,
             interaction_requirements: InteractionRequirements,
         ) -> AskTurnInput:
+            assert channel == "satellite"
             assert question == "Ask one memory-grounded question."
             assert timeout_s == 60.0
             assert interaction_requirements == planned_requirements
@@ -204,6 +208,45 @@ def test_run_satellite_mode_uses_planner_selected_requirements(monkeypatch) -> N
         ask_gateway=_FakeGateway(),
         run_chat_loop=_fake_run_chat_loop,
         satellite_say=lambda *_args, **_kwargs: None,
+    )
+
+
+def test_run_cli_mode_uses_terminal_channel_ask_gateway(monkeypatch) -> None:
+    class _FakeGateway:
+        def request_turn_input(
+            self,
+            *,
+            channel: str,
+            question: str,
+            timeout_s: float = 60.0,
+            interaction_requirements: InteractionRequirements,
+        ) -> AskTurnInput:
+            assert channel == "terminal"
+            assert question == "Ask one memory-grounded question."
+            assert timeout_s == 60.0
+            assert interaction_requirements == InteractionRequirements(
+                stable_id_required=False,
+                deterministic_field_collection_required=False,
+                open_text_preferred=True,
+                sentence_style_fit="plain_sentence",
+                machine_actionable=False,
+            )
+            return AskTurnInput(decision_id=STOP_DECISION_ID, sentence="", error=None)
+
+    def _fake_run_chat_loop(*, read_user_utterance, capability_status, **_kwargs):
+        assert capability_status == "ask_available"
+        assert read_user_utterance() == "stop"
+
+    sat_runtime_modes.run_cli_mode(
+        runtime={},
+        llm=SimpleNamespace(),
+        store=SimpleNamespace(),
+        chat_history=deque(),
+        near_tie_delta=0.05,
+        capability_snapshot=SimpleNamespace(),
+        clock=SimpleNamespace(),
+        ask_gateway=_FakeGateway(),
+        run_chat_loop=_fake_run_chat_loop,
     )
 
 def test_parse_args_defaults() -> None:
