@@ -16,7 +16,6 @@ from langchain_ollama import ChatOllama
 from testbot.adapters.ask_gateway import AskGateway, STOP_DECISION_ID
 from testbot.domain import Clock
 from testbot.interaction_planner import select_interaction_requirements
-from testbot.entrypoints.runtime_legacy_bridge import CapabilitySnapshotLike
 from testbot.ports import MemoryStorePort
 
 
@@ -27,7 +26,7 @@ def run_cli_mode(
     store: MemoryStorePort,
     chat_history: deque[dict[str, str]],
     near_tie_delta: float,
-    capability_snapshot: CapabilitySnapshotLike,
+    capability_snapshot: object,
     clock: Clock,
     run_chat_loop: Callable[..., None],
 ) -> None:
@@ -64,7 +63,7 @@ def run_satellite_mode(
     store: MemoryStorePort,
     chat_history: deque[dict[str, str]],
     near_tie_delta: float,
-    capability_snapshot: CapabilitySnapshotLike,
+    capability_snapshot: object,
     clock: Clock,
     ask_gateway: AskGateway,
     run_chat_loop: Callable[..., None],
