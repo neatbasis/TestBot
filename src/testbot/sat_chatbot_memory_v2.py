@@ -3817,7 +3817,25 @@ def run_chat_loop(
     )
 
 
+_LEGACY_MAIN_WARNING_EMITTED = False
+_LEGACY_MAIN_WARNING = (
+    "testbot.sat_chatbot_memory_v2.main(...) is a monolith-era compatibility entry surface and will be removed. "
+    "Use testbot.entrypoints.sat_cli.main(...) instead. "
+    "Migration: update runtime launch and imports to call testbot.entrypoints.sat_cli.main(argv)."
+)
+
+
+def _warn_legacy_main_once() -> None:
+    global _LEGACY_MAIN_WARNING_EMITTED
+    if _LEGACY_MAIN_WARNING_EMITTED:
+        return
+    warnings.warn(_LEGACY_MAIN_WARNING, DeprecationWarning, stacklevel=2)
+    _LEGACY_MAIN_WARNING_EMITTED = True
+
+
 def main(argv: list[str] | None = None) -> None:
+    """Deprecated compatibility entrypoint; delegate to testbot.entrypoints.sat_cli.main."""
+    _warn_legacy_main_once()
     from testbot.entrypoints.sat_cli import main as entrypoint_main
 
     entrypoint_main(argv)

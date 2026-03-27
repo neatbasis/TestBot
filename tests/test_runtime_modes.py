@@ -38,6 +38,24 @@ def test_runtime_legacy_bridge_warns_on_monolith_compat_usage() -> None:
         sat_cli.read_runtime_env()
 
 
+def test_legacy_runtime_main_warns_once_and_delegates_to_sat_cli(monkeypatch: pytest.MonkeyPatch) -> None:
+    forwarded: list[list[str] | None] = []
+
+    def _fake_sat_cli_main(argv: list[str] | None = None) -> None:
+        forwarded.append(argv)
+
+    monkeypatch.setattr("testbot.entrypoints.sat_cli.main", _fake_sat_cli_main)
+    runtime._LEGACY_MAIN_WARNING_EMITTED = False
+
+    with pytest.warns(DeprecationWarning, match=r"testbot\.sat_chatbot_memory_v2\.main\(\.\.\.\)"):
+        runtime.main(["--mode", "cli"])
+    runtime.main(["--mode", "satellite"])
+
+    assert len(forwarded) == 2
+    assert forwarded[0] == ["--mode", "cli"]
+    assert forwarded[1] == ["--mode", "satellite"]
+
+
 def test_sat_cli_uses_explicit_runtime_legacy_bridge_import() -> None:
     source = Path(sat_cli.__file__).read_text()
     bridge_import_match = re.search(
