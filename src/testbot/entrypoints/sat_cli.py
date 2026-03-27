@@ -17,6 +17,8 @@ from testbot.domain import build_system_clock
 from testbot.entrypoints.sat_runtime_modes import run_cli_mode, run_satellite_mode
 from testbot.observability.session_log import append_session_log
 from testbot.runtime_capability_service import build_capability_snapshot
+from testbot.source_ingestion_entry import apply_source_ingestion_entry
+from testbot.source_ingestion_startup import run_source_ingestion
 from testbot.startup_status_presenter import print_startup_status
 
 # Legacy bridge imports are intentionally grouped and replaced incrementally
@@ -25,7 +27,6 @@ from testbot.entrypoints.runtime_legacy_bridge import (
     build_runtime_memory_store,
     read_runtime_env,
     run_chat_loop,
-    run_source_ingestion,
     sat_say,
 )
 from testbot.runtime_cli_args import parse_args
@@ -71,7 +72,18 @@ def main(argv: list[str] | None = None) -> None:
     debug_verbose_override = getattr(args, "debug_verbose", None)
     if debug_verbose_override is not None:
         runtime["debug_verbose"] = debug_verbose_override
-    _apply_source_ingestion_selection(args=args, runtime=runtime)
+    source_selection = apply_source_ingestion_entry(args=args, runtime=runtime)
+    append_session_log(
+        "source_ingest_selection",
+        {
+            "selection_source": source_selection.selected_via,
+            "source_ingestion": source_selection.mode,
+            "source_ingest_enabled": source_selection.enabled,
+            "source_connector_type": source_selection.connector_type,
+            "reference_key": source_selection.reference_key,
+            "freeform_request": source_selection.freeform_request,
+        },
+    )
 
     capability_snapshot = build_capability_snapshot(
         requested_mode=args.mode,

@@ -56,11 +56,6 @@ def build_runtime_memory_store(*, runtime: dict[str, object], embeddings: Embedd
     return _legacy_runtime.build_runtime_memory_store(runtime=runtime, embeddings=embeddings)
 
 
-def run_source_ingestion(*, runtime: dict[str, object], store: MemoryStorePort) -> None:
-    _warn_legacy_runtime_bridge()
-    _legacy_runtime.run_source_ingestion(runtime=runtime, store=store)
-
-
 def run_chat_loop(
     *,
     runtime: dict[str, object],
@@ -100,6 +95,5 @@ __all__ = [
     "build_runtime_memory_store",
     "read_runtime_env",
     "run_chat_loop",
-    "run_source_ingestion",
     "sat_say",
 ]

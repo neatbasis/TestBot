@@ -142,6 +142,7 @@ from testbot.runtime_capability_service import (
 )
 from testbot.startup_status_presenter import print_startup_status as print_startup_status_from_presenter
 from testbot.runtime_cli_args import parse_args as parse_runtime_cli_args
+from testbot.source_ingestion_startup import run_source_ingestion as run_startup_source_ingestion
 from testbot.application.services.canonical_turn_runtime import run_canonical_turn_pipeline
 from testbot.canonical_turn_orchestrator import CanonicalTurnOrchestrator as _CanonicalTurnOrchestrator
 from testbot.logic.decision_helpers import (
@@ -915,16 +916,7 @@ def _build_source_connector(runtime: dict[str, object]) -> SourceConnector | Non
 
 
 def _run_source_ingestion(*, runtime: dict[str, object], store: MemoryStorePort) -> None:
-    result = _execute_source_ingestion(runtime=runtime, store=store, background=False)
-    if result.get("ok"):
-        append_session_log("source_ingest_completed", dict(result["payload"]))
-        return
-    if result.get("status") == "failed":
-        append_session_log("source_ingest_failed", dict(result["payload"]))
-        print(
-            "Warning: source ingestion failed at startup; continuing without ingested source documents.",
-            file=sys.stderr,
-        )
+    run_startup_source_ingestion(runtime=runtime, store=store, append_session_log=append_session_log)
 
 def _print_startup_status(*, snapshot: CapabilitySnapshot) -> None:
     print_startup_status_from_presenter(snapshot=snapshot)

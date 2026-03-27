@@ -210,10 +210,25 @@ Link this evidence from `docs/issues/RED_TAG.md` triage updates.
 
 Primary user-facing selector is `--source-ingestion` on runtime startup.
 Do not treat ad-hoc `SOURCE_INGEST_ENABLED` docs toggles as the primary control path.
+Use Ask-style entry patterns (`python -m ask.demo_terminal_scenarios`) as the UX baseline.
+
+### Control-surface split (authoritative)
+
+- **User-facing ingestion choices:** `--source-ingestion menu|reference|freeform|off|<direct-connector>`
+- **Deployment/runtime configuration:** `SOURCE_MARKDOWN_PATH`, `SOURCE_WIKIPEDIA_TOPIC`, `SOURCE_WIKIPEDIA_LANGUAGE`, `SOURCE_ARXIV_QUERY`, `SOURCE_INGEST_LIMIT`, `SOURCE_INGEST_CURSOR`
+- **Canonical startup execution layer:** `testbot.source_ingestion_startup.run_source_ingestion(...)`
+- **Internal plumbing (still deferred):** runtime ingestion lifecycle state in memory (`source_ingest_background_*`, pending/dead-letter registries)
+
+Deferred scope note: this pass includes canonical startup-ingestion execution plus
+the user-facing entry surface; deeper bridge/runtime ingestion lifecycle extraction
+remains tracked as separate follow-up work.
 
 Use CLI selection for capability intent:
 
 - `--source-ingestion off`
+- `--source-ingestion menu`
+- `--source-ingestion reference --source-reference wikipedia_hilbert`
+- `--source-ingestion freeform --source-freeform 'wikipedia:Hilbert space'`
 - `--source-ingestion local_markdown`
 - `--source-ingestion wikipedia`
 - `--source-ingestion arxiv`

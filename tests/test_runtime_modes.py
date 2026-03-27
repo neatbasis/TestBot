@@ -68,9 +68,11 @@ def test_sat_cli_uses_explicit_runtime_legacy_bridge_import() -> None:
     assert "build_capability_snapshot" not in bridge_import_names
     assert "print_startup_status" not in bridge_import_names
     assert "parse_args" not in bridge_import_names
+    assert "run_source_ingestion" not in bridge_import_names
     assert "from testbot.runtime_capability_service import build_capability_snapshot" in source
     assert "from testbot.startup_status_presenter import print_startup_status" in source
     assert "from testbot.runtime_cli_args import parse_args" in source
+    assert "from testbot.source_ingestion_startup import run_source_ingestion" in source
     assert "from testbot.sat_chatbot_memory_v2 import" not in source
 
 
@@ -200,6 +202,8 @@ def test_parse_args_defaults() -> None:
     assert args.mode == "auto"
     assert args.daemon is False
     assert args.source_ingestion == "env"
+    assert args.source_reference == "wikipedia_hilbert"
+    assert args.source_freeform == ""
 
 
 def test_parse_args_satellite_daemon() -> None:
@@ -210,8 +214,9 @@ def test_parse_args_satellite_daemon() -> None:
 
 
 def test_parse_args_source_ingestion_selection() -> None:
-    args = parse_args(["--source-ingestion", "wikipedia"])
-    assert args.source_ingestion == "wikipedia"
+    args = parse_args(["--source-ingestion", "reference", "--source-reference", "local_alignment_docs"])
+    assert args.source_ingestion == "reference"
+    assert args.source_reference == "local_alignment_docs"
 
 
 
@@ -966,7 +971,7 @@ def test_run_source_ingestion_failure_logs_and_does_not_raise(monkeypatch, capsy
             raise RuntimeError("boom")
 
     logs = []
-    monkeypatch.setattr(runtime, "SourceIngestor", _FailingIngestor)
+    monkeypatch.setattr("testbot.source_ingestion_startup.SourceIngestor", _FailingIngestor)
     monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: logs.append((event, payload)))
 
     runtime._run_source_ingestion(

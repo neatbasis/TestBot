@@ -121,24 +121,49 @@ Say `stop` to end the loop.
 ## Optional: source ingestion connectors
 
 Primary user-facing control surface: `--source-ingestion`.
+The flow follows Ask's terminal demo pattern (`python -m ask.demo_terminal_scenarios`):
+menu selection, reference examples, and freeform entry.
 
-Use the client/runtime menu-style selector on startup:
+### Client entry modes (primary UX)
 
-- `--source-ingestion off` (disable ingestion)
-- `--source-ingestion local_markdown`
-- `--source-ingestion wikipedia`
-- `--source-ingestion arxiv`
-- `--source-ingestion fixture`
+- `--source-ingestion menu` → interactive menu in client (`reference`, `freeform`, `direct connector`, `off`)
+- `--source-ingestion reference --source-reference wikipedia_hilbert` → apply known-good reference example
+- `--source-ingestion freeform --source-freeform 'wikipedia:Hilbert space'` → start from freeform request
+- `--source-ingestion wikipedia|arxiv|local_markdown|fixture` → explicit direct connector mode
+- `--source-ingestion off` → explicit disable
 
 `SOURCE_*` environment variables remain deployment/runtime configuration inputs
 for connector-specific parameters (paths/topics/limits), not the primary
 capability enable toggle.
+Startup execution runs through canonical owner `testbot.source_ingestion_startup.run_source_ingestion(...)`; background/lifecycle extraction remains follow-up scope.
 
 Prefer connector inputs that encode the system's intended reasoning basis:
 
 - local operator canon (invariants, trust policy, provenance doctrine),
 - stable public ontology references,
 - frontier research signals with explicit preprint trust semantics.
+
+### Recommended onboarding flow (canonical)
+
+Start with interactive menu:
+
+```bash
+testbot --mode cli --source-ingestion menu
+```
+
+Apply a known-good reference example:
+
+```bash
+testbot --mode cli --source-ingestion reference --source-reference wikipedia_hilbert
+```
+
+Start from freeform request:
+
+```bash
+testbot --mode cli --source-ingestion freeform --source-freeform 'arxiv:all:"category theory" AND cat:cs.LG'
+```
+
+### Deployment/runtime parameterized connector runs
 
 Local markdown file/directory ingestion:
 

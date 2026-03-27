@@ -22,4 +22,12 @@ def test_runtime_docs_use_cli_source_ingestion_selection_not_env_enable_toggle()
     for doc_path in DOCS_WITH_RUNTIME_COMMANDS:
         text = doc_path.read_text()
         assert "--source-ingestion" in text, f"Expected CLI source-ingestion selector guidance in {doc_path}"
+        assert "--source-ingestion menu" in text, f"Expected menu entry mode guidance in {doc_path}"
+        assert "--source-ingestion reference" in text, f"Expected reference entry mode guidance in {doc_path}"
+        assert "--source-ingestion freeform" in text, f"Expected freeform entry mode guidance in {doc_path}"
         assert LEGACY_SOURCE_INGEST_TOGGLE not in text, f"Legacy source-ingest env toggle still present in {doc_path}"
+
+
+def test_quickstart_presents_menu_onboarding_before_direct_connector_examples() -> None:
+    text = Path("docs/quickstart.md").read_text()
+    assert text.index("--source-ingestion menu") < text.index("--source-ingestion local_markdown")

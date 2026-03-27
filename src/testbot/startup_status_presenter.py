@@ -73,13 +73,22 @@ def render_startup_status_lines(*, snapshot: CapabilitySnapshotView) -> list[str
     source_ingest_enabled = bool(runtime.get("source_ingest_enabled", False))
     source_connector = str(runtime.get("source_connector_type") or "none").strip().lower() or "none"
     source_selection_source = str(runtime.get("source_ingest_selection_source") or "environment").strip().lower()
+    source_selection_mode = str(runtime.get("source_ingest_selection_mode") or source_selection_source).strip().lower()
+    source_reference_key = str(runtime.get("source_ingest_reference_key") or "").strip()
+    source_freeform_request = str(runtime.get("source_ingest_freeform_request") or "").strip()
+    selection_details = [f"mode={source_selection_mode}", f"selected_via={source_selection_source}"]
+    if source_reference_key:
+        selection_details.append(f"reference={source_reference_key}")
+    if source_freeform_request:
+        selection_details.append(f"freeform='{source_freeform_request}'")
+    selection_detail_text = ", ".join(selection_details)
     if source_ingest_enabled:
         lines.append(
-            f"Source ingestion: enabled (connector={source_connector}, selected_via={source_selection_source})"
+            f"Source ingestion: enabled (connector={source_connector}, {selection_detail_text})"
         )
     else:
         lines.append(
-            f"Source ingestion: disabled (selected_via={source_selection_source})"
+            f"Source ingestion: disabled ({selection_detail_text})"
         )
     debug_mode = "enabled" if snapshot.runtime_capability_status.debug_enabled else "disabled"
     debug_verbose = "enabled" if snapshot.runtime_capability_status.debug_verbose else "disabled"
