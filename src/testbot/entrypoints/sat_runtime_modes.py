@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import deque
 from collections.abc import Callable
+from typing import Any
 
 from homeassistant_api import Client
 from langchain_ollama import ChatOllama
@@ -9,7 +10,6 @@ from langchain_ollama import ChatOllama
 from testbot.adapters.ask_gateway import AskGateway, STOP_DECISION_ID
 from testbot.domain import Clock
 from testbot.interaction_planner import select_interaction_requirements
-from testbot.sat_chatbot_memory_v2 import CapabilitySnapshot, ChatMsg
 from testbot.ports import MemoryStorePort
 
 
@@ -18,9 +18,9 @@ def run_cli_mode(
     runtime: dict[str, object],
     llm: ChatOllama,
     store: MemoryStorePort,
-    chat_history: deque[ChatMsg],
+    chat_history: deque[dict[str, str]],
     near_tie_delta: float,
-    capability_snapshot: CapabilitySnapshot,
+    capability_snapshot: Any,
     clock: Clock,
     run_chat_loop: Callable[..., None],
 ) -> None:
@@ -55,9 +55,9 @@ def run_satellite_mode(
     runtime: dict[str, object],
     llm: ChatOllama,
     store: MemoryStorePort,
-    chat_history: deque[ChatMsg],
+    chat_history: deque[dict[str, str]],
     near_tie_delta: float,
-    capability_snapshot: CapabilitySnapshot,
+    capability_snapshot: Any,
     clock: Clock,
     ask_gateway: AskGateway,
     run_chat_loop: Callable[..., None],
