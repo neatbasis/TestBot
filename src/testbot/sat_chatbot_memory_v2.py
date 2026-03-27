@@ -8,8 +8,6 @@ import re
 import sys
 import uuid
 import warnings
-from concurrent.futures import Future, ThreadPoolExecutor
-from threading import Lock
 from argparse import Namespace
 from collections import deque
 from dataclasses import dataclass, replace
@@ -152,6 +150,7 @@ from testbot.logic.decision_helpers import (
     resolve_answer_routing_from_decision_object as _resolve_answer_routing_from_decision_object_service,
     selected_decision_from_confidence as _selected_decision_from_confidence_service,
 )
+from testbot.application.services import background_ingestion_runtime as background_ingestion_runtime_service
 
 from langchain_core.documents import Document
 from langchain_core.prompts import ChatPromptTemplate
@@ -220,78 +219,25 @@ def _emit_obligation_transition(
     attempt_count: int,
     deadline_at: str,
 ) -> None:
-    append_session_log(
-        "source_ingest_obligation_transition",
-        {
-            "ingestion_request_id": ingestion_request_id,
-            "status": status,
-            "created_at": created_at,
-            "last_polled_at": last_polled_at,
-            "attempt_count": attempt_count,
-            "deadline_at": deadline_at,
-        },
+    background_ingestion_runtime_service.emit_obligation_transition(
+        append_session_log=append_session_log,
+        ingestion_request_id=ingestion_request_id,
+        status=status,
+        created_at=created_at,
+        last_polled_at=last_polled_at,
+        attempt_count=attempt_count,
+        deadline_at=deadline_at,
     )
 
 
 def _poll_pending_ingestion_obligations(*, runtime: dict[str, object]) -> None:
-    pending_registry = runtime.get("pending_ingestion_registry")
-    if not isinstance(pending_registry, dict):
-        return
-
-    now = arrow.utcnow()
-    now_iso = now.isoformat()
-    for request_id, raw_record in list(pending_registry.items()):
-        if not isinstance(raw_record, dict):
-            continue
-
-        created_at = str(raw_record.get("created_at") or now_iso)
-        deadline_at = str(raw_record.get("deadline_at") or "")
-        attempt_count = int(raw_record.get("attempt_count") or 0) + 1
-        raw_record["created_at"] = created_at
-        raw_record["last_polled_at"] = now_iso
-        raw_record["attempt_count"] = attempt_count
-
-        if not deadline_at:
-            deadline_at = now.shift(seconds=BACKGROUND_INGESTION_OBLIGATION_TIMEOUT_SECONDS).isoformat()
-            raw_record["deadline_at"] = deadline_at
-
-        timed_out = False
-        try:
-            timed_out = now >= arrow.get(deadline_at)
-        except (arrow.parser.ParserError, ValueError):
-            deadline_at = now.shift(seconds=BACKGROUND_INGESTION_OBLIGATION_TIMEOUT_SECONDS).isoformat()
-            raw_record["deadline_at"] = deadline_at
-
-        if timed_out:
-            raw_record["status"] = "timed_out"
-            raw_record["last_polled_at"] = now_iso
-            dead_letter_registry = runtime.setdefault("dead_letter_ingestion_registry", {})
-            if isinstance(dead_letter_registry, dict):
-                dead_letter_registry[str(request_id)] = dict(raw_record)
-            _emit_obligation_transition(
-                ingestion_request_id=str(request_id),
-                status="timed_out",
-                created_at=created_at,
-                last_polled_at=now_iso,
-                attempt_count=attempt_count,
-                deadline_at=deadline_at,
-            )
-            pending_registry.pop(request_id, None)
-            continue
-
-        raw_record["status"] = "pending"
-        _emit_obligation_transition(
-            ingestion_request_id=str(request_id),
-            status="polled_pending",
-            created_at=created_at,
-            last_polled_at=now_iso,
-            attempt_count=attempt_count,
-            deadline_at=deadline_at,
-        )
+    background_ingestion_runtime_service.poll_pending_ingestion_obligations(
+        runtime=runtime,
+        append_session_log=append_session_log,
+        obligation_timeout_seconds=BACKGROUND_INGESTION_OBLIGATION_TIMEOUT_SECONDS,
+        utcnow=arrow.utcnow,
+    )
 _LOGGER = logging.getLogger(__name__)
-
-_BACKGROUND_SOURCE_INGEST_EXECUTOR = ThreadPoolExecutor(max_workers=1, thread_name_prefix="source-ingest")
-_BACKGROUND_SOURCE_INGEST_LOCK = Lock()
 
 CanonicalTurnOrchestrator = _CanonicalTurnOrchestrator
 """Compatibility re-export; canonical owner remains `testbot.canonical_turn_orchestrator`."""
@@ -390,53 +336,15 @@ def _execute_source_ingestion(
     background: bool = False,
     ingestion_request_id: str = "",
 ) -> dict[str, object]:
-    connector = _build_source_connector(runtime)
-    if connector is None:
-        return {"ok": False, "status": "skipped", "background": background, "ingestion_request_id": ingestion_request_id}
-
-    ingestor = SourceIngestor(connector=connector, memory_store=store)
-    cursor = str(runtime.get("source_ingest_cursor")) if runtime.get("source_ingest_cursor") is not None else None
-    limit = int(runtime.get("source_ingest_limit", 50))
-    if cursor is not None and not cursor.isdigit():
-        append_session_log(
-            "source_ingest_cursor_invalid",
-            {
-                "cursor": cursor,
-                "fallback_cursor": None,
-                "background": background,
-            },
-        )
-        cursor = None
-
-    try:
-        result = ingestor.ingest_once(
-            cursor=cursor,
-            limit=limit,
-        )
-    except Exception as exc:
-        payload = {
-            "connector_type": str(runtime.get("source_connector_type", "")).strip().lower(),
-            "source_type": connector.source_type,
-            "cursor": cursor,
-            "limit": limit,
-            "exception_class": exc.__class__.__name__,
-            "exception_message": str(exc),
-            "background": background,
-            "ingestion_request_id": ingestion_request_id,
-        }
-        return {"ok": False, "status": "failed", "payload": payload}
-
-    payload = {
-        "source_type": connector.source_type,
-        "fetched_count": result.fetched_count,
-        "stored_count": result.stored_count,
-        "next_cursor": result.next_cursor,
-        "memory_doc_ids": [str(doc.doc_id or "") for doc in result.memory_documents],
-        "evidence_doc_ids": [str(doc.doc_id or "") for doc in result.evidence_documents],
-        "background": background,
-        "ingestion_request_id": ingestion_request_id,
-    }
-    return {"ok": True, "status": "completed", "payload": payload}
+    return background_ingestion_runtime_service.execute_source_ingestion(
+        runtime=runtime,
+        store=store,
+        build_source_connector=_build_source_connector,
+        source_ingestor_cls=SourceIngestor,
+        append_session_log=append_session_log,
+        background=background,
+        ingestion_request_id=ingestion_request_id,
+    )
 
 
 def _start_background_source_ingestion(
@@ -445,55 +353,27 @@ def _start_background_source_ingestion(
     store: MemoryStorePort,
     ingestion_request_id: str = "",
 ) -> dict[str, object]:
-    with _BACKGROUND_SOURCE_INGEST_LOCK:
-        existing_future = runtime.get("source_ingest_background_future")
-        if isinstance(existing_future, Future) and not existing_future.done():
-            existing_request_id = str(runtime.get("source_ingest_background_request_id") or "")
-            return {"started": False, "already_running": True, "ingestion_request_id": existing_request_id}
-
-        request_id = str(ingestion_request_id or f"ingest-req-{uuid.uuid4()}")
-        runtime["source_ingest_background_request_id"] = request_id
-
-        future = _BACKGROUND_SOURCE_INGEST_EXECUTOR.submit(
-            _execute_source_ingestion,
-            runtime=runtime,
-            store=store,
-            background=True,
-            ingestion_request_id=request_id,
-        )
-        runtime["source_ingest_background_future"] = future
-        runtime["source_ingest_background_in_progress"] = True
-        append_session_log("source_ingest_background_started", {"background": True, "ingestion_request_id": request_id})
-        return {"started": True, "already_running": False, "ingestion_request_id": request_id}
+    return background_ingestion_runtime_service.start_background_source_ingestion(
+        runtime=runtime,
+        store=store,
+        execute_source_ingestion=_execute_source_ingestion,
+        append_session_log=append_session_log,
+        ingestion_request_id=ingestion_request_id,
+    )
 
 
 def _poll_background_source_ingestion(*, runtime: dict[str, object]) -> dict[str, object] | None:
-    with _BACKGROUND_SOURCE_INGEST_LOCK:
-        future = runtime.get("source_ingest_background_future")
-        if not isinstance(future, Future):
-            runtime["source_ingest_background_in_progress"] = False
-            return None
-        if not future.done():
-            runtime["source_ingest_background_in_progress"] = True
-            return {"status": "running", "ingestion_request_id": str(runtime.get("source_ingest_background_request_id") or "")}
-
-        runtime["source_ingest_background_in_progress"] = False
-        runtime["source_ingest_background_future"] = None
-        request_id = str(runtime.get("source_ingest_background_request_id") or "")
-        runtime["source_ingest_background_request_id"] = ""
-
-    result = future.result()
-    if request_id and "payload" in result and isinstance(result["payload"], dict) and not result["payload"].get("ingestion_request_id"):
-        result["payload"]["ingestion_request_id"] = request_id
-    if result.get("ok"):
-        append_session_log("source_ingest_completed", dict(result["payload"]))
-    elif result.get("status") == "failed":
-        append_session_log("source_ingest_failed", dict(result["payload"]))
-    return result
+    return background_ingestion_runtime_service.poll_background_source_ingestion(
+        runtime=runtime,
+        append_session_log=append_session_log,
+    )
 
 
 def _format_background_ingestion_completion_message(*, correlation_id: str) -> str:
-    return BACKGROUND_INGESTION_COMPLETION_MESSAGE_TEMPLATE.format(correlation_id=correlation_id or "unknown")
+    return background_ingestion_runtime_service.format_background_ingestion_completion_message(
+        correlation_id=correlation_id,
+        template=BACKGROUND_INGESTION_COMPLETION_MESSAGE_TEMPLATE,
+    )
 
 
 def _process_background_ingestion_completion(
@@ -511,105 +391,29 @@ def _process_background_ingestion_completion(
     last_user_message_ts: str,
     prior_pipeline_state: PipelineState | None,
 ) -> tuple[str, PipelineState | None, bool]:
-    poll_result = _poll_background_source_ingestion(runtime=runtime)
-    if not isinstance(poll_result, dict) or poll_result.get("status") != "completed":
-        return last_user_message_ts, prior_pipeline_state, False
-
-    payload = poll_result.get("payload") if isinstance(poll_result.get("payload"), dict) else {}
-    correlation_id = str(payload.get("ingestion_request_id") or "")
-    pending_registry = runtime.get("pending_ingestion_registry")
-    if not isinstance(pending_registry, dict) or not correlation_id:
-        return last_user_message_ts, prior_pipeline_state, False
-
-    pending_context = pending_registry.pop(correlation_id, None)
-    if not isinstance(pending_context, dict):
-        return last_user_message_ts, prior_pipeline_state, False
-
-    _emit_obligation_transition(
-        ingestion_request_id=correlation_id,
-        status="resolved",
-        created_at=str(pending_context.get("created_at") or _utc_now_iso()),
-        last_polled_at=_utc_now_iso(),
-        attempt_count=int(pending_context.get("attempt_count") or 0),
-        deadline_at=str(pending_context.get("deadline_at") or ""),
-    )
-    pending_context["status"] = "resolved"
-
-    original_utterance = str(pending_context.get("utterance") or "")
-    original_prior_state = pending_context.get("prior_pipeline_state")
-    if original_prior_state is not None and not isinstance(original_prior_state, PipelineState):
-        original_prior_state = prior_pipeline_state
-
-    append_session_log(
-        "source_ingest_completion_event_emitted",
-        {
-            "event_type": "source_ingestion_completion",
-            "ingestion_request_id": correlation_id,
-            "linked_pending_ingestion_request_id": correlation_id,
-            "original_utterance": original_utterance,
-            "io_channel": io_channel,
-        },
-    )
-    completion_message = _format_background_ingestion_completion_message(correlation_id=correlation_id)
-    send_assistant_text(completion_message)
-    append_session_log(
-        "source_ingest_completion_user_message_emitted",
-        {
-            "event_type": "assistant_text",
-            "ingestion_request_id": correlation_id,
-            "linked_pending_ingestion_request_id": correlation_id,
-            "message_text": completion_message,
-        },
-    )
-
-    continuation_turn_id = str(uuid.uuid4())
-    regenerated_state, _hits = _run_canonical_turn_pipeline(
+    return background_ingestion_runtime_service.process_background_ingestion_completion(
         runtime=runtime,
         llm=llm,
         store=store,
-        state=PipelineState(
-            user_input=original_utterance,
-            last_user_message_ts=last_user_message_ts,
-            classified_intent=IntentType.KNOWLEDGE_QUESTION.value,
-            resolved_intent="",
-            prior_unresolved_intent=(
-                original_prior_state.prior_unresolved_intent
-                if isinstance(original_prior_state, PipelineState)
-                else ""
-            ),
-            confidence_decision={},
-        ),
-        utterance=original_utterance,
-        prior_pipeline_state=original_prior_state,
-        turn_id=continuation_turn_id,
-        near_tie_delta=near_tie_delta,
         chat_history=chat_history,
+        near_tie_delta=near_tie_delta,
         capability_status=capability_status,
         capability_snapshot=capability_snapshot,
         clock=clock,
         io_channel=io_channel,
+        send_assistant_text=send_assistant_text,
+        last_user_message_ts=last_user_message_ts,
+        prior_pipeline_state=prior_pipeline_state,
+        poll_background_source_ingestion=_poll_background_source_ingestion,
+        emit_obligation_transition=_emit_obligation_transition,
+        utc_now_iso=_utc_now_iso,
+        append_session_log=append_session_log,
+        format_background_ingestion_completion_message=_format_background_ingestion_completion_message,
+        run_canonical_turn_pipeline=_run_canonical_turn_pipeline,
+        pipeline_state_cls=PipelineState,
+        knowledge_question_intent=IntentType.KNOWLEDGE_QUESTION.value,
+        answer_commit_persistence=answer_commit_persistence,
     )
-    send_assistant_text(regenerated_state.final_answer)
-    append_session_log(
-        "source_ingest_completion_answer_emitted",
-        {
-            "ingestion_request_id": correlation_id,
-            "linked_pending_ingestion_request_id": correlation_id,
-            "continuation_turn_id": continuation_turn_id,
-            "final_answer": regenerated_state.final_answer,
-            "used_source_evidence_refs": regenerated_state.used_source_evidence_refs,
-        },
-    )
-    chat_history.append({"role": "assistant", "content": completion_message})
-    chat_history.append({"role": "assistant", "content": regenerated_state.final_answer})
-    answer_commit_persistence(
-        llm=llm,
-        store=store,
-        state=regenerated_state,
-        io_channel=io_channel,
-        clock=clock,
-    )
-    return last_user_message_ts, regenerated_state, True
 INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD = 0.75
 RETRIEVAL_SCORE_THRESHOLD = 0.0
 
