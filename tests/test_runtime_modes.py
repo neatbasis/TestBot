@@ -9,6 +9,8 @@ from pathlib import Path
 from types import SimpleNamespace
 from urllib.error import HTTPError
 
+import pytest
+
 from testbot.entrypoints import sat_cli
 from testbot.adapters.ask_gateway import AskTurnInput, STOP_DECISION_ID
 from testbot.interaction_standards import InteractionRequirements
@@ -17,6 +19,23 @@ from testbot.sat_chatbot_memory_v2 import CLARIFY_ANSWER, parse_args, resolve_mo
 from testbot import sat_chatbot_memory_v2 as runtime
 
 
+
+
+
+def test_sat_runtime_modes_does_not_import_monolith_runtime_for_profile_selection() -> None:
+    source = Path(sat_runtime_modes.__file__).read_text()
+    assert "from testbot.sat_chatbot_memory_v2" not in source
+
+
+def test_runtime_legacy_bridge_warns_on_monolith_compat_usage() -> None:
+    with pytest.deprecated_call(match="runtime_legacy_bridge depends on testbot.sat_chatbot_memory_v2"):
+        sat_cli.parse_args([])
+
+
+def test_sat_cli_uses_explicit_runtime_legacy_bridge_import() -> None:
+    source = Path(sat_cli.__file__).read_text()
+    assert "from testbot.entrypoints.runtime_legacy_bridge import" in source
+    assert "from testbot.sat_chatbot_memory_v2 import" not in source
 
 
 def test_run_satellite_mode_uses_gateway_with_stable_stop_id(monkeypatch) -> None:
