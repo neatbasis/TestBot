@@ -16,6 +16,7 @@ from langchain_ollama import ChatOllama
 from testbot.adapters.ask_gateway import AskGateway, STOP_DECISION_ID
 from testbot.domain import Clock
 from testbot.interaction_planner import COLLECT_TURN_INPUT_INTENT, select_interaction_policy_request
+from testbot.interaction_policy import ChannelContext
 from testbot.ports import MemoryStorePort
 
 _TERMINAL_STOP_DECISION_IDS = frozenset(
@@ -42,6 +43,31 @@ _RETRYABLE_ERROR_MARKERS = (
     "network",
     "reset",
 )
+_LAST_SUCCESSFUL_ASK_CHANNEL_CONTEXT_KEY = "last_successful_ask_channel_context"
+
+
+def _as_channel_context(resolved_channel: str | None) -> ChannelContext | None:
+    if resolved_channel == "satellite":
+        return "satellite"
+    if resolved_channel == "terminal":
+        return "cli"
+    return None
+
+
+def _read_recent_successful_channel_context(runtime: dict[str, object]) -> ChannelContext | None:
+    value = runtime.get(_LAST_SUCCESSFUL_ASK_CHANNEL_CONTEXT_KEY)
+    if value == "satellite":
+        return "satellite"
+    if value == "cli":
+        return "cli"
+    return None
+
+
+def _persist_recent_successful_channel_context(*, runtime: dict[str, object], ask_result_channel: str | None) -> None:
+    channel_context = _as_channel_context(ask_result_channel)
+    if channel_context is None:
+        return
+    runtime[_LAST_SUCCESSFUL_ASK_CHANNEL_CONTEXT_KEY] = channel_context
 
 
 def _is_terminal_stop_signal(*, decision_id: str | None, sentence: str) -> bool:
@@ -80,10 +106,12 @@ def run_cli_mode(
     )
 
     def _read() -> str | None:
+        recent_successful_channel_context = _read_recent_successful_channel_context(runtime)
         ask_result = ask_gateway.request_turn_input_for_policy(
             interaction_policy=interaction_plan.request,
             question="Ask one memory-grounded question.",
             timeout_s=60.0,
+            recent_successful_channel_context=recent_successful_channel_context,
         )
         if _is_terminal_stop_signal(decision_id=ask_result.decision_id, sentence=ask_result.sentence):
             return "stop"
@@ -96,6 +124,7 @@ def run_cli_mode(
         if not ask_result.sentence.strip():
             print("bot> I heard silence. Try again.")
             return ""
+        _persist_recent_successful_channel_context(runtime=runtime, ask_result_channel=ask_result.resolved_channel)
         return ask_result.sentence
 
     def _send(text: str) -> None:
@@ -140,16 +169,22 @@ def run_satellite_mode(
         )
 
         def _read() -> str | None:
+            recent_successful_channel_context = _read_recent_successful_channel_context(runtime)
             ask_result = ask_gateway.request_turn_input_for_policy(
                 interaction_policy=interaction_plan.request,
                 question="Ask one memory-grounded question.",
                 timeout_s=60.0,
+                recent_successful_channel_context=recent_successful_channel_context,
             )
             if ask_result.error:
                 satellite_say(client, entity_id, f"I didn't get that. Error: {ask_result.error}")
                 return ""
             if ask_result.decision_id == STOP_DECISION_ID:
                 return "stop"
+            if not ask_result.sentence.strip():
+                satellite_say(client, entity_id, "I heard silence. Please try again.")
+                return ""
+            _persist_recent_successful_channel_context(runtime=runtime, ask_result_channel=ask_result.resolved_channel)
             return ask_result.sentence
 
         def _send(text: str) -> None:

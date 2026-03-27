@@ -112,10 +112,12 @@ def test_run_satellite_mode_uses_gateway_with_stable_stop_id(monkeypatch) -> Non
             interaction_policy: InteractionPolicyRequest,
             question: str,
             timeout_s: float = 60.0,
+            recent_successful_channel_context: str | None = None,
         ) -> AskTurnInput:
             assert interaction_policy.channel_context == "satellite"
             assert question == "Ask one memory-grounded question."
             assert timeout_s == 60.0
+            assert recent_successful_channel_context is None
             assert interaction_policy.interaction_requirements == InteractionRequirements()
             return AskTurnInput(decision_id=STOP_DECISION_ID, sentence="", error=None)
 
@@ -195,10 +197,12 @@ def test_run_satellite_mode_uses_planner_selected_requirements(monkeypatch) -> N
             interaction_policy: InteractionPolicyRequest,
             question: str,
             timeout_s: float = 60.0,
+            recent_successful_channel_context: str | None = None,
         ) -> AskTurnInput:
             assert interaction_policy.channel_context == "satellite"
             assert question == "Ask one memory-grounded question."
             assert timeout_s == 60.0
+            assert recent_successful_channel_context is None
             assert interaction_policy.interaction_requirements == planned_requirements
             return AskTurnInput(decision_id=STOP_DECISION_ID, sentence="", error=None)
 
@@ -227,10 +231,12 @@ def test_run_cli_mode_uses_terminal_channel_ask_gateway(monkeypatch) -> None:
             interaction_policy: InteractionPolicyRequest,
             question: str,
             timeout_s: float = 60.0,
+            recent_successful_channel_context: str | None = None,
         ) -> AskTurnInput:
             assert interaction_policy.channel_context == "cli"
             assert question == "Ask one memory-grounded question."
             assert timeout_s == 60.0
+            assert recent_successful_channel_context is None
             assert interaction_policy.interaction_requirements == InteractionRequirements(
                 stable_id_required=False,
                 deterministic_field_collection_required=False,
@@ -267,9 +273,11 @@ def test_run_cli_mode_passes_non_stop_sentence_through_unchanged() -> None:
             interaction_policy: InteractionPolicyRequest,
             question: str,
             timeout_s: float = 60.0,
+            recent_successful_channel_context: str | None = None,
         ) -> AskTurnInput:
             assert interaction_policy.channel_context == "cli"
             assert question == "Ask one memory-grounded question."
+            assert recent_successful_channel_context is None
             return AskTurnInput(decision_id=None, sentence=sentence, error=None)
 
     observed: dict[str, object] = {}
@@ -314,7 +322,9 @@ def test_run_cli_mode_collapses_terminal_stop_signals_to_stop(decision_id: str |
             interaction_policy: InteractionPolicyRequest,
             question: str,
             timeout_s: float = 60.0,
+            recent_successful_channel_context: str | None = None,
         ) -> AskTurnInput:
+            assert recent_successful_channel_context is None
             return AskTurnInput(decision_id=decision_id, sentence=sentence, error=None)
 
     observed: dict[str, object] = {}
@@ -347,7 +357,9 @@ def test_run_cli_mode_reports_retryable_ask_errors_as_retry_prompt() -> None:
             interaction_policy: InteractionPolicyRequest,
             question: str,
             timeout_s: float = 60.0,
+            recent_successful_channel_context: str | None = None,
         ) -> AskTurnInput:
+            assert recent_successful_channel_context is None
             return AskTurnInput(decision_id=None, sentence="", error="temporary timeout from ask")
 
     observed: dict[str, object] = {}
@@ -383,7 +395,9 @@ def test_run_cli_mode_stops_on_non_retryable_ask_errors() -> None:
             interaction_policy: InteractionPolicyRequest,
             question: str,
             timeout_s: float = 60.0,
+            recent_successful_channel_context: str | None = None,
         ) -> AskTurnInput:
+            assert recent_successful_channel_context is None
             return AskTurnInput(decision_id=None, sentence="", error="permission denied")
 
     observed: dict[str, object] = {}
@@ -419,7 +433,9 @@ def test_run_cli_mode_handles_empty_ask_reply_as_silence() -> None:
             interaction_policy: InteractionPolicyRequest,
             question: str,
             timeout_s: float = 60.0,
+            recent_successful_channel_context: str | None = None,
         ) -> AskTurnInput:
+            assert recent_successful_channel_context is None
             return AskTurnInput(decision_id=None, sentence="   ", error=None)
 
     output = StringIO()
@@ -443,6 +459,204 @@ def test_run_cli_mode_handles_empty_ask_reply_as_silence() -> None:
 
     assert observed["utterance"] == ""
     assert "bot> I heard silence. Try again." in output.getvalue()
+
+
+def test_run_cli_mode_persists_last_successful_ask_channel_as_cli() -> None:
+    runtime_state: dict[str, object] = {}
+
+    class _FakeGateway:
+        def request_turn_input_for_policy(
+            self,
+            *,
+            interaction_policy: InteractionPolicyRequest,
+            question: str,
+            timeout_s: float = 60.0,
+            recent_successful_channel_context: str | None = None,
+        ) -> AskTurnInput:
+            assert recent_successful_channel_context is None
+            return AskTurnInput(
+                decision_id=None,
+                sentence="What did I ask about earlier?",
+                error=None,
+                resolved_channel="terminal",
+                resolution_source="explicit_policy_channel",
+            )
+
+    observed: dict[str, object] = {}
+
+    def _fake_run_chat_loop(*, read_user_utterance, **_kwargs):
+        observed["utterance"] = read_user_utterance()
+
+    sat_runtime_modes.run_cli_mode(
+        runtime=runtime_state,
+        llm=SimpleNamespace(),
+        store=SimpleNamespace(),
+        chat_history=deque(),
+        near_tie_delta=0.05,
+        capability_snapshot=SimpleNamespace(),
+        clock=SimpleNamespace(),
+        ask_gateway=_FakeGateway(),
+        run_chat_loop=_fake_run_chat_loop,
+    )
+
+    assert observed["utterance"] == "What did I ask about earlier?"
+    assert runtime_state["last_successful_ask_channel_context"] == "cli"
+
+
+def test_run_satellite_mode_persists_last_successful_ask_channel_as_satellite(monkeypatch: pytest.MonkeyPatch) -> None:
+    runtime_state: dict[str, object] = {
+        "ha_base_url": "http://localhost:8123",
+        "ha_api_token": "token",
+        "ha_satellite_entity_id": "assist_satellite.kitchen",
+    }
+
+    class _FakeClient:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+    monkeypatch.setattr(sat_runtime_modes, "Client", lambda *_args, **_kwargs: _FakeClient())
+    monkeypatch.setattr(runtime, "sat_say", lambda *_args, **_kwargs: None)
+
+    class _FakeGateway:
+        ha_api_token = "token"
+        satellite_entity_id = "assist_satellite.kitchen"
+
+        def normalized_ha_rest_url(self) -> str:
+            return "http://localhost:8123/api"
+
+        def request_turn_input_for_policy(
+            self,
+            *,
+            interaction_policy: InteractionPolicyRequest,
+            question: str,
+            timeout_s: float = 60.0,
+            recent_successful_channel_context: str | None = None,
+        ) -> AskTurnInput:
+            assert recent_successful_channel_context is None
+            return AskTurnInput(
+                decision_id=None,
+                sentence="Tell me what changed.",
+                error=None,
+                resolved_channel="satellite",
+                resolution_source="explicit_policy_channel",
+            )
+
+    observed: dict[str, object] = {}
+
+    def _fake_run_chat_loop(*, read_user_utterance, **_kwargs):
+        observed["utterance"] = read_user_utterance()
+
+    sat_runtime_modes.run_satellite_mode(
+        runtime=runtime_state,
+        llm=SimpleNamespace(),
+        store=SimpleNamespace(),
+        chat_history=deque(),
+        near_tie_delta=0.05,
+        capability_snapshot=SimpleNamespace(),
+        clock=SimpleNamespace(),
+        ask_gateway=_FakeGateway(),
+        run_chat_loop=_fake_run_chat_loop,
+        satellite_say=lambda *_args, **_kwargs: None,
+    )
+
+    assert observed["utterance"] == "Tell me what changed."
+    assert runtime_state["last_successful_ask_channel_context"] == "satellite"
+
+
+def test_run_cli_mode_uses_recent_successful_channel_when_policy_channel_unavailable() -> None:
+    runtime_state: dict[str, object] = {"last_successful_ask_channel_context": "cli"}
+    captured_recent: dict[str, object] = {}
+
+    class _FakeGateway:
+        def request_turn_input_for_policy(
+            self,
+            *,
+            interaction_policy: InteractionPolicyRequest,
+            question: str,
+            timeout_s: float = 60.0,
+            recent_successful_channel_context: str | None = None,
+        ) -> AskTurnInput:
+            captured_recent["value"] = recent_successful_channel_context
+            return AskTurnInput(
+                decision_id=None,
+                sentence="continue",
+                error=None,
+                resolved_channel="terminal",
+                resolution_source="recent_successful_ask_channel",
+                fallback_used=True,
+                fallback_reason="policy_and_override_unavailable",
+            )
+
+    observed: dict[str, object] = {}
+
+    def _fake_run_chat_loop(*, read_user_utterance, **_kwargs):
+        observed["utterance"] = read_user_utterance()
+
+    sat_runtime_modes.run_cli_mode(
+        runtime=runtime_state,
+        llm=SimpleNamespace(),
+        store=SimpleNamespace(),
+        chat_history=deque(),
+        near_tie_delta=0.05,
+        capability_snapshot=SimpleNamespace(),
+        clock=SimpleNamespace(),
+        ask_gateway=_FakeGateway(),
+        run_chat_loop=_fake_run_chat_loop,
+    )
+
+    assert captured_recent["value"] == "cli"
+    assert observed["utterance"] == "continue"
+    assert runtime_state["last_successful_ask_channel_context"] == "cli"
+
+
+@pytest.mark.parametrize(
+    ("ask_result", "expected_utterance"),
+    [
+        (AskTurnInput(decision_id=None, sentence="", error="temporary timeout from ask", resolved_channel="terminal"), ""),
+        (AskTurnInput(decision_id=None, sentence="", error="permission denied", resolved_channel="terminal"), "stop"),
+        (AskTurnInput(decision_id=None, sentence="   ", error=None, resolved_channel="terminal"), ""),
+        (AskTurnInput(decision_id=STOP_DECISION_ID, sentence="", error=None, resolved_channel="terminal"), "stop"),
+    ],
+)
+def test_run_cli_mode_error_empty_and_stop_paths_do_not_overwrite_recent_successful_channel(
+    ask_result: AskTurnInput, expected_utterance: str
+) -> None:
+    runtime_state: dict[str, object] = {"last_successful_ask_channel_context": "satellite"}
+
+    class _FakeGateway:
+        def request_turn_input_for_policy(
+            self,
+            *,
+            interaction_policy: InteractionPolicyRequest,
+            question: str,
+            timeout_s: float = 60.0,
+            recent_successful_channel_context: str | None = None,
+        ) -> AskTurnInput:
+            assert recent_successful_channel_context == "satellite"
+            return ask_result
+
+    observed: dict[str, object] = {}
+
+    def _fake_run_chat_loop(*, read_user_utterance, **_kwargs):
+        observed["utterance"] = read_user_utterance()
+
+    sat_runtime_modes.run_cli_mode(
+        runtime=runtime_state,
+        llm=SimpleNamespace(),
+        store=SimpleNamespace(),
+        chat_history=deque(),
+        near_tie_delta=0.05,
+        capability_snapshot=SimpleNamespace(),
+        clock=SimpleNamespace(),
+        ask_gateway=_FakeGateway(),
+        run_chat_loop=_fake_run_chat_loop,
+    )
+
+    assert observed["utterance"] == expected_utterance
+    assert runtime_state["last_successful_ask_channel_context"] == "satellite"
 
 def test_parse_args_defaults() -> None:
     args = parse_args([])
