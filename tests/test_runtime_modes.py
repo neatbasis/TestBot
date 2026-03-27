@@ -249,6 +249,161 @@ def test_run_cli_mode_uses_terminal_channel_ask_gateway(monkeypatch) -> None:
         run_chat_loop=_fake_run_chat_loop,
     )
 
+
+@pytest.mark.parametrize(
+    ("decision_id", "sentence"),
+    [
+        (STOP_DECISION_ID, ""),
+        ("cancelled", ""),
+        ("user_aborted", ""),
+        ("eof", ""),
+        (None, "stop"),
+        (None, "cancel"),
+        (None, "EXIT"),
+    ],
+)
+def test_run_cli_mode_collapses_terminal_stop_signals_to_stop(decision_id: str | None, sentence: str) -> None:
+    class _FakeGateway:
+        def request_turn_input(
+            self,
+            *,
+            channel: str,
+            question: str,
+            timeout_s: float = 60.0,
+            interaction_requirements: InteractionRequirements,
+        ) -> AskTurnInput:
+            return AskTurnInput(decision_id=decision_id, sentence=sentence, error=None)
+
+    observed: dict[str, object] = {}
+
+    def _fake_run_chat_loop(*, read_user_utterance, capability_status, **_kwargs):
+        observed["capability_status"] = capability_status
+        observed["utterance"] = read_user_utterance()
+
+    sat_runtime_modes.run_cli_mode(
+        runtime={},
+        llm=SimpleNamespace(),
+        store=SimpleNamespace(),
+        chat_history=deque(),
+        near_tie_delta=0.05,
+        capability_snapshot=SimpleNamespace(),
+        clock=SimpleNamespace(),
+        ask_gateway=_FakeGateway(),
+        run_chat_loop=_fake_run_chat_loop,
+    )
+
+    assert observed["capability_status"] == "ask_available"
+    assert observed["utterance"] == "stop"
+
+
+def test_run_cli_mode_reports_retryable_ask_errors_as_retry_prompt() -> None:
+    class _FakeGateway:
+        def request_turn_input(
+            self,
+            *,
+            channel: str,
+            question: str,
+            timeout_s: float = 60.0,
+            interaction_requirements: InteractionRequirements,
+        ) -> AskTurnInput:
+            return AskTurnInput(decision_id=None, sentence="", error="temporary timeout from ask")
+
+    observed: dict[str, object] = {}
+    output = StringIO()
+
+    def _fake_run_chat_loop(*, read_user_utterance, capability_status, **_kwargs):
+        observed["capability_status"] = capability_status
+        observed["utterance"] = read_user_utterance()
+
+    with redirect_stdout(output):
+        sat_runtime_modes.run_cli_mode(
+            runtime={},
+            llm=SimpleNamespace(),
+            store=SimpleNamespace(),
+            chat_history=deque(),
+            near_tie_delta=0.05,
+            capability_snapshot=SimpleNamespace(),
+            clock=SimpleNamespace(),
+            ask_gateway=_FakeGateway(),
+            run_chat_loop=_fake_run_chat_loop,
+        )
+
+    assert observed["capability_status"] == "ask_available"
+    assert observed["utterance"] == ""
+    assert "Please try again." in output.getvalue()
+
+
+def test_run_cli_mode_stops_on_non_retryable_ask_errors() -> None:
+    class _FakeGateway:
+        def request_turn_input(
+            self,
+            *,
+            channel: str,
+            question: str,
+            timeout_s: float = 60.0,
+            interaction_requirements: InteractionRequirements,
+        ) -> AskTurnInput:
+            return AskTurnInput(decision_id=None, sentence="", error="permission denied")
+
+    observed: dict[str, object] = {}
+    output = StringIO()
+
+    def _fake_run_chat_loop(*, read_user_utterance, capability_status, **_kwargs):
+        observed["capability_status"] = capability_status
+        observed["utterance"] = read_user_utterance()
+
+    with redirect_stdout(output):
+        sat_runtime_modes.run_cli_mode(
+            runtime={},
+            llm=SimpleNamespace(),
+            store=SimpleNamespace(),
+            chat_history=deque(),
+            near_tie_delta=0.05,
+            capability_snapshot=SimpleNamespace(),
+            clock=SimpleNamespace(),
+            ask_gateway=_FakeGateway(),
+            run_chat_loop=_fake_run_chat_loop,
+        )
+
+    assert observed["capability_status"] == "ask_available"
+    assert observed["utterance"] == "stop"
+    assert "Ask input is unavailable (permission denied). Stopping." in output.getvalue()
+
+
+def test_run_cli_mode_handles_empty_ask_reply_as_silence() -> None:
+    class _FakeGateway:
+        def request_turn_input(
+            self,
+            *,
+            channel: str,
+            question: str,
+            timeout_s: float = 60.0,
+            interaction_requirements: InteractionRequirements,
+        ) -> AskTurnInput:
+            return AskTurnInput(decision_id=None, sentence="   ", error=None)
+
+    output = StringIO()
+    observed: dict[str, object] = {}
+
+    def _fake_run_chat_loop(*, read_user_utterance, **_kwargs):
+        observed["utterance"] = read_user_utterance()
+
+    with redirect_stdout(output):
+        sat_runtime_modes.run_cli_mode(
+            runtime={},
+            llm=SimpleNamespace(),
+            store=SimpleNamespace(),
+            chat_history=deque(),
+            near_tie_delta=0.05,
+            capability_snapshot=SimpleNamespace(),
+            clock=SimpleNamespace(),
+            ask_gateway=_FakeGateway(),
+            run_chat_loop=_fake_run_chat_loop,
+        )
+
+    assert observed["utterance"] == ""
+    assert "bot> I heard silence. Try again." in output.getvalue()
+
 def test_parse_args_defaults() -> None:
     args = parse_args([])
     assert args.mode == "auto"

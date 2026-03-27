@@ -18,6 +18,44 @@ from testbot.domain import Clock
 from testbot.interaction_planner import select_interaction_requirements
 from testbot.ports import MemoryStorePort
 
+_TERMINAL_STOP_DECISION_IDS = frozenset(
+    {
+        STOP_DECISION_ID,
+        "cancel",
+        "cancelled",
+        "user_cancelled",
+        "user_aborted",
+        "abort",
+        "aborted",
+        "interrupted",
+        "interrupt",
+        "eof",
+    }
+)
+_TERMINAL_STOP_SENTENCES = frozenset({"stop", "quit", "exit", "cancel", "abort"})
+_RETRYABLE_ERROR_MARKERS = (
+    "timeout",
+    "temporar",
+    "unavailable",
+    "try again",
+    "connection",
+    "network",
+    "reset",
+)
+
+
+def _is_terminal_stop_signal(*, decision_id: str | None, sentence: str) -> bool:
+    normalized_decision = str(decision_id or "").strip().lower()
+    if normalized_decision in _TERMINAL_STOP_DECISION_IDS:
+        return True
+    normalized_sentence = sentence.strip().lower()
+    return normalized_sentence in _TERMINAL_STOP_SENTENCES
+
+
+def _is_retryable_ask_error(error: str) -> bool:
+    normalized_error = error.strip().lower()
+    return any(marker in normalized_error for marker in _RETRYABLE_ERROR_MARKERS)
+
 
 def run_cli_mode(
     *,
@@ -32,6 +70,8 @@ def run_cli_mode(
     run_chat_loop: Callable[..., None],
 ) -> None:
     print("CLI chat ready. Ask memory-grounded questions; type 'stop' to exit.")
+    # Input collection is Ask-backed in CLI mode; output remains direct print() for now.
+    # This split is intentional until output-channel unification is explicitly scheduled.
 
     interaction_plan = select_interaction_requirements(
         need_profile="ask_turn_input",
@@ -46,11 +86,17 @@ def run_cli_mode(
             timeout_s=60.0,
             interaction_requirements=interaction_plan.interaction_requirements,
         )
-        if ask_result.error:
-            print(f"bot> I didn't get that. Error: {ask_result.error}")
-            return ""
-        if ask_result.decision_id == STOP_DECISION_ID:
+        if _is_terminal_stop_signal(decision_id=ask_result.decision_id, sentence=ask_result.sentence):
             return "stop"
+        if ask_result.error:
+            if _is_retryable_ask_error(ask_result.error):
+                print(f"bot> I didn't get that yet ({ask_result.error}). Please try again.")
+                return ""
+            print(f"bot> Ask input is unavailable ({ask_result.error}). Stopping.")
+            return "stop"
+        if not ask_result.sentence.strip():
+            print("bot> I heard silence. Try again.")
+            return ""
         return ask_result.sentence
 
     def _send(text: str) -> None:

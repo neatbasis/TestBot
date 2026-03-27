@@ -111,6 +111,10 @@ python -m testbot.entrypoints.sat_cli
 
 Say `stop` to end the loop.
 
+Operational note for CLI mode:
+- Turn acquisition is Ask-backed (`terminal` Ask channel) with explicit stop/cancel collapse to `stop`.
+- Assistant output remains direct CLI printing for now (intentional temporary split).
+
 ## Quick acceptance checklist
 
 - [ ] Bot process starts without import/config errors.
