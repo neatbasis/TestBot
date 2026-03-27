@@ -46,11 +46,6 @@ def _warn_legacy_runtime_bridge() -> None:
     _LEGACY_RUNTIME_WARNING_EMITTED = True
 
 
-def parse_args(argv: list[str] | None = None):
-    _warn_legacy_runtime_bridge()
-    return _legacy_runtime.parse_args(argv)
-
-
 def read_runtime_env() -> dict[str, object]:
     _warn_legacy_runtime_bridge()
     return _legacy_runtime.read_runtime_env()
@@ -103,7 +98,6 @@ def sat_say(client: Client, entity_id: str, text: str) -> None:
 
 __all__ = [
     "build_runtime_memory_store",
-    "parse_args",
     "read_runtime_env",
     "run_chat_loop",
     "run_source_ingestion",
