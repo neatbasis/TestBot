@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from collections import deque
 import sys
+from types import SimpleNamespace
 
 from langchain_ollama import ChatOllama, OllamaEmbeddings
 
@@ -15,14 +16,14 @@ from testbot.adapters.ask_gateway import AskGateway
 from testbot.domain import build_system_clock
 from testbot.entrypoints.sat_runtime_modes import run_cli_mode, run_satellite_mode
 from testbot.observability.session_log import append_session_log
+from testbot.runtime_capability_service import build_capability_snapshot
+from testbot.startup_status_presenter import print_startup_status
 
 # Legacy bridge imports are intentionally grouped and replaced incrementally
 # as extracted runtime ownership becomes stable.
 from testbot.entrypoints.runtime_legacy_bridge import (
-    build_capability_snapshot,
     build_runtime_memory_store,
     parse_args,
-    print_startup_status,
     read_runtime_env,
     run_chat_loop,
     run_source_ingestion,
@@ -56,7 +57,17 @@ def main(argv: list[str] | None = None) -> None:
             "exit_reason": capability_snapshot.exit_reason,
         },
     )
-    print_startup_status(snapshot=capability_snapshot)
+    startup_status_snapshot = SimpleNamespace(
+        runtime=runtime,
+        effective_mode=capability_snapshot.effective_mode,
+        requested_mode=capability_snapshot.requested_mode,
+        daemon_mode=capability_snapshot.daemon_mode,
+        fallback_reason=capability_snapshot.fallback_reason,
+        ollama_error=capability_snapshot.ollama_error,
+        ha_error=capability_snapshot.ha_error,
+        runtime_capability_status=capability_snapshot.runtime_capability_status,
+    )
+    print_startup_status(snapshot=startup_status_snapshot)
 
     if capability_snapshot.effective_mode is None:
         if args.mode == "auto" and args.daemon:

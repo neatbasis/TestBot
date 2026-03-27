@@ -56,15 +56,6 @@ def read_runtime_env() -> dict[str, object]:
     return _legacy_runtime.read_runtime_env()
 
 
-def build_capability_snapshot(*, requested_mode: str, daemon_mode: bool, runtime: dict[str, object]):
-    _warn_legacy_runtime_bridge()
-    return _legacy_runtime.build_capability_snapshot(
-        requested_mode=requested_mode,
-        daemon_mode=daemon_mode,
-        runtime=runtime,
-    )
-
-
 def build_runtime_memory_store(*, runtime: dict[str, object], embeddings: Embeddings) -> MemoryStorePort:
     _warn_legacy_runtime_bridge()
     return _legacy_runtime.build_runtime_memory_store(runtime=runtime, embeddings=embeddings)
@@ -73,11 +64,6 @@ def build_runtime_memory_store(*, runtime: dict[str, object], embeddings: Embedd
 def run_source_ingestion(*, runtime: dict[str, object], store: MemoryStorePort) -> None:
     _warn_legacy_runtime_bridge()
     _legacy_runtime.run_source_ingestion(runtime=runtime, store=store)
-
-
-def print_startup_status(*, snapshot: object) -> None:
-    _warn_legacy_runtime_bridge()
-    _legacy_runtime.print_startup_status(snapshot=snapshot)
 
 
 def run_chat_loop(
@@ -116,10 +102,8 @@ def sat_say(client: Client, entity_id: str, text: str) -> None:
 
 
 __all__ = [
-    "build_capability_snapshot",
     "build_runtime_memory_store",
     "parse_args",
-    "print_startup_status",
     "read_runtime_env",
     "run_chat_loop",
     "run_source_ingestion",

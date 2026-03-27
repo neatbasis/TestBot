@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import re
 from collections import deque
 from contextlib import redirect_stdout
 from io import StringIO
@@ -39,7 +40,17 @@ def test_runtime_legacy_bridge_warns_on_monolith_compat_usage() -> None:
 
 def test_sat_cli_uses_explicit_runtime_legacy_bridge_import() -> None:
     source = Path(sat_cli.__file__).read_text()
-    assert "from testbot.entrypoints.runtime_legacy_bridge import" in source
+    bridge_import_match = re.search(
+        r"from testbot\.entrypoints\.runtime_legacy_bridge import \((?P<names>.*?)\)",
+        source,
+        re.DOTALL,
+    )
+    assert bridge_import_match is not None
+    bridge_import_names = bridge_import_match.group("names")
+    assert "build_capability_snapshot" not in bridge_import_names
+    assert "print_startup_status" not in bridge_import_names
+    assert "from testbot.runtime_capability_service import build_capability_snapshot" in source
+    assert "from testbot.startup_status_presenter import print_startup_status" in source
     assert "from testbot.sat_chatbot_memory_v2 import" not in source
 
 
@@ -465,6 +476,47 @@ def _patch_main_dependencies(
     monkeypatch.setattr(sat_cli, "read_runtime_env", lambda: runtime_env)
     monkeypatch.setattr(runtime, "_ha_connection_error", lambda *_args, **_kwargs: ha_error)
     monkeypatch.setattr(runtime, "_ollama_connection_error", lambda *_args, **_kwargs: ollama_error)
+
+    def _fake_build_capability_snapshot(*, requested_mode: str, daemon_mode: bool, runtime: dict[str, object]):
+        if ollama_error is not None:
+            effective_mode = None
+            fallback_reason = None
+            exit_reason = f"Ollama is unavailable: {ollama_error}"
+        elif requested_mode == "auto" and ha_error is not None and daemon_mode:
+            effective_mode = None
+            fallback_reason = None
+            exit_reason = f"Home Assistant is unavailable: {ha_error}"
+        else:
+            selected_mode = resolve_mode(requested_mode, ha_error)
+            if selected_mode == "satellite" and ha_error is not None:
+                if daemon_mode:
+                    effective_mode = None
+                    fallback_reason = None
+                    exit_reason = f"Home Assistant is unavailable: {ha_error}"
+                else:
+                    effective_mode = "cli"
+                    fallback_reason = "satellite connection is unavailable"
+                    exit_reason = None
+            else:
+                effective_mode = selected_mode
+                fallback_reason = None
+                exit_reason = None
+
+        return SimpleNamespace(
+            requested_mode=requested_mode,
+            daemon_mode=daemon_mode,
+            effective_mode=effective_mode,
+            fallback_reason=fallback_reason,
+            exit_reason=exit_reason,
+            ha_error=ha_error,
+            ollama_error=ollama_error,
+            runtime_capability_status=SimpleNamespace(
+                debug_enabled=False,
+                debug_verbose=bool(runtime.get("debug_verbose", False)),
+            ),
+        )
+
+    monkeypatch.setattr(sat_cli, "build_capability_snapshot", _fake_build_capability_snapshot)
     if startup is not None:
         def _capture_startup(**kwargs):
             startup.update(kwargs)
