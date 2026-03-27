@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import json
 import os
+from dataclasses import dataclass
 from collections.abc import Callable
+from typing import Protocol
 from urllib.error import URLError
 from urllib.parse import urljoin, urlparse
 from urllib.request import Request, urlopen
@@ -10,6 +12,39 @@ from urllib.request import Request, urlopen
 from homeassistant_api import Client
 
 from testbot.adapters.ask_gateway import normalize_ha_rest_url
+
+
+@dataclass(frozen=True, slots=True)
+class RuntimeCapabilityStatusData:
+    ollama_available: bool
+    ha_available: bool
+    effective_mode: str
+    requested_mode: str
+    daemon_mode: bool
+    fallback_reason: str | None
+    memory_backend: str
+    debug_enabled: bool
+    debug_verbose: bool
+    text_clarification_available: bool
+    satellite_ask_available: bool
+
+
+@dataclass(frozen=True, slots=True)
+class CapabilitySnapshotData:
+    requested_mode: str
+    daemon_mode: bool
+    effective_mode: str | None
+    fallback_reason: str | None
+    exit_reason: str | None
+    ha_error: str | None
+    ollama_error: str | None
+    runtime_capability_status: RuntimeCapabilityStatusData
+
+
+class RuntimeConfigView(Protocol):
+    def __getitem__(self, key: str) -> object: ...
+
+    def get(self, key: str, default: object | None = None) -> object: ...
 
 
 def ha_connection_error(
@@ -124,15 +159,14 @@ def build_runtime_capability_status(
     effective_mode: str | None,
     daemon_mode: bool,
     fallback_reason: str | None,
-    runtime: dict[str, object],
+    runtime: RuntimeConfigView,
     ha_error: str | None,
     ollama_error: str | None,
-    runtime_capability_status_factory: Callable[..., object],
-) -> object:
+) -> RuntimeCapabilityStatusData:
     effective = effective_mode or "unavailable"
     can_text_clarify = effective in {"cli", "satellite"}
     can_satellite_ask = ha_error is None and effective == "satellite"
-    return runtime_capability_status_factory(
+    return RuntimeCapabilityStatusData(
         ollama_available=ollama_error is None,
         ha_available=ha_error is None,
         effective_mode=effective,
@@ -151,12 +185,10 @@ def build_capability_snapshot(
     *,
     requested_mode: str,
     daemon_mode: bool,
-    runtime: dict[str, object],
-    runtime_capability_status_factory: Callable[..., object],
-    capability_snapshot_factory: Callable[..., object],
+    runtime: RuntimeConfigView,
     ha_connection_error_fn: Callable[[str, str, str], str | None] = ha_connection_error,
     ollama_connection_error_fn: Callable[..., str | None] = ollama_connection_error,
-) -> object:
+) -> CapabilitySnapshotData:
     ha_error = ha_connection_error_fn(
         str(runtime["ha_api_url"]),
         str(runtime["ha_api_token"]),
@@ -184,11 +216,9 @@ def build_capability_snapshot(
         runtime=runtime,
         ha_error=ha_error,
         ollama_error=ollama_error,
-        runtime_capability_status_factory=runtime_capability_status_factory,
     )
 
-    return capability_snapshot_factory(
-        runtime=runtime,
+    return CapabilitySnapshotData(
         requested_mode=requested_mode,
         daemon_mode=daemon_mode,
         effective_mode=effective_mode,
@@ -201,6 +231,8 @@ def build_capability_snapshot(
 
 
 __all__ = [
+    "CapabilitySnapshotData",
+    "RuntimeCapabilityStatusData",
     "build_capability_snapshot",
     "build_runtime_capability_status",
     "ha_connection_error",

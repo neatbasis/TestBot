@@ -3668,7 +3668,7 @@ def _build_runtime_capability_status(
     ha_error: str | None,
     ollama_error: str | None,
 ) -> RuntimeCapabilityStatus:
-    return build_runtime_capability_status_from_service(
+    service_status = build_runtime_capability_status_from_service(
         requested_mode=requested_mode,
         effective_mode=effective_mode,
         daemon_mode=daemon_mode,
@@ -3676,19 +3676,53 @@ def _build_runtime_capability_status(
         runtime=runtime,
         ha_error=ha_error,
         ollama_error=ollama_error,
-        runtime_capability_status_factory=RuntimeCapabilityStatus,
+    )
+    return RuntimeCapabilityStatus(
+        ollama_available=service_status.ollama_available,
+        ha_available=service_status.ha_available,
+        effective_mode=service_status.effective_mode,
+        requested_mode=service_status.requested_mode,
+        daemon_mode=service_status.daemon_mode,
+        fallback_reason=service_status.fallback_reason,
+        memory_backend=service_status.memory_backend,
+        debug_enabled=service_status.debug_enabled,
+        debug_verbose=service_status.debug_verbose,
+        text_clarification_available=service_status.text_clarification_available,
+        satellite_ask_available=service_status.satellite_ask_available,
     )
 
 
 def build_capability_snapshot(*, requested_mode: str, daemon_mode: bool, runtime: dict[str, object]) -> CapabilitySnapshot:
-    return build_capability_snapshot_from_service(
+    service_snapshot = build_capability_snapshot_from_service(
         requested_mode=requested_mode,
         daemon_mode=daemon_mode,
         runtime=runtime,
-        runtime_capability_status_factory=RuntimeCapabilityStatus,
-        capability_snapshot_factory=CapabilitySnapshot,
         ha_connection_error_fn=_ha_connection_error,
         ollama_connection_error_fn=_ollama_connection_error,
+    )
+    runtime_capability_status = RuntimeCapabilityStatus(
+        ollama_available=service_snapshot.runtime_capability_status.ollama_available,
+        ha_available=service_snapshot.runtime_capability_status.ha_available,
+        effective_mode=service_snapshot.runtime_capability_status.effective_mode,
+        requested_mode=service_snapshot.runtime_capability_status.requested_mode,
+        daemon_mode=service_snapshot.runtime_capability_status.daemon_mode,
+        fallback_reason=service_snapshot.runtime_capability_status.fallback_reason,
+        memory_backend=service_snapshot.runtime_capability_status.memory_backend,
+        debug_enabled=service_snapshot.runtime_capability_status.debug_enabled,
+        debug_verbose=service_snapshot.runtime_capability_status.debug_verbose,
+        text_clarification_available=service_snapshot.runtime_capability_status.text_clarification_available,
+        satellite_ask_available=service_snapshot.runtime_capability_status.satellite_ask_available,
+    )
+    return CapabilitySnapshot(
+        runtime=runtime,
+        requested_mode=service_snapshot.requested_mode,
+        daemon_mode=service_snapshot.daemon_mode,
+        effective_mode=service_snapshot.effective_mode,
+        fallback_reason=service_snapshot.fallback_reason,
+        exit_reason=service_snapshot.exit_reason,
+        ha_error=service_snapshot.ha_error,
+        ollama_error=service_snapshot.ollama_error,
+        runtime_capability_status=runtime_capability_status,
     )
 
 

@@ -23,5 +23,11 @@ def test_select_interaction_requirements_fallback_rule() -> None:
         task_flow_context="general",
     )
 
-    assert plan.interaction_requirements == InteractionRequirements()
-    assert plan.rule_id == "fallback.default.v1"
+    assert plan.interaction_requirements == InteractionRequirements(
+        stable_id_required=False,
+        deterministic_field_collection_required=False,
+        open_text_preferred=True,
+        sentence_style_fit="plain_sentence",
+        machine_actionable=False,
+    )
+    assert plan.rule_id == "cli.turn_input.free_text.v1"

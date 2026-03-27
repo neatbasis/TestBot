@@ -3,19 +3,40 @@ from __future__ import annotations
 from types import SimpleNamespace
 
 from testbot import sat_chatbot_memory_v2 as runtime
+from testbot.runtime_capability_service import CapabilitySnapshotData, RuntimeCapabilityStatusData
 
 
 def test_build_capability_snapshot_delegates_to_runtime_capability_service(monkeypatch) -> None:
     captured: dict[str, object] = {}
-    sentinel = SimpleNamespace(name="snapshot")
 
     def _fake_service(**kwargs):
         captured.update(kwargs)
-        return sentinel
+        return CapabilitySnapshotData(
+            requested_mode="auto",
+            daemon_mode=False,
+            effective_mode="cli",
+            fallback_reason="satellite connection is unavailable",
+            exit_reason=None,
+            ha_error="Missing HA_API_TOKEN",
+            ollama_error=None,
+            runtime_capability_status=RuntimeCapabilityStatusData(
+                ollama_available=True,
+                ha_available=False,
+                effective_mode="cli",
+                requested_mode="auto",
+                daemon_mode=False,
+                fallback_reason="satellite connection is unavailable",
+                memory_backend="in_memory",
+                debug_enabled=False,
+                debug_verbose=False,
+                text_clarification_available=True,
+                satellite_ask_available=False,
+            ),
+        )
 
     monkeypatch.setattr(runtime, "build_capability_snapshot_from_service", _fake_service)
 
-    result = runtime.build_capability_snapshot(
+    snapshot = runtime.build_capability_snapshot(
         requested_mode="auto",
         daemon_mode=False,
         runtime={
@@ -28,12 +49,11 @@ def test_build_capability_snapshot_delegates_to_runtime_capability_service(monke
         },
     )
 
-    assert result is sentinel
     assert captured["requested_mode"] == "auto"
-    assert captured["runtime_capability_status_factory"] is runtime.RuntimeCapabilityStatus
-    assert captured["capability_snapshot_factory"] is runtime.CapabilitySnapshot
     assert captured["ha_connection_error_fn"] is runtime._ha_connection_error
     assert captured["ollama_connection_error_fn"] is runtime._ollama_connection_error
+    assert snapshot.effective_mode == "cli"
+    assert snapshot.runtime_capability_status.satellite_ask_available is False
 
 
 def test_print_startup_status_delegates_to_presenter(monkeypatch) -> None:

@@ -1,34 +1,47 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping
+from typing import Protocol
 
 
-def render_startup_status_lines(*, snapshot: object) -> list[str]:
-    runtime = getattr(snapshot, "runtime")
-    effective_mode = getattr(snapshot, "effective_mode") or "unavailable"
-    requested_mode = getattr(snapshot, "requested_mode")
-    daemon_mode = getattr(snapshot, "daemon_mode")
-    fallback_reason = getattr(snapshot, "fallback_reason")
-    ollama_error = getattr(snapshot, "ollama_error")
-    ha_error = getattr(snapshot, "ha_error")
-    capability_status = getattr(snapshot, "runtime_capability_status")
+class RuntimeCapabilityStatusView(Protocol):
+    debug_enabled: bool
+    debug_verbose: bool
+
+
+class CapabilitySnapshotView(Protocol):
+    runtime: Mapping[str, object]
+    effective_mode: str | None
+    requested_mode: str
+    daemon_mode: bool
+    fallback_reason: str | None
+    ollama_error: str | None
+    ha_error: str | None
+    runtime_capability_status: RuntimeCapabilityStatusView
+
+
+def render_startup_status_lines(*, snapshot: CapabilitySnapshotView) -> list[str]:
+    runtime = snapshot.runtime
+    effective_mode = snapshot.effective_mode or "unavailable"
 
     lines = ["=== TestBot startup status ==="]
-    if fallback_reason:
+    if snapshot.fallback_reason:
         lines.append(
             "Selected mode: "
-            f"{effective_mode} (requested={requested_mode}, "
-            f"fallback reason={fallback_reason}, daemon={daemon_mode})"
+            f"{effective_mode} (requested={snapshot.requested_mode}, "
+            f"fallback reason={snapshot.fallback_reason}, daemon={snapshot.daemon_mode})"
         )
     else:
-        lines.append(f"Selected mode: {effective_mode} (requested={requested_mode}, daemon={daemon_mode})")
+        lines.append(
+            f"Selected mode: {effective_mode} (requested={snapshot.requested_mode}, daemon={snapshot.daemon_mode})"
+        )
 
     lines.append(
         f"Ollama endpoint: {runtime['ollama_base_url']} "
         f"chat_model={runtime['ollama_model']} embed_model={runtime['ollama_embedding_model']}"
     )
-    if ollama_error:
-        lines.append(f"Ollama: unavailable ({ollama_error})")
+    if snapshot.ollama_error:
+        lines.append(f"Ollama: unavailable ({snapshot.ollama_error})")
         lines.append(
             "Install warning [RED]: Ollama capability is unavailable; verify OLLAMA_BASE_URL and pull required models before restarting."
         )
@@ -42,14 +55,14 @@ def render_startup_status_lines(*, snapshot: object) -> list[str]:
         )
 
     lines.append(f"Memory backend: {runtime['memory_store_backend']}")
-    debug_mode = "enabled" if getattr(capability_status, "debug_enabled") else "disabled"
-    debug_verbose = "enabled" if getattr(capability_status, "debug_verbose") else "disabled"
+    debug_mode = "enabled" if snapshot.runtime_capability_status.debug_enabled else "disabled"
+    debug_verbose = "enabled" if snapshot.runtime_capability_status.debug_verbose else "disabled"
     lines.append(
         f"Debug tracing: {debug_mode} (TESTBOT_DEBUG), verbose payloads: {debug_verbose} (TESTBOT_DEBUG_VERBOSE/--debug-verbose)"
     )
 
-    if ha_error:
-        lines.append(f"Home Assistant: unavailable ({ha_error})")
+    if snapshot.ha_error:
+        lines.append(f"Home Assistant: unavailable ({snapshot.ha_error})")
         lines.append(
             "Install warning [YELLOW]: Home Assistant capability is degraded; configure HA_API_TOKEN and HA_SATELLITE_ENTITY_ID to enable satellite mode."
         )
@@ -70,9 +83,9 @@ def render_startup_status_lines(*, snapshot: object) -> list[str]:
     return lines
 
 
-def print_startup_status(*, snapshot: object) -> None:
+def print_startup_status(*, snapshot: CapabilitySnapshotView) -> None:
     for line in render_startup_status_lines(snapshot=snapshot):
         print(line)
 
 
-__all__ = ["print_startup_status", "render_startup_status_lines"]
+__all__ = ["CapabilitySnapshotView", "RuntimeCapabilityStatusView", "print_startup_status", "render_startup_status_lines"]
