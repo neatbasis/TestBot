@@ -75,17 +75,13 @@ class AskGateway:
     def normalized_ha_rest_url(self) -> str:
         return normalize_ha_rest_url(str(self._client.config.ha_api_url or ""))
 
-    def satellite_turn_interaction_requirements(self) -> InteractionRequirements:
-        return InteractionRequirements(
-            stable_id_required=True,
-            deterministic_field_collection_required=True,
-            open_text_preferred=True,
-            sentence_style_fit="plain_sentence",
-            machine_actionable=True,
-        )
-
-    def request_satellite_turn_input(self, *, question: str, timeout_s: float = 60.0) -> AskTurnInput:
-        interaction_requirements = self.satellite_turn_interaction_requirements()
+    def satellite_turn_spec(
+        self,
+        *,
+        question: str,
+        timeout_s: float = 60.0,
+        interaction_requirements: InteractionRequirements,
+    ) -> AskSpec:
         interaction_requirements.validate()
         formatted_question = _format_question(
             question=question,
@@ -109,10 +105,23 @@ class AskGateway:
             else timeout_s
         )
 
-        spec = AskSpec(
+        return AskSpec(
             question=formatted_question,
             answers=answers,
             timeout_s=effective_timeout_s,
+        )
+
+    def request_satellite_turn_input(
+        self,
+        *,
+        question: str,
+        timeout_s: float = 60.0,
+        interaction_requirements: InteractionRequirements,
+    ) -> AskTurnInput:
+        spec = self.satellite_turn_spec(
+            question=question,
+            timeout_s=timeout_s,
+            interaction_requirements=interaction_requirements,
         )
         result = self._client.ask_question(channel="satellite", spec=spec)
         return AskTurnInput(

@@ -11,6 +11,7 @@ from urllib.error import HTTPError
 
 from testbot.entrypoints import sat_cli
 from testbot.adapters.ask_gateway import AskTurnInput, STOP_DECISION_ID
+from testbot.interaction_standards import InteractionRequirements
 from testbot.entrypoints import sat_runtime_modes
 from testbot.sat_chatbot_memory_v2 import CLARIFY_ANSWER, parse_args, resolve_mode, resolve_turn_intent
 from testbot import sat_chatbot_memory_v2 as runtime
@@ -38,9 +39,16 @@ def test_run_satellite_mode_uses_gateway_with_stable_stop_id(monkeypatch) -> Non
         def normalized_ha_rest_url(self) -> str:
             return "http://localhost:8123/api"
 
-        def request_satellite_turn_input(self, *, question: str, timeout_s: float = 60.0) -> AskTurnInput:
+        def request_satellite_turn_input(
+            self,
+            *,
+            question: str,
+            timeout_s: float = 60.0,
+            interaction_requirements: InteractionRequirements,
+        ) -> AskTurnInput:
             assert question == "Ask one memory-grounded question."
             assert timeout_s == 60.0
+            assert interaction_requirements == InteractionRequirements()
             return AskTurnInput(decision_id=STOP_DECISION_ID, sentence="", error=None)
 
 
