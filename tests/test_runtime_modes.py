@@ -199,12 +199,19 @@ def test_parse_args_defaults() -> None:
     args = parse_args([])
     assert args.mode == "auto"
     assert args.daemon is False
+    assert args.source_ingestion == "env"
 
 
 def test_parse_args_satellite_daemon() -> None:
     args = parse_args(["--mode", "satellite", "--daemon"])
     assert args.mode == "satellite"
     assert args.daemon is True
+    assert args.source_ingestion == "env"
+
+
+def test_parse_args_source_ingestion_selection() -> None:
+    args = parse_args(["--source-ingestion", "wikipedia"])
+    assert args.source_ingestion == "wikipedia"
 
 
 
@@ -643,6 +650,38 @@ def test_main_kicks_off_source_ingestion_and_applies_debug_verbose_override(monk
 
     assert startup["effective_mode"] == "cli"
     assert calls["ingestion"] == 1
+
+
+def test_main_cli_source_ingestion_selection_is_authoritative_over_env(monkeypatch) -> None:
+    calls = {"cli": 0, "satellite": 0}
+    runtime_env: dict[str, object] = {
+        "source_ingest_enabled": False,
+        "source_connector_type": "fixture",
+    }
+    observed: dict[str, object] = {}
+
+    _patch_main_dependencies(
+        monkeypatch,
+        args=SimpleNamespace(mode="cli", daemon=False, debug_verbose=None, source_ingestion="wikipedia"),
+        ha_error=None,
+        ollama_error=None,
+        calls=calls,
+        runtime_overrides=runtime_env,
+    )
+
+    def _capture_ingestion(*, runtime: dict[str, object], **_kwargs):
+        observed["enabled"] = runtime["source_ingest_enabled"]
+        observed["connector"] = runtime["source_connector_type"]
+        observed["selected_via"] = runtime["source_ingest_selection_source"]
+
+    monkeypatch.setattr(sat_cli, "run_source_ingestion", _capture_ingestion)
+    runtime.main([])
+
+    assert observed == {
+        "enabled": True,
+        "connector": "wikipedia",
+        "selected_via": "cli",
+    }
 
 
 def test_main_uses_domain_clock_provider_for_cli_wiring(monkeypatch) -> None:
