@@ -795,7 +795,7 @@ def _read_runtime_env() -> dict[str, object]:
     memory_store_mode = os.getenv("MEMORY_STORE_MODE", "in_memory")
     debug_verbose = os.getenv("TESTBOT_DEBUG_VERBOSE", "0") == "1"
     return {
-        "ha_api_url": config.HA_BASE_URL,
+        "ha_base_url": config.HA_BASE_URL,
         "ha_api_token": config.HA_API_TOKEN,
         "ha_satellite_entity_id": config.HA_SATELLITE_ENTITY_ID,
         "ollama_base_url": config.OLLAMA_BASE_URL,

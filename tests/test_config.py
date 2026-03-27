@@ -44,7 +44,7 @@ def test_config_loads_from_process_environment() -> None:
     ]
 
 
-def test_config_prefers_ha_base_url_over_ha_api_url_alias() -> None:
+def test_config_reads_home_assistant_base_url_from_ha_base_url_env() -> None:
     command = [
         sys.executable,
         "-c",

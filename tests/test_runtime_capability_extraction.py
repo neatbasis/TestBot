@@ -40,7 +40,7 @@ def test_build_capability_snapshot_delegates_to_runtime_capability_service(monke
         requested_mode="auto",
         daemon_mode=False,
         runtime={
-            "ha_api_url": "http://localhost:8123",
+            "ha_base_url": "http://localhost:8123",
             "ha_api_token": "token",
             "ha_satellite_entity_id": "assist_satellite.kitchen",
             "ollama_base_url": "http://localhost:11434",
