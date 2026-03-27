@@ -38,6 +38,7 @@ _LEGACY_RUNTIME_WARNING = (
 
 
 def _warn_legacy_runtime_bridge() -> None:
+    """Emit a one-time deprecation warning for bridge-backed runtime calls."""
     global _LEGACY_RUNTIME_WARNING_EMITTED
     if _LEGACY_RUNTIME_WARNING_EMITTED:
         return
