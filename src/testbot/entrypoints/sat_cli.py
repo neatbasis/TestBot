@@ -125,5 +125,6 @@ def main(argv: list[str] | None = None) -> None:
         near_tie_delta=float(runtime["memory_near_tie_delta"]),
         capability_snapshot=capability_snapshot,
         clock=clock,
+        ask_gateway=AskGateway.from_runtime(runtime),
         run_chat_loop=run_chat_loop,
     )

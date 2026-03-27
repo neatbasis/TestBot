@@ -28,15 +28,30 @@ def run_cli_mode(
     near_tie_delta: float,
     capability_snapshot: object,
     clock: Clock,
+    ask_gateway: AskGateway,
     run_chat_loop: Callable[..., None],
 ) -> None:
     print("CLI chat ready. Ask memory-grounded questions; type 'stop' to exit.")
 
+    interaction_plan = select_interaction_requirements(
+        need_profile="ask_turn_input",
+        channel_context="cli",
+        task_flow_context="memory_chat_loop",
+    )
+
     def _read() -> str | None:
-        try:
-            return input("you> ")
-        except EOFError:
-            return None
+        ask_result = ask_gateway.request_turn_input(
+            channel="terminal",
+            question="Ask one memory-grounded question.",
+            timeout_s=60.0,
+            interaction_requirements=interaction_plan.interaction_requirements,
+        )
+        if ask_result.error:
+            print(f"bot> I didn't get that. Error: {ask_result.error}")
+            return ""
+        if ask_result.decision_id == STOP_DECISION_ID:
+            return "stop"
+        return ask_result.sentence
 
     def _send(text: str) -> None:
         print(f"bot> {text}")
@@ -48,7 +63,7 @@ def run_cli_mode(
         chat_history=chat_history,
         near_tie_delta=near_tie_delta,
         io_channel="cli",
-        capability_status="ask_unavailable",
+        capability_status="ask_available",
         capability_snapshot=capability_snapshot,
         read_user_utterance=_read,
         send_assistant_text=_send,
@@ -74,13 +89,14 @@ def run_satellite_mode(
         satellite_say(client, entity_id, "v0 memory loop online. Say 'stop' to exit.")
 
         interaction_plan = select_interaction_requirements(
-            need_profile="satellite_turn_input",
+            need_profile="ask_turn_input",
             channel_context="satellite",
             task_flow_context="memory_chat_loop",
         )
 
         def _read() -> str | None:
-            ask_result = ask_gateway.request_satellite_turn_input(
+            ask_result = ask_gateway.request_turn_input(
+                channel="satellite",
                 question="Ask one memory-grounded question.",
                 timeout_s=60.0,
                 interaction_requirements=interaction_plan.interaction_requirements,

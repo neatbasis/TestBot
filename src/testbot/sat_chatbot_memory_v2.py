@@ -3600,6 +3600,7 @@ def _run_cli_mode(*, runtime: dict[str, object], llm: ChatOllama, store: MemoryS
         near_tie_delta=near_tie_delta,
         capability_snapshot=capability_snapshot,
         clock=clock,
+        ask_gateway=AskGateway.from_runtime(runtime),
         run_chat_loop=_run_chat_loop,
     )
 
