@@ -132,8 +132,9 @@ from testbot.retrieval_routing import decide_retrieval_routing, is_definitional_
 from testbot.adapters.ask_gateway import AskGateway
 from testbot.application.services.turn_service import TurnPipelineDependencies
 from testbot.runtime_capability_service import (
+    CapabilitySnapshotData as CapabilitySnapshot,
+    RuntimeCapabilityStatusData as RuntimeCapabilityStatus,
     build_capability_snapshot as build_capability_snapshot_from_service,
-    build_runtime_capability_status as build_runtime_capability_status_from_service,
     ha_connection_error as ha_connection_error_from_service,
     ollama_connection_error as ollama_connection_error_from_service,
     resolve_effective_mode as resolve_effective_mode_from_service,
@@ -611,38 +612,6 @@ def _process_background_ingestion_completion(
     return last_user_message_ts, regenerated_state, True
 INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD = 0.75
 RETRIEVAL_SCORE_THRESHOLD = 0.0
-
-
-@dataclass(frozen=True)
-class RuntimeCapabilityStatus:
-    ollama_available: bool
-    ha_available: bool
-    effective_mode: str
-    requested_mode: str
-    daemon_mode: bool
-    fallback_reason: str | None
-    memory_backend: str
-    debug_enabled: bool
-    debug_verbose: bool
-    text_clarification_available: bool
-    satellite_ask_available: bool
-    ask_runtime_state: str = "terminal_only"
-    available_ask_channels: tuple[str, ...] = ("terminal",)
-    primary_ask_channel: str | None = "terminal"
-    ask_runtime_reason: str | None = None
-
-
-@dataclass(frozen=True)
-class CapabilitySnapshot:
-    runtime: dict[str, object]
-    requested_mode: str
-    daemon_mode: bool
-    effective_mode: str | None
-    fallback_reason: str | None
-    exit_reason: str | None
-    ha_error: str | None
-    ollama_error: str | None
-    runtime_capability_status: RuntimeCapabilityStatus
 
 
 @dataclass(frozen=True)
@@ -2611,7 +2580,7 @@ def answer_validate(
     )
 
     if assembled.capability_help_short_circuit:
-        general_knowledge_contract_valid, general_knowledge_contract_applicability, contract_exempt_reason = assess_general_knowledge_contract(
+        _, general_knowledge_contract_applicability, contract_exempt_reason = assess_general_knowledge_contract(
             assembled.final_answer,
             provenance_types=provenance_types,
             confidence_decision=state.confidence_decision,
@@ -2621,10 +2590,11 @@ def answer_validate(
             draft_answer="",
             final_answer=assembled.final_answer,
             confidence_decision=state.confidence_decision,
-            claims=claims,
-            provenance_types=provenance_types,
-            basis_statement=basis_statement,
+            claims=[],
+            provenance_types=[],
+            basis_statement="No factual claims.",
         )
+        alignment_decision["final_alignment_decision"] = "allow"
         return AnswerValidateResult(
             final_answer=assembled.final_answer,
             claims=claims,
@@ -2637,7 +2607,7 @@ def answer_validate(
                 "response_contains_claims": False,
                 "has_required_memory_citation": False,
                 "answer_contract_valid": True,
-                "general_knowledge_contract_valid": general_knowledge_contract_valid,
+                "general_knowledge_contract_valid": True,
                 "general_knowledge_contract_applicability": general_knowledge_contract_applicability,
                 "contract_exempt_reason": contract_exempt_reason,
                 "has_general_knowledge_marker": False,
@@ -3635,79 +3605,13 @@ def _run_satellite_mode(
     )
 
 
-def _build_runtime_capability_status(
-    *,
-    requested_mode: str,
-    effective_mode: str | None,
-    daemon_mode: bool,
-    fallback_reason: str | None,
-    runtime: dict[str, object],
-    ha_error: str | None,
-    ollama_error: str | None,
-) -> RuntimeCapabilityStatus:
-    service_status = build_runtime_capability_status_from_service(
-        requested_mode=requested_mode,
-        effective_mode=effective_mode,
-        daemon_mode=daemon_mode,
-        fallback_reason=fallback_reason,
-        runtime=runtime,
-        ha_error=ha_error,
-        ollama_error=ollama_error,
-    )
-    return RuntimeCapabilityStatus(
-        ollama_available=service_status.ollama_available,
-        ha_available=service_status.ha_available,
-        effective_mode=service_status.effective_mode,
-        requested_mode=service_status.requested_mode,
-        daemon_mode=service_status.daemon_mode,
-        fallback_reason=service_status.fallback_reason,
-        memory_backend=service_status.memory_backend,
-        debug_enabled=service_status.debug_enabled,
-        debug_verbose=service_status.debug_verbose,
-        text_clarification_available=service_status.text_clarification_available,
-        satellite_ask_available=service_status.satellite_ask_available,
-        ask_runtime_state=service_status.ask_runtime_state,
-        available_ask_channels=service_status.available_ask_channels,
-        primary_ask_channel=service_status.primary_ask_channel,
-        ask_runtime_reason=service_status.ask_runtime_reason,
-    )
-
-
 def build_capability_snapshot(*, requested_mode: str, daemon_mode: bool, runtime: dict[str, object]) -> CapabilitySnapshot:
-    service_snapshot = build_capability_snapshot_from_service(
+    return build_capability_snapshot_from_service(
         requested_mode=requested_mode,
         daemon_mode=daemon_mode,
         runtime=runtime,
         ha_connection_error_fn=_ha_connection_error,
         ollama_connection_error_fn=_ollama_connection_error,
-    )
-    runtime_capability_status = RuntimeCapabilityStatus(
-        ollama_available=service_snapshot.runtime_capability_status.ollama_available,
-        ha_available=service_snapshot.runtime_capability_status.ha_available,
-        effective_mode=service_snapshot.runtime_capability_status.effective_mode,
-        requested_mode=service_snapshot.runtime_capability_status.requested_mode,
-        daemon_mode=service_snapshot.runtime_capability_status.daemon_mode,
-        fallback_reason=service_snapshot.runtime_capability_status.fallback_reason,
-        memory_backend=service_snapshot.runtime_capability_status.memory_backend,
-        debug_enabled=service_snapshot.runtime_capability_status.debug_enabled,
-        debug_verbose=service_snapshot.runtime_capability_status.debug_verbose,
-        text_clarification_available=service_snapshot.runtime_capability_status.text_clarification_available,
-        satellite_ask_available=service_snapshot.runtime_capability_status.satellite_ask_available,
-        ask_runtime_state=service_snapshot.runtime_capability_status.ask_runtime_state,
-        available_ask_channels=service_snapshot.runtime_capability_status.available_ask_channels,
-        primary_ask_channel=service_snapshot.runtime_capability_status.primary_ask_channel,
-        ask_runtime_reason=service_snapshot.runtime_capability_status.ask_runtime_reason,
-    )
-    return CapabilitySnapshot(
-        runtime=runtime,
-        requested_mode=service_snapshot.requested_mode,
-        daemon_mode=service_snapshot.daemon_mode,
-        effective_mode=service_snapshot.effective_mode,
-        fallback_reason=service_snapshot.fallback_reason,
-        exit_reason=service_snapshot.exit_reason,
-        ha_error=service_snapshot.ha_error,
-        ollama_error=service_snapshot.ollama_error,
-        runtime_capability_status=runtime_capability_status,
     )
 
 

@@ -27,6 +27,18 @@ from testbot.interaction_standards import InteractionRequirements
 
 
 @dataclass(frozen=True, slots=True)
+class AskRuntimeStatusData:
+    ask_runtime_state: str = "terminal_only"
+    available_ask_channels: tuple[str, ...] = ("terminal",)
+    primary_ask_channel: str | None = "terminal"
+    ask_runtime_reason: str | None = None
+    resolved_channel: str | None = "terminal"
+    resolution_source: ResolutionSource = "named_fallback"
+    fallback_used: bool = True
+    resolution_fallback_reason: str | None = "policy_override_recent_unavailable"
+
+
+@dataclass(frozen=True, slots=True)
 class RuntimeCapabilityStatusData:
     ollama_available: bool
     ha_available: bool
@@ -47,10 +59,33 @@ class RuntimeCapabilityStatusData:
     resolution_source: ResolutionSource = "named_fallback"
     fallback_used: bool = True
     resolution_fallback_reason: str | None = "policy_override_recent_unavailable"
+    ask_runtime: AskRuntimeStatusData | None = None
+
+    def __post_init__(self) -> None:
+        ask_runtime = self.ask_runtime or AskRuntimeStatusData(
+            ask_runtime_state=self.ask_runtime_state,
+            available_ask_channels=self.available_ask_channels,
+            primary_ask_channel=self.primary_ask_channel,
+            ask_runtime_reason=self.ask_runtime_reason,
+            resolved_channel=self.resolved_channel,
+            resolution_source=self.resolution_source,
+            fallback_used=self.fallback_used,
+            resolution_fallback_reason=self.resolution_fallback_reason,
+        )
+        object.__setattr__(self, "ask_runtime", ask_runtime)
+        object.__setattr__(self, "ask_runtime_state", ask_runtime.ask_runtime_state)
+        object.__setattr__(self, "available_ask_channels", ask_runtime.available_ask_channels)
+        object.__setattr__(self, "primary_ask_channel", ask_runtime.primary_ask_channel)
+        object.__setattr__(self, "ask_runtime_reason", ask_runtime.ask_runtime_reason)
+        object.__setattr__(self, "resolved_channel", ask_runtime.resolved_channel)
+        object.__setattr__(self, "resolution_source", ask_runtime.resolution_source)
+        object.__setattr__(self, "fallback_used", ask_runtime.fallback_used)
+        object.__setattr__(self, "resolution_fallback_reason", ask_runtime.resolution_fallback_reason)
 
 
 @dataclass(frozen=True, slots=True)
 class CapabilitySnapshotData:
+    runtime: RuntimeConfigView
     requested_mode: str
     daemon_mode: bool
     effective_mode: str | None
@@ -173,18 +208,13 @@ def resolve_effective_mode(
     return selected_mode, None, None
 
 
-def build_runtime_capability_status(
+def _derive_operational_ask_channels(
     *,
     requested_mode: str,
-    effective_mode: str | None,
+    effective: str,
     daemon_mode: bool,
-    fallback_reason: str | None,
-    runtime: RuntimeConfigView,
     ha_error: str | None,
-    ollama_error: str | None,
-) -> RuntimeCapabilityStatusData:
-    effective = effective_mode or "unavailable"
-    is_unavailable = effective == "unavailable"
+) -> tuple[tuple[str, ...], bool]:
     daemon_without_satellite_channel = (
         requested_mode == "satellite"
         and daemon_mode
@@ -202,33 +232,42 @@ def build_runtime_capability_status(
         )
         if available
     )
+    return available_ask_channels, daemon_without_satellite_channel
+
+
+def _classify_ask_runtime_state(
+    *,
+    available_ask_channels: tuple[str, ...],
+    daemon_without_satellite_channel: bool,
+    ollama_error: str | None,
+    ha_error: str | None,
+    is_unavailable: bool,
+) -> tuple[str, str | None]:
     ask_runtime_available = bool(available_ask_channels)
     if daemon_without_satellite_channel:
-        ask_runtime_state = "misconfigured"
-        ask_runtime_reason = "daemon_requested_without_usable_ask_channel"
-    elif not ask_runtime_available:
-        ask_runtime_state = "unavailable"
+        return "misconfigured", "daemon_requested_without_usable_ask_channel"
+    if not ask_runtime_available:
         if ollama_error is not None:
-            ask_runtime_reason = "ollama_unavailable"
-        elif ha_error is not None:
-            ask_runtime_reason = "home_assistant_unavailable"
-        elif is_unavailable:
-            ask_runtime_reason = "effective_mode_unavailable"
-        else:
-            ask_runtime_reason = "no_usable_ask_channel"
-    elif set(available_ask_channels) == {"terminal", "satellite"}:
-        ask_runtime_state = "multi_channel"
-        ask_runtime_reason = None
-    elif available_ask_channels == ("satellite",):
-        ask_runtime_state = "satellite_available"
-        ask_runtime_reason = None
-    else:
-        ask_runtime_state = "terminal_only"
-        ask_runtime_reason = None
+            return "unavailable", "ollama_unavailable"
+        if ha_error is not None:
+            return "unavailable", "home_assistant_unavailable"
+        if is_unavailable:
+            return "unavailable", "effective_mode_unavailable"
+        return "unavailable", "no_usable_ask_channel"
+    if set(available_ask_channels) == {"terminal", "satellite"}:
+        return "multi_channel", None
+    if available_ask_channels == ("satellite",):
+        return "satellite_available", None
+    return "terminal_only", None
 
-    primary_ask_channel = available_ask_channels[0] if available_ask_channels else None
-    can_text_clarify = ask_runtime_available
-    can_satellite_ask = "satellite" in available_ask_channels
+
+def _resolve_runtime_input_channel(
+    *,
+    effective: str,
+    ha_error: str | None,
+    ask_runtime_available: bool,
+    can_satellite_ask: bool,
+) -> tuple[str | None, ResolutionSource, bool, str | None]:
     allowed_channels = frozenset({"satellite", "cli"} if effective == "satellite" and ha_error is None else {"cli"})
     interaction_policy = InteractionPolicyRequest(
         intent=COLLECT_TURN_INPUT_INTENT,
@@ -248,6 +287,54 @@ def build_runtime_capability_status(
             if channel_resolution.resolved_channel_context == "satellite" and can_satellite_ask
             else "terminal"
         )
+    return (
+        resolved_channel,
+        channel_resolution.resolution_source,
+        channel_resolution.fallback_used,
+        channel_resolution.fallback_reason,
+    )
+
+
+def build_runtime_capability_status(
+    *,
+    requested_mode: str,
+    effective_mode: str | None,
+    daemon_mode: bool,
+    fallback_reason: str | None,
+    runtime: RuntimeConfigView,
+    ha_error: str | None,
+    ollama_error: str | None,
+) -> RuntimeCapabilityStatusData:
+    effective = effective_mode or "unavailable"
+    is_unavailable = effective == "unavailable"
+    available_ask_channels, daemon_without_satellite_channel = _derive_operational_ask_channels(
+        requested_mode=requested_mode,
+        effective=effective,
+        daemon_mode=daemon_mode,
+        ha_error=ha_error,
+    )
+    ask_runtime_available = bool(available_ask_channels)
+    ask_runtime_state, ask_runtime_reason = _classify_ask_runtime_state(
+        available_ask_channels=available_ask_channels,
+        daemon_without_satellite_channel=daemon_without_satellite_channel,
+        ollama_error=ollama_error,
+        ha_error=ha_error,
+        is_unavailable=is_unavailable,
+    )
+    primary_ask_channel = available_ask_channels[0] if available_ask_channels else None
+    can_text_clarify = ask_runtime_available
+    can_satellite_ask = "satellite" in available_ask_channels
+    (
+        resolved_channel,
+        resolution_source,
+        fallback_used,
+        resolution_fallback_reason,
+    ) = _resolve_runtime_input_channel(
+        effective=effective,
+        ha_error=ha_error,
+        ask_runtime_available=ask_runtime_available,
+        can_satellite_ask=can_satellite_ask,
+    )
     return RuntimeCapabilityStatusData(
         ollama_available=ollama_error is None,
         ha_available=ha_error is None,
@@ -258,16 +345,18 @@ def build_runtime_capability_status(
         memory_backend=str(runtime.get("memory_store_backend", "unknown")),
         debug_enabled=os.getenv("TESTBOT_DEBUG", "0") == "1",
         debug_verbose=bool(runtime.get("debug_verbose", False)),
+        ask_runtime=AskRuntimeStatusData(
+            ask_runtime_state=ask_runtime_state,
+            available_ask_channels=available_ask_channels,
+            primary_ask_channel=primary_ask_channel,
+            ask_runtime_reason=ask_runtime_reason,
+            resolved_channel=resolved_channel,
+            resolution_source=resolution_source,
+            fallback_used=fallback_used,
+            resolution_fallback_reason=resolution_fallback_reason,
+        ),
         text_clarification_available=can_text_clarify,
         satellite_ask_available=can_satellite_ask,
-        ask_runtime_state=ask_runtime_state,
-        available_ask_channels=available_ask_channels,
-        primary_ask_channel=primary_ask_channel,
-        ask_runtime_reason=ask_runtime_reason,
-        resolved_channel=resolved_channel,
-        resolution_source=channel_resolution.resolution_source,
-        fallback_used=channel_resolution.fallback_used,
-        resolution_fallback_reason=channel_resolution.fallback_reason,
     )
 
 
@@ -309,6 +398,7 @@ def build_capability_snapshot(
     )
 
     return CapabilitySnapshotData(
+        runtime=runtime,
         requested_mode=requested_mode,
         daemon_mode=daemon_mode,
         effective_mode=effective_mode,
@@ -321,6 +411,7 @@ def build_capability_snapshot(
 
 
 __all__ = [
+    "AskRuntimeStatusData",
     "CapabilitySnapshotData",
     "RuntimeCapabilityStatusData",
     "build_capability_snapshot",
