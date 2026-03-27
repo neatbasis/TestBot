@@ -58,6 +58,7 @@ ALLOWED_STATE_STATUS_TRANSITIONS = {
 
 
 def parse_args() -> argparse.Namespace:
+    """Parse CLI flags for issue-schema and metadata governance validation."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--pr-body-file",
@@ -89,6 +90,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def load_canonical_sections() -> list[str]:
+    """Load canonical issue section names from docs/issues.md."""
     text = ISSUES_POLICY.read_text(encoding="utf-8")
     return parse_canonical_sections(text)
 
@@ -108,6 +110,7 @@ def resolve_base_ref(base_ref: str) -> tuple[str | None, list[str]]:
 
 
 def run_git_diff_for_added_files(base_ref: str) -> list[Path]:
+    """Return issue files newly added since ``base_ref``."""
     cmd = ["git", "diff", "--name-only", "--diff-filter=A", f"{base_ref}...HEAD", "--", "docs/issues/*.md"]
     result = subprocess.run(cmd, cwd=REPO_ROOT, capture_output=True, text=True)
     if result.returncode != 0:
@@ -126,14 +129,17 @@ def run_git_diff_for_added_files(base_ref: str) -> list[Path]:
 
 
 def list_all_issue_files() -> list[Path]:
+    """Return all canonical ISSUE-*.md records."""
     return sorted(path for path in ISSUES_DIR.glob("ISSUE-*.md") if path.is_file())
 
 
 def is_non_trivial_pr(pr_body: str) -> bool:
+    """Backward-compatible wrapper for non-trivial metadata detection."""
     return is_non_trivial_change(pr_body)
 
 
 def field_value(text: str, field_name: str) -> str:
+    """Extract a markdown ``**Field:** value`` scalar from issue text."""
     pattern = re.compile(rf"\*\*{re.escape(field_name)}:\*\*\s*(.+)")
     match = pattern.search(text)
     if not match:
@@ -142,6 +148,7 @@ def field_value(text: str, field_name: str) -> str:
 
 
 def validate_pr_body(pr_body_file: Path | None, failures: list[str]) -> None:
+    """Validate PR body ISSUE linkage requirements when a body file is provided."""
     if not pr_body_file:
         print("[INFO] No --pr-body-file provided; skipping PR description validation.")
         return
@@ -157,6 +164,7 @@ def validate_pr_body(pr_body_file: Path | None, failures: list[str]) -> None:
 
 
 def validate_issue_files(issue_files: list[Path], canonical_sections: list[str], failures: list[str], ruleset: str) -> None:
+    """Validate issue schema, lifecycle-state policy, and strict red-severity requirements."""
     for issue_file in issue_files:
         text = issue_file.read_text(encoding="utf-8")
         rel = issue_file.relative_to(REPO_ROOT)
@@ -209,6 +217,7 @@ def validate_issue_files(issue_files: list[Path], canonical_sections: list[str],
 
 
 def main() -> int:
+    """Run validator entrypoint and return process exit code semantics."""
     args = parse_args()
     failures: list[str] = []
 

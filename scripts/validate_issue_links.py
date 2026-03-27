@@ -78,10 +78,12 @@ class ValidationFailure(NamedTuple):
 
 
 def record_failure(failures: list[ValidationFailure], category: str, message: str, hint: str) -> None:
+    """Append a structured validation failure record."""
     failures.append(ValidationFailure(category=category, message=message, hint=hint))
 
 
 def parse_args() -> argparse.Namespace:
+    """Parse CLI flags for issue linkage, schema, and manifest governance checks."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--pr-body-file",
@@ -122,6 +124,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def run_git(args: list[str]) -> str:
+    """Run git command in repository root and return stdout or raise RuntimeError."""
     result = subprocess.run(["git", *args], cwd=REPO_ROOT, capture_output=True, text=True)
     if result.returncode != 0:
         stderr = result.stderr.strip() or "git command failed"
@@ -144,14 +147,17 @@ def resolve_base_ref(base_ref: str) -> tuple[str | None, list[str]]:
 
 
 def load_canonical_sections() -> list[str]:
+    """Load canonical issue sections from docs/issues.md."""
     return parse_canonical_sections(ISSUES_POLICY.read_text(encoding="utf-8"))
 
 
 def list_all_issue_files() -> list[Path]:
+    """Return all canonical issue markdown files."""
     return sorted(path for path in ISSUES_DIR.glob("ISSUE-*.md") if path.is_file())
 
 
 def list_new_issue_files(base_ref: str) -> list[Path]:
+    """Return newly added issue files between ``base_ref`` and HEAD."""
     stdout = run_git(["diff", "--name-only", "--diff-filter=A", f"{base_ref}...HEAD", "--", "docs/issues/*.md"])
     files: list[Path] = []
     for line in stdout.splitlines():
@@ -163,10 +169,12 @@ def list_new_issue_files(base_ref: str) -> list[Path]:
 
 
 def is_non_trivial(text: str) -> bool:
+    """Backward-compatible wrapper for non-trivial metadata detection."""
     return is_non_trivial_change(text)
 
 
 def parse_issue_fields(issue_text: str) -> dict[str, str]:
+    """Parse top-level markdown bullet field lines into a dict."""
     fields: dict[str, str] = {}
     for line in issue_text.splitlines():
         match = FIELD_LINE_PATTERN.match(line.strip())
@@ -179,6 +187,7 @@ def parse_issue_fields(issue_text: str) -> dict[str, str]:
 
 
 def parse_section_bodies(issue_text: str) -> dict[str, str]:
+    """Parse ``##`` sections and return stripped section body text."""
     sections: dict[str, str] = {}
     current: str | None = None
     body_lines: list[str] = []
@@ -201,10 +210,12 @@ def parse_section_bodies(issue_text: str) -> dict[str, str]:
 
 
 def is_placeholder(value: str) -> bool:
+    """Return True when a field/section value is an allowed placeholder token."""
     return value.strip().lower() in PLACEHOLDER_VALUES
 
 
 def validate_pr_metadata(pr_body_file: Path | None, failures: list[ValidationFailure]) -> None:
+    """Validate PR-body ISSUE linkage requirements when metadata is provided."""
     if pr_body_file:
         body_path = pr_body_file if pr_body_file.is_absolute() else REPO_ROOT / pr_body_file
         if not body_path.exists():
@@ -226,6 +237,7 @@ def validate_pr_metadata(pr_body_file: Path | None, failures: list[ValidationFai
 
 
 def validate_commit_metadata(base_ref: str, failures: list[ValidationFailure]) -> None:
+    """Validate non-trivial commit messages include ISSUE-XXXX references."""
     try:
         rev_lines = [line.strip() for line in run_git(["rev-list", "--parents", f"{base_ref}...HEAD"]).splitlines() if line.strip()]
     except RuntimeError as exc:
@@ -280,6 +292,7 @@ def commit_traceability_requires_exact_base_ref(
 def validate_issue_schema(
     issue_files: list[Path], canonical_sections: list[str], failures: list[ValidationFailure], ruleset: str = RULESET_STRICT
 ) -> dict[str, dict[str, str]]:
+    """Validate issue schema completeness, enums, and section-body requirements."""
     parsed: dict[str, dict[str, str]] = {}
     for issue_file in issue_files:
         rel = issue_file.relative_to(REPO_ROOT)
@@ -357,6 +370,7 @@ def validate_verification_manifest_reference(
     issue_rel_path: Path,
     failures: list[ValidationFailure],
 ) -> None:
+    """Validate optional verification manifest references and payload contract parity."""
     path_match = VERIFICATION_MANIFEST_PATH_PATTERN.search(verification_body)
     if path_match is None:
         return
@@ -441,6 +455,7 @@ def validate_verification_manifest_reference(
 
 
 def validate_red_tag_generated_content(failures: list[ValidationFailure]) -> None:
+    """Assert RED_TAG index content matches generated canonical output."""
     expected = render_red_tag(list_red_open_issues())
     current = RED_TAG_FILE.read_text(encoding="utf-8") if RED_TAG_FILE.exists() else ""
     if current == expected:
@@ -455,6 +470,7 @@ def validate_red_tag_generated_content(failures: list[ValidationFailure]) -> Non
 
 
 def main() -> int:
+    """Run deterministic governance linkage checks and return process exit code."""
     args = parse_args()
     failures: list[ValidationFailure] = []
     effective_base_ref, resolution_notes = resolve_exact_commit_traceability_base_ref(args.base_ref)

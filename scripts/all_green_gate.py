@@ -70,6 +70,7 @@ def with_remediation(summary: dict[str, object], *messages: str) -> dict[str, ob
 
 
 def parse_args() -> argparse.Namespace:
+    """Parse canonical gate CLI arguments and profile controls."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--continue-on-failure",
@@ -166,6 +167,7 @@ def write_verification_manifest(
     profile: str,
     summary: dict[str, object],
 ) -> Path:
+    """Persist canonical verification manifest payload for a gate run."""
     VERIFICATION_MANIFEST_DIR.mkdir(parents=True, exist_ok=True)
     manifest_path = VERIFICATION_MANIFEST_DIR / f"{run_id}.json"
     payload = build_verification_manifest_payload(
@@ -267,6 +269,7 @@ def default_profile_for_environment() -> str:
 
 
 def resolve_profile(explicit_profile: str | None) -> str:
+    """Resolve active profile from explicit flag or environment default."""
     return explicit_profile or default_profile_for_environment()
 
 
@@ -313,6 +316,7 @@ INVARIANT_EXACT_PATHS = {
 
 
 def detect_changed_paths(base_ref: str) -> tuple[set[str] | None, list[str]]:
+    """Collect changed paths against a base ref with safe fallback diagnostics."""
     completed = subprocess.run(
         ["git", "diff", "--name-only", f"{base_ref}...HEAD"],
         cwd=REPO_ROOT,
@@ -334,10 +338,12 @@ def detect_changed_paths(base_ref: str) -> tuple[set[str] | None, list[str]]:
 
 
 def _matches_path_scopes(path: str, *, exact_paths: set[str], prefixes: tuple[str, ...]) -> bool:
+    """Return True when a path matches configured exact or prefix scopes."""
     return path in exact_paths or any(path.startswith(prefix) for prefix in prefixes)
 
 
 def _touches_governed_surface(changed_paths: set[str]) -> bool:
+    """Return True when changed paths touch freeze-governed control surfaces."""
     return any(
         _matches_path_scopes(
             path,
@@ -354,6 +360,7 @@ def apply_governance_skip_policy(
     changed_paths: set[str] | None,
     force_full_governance: bool,
 ) -> tuple[list[GateCheck], list[str]]:
+    """Apply deterministic readiness skip policy without bypassing governed surfaces."""
     if force_full_governance:
         return list(checks), ["--force-full-governance enabled: running all governance checks."]
     if changed_paths is None:
@@ -412,6 +419,7 @@ def build_checks(
     kpi_guardrail_mode: str = "optional",
     profile: str = "triage",
 ) -> list[GateCheck]:
+    """Build ordered gate checks for the selected profile and KPI rollout mode."""
     checks = [
         GateCheck(name="product_behave", command=[sys.executable, "-m", "behave"]),
         GateCheck(
@@ -513,6 +521,7 @@ def build_checks(
 
 
 def run_check(check: GateCheck) -> CheckResult:
+    """Execute one gate check and normalize the result payload."""
     started = time.monotonic()
     command_text = shlex.join(check.command)
     diagnostic_reason: str | None = None
@@ -609,6 +618,7 @@ def preflight_bdd_dependencies() -> CheckResult | None:
 
 
 def summarize_stages(results: Sequence[CheckResult]) -> list[dict[str, object]]:
+    """Summarize check results into per-stage diagnostics and durations."""
     stage_summaries: list[dict[str, object]] = []
     for result in results:
         if not stage_summaries or stage_summaries[-1]["stage"] != result.stage:
@@ -660,6 +670,7 @@ def print_stage_summary(stage_summaries: Sequence[dict[str, object]]) -> None:
 
 
 def summarize(results: Sequence[CheckResult], continue_on_failure: bool) -> dict[str, object]:
+    """Build machine-readable gate summary grouped by failures, warnings, and skips."""
     has_failure = any(result.status == "failed" for result in results)
     warning_count = sum(1 for result in results if result.status == "warning")
     stage_summaries = summarize_stages(results)
@@ -741,6 +752,7 @@ def maybe_run_triage_router(
 
 
 def main() -> int:
+    """Run canonical all-green orchestration and return readiness exit code."""
     args = parse_args()
     run_id = args.run_id or generate_run_id()
     preflight_result = preflight_bdd_dependencies()

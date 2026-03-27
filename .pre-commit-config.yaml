@@ -22,6 +22,13 @@ repos:
         pass_filenames: false
         types: [markdown]
 
+      - id: mkdocs-build-strict
+        name: Build MkDocs site in strict mode
+        language: python
+        entry: mkdocs build --strict
+        pass_filenames: false
+        always_run: true
+
       # ── Invariant mirror sync ─────────────────────────────────────────────
 
       - id: sync-invariants-mirror
