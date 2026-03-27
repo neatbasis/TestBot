@@ -42,7 +42,10 @@ def test_ask_gateway_satellite_prompt_uses_stable_stop_decision_id() -> None:
             return {"id": STOP_DECISION_ID, "sentence": None, "error": None}
 
     gateway = AskGateway(_FakeAskClient())
-    result = gateway.request_satellite_turn_input(question="Ask one memory-grounded question.")
+    result = gateway.request_satellite_turn_input(
+        question="Ask one memory-grounded question.",
+        interaction_requirements=InteractionRequirements(),
+    )
 
     assert captured["channel"] == "satellite"
     spec = captured["spec"]
@@ -54,18 +57,6 @@ def test_ask_gateway_satellite_prompt_uses_stable_stop_decision_id() -> None:
 
 def test_normalize_ha_rest_url_matches_ask_normalization() -> None:
     assert normalize_ha_rest_url("http://localhost:8123") == "http://localhost:8123/api/"
-
-
-def test_satellite_turn_interaction_requirements_contract() -> None:
-    gateway = AskGateway.from_runtime(
-        {
-            "ha_api_url": "http://localhost:8123",
-            "ha_api_token": "secret-token",
-            "ha_satellite_entity_id": "assist_satellite.kitchen",
-        }
-    )
-
-    assert gateway.satellite_turn_interaction_requirements() == InteractionRequirements()
 
 
 def test_satellite_turn_interaction_requirements_shape_spec_details() -> None:
@@ -86,20 +77,17 @@ def test_satellite_turn_interaction_requirements_shape_spec_details() -> None:
             captured["spec"] = spec
             return {"id": STOP_DECISION_ID, "sentence": "continue", "error": None}
 
-    class _StructuredGateway(AskGateway):
-        def satellite_turn_interaction_requirements(self) -> InteractionRequirements:
-            return InteractionRequirements(
-                stable_id_required=True,
-                deterministic_field_collection_required=True,
-                open_text_preferred=False,
-                sentence_style_fit="structured_sentence",
-                machine_actionable=False,
-            )
-
-    gateway = _StructuredGateway(_FakeAskClient())
+    gateway = AskGateway(_FakeAskClient())
     gateway.request_satellite_turn_input(
         question="Clarify the memory reference",
         timeout_s=60.9,
+        interaction_requirements=InteractionRequirements(
+            stable_id_required=True,
+            deterministic_field_collection_required=True,
+            open_text_preferred=False,
+            sentence_style_fit="structured_sentence",
+            machine_actionable=False,
+        ),
     )
 
     spec = captured["spec"]
@@ -110,3 +98,26 @@ def test_satellite_turn_interaction_requirements_shape_spec_details() -> None:
         "Prefer one of the listed actions when possible."
     )
     assert spec.timeout_s == 60.0
+
+
+def test_satellite_turn_spec_omits_stable_ids_when_not_required() -> None:
+    gateway = AskGateway.from_runtime(
+        {
+            "ha_api_url": "http://localhost:8123",
+            "ha_api_token": "secret-token",
+            "ha_satellite_entity_id": "assist_satellite.kitchen",
+        }
+    )
+
+    spec = gateway.satellite_turn_spec(
+        question="Clarify the memory reference",
+        interaction_requirements=InteractionRequirements(
+            stable_id_required=False,
+            deterministic_field_collection_required=False,
+            open_text_preferred=True,
+            sentence_style_fit="plain_sentence",
+            machine_actionable=False,
+        ),
+    )
+
+    assert spec.answers is None

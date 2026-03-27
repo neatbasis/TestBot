@@ -11,6 +11,7 @@ from urllib.error import HTTPError
 
 from testbot.entrypoints import sat_cli
 from testbot.adapters.ask_gateway import AskTurnInput, STOP_DECISION_ID
+from testbot.interaction_standards import InteractionRequirements
 from testbot.entrypoints import sat_runtime_modes
 from testbot.sat_chatbot_memory_v2 import CLARIFY_ANSWER, parse_args, resolve_mode, resolve_turn_intent
 from testbot import sat_chatbot_memory_v2 as runtime
@@ -38,9 +39,16 @@ def test_run_satellite_mode_uses_gateway_with_stable_stop_id(monkeypatch) -> Non
         def normalized_ha_rest_url(self) -> str:
             return "http://localhost:8123/api"
 
-        def request_satellite_turn_input(self, *, question: str, timeout_s: float = 60.0) -> AskTurnInput:
+        def request_satellite_turn_input(
+            self,
+            *,
+            question: str,
+            timeout_s: float = 60.0,
+            interaction_requirements: InteractionRequirements,
+        ) -> AskTurnInput:
             assert question == "Ask one memory-grounded question."
             assert timeout_s == 60.0
+            assert interaction_requirements == InteractionRequirements()
             return AskTurnInput(decision_id=STOP_DECISION_ID, sentence="", error=None)
 
 
@@ -69,6 +77,68 @@ def test_run_satellite_mode_uses_gateway_with_stable_stop_id(monkeypatch) -> Non
         "v0 memory loop online. Say 'stop' to exit.",
         "ack",
     ]
+
+
+
+def test_run_satellite_mode_uses_planner_selected_requirements(monkeypatch) -> None:
+    class _FakeClient:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+    monkeypatch.setattr(sat_runtime_modes, "Client", lambda *_args, **_kwargs: _FakeClient())
+    monkeypatch.setattr(runtime, "sat_say", lambda *_args, **_kwargs: None)
+
+    planned_requirements = InteractionRequirements(
+        stable_id_required=True,
+        deterministic_field_collection_required=True,
+        open_text_preferred=False,
+        sentence_style_fit="structured_sentence",
+        machine_actionable=False,
+    )
+
+    monkeypatch.setattr(
+        sat_runtime_modes,
+        "select_interaction_requirements",
+        lambda **_kwargs: SimpleNamespace(interaction_requirements=planned_requirements),
+    )
+
+    class _FakeGateway:
+        ha_api_token = "token"
+        satellite_entity_id = "assist_satellite.kitchen"
+
+        def normalized_ha_rest_url(self) -> str:
+            return "http://localhost:8123/api"
+
+        def request_satellite_turn_input(
+            self,
+            *,
+            question: str,
+            timeout_s: float = 60.0,
+            interaction_requirements: InteractionRequirements,
+        ) -> AskTurnInput:
+            assert question == "Ask one memory-grounded question."
+            assert timeout_s == 60.0
+            assert interaction_requirements == planned_requirements
+            return AskTurnInput(decision_id=STOP_DECISION_ID, sentence="", error=None)
+
+    def _fake_run_chat_loop(*, read_user_utterance, **_kwargs):
+        assert read_user_utterance() == "stop"
+
+    sat_runtime_modes.run_satellite_mode(
+        runtime={"ha_api_url": "http://localhost:8123", "ha_api_token": "token", "ha_satellite_entity_id": "assist_satellite.kitchen"},
+        llm=SimpleNamespace(),
+        store=SimpleNamespace(),
+        chat_history=deque(),
+        near_tie_delta=0.05,
+        capability_snapshot=SimpleNamespace(),
+        clock=SimpleNamespace(),
+        ask_gateway=_FakeGateway(),
+        run_chat_loop=_fake_run_chat_loop,
+        satellite_say=lambda *_args, **_kwargs: None,
+    )
 
 def test_parse_args_defaults() -> None:
     args = parse_args([])
