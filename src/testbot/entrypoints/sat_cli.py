@@ -1,7 +1,9 @@
 """Runtime CLI entrypoint.
 
-Bridge usage is intentionally centralized here while runtime bootstrap/chat-loop
-ownership is incrementally migrated out of monolith compatibility exports.
+Source-ingestion ownership split:
+- user-facing selection: ``testbot.source_ingestion_entry``
+- one-shot startup execution: ``testbot.source_ingestion_startup``
+- deeper runtime/background lifecycle: deferred and still compatibility-owned
 """
 
 from __future__ import annotations
@@ -30,40 +32,6 @@ from testbot.entrypoints.runtime_legacy_bridge import (
     sat_say,
 )
 from testbot.runtime_cli_args import parse_args
-
-
-def _apply_source_ingestion_selection(*, args, runtime: dict[str, object]) -> None:
-    selection = str(getattr(args, "source_ingestion", "env") or "env").strip().lower()
-    if selection == "env":
-        runtime["source_ingest_selection_source"] = "environment"
-        return
-
-    if selection == "off":
-        runtime["source_ingest_enabled"] = False
-        runtime["source_ingest_selection_source"] = "cli"
-        append_session_log(
-            "source_ingest_selection",
-            {
-                "selection_source": "cli",
-                "source_ingestion": "off",
-                "source_ingest_enabled": False,
-                "source_connector_type": str(runtime.get("source_connector_type", "")).strip().lower(),
-            },
-        )
-        return
-
-    runtime["source_ingest_enabled"] = True
-    runtime["source_connector_type"] = selection
-    runtime["source_ingest_selection_source"] = "cli"
-    append_session_log(
-        "source_ingest_selection",
-        {
-            "selection_source": "cli",
-            "source_ingestion": selection,
-            "source_ingest_enabled": True,
-            "source_connector_type": selection,
-        },
-    )
 
 
 def main(argv: list[str] | None = None) -> None:

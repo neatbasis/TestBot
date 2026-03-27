@@ -28,6 +28,13 @@ def test_sat_runtime_modes_does_not_import_monolith_runtime_for_profile_selectio
     assert "from testbot.sat_chatbot_memory_v2" not in source
 
 
+def test_entrypoints_package_exposes_lazy_main_wrapper_without_eager_sat_cli_import() -> None:
+    source = Path("src/testbot/entrypoints/__init__.py").read_text()
+    assert "from .sat_cli import main\n" not in source
+    assert "def main(" in source
+    assert "from .sat_cli import main as sat_cli_main" in source
+
+
 def test_sat_runtime_modes_does_not_depend_on_runtime_legacy_bridge_symbols() -> None:
     source = Path(sat_runtime_modes.__file__).read_text()
     assert "from testbot.entrypoints.runtime_legacy_bridge import" not in source
@@ -73,6 +80,8 @@ def test_sat_cli_uses_explicit_runtime_legacy_bridge_import() -> None:
     assert "from testbot.startup_status_presenter import print_startup_status" in source
     assert "from testbot.runtime_cli_args import parse_args" in source
     assert "from testbot.source_ingestion_startup import run_source_ingestion" in source
+    assert "from testbot.source_ingestion_entry import apply_source_ingestion_entry" in source
+    assert "def _apply_source_ingestion_selection" not in source
     assert "from testbot.sat_chatbot_memory_v2 import" not in source
 
 

@@ -52,6 +52,7 @@ For implementation and review, use this condensed invariant table alongside the 
 For normative contract details, use these documents directly:
 
 - [docs/architecture/canonical-turn-pipeline.md](architecture/canonical-turn-pipeline.md)
+- [docs/architecture/source-ingestion-control-surface.md](architecture/source-ingestion-control-surface.md)
 - [docs/directives/decision-policy.md](directives/decision-policy.md)
 - [docs/invariants/pipeline.md](invariants/pipeline.md)
 - [docs/invariants/answer-policy.md](invariants/answer-policy.md)

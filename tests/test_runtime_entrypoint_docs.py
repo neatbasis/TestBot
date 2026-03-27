@@ -7,6 +7,7 @@ DOCS_WITH_RUNTIME_COMMANDS = [
     Path("docs/quickstart.md"),
     Path("docs/ops.md"),
 ]
+SOURCE_INGESTION_ARCH_DOC = Path("docs/architecture/source-ingestion-control-surface.md")
 
 LEGACY_RUNTIME_COMMAND = "python src/testbot/sat_chatbot_memory_v2.py"
 LEGACY_SOURCE_INGEST_TOGGLE = "SOURCE_INGEST_ENABLED=1"
@@ -31,3 +32,20 @@ def test_runtime_docs_use_cli_source_ingestion_selection_not_env_enable_toggle()
 def test_quickstart_presents_menu_onboarding_before_direct_connector_examples() -> None:
     text = Path("docs/quickstart.md").read_text()
     assert text.index("--source-ingestion menu") < text.index("--source-ingestion local_markdown")
+
+
+def test_runtime_docs_reference_canonical_source_ingestion_control_surface_doc() -> None:
+    arch_doc_rel = "docs/architecture/source-ingestion-control-surface.md"
+    assert SOURCE_INGESTION_ARCH_DOC.exists()
+
+    quickstart_text = Path("docs/quickstart.md").read_text()
+    ops_text = Path("docs/ops.md").read_text()
+    assert arch_doc_rel in quickstart_text
+    assert arch_doc_rel in ops_text
+
+
+def test_source_ingestion_architecture_doc_documents_owner_split_and_deferred_scope() -> None:
+    text = SOURCE_INGESTION_ARCH_DOC.read_text()
+    assert "testbot.source_ingestion_entry" in text
+    assert "testbot.source_ingestion_startup" in text
+    assert "deferred" in text

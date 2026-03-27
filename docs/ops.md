@@ -214,14 +214,14 @@ Use Ask-style entry patterns (`python -m ask.demo_terminal_scenarios`) as the UX
 
 ### Control-surface split (authoritative)
 
+Canonical ownership/CLI/deferred-scope contract: [docs/architecture/source-ingestion-control-surface.md](architecture/source-ingestion-control-surface.md).
+
 - **User-facing ingestion choices:** `--source-ingestion menu|reference|freeform|off|<direct-connector>`
 - **Deployment/runtime configuration:** `SOURCE_MARKDOWN_PATH`, `SOURCE_WIKIPEDIA_TOPIC`, `SOURCE_WIKIPEDIA_LANGUAGE`, `SOURCE_ARXIV_QUERY`, `SOURCE_INGEST_LIMIT`, `SOURCE_INGEST_CURSOR`
 - **Canonical startup execution layer:** `testbot.source_ingestion_startup.run_source_ingestion(...)`
 - **Internal plumbing (still deferred):** runtime ingestion lifecycle state in memory (`source_ingest_background_*`, pending/dead-letter registries)
 
-Deferred scope note: this pass includes canonical startup-ingestion execution plus
-the user-facing entry surface; deeper bridge/runtime ingestion lifecycle extraction
-remains tracked as separate follow-up work.
+Deferred scope note: deeper bridge/runtime ingestion lifecycle extraction remains tracked as separate follow-up work.
 
 Use CLI selection for capability intent:
 
