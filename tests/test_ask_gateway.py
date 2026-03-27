@@ -121,3 +121,63 @@ def test_satellite_turn_spec_omits_stable_ids_when_not_required() -> None:
     )
 
     assert spec.answers is None
+
+
+def test_request_turn_input_uses_supplied_channel_and_returns_stable_shape() -> None:
+    captured: dict[str, object] = {}
+
+    class _FakeAskClient(AskClient):
+        def __init__(self) -> None:
+            super().__init__(
+                Config(
+                    ha_api_url="http://localhost:8123",
+                    ha_api_token="secret",
+                    satellite_entity_id="assist_satellite.kitchen",
+                )
+            )
+
+        def ask_question(self, *, channel, spec, **_kwargs):  # type: ignore[override]
+            captured["channel"] = channel
+            captured["spec"] = spec
+            return {"id": "accepted", "sentence": "yes", "error": None}
+
+    gateway = AskGateway(_FakeAskClient())
+    result = gateway.request_turn_input(
+        channel="terminal",
+        question="Proceed?",
+        interaction_requirements=InteractionRequirements(),
+    )
+
+    assert captured["channel"] == "terminal"
+    assert result.decision_id == "accepted"
+    assert result.sentence == "yes"
+    assert result.error is None
+
+
+def test_request_terminal_turn_input_delegates_to_terminal_channel() -> None:
+    captured: dict[str, object] = {}
+
+    class _FakeAskClient(AskClient):
+        def __init__(self) -> None:
+            super().__init__(
+                Config(
+                    ha_api_url="http://localhost:8123",
+                    ha_api_token="secret",
+                    satellite_entity_id="assist_satellite.kitchen",
+                )
+            )
+
+        def ask_question(self, *, channel, spec, **_kwargs):  # type: ignore[override]
+            captured["channel"] = channel
+            captured["spec"] = spec
+            return {"id": "declined", "sentence": "no", "error": None}
+
+    gateway = AskGateway(_FakeAskClient())
+    result = gateway.request_terminal_turn_input(
+        question="Proceed?",
+        interaction_requirements=InteractionRequirements(),
+    )
+
+    assert captured["channel"] == "terminal"
+    assert result.decision_id == "declined"
+    assert result.sentence == "no"
