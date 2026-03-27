@@ -103,10 +103,10 @@ Daemon behavior (no CLI fallback when Home Assistant is unavailable):
 testbot --mode satellite --daemon
 ```
 
-Alternative direct module run:
+Alternative module run (same canonical entrypoint):
 
 ```bash
-python src/testbot/sat_chatbot_memory_v2.py
+python -m testbot.entrypoints.sat_cli
 ```
 
 Say `stop` to end the loop.

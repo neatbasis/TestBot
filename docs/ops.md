@@ -225,7 +225,7 @@ SOURCE_INGEST_ENABLED=1 \
 SOURCE_CONNECTOR_TYPE=local_markdown \
 SOURCE_MARKDOWN_PATH=./docs/alignment-canon \
 SOURCE_INGEST_LIMIT=20 \
-python src/testbot/sat_chatbot_memory_v2.py --mode cli
+python -m testbot.entrypoints.sat_cli --mode cli
 ```
 
 ### Wikipedia summary connector
@@ -236,7 +236,7 @@ SOURCE_CONNECTOR_TYPE=wikipedia \
 SOURCE_WIKIPEDIA_TOPIC="Hilbert space" \
 SOURCE_WIKIPEDIA_LANGUAGE=en \
 SOURCE_INGEST_LIMIT=1 \
-python src/testbot/sat_chatbot_memory_v2.py --mode cli
+python -m testbot.entrypoints.sat_cli --mode cli
 ```
 
 Other high-signal ontology topics: `Category theory`, `Kernel method`, `Transformer`.
@@ -248,7 +248,7 @@ SOURCE_INGEST_ENABLED=1 \
 SOURCE_CONNECTOR_TYPE=arxiv \
 SOURCE_ARXIV_QUERY='all:"category theory" AND cat:cs.LG' \
 SOURCE_INGEST_LIMIT=5 \
-python src/testbot/sat_chatbot_memory_v2.py --mode cli
+python -m testbot.entrypoints.sat_cli --mode cli
 ```
 
 Alternative query example:
