@@ -109,10 +109,12 @@ Alternative module run (same canonical entrypoint):
 python -m testbot.entrypoints.cli
 ```
 
+Compatibility note: `testbot.entrypoints.sat_cli` is deprecated compatibility-only surface (ISSUE-0021) and must not be used in new authoritative docs, examples, or automation.
+
 Say `stop` to end the loop.
 
 Operational note for CLI mode:
-- Runtime turn acquisition is Ask-backed and only requires at least one usable Ask channel.
+- Runtime turn acquisition is Ask-backed and requires at least one usable Ask channel (`terminal`, `satellite`, or both).
 - In CLI mode that Ask channel is typically `terminal`; satellite Ask remains optional/channel-specific.
 - Assistant output remains direct CLI printing for now (intentional temporary split).
 

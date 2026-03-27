@@ -39,7 +39,11 @@ class RuntimeCapabilityStatusData:
     debug_verbose: bool
     text_clarification_available: bool
     satellite_ask_available: bool
-    resolved_channel: str = "terminal"
+    ask_runtime_state: str = "terminal_only"
+    available_ask_channels: tuple[str, ...] = ("terminal",)
+    primary_ask_channel: str | None = "terminal"
+    ask_runtime_reason: str | None = None
+    resolved_channel: str | None = "terminal"
     resolution_source: ResolutionSource = "named_fallback"
     fallback_used: bool = True
     resolution_fallback_reason: str | None = "policy_override_recent_unavailable"
@@ -180,6 +184,51 @@ def build_runtime_capability_status(
     ollama_error: str | None,
 ) -> RuntimeCapabilityStatusData:
     effective = effective_mode or "unavailable"
+    is_unavailable = effective == "unavailable"
+    daemon_without_satellite_channel = (
+        requested_mode == "satellite"
+        and daemon_mode
+        and ha_error is not None
+    )
+    satellite_channel_operational = effective == "satellite" and ha_error is None
+    terminal_channel_operational = effective == "cli" or (
+        effective == "satellite" and not daemon_mode
+    )
+    available_ask_channels = tuple(
+        channel
+        for channel, available in (
+            ("terminal", terminal_channel_operational),
+            ("satellite", satellite_channel_operational),
+        )
+        if available
+    )
+    ask_runtime_available = bool(available_ask_channels)
+    if daemon_without_satellite_channel:
+        ask_runtime_state = "misconfigured"
+        ask_runtime_reason = "daemon_requested_without_usable_ask_channel"
+    elif not ask_runtime_available:
+        ask_runtime_state = "unavailable"
+        if ollama_error is not None:
+            ask_runtime_reason = "ollama_unavailable"
+        elif ha_error is not None:
+            ask_runtime_reason = "home_assistant_unavailable"
+        elif is_unavailable:
+            ask_runtime_reason = "effective_mode_unavailable"
+        else:
+            ask_runtime_reason = "no_usable_ask_channel"
+    elif set(available_ask_channels) == {"terminal", "satellite"}:
+        ask_runtime_state = "multi_channel"
+        ask_runtime_reason = None
+    elif available_ask_channels == ("satellite",):
+        ask_runtime_state = "satellite_available"
+        ask_runtime_reason = None
+    else:
+        ask_runtime_state = "terminal_only"
+        ask_runtime_reason = None
+
+    primary_ask_channel = available_ask_channels[0] if available_ask_channels else None
+    can_text_clarify = ask_runtime_available
+    can_satellite_ask = "satellite" in available_ask_channels
     allowed_channels = frozenset({"satellite", "cli"} if effective == "satellite" and ha_error is None else {"cli"})
     interaction_policy = InteractionPolicyRequest(
         intent=COLLECT_TURN_INPUT_INTENT,
@@ -192,8 +241,13 @@ def build_runtime_capability_status(
         interaction_policy=interaction_policy,
         allowed_channels=allowed_channels,
     )
-    can_text_clarify = channel_resolution.resolved_channel_context in {"cli", "satellite"}
-    can_satellite_ask = channel_resolution.resolved_channel_context == "satellite"
+    resolved_channel = None
+    if ask_runtime_available:
+        resolved_channel = (
+            "satellite"
+            if channel_resolution.resolved_channel_context == "satellite" and can_satellite_ask
+            else "terminal"
+        )
     return RuntimeCapabilityStatusData(
         ollama_available=ollama_error is None,
         ha_available=ha_error is None,
@@ -206,7 +260,11 @@ def build_runtime_capability_status(
         debug_verbose=bool(runtime.get("debug_verbose", False)),
         text_clarification_available=can_text_clarify,
         satellite_ask_available=can_satellite_ask,
-        resolved_channel="satellite" if channel_resolution.resolved_channel_context == "satellite" else "terminal",
+        ask_runtime_state=ask_runtime_state,
+        available_ask_channels=available_ask_channels,
+        primary_ask_channel=primary_ask_channel,
+        ask_runtime_reason=ask_runtime_reason,
+        resolved_channel=resolved_channel,
         resolution_source=channel_resolution.resolution_source,
         fallback_used=channel_resolution.fallback_used,
         resolution_fallback_reason=channel_resolution.fallback_reason,

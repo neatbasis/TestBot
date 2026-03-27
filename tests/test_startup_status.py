@@ -55,6 +55,18 @@ def _snapshot(
             debug_verbose=debug_verbose,
             text_clarification_available=(effective_mode or "unavailable") in {"cli", "satellite"},
             satellite_ask_available=(ha_error is None and (effective_mode or "unavailable") == "satellite"),
+            ask_runtime_state=(
+                "multi_channel"
+                if (effective_mode or "unavailable") == "satellite" and ha_error is None
+                else "terminal_only"
+            ),
+            available_ask_channels=(
+                ("terminal", "satellite")
+                if (effective_mode or "unavailable") == "satellite" and ha_error is None
+                else ("terminal",)
+            ),
+            primary_ask_channel="terminal",
+            ask_runtime_reason=None,
         ),
     )
 
@@ -72,6 +84,7 @@ def test_startup_status_prints_yellow_install_warning_when_ha_unavailable(capsys
     output = capsys.readouterr().out
     assert "Install warning [YELLOW]" in output
     assert "Ask-backed turn input: available" in output
+    assert "state=terminal_only, channels=terminal, primary=terminal" in output
     assert "Satellite Ask channel: unavailable." in output
 
 
@@ -87,6 +100,7 @@ def test_startup_status_prints_green_install_warning_when_ha_available(capsys) -
     output = capsys.readouterr().out
     assert "Install warning [GREEN]" in output
     assert "Ask-backed turn input: available" in output
+    assert "state=multi_channel, channels=terminal, satellite, primary=terminal" in output
     assert "Satellite Ask channel: available." in output
 
 
@@ -204,3 +218,85 @@ def test_startup_status_reports_source_ingestion_selection_state(capsys) -> None
 
     output = capsys.readouterr().out
     assert "Source ingestion: enabled (connector=wikipedia, mode=reference, selected_via=cli, reference=wikipedia_hilbert)" in output
+
+
+def test_startup_status_reports_satellite_only_ask_channel_when_daemon_mode(capsys) -> None:
+    snapshot = _snapshot(
+        effective_mode="satellite",
+        ha_error=None,
+        ollama_error=None,
+    )
+    snapshot = CapabilitySnapshot(
+        runtime=snapshot.runtime,
+        requested_mode=snapshot.requested_mode,
+        daemon_mode=True,
+        effective_mode=snapshot.effective_mode,
+        fallback_reason=snapshot.fallback_reason,
+        exit_reason=snapshot.exit_reason,
+        ha_error=snapshot.ha_error,
+        ollama_error=snapshot.ollama_error,
+        runtime_capability_status=RuntimeCapabilityStatus(
+            ollama_available=snapshot.runtime_capability_status.ollama_available,
+            ha_available=snapshot.runtime_capability_status.ha_available,
+            effective_mode=snapshot.runtime_capability_status.effective_mode,
+            requested_mode=snapshot.runtime_capability_status.requested_mode,
+            daemon_mode=True,
+            fallback_reason=snapshot.runtime_capability_status.fallback_reason,
+            memory_backend=snapshot.runtime_capability_status.memory_backend,
+            debug_enabled=snapshot.runtime_capability_status.debug_enabled,
+            debug_verbose=snapshot.runtime_capability_status.debug_verbose,
+            text_clarification_available=True,
+            satellite_ask_available=True,
+            ask_runtime_state="satellite_available",
+            available_ask_channels=("satellite",),
+            primary_ask_channel="satellite",
+            ask_runtime_reason=None,
+        ),
+    )
+
+    print_startup_status(snapshot=snapshot)
+
+    output = capsys.readouterr().out
+    assert "Ask-backed turn input: available" in output
+    assert "state=satellite_available, channels=satellite, primary=satellite" in output
+
+
+def test_startup_status_reports_ask_runtime_unavailable_reason(capsys) -> None:
+    snapshot = _snapshot(
+        effective_mode="unavailable",
+        ha_error="Missing HA_API_TOKEN",
+        ollama_error="Configured chat model 'llama3.1:latest' is not installed",
+    )
+    snapshot = CapabilitySnapshot(
+        runtime=snapshot.runtime,
+        requested_mode="satellite",
+        daemon_mode=True,
+        effective_mode=snapshot.effective_mode,
+        fallback_reason=snapshot.fallback_reason,
+        exit_reason=snapshot.exit_reason,
+        ha_error=snapshot.ha_error,
+        ollama_error=snapshot.ollama_error,
+        runtime_capability_status=RuntimeCapabilityStatus(
+            ollama_available=False,
+            ha_available=False,
+            effective_mode="unavailable",
+            requested_mode="satellite",
+            daemon_mode=True,
+            fallback_reason=None,
+            memory_backend=snapshot.runtime_capability_status.memory_backend,
+            debug_enabled=snapshot.runtime_capability_status.debug_enabled,
+            debug_verbose=snapshot.runtime_capability_status.debug_verbose,
+            text_clarification_available=False,
+            satellite_ask_available=False,
+            ask_runtime_state="misconfigured",
+            available_ask_channels=(),
+            primary_ask_channel=None,
+            ask_runtime_reason="daemon_requested_without_usable_ask_channel",
+        ),
+    )
+
+    print_startup_status(snapshot=snapshot)
+
+    output = capsys.readouterr().out
+    assert "Ask-backed turn input: unavailable" in output
+    assert "state=misconfigured, channels=none, reason=daemon_requested_without_usable_ask_channel" in output

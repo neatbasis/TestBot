@@ -1,6 +1,15 @@
-"""Transitional compatibility wrapper for legacy sat_cli imports.
+"""Compatibility wrapper for legacy ``sat_cli`` imports.
 
 Canonical runtime CLI entrypoint: ``testbot.entrypoints.cli``.
+
+Deprecation governance contract:
+- Tracking issue: ``ISSUE-0021`` (`docs/issues/ISSUE-0021-legacy-boundary-pattern-deprecation-and-migration.md`)
+- Review target: 2026-06-30
+- Status: compatibility-only (non-authoritative)
+- Removal condition: remove once operator docs, entrypoints, and external automation references
+  are migrated to ``testbot.entrypoints.cli`` and one release cycle passes without authoritative use.
+- Transitional rationale: preserves legacy automation/import compatibility while canonical entrypoint
+  migration completes.
 """
 
 from __future__ import annotations
@@ -8,7 +17,7 @@ from __future__ import annotations
 import warnings
 
 _SAT_CLI_TRANSITION_WARNING = (
-    "testbot.entrypoints.sat_cli is transitional compatibility surface. "
+    "testbot.entrypoints.sat_cli is compatibility-only transitional surface (ISSUE-0021, review target 2026-06-30). "
     "Use testbot.entrypoints.cli.main(...) instead."
 )
 
