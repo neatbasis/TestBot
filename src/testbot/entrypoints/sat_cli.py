@@ -1,3 +1,9 @@
+"""Runtime CLI entrypoint.
+
+Bridge usage is intentionally centralized here while runtime bootstrap/chat-loop
+ownership is incrementally migrated out of monolith compatibility exports.
+"""
+
 from __future__ import annotations
 
 from collections import deque
@@ -10,7 +16,8 @@ from testbot.domain import build_system_clock
 from testbot.entrypoints.sat_runtime_modes import run_cli_mode, run_satellite_mode
 from testbot.observability.session_log import append_session_log
 
-# Temporary compatibility surface: keep monolith runtime wiring explicit and centralized.
+# Legacy bridge imports are intentionally grouped and replaced incrementally
+# as extracted runtime ownership becomes stable.
 from testbot.entrypoints.runtime_legacy_bridge import (
     build_capability_snapshot,
     build_runtime_memory_store,
