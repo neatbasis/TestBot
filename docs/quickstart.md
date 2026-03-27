@@ -120,7 +120,19 @@ Say `stop` to end the loop.
 
 ## Optional: source ingestion connectors
 
-Enable one connector at startup with `SOURCE_INGEST_ENABLED=1`.
+Primary user-facing control surface: `--source-ingestion`.
+
+Use the client/runtime menu-style selector on startup:
+
+- `--source-ingestion off` (disable ingestion)
+- `--source-ingestion local_markdown`
+- `--source-ingestion wikipedia`
+- `--source-ingestion arxiv`
+- `--source-ingestion fixture`
+
+`SOURCE_*` environment variables remain deployment/runtime configuration inputs
+for connector-specific parameters (paths/topics/limits), not the primary
+capability enable toggle.
 
 Prefer connector inputs that encode the system's intended reasoning basis:
 
@@ -131,22 +143,18 @@ Prefer connector inputs that encode the system's intended reasoning basis:
 Local markdown file/directory ingestion:
 
 ```bash
-SOURCE_INGEST_ENABLED=1 \
-SOURCE_CONNECTOR_TYPE=local_markdown \
 SOURCE_MARKDOWN_PATH=./docs/alignment-canon \
 SOURCE_INGEST_LIMIT=20 \
-testbot --mode cli
+testbot --mode cli --source-ingestion local_markdown
 ```
 
 Wikipedia summary retrieval:
 
 ```bash
-SOURCE_INGEST_ENABLED=1 \
-SOURCE_CONNECTOR_TYPE=wikipedia \
 SOURCE_WIKIPEDIA_TOPIC="Hilbert space" \
 SOURCE_WIKIPEDIA_LANGUAGE=en \
 SOURCE_INGEST_LIMIT=1 \
-testbot --mode cli
+testbot --mode cli --source-ingestion wikipedia
 ```
 
 Alternative ontology topics: `Category theory`, `Transformer`, `Kernel method`.
@@ -154,11 +162,9 @@ Alternative ontology topics: `Category theory`, `Transformer`, `Kernel method`.
 arXiv metadata/content extraction:
 
 ```bash
-SOURCE_INGEST_ENABLED=1 \
-SOURCE_CONNECTOR_TYPE=arxiv \
 SOURCE_ARXIV_QUERY='all:"category theory" AND cat:cs.LG' \
 SOURCE_INGEST_LIMIT=5 \
-testbot --mode cli
+testbot --mode cli --source-ingestion arxiv
 ```
 
 Alternative query:

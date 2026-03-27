@@ -208,7 +208,16 @@ Link this evidence from `docs/issues/RED_TAG.md` triage updates.
 
 ## Source ingestion connectors
 
-TestBot can ingest external sources before the chat loop starts when `SOURCE_INGEST_ENABLED=1`.
+Primary user-facing selector is `--source-ingestion` on runtime startup.
+Do not treat ad-hoc `SOURCE_INGEST_ENABLED` docs toggles as the primary control path.
+
+Use CLI selection for capability intent:
+
+- `--source-ingestion off`
+- `--source-ingestion local_markdown`
+- `--source-ingestion wikipedia`
+- `--source-ingestion arxiv`
+- `--source-ingestion fixture`
 
 Use connector examples that reflect the system's reasoning ontology (invariants, composition, and provenance), not just generic topical lookup.
 
@@ -221,22 +230,18 @@ Recommended epistemic split:
 ### Local markdown connector
 
 ```bash
-SOURCE_INGEST_ENABLED=1 \
-SOURCE_CONNECTOR_TYPE=local_markdown \
 SOURCE_MARKDOWN_PATH=./docs/alignment-canon \
 SOURCE_INGEST_LIMIT=20 \
-python -m testbot.entrypoints.sat_cli --mode cli
+python -m testbot.entrypoints.sat_cli --mode cli --source-ingestion local_markdown
 ```
 
 ### Wikipedia summary connector
 
 ```bash
-SOURCE_INGEST_ENABLED=1 \
-SOURCE_CONNECTOR_TYPE=wikipedia \
 SOURCE_WIKIPEDIA_TOPIC="Hilbert space" \
 SOURCE_WIKIPEDIA_LANGUAGE=en \
 SOURCE_INGEST_LIMIT=1 \
-python -m testbot.entrypoints.sat_cli --mode cli
+python -m testbot.entrypoints.sat_cli --mode cli --source-ingestion wikipedia
 ```
 
 Other high-signal ontology topics: `Category theory`, `Kernel method`, `Transformer`.
@@ -244,11 +249,9 @@ Other high-signal ontology topics: `Category theory`, `Kernel method`, `Transfor
 ### arXiv connector
 
 ```bash
-SOURCE_INGEST_ENABLED=1 \
-SOURCE_CONNECTOR_TYPE=arxiv \
 SOURCE_ARXIV_QUERY='all:"category theory" AND cat:cs.LG' \
 SOURCE_INGEST_LIMIT=5 \
-python -m testbot.entrypoints.sat_cli --mode cli
+python -m testbot.entrypoints.sat_cli --mode cli --source-ingestion arxiv
 ```
 
 Alternative query example:

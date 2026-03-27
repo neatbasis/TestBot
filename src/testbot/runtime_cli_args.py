@@ -32,6 +32,16 @@ def parse_args(argv: list[str] | None = None) -> Namespace:
             "Defaults to TESTBOT_DEBUG_VERBOSE environment setting."
         ),
     )
+    parser.add_argument(
+        "--source-ingestion",
+        choices=("env", "off", "fixture", "local_markdown", "wikipedia", "arxiv"),
+        default="env",
+        help=(
+            "User-facing source-ingestion selection. "
+            "'env' keeps deployment configuration from SOURCE_* variables; "
+            "'off' disables ingestion; connector choices enable ingestion with that connector."
+        ),
+    )
     return parser.parse_args(argv)
 
 
