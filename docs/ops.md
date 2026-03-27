@@ -247,7 +247,7 @@ Recommended epistemic split:
 ```bash
 SOURCE_MARKDOWN_PATH=./docs/alignment-canon \
 SOURCE_INGEST_LIMIT=20 \
-python -m testbot.entrypoints.sat_cli --mode cli --source-ingestion local_markdown
+python -m testbot.entrypoints.cli --mode cli --source-ingestion local_markdown
 ```
 
 ### Wikipedia summary connector
@@ -256,7 +256,7 @@ python -m testbot.entrypoints.sat_cli --mode cli --source-ingestion local_markdo
 SOURCE_WIKIPEDIA_TOPIC="Hilbert space" \
 SOURCE_WIKIPEDIA_LANGUAGE=en \
 SOURCE_INGEST_LIMIT=1 \
-python -m testbot.entrypoints.sat_cli --mode cli --source-ingestion wikipedia
+python -m testbot.entrypoints.cli --mode cli --source-ingestion wikipedia
 ```
 
 Other high-signal ontology topics: `Category theory`, `Kernel method`, `Transformer`.
@@ -266,7 +266,7 @@ Other high-signal ontology topics: `Category theory`, `Kernel method`, `Transfor
 ```bash
 SOURCE_ARXIV_QUERY='all:"category theory" AND cat:cs.LG' \
 SOURCE_INGEST_LIMIT=5 \
-python -m testbot.entrypoints.sat_cli --mode cli --source-ingestion arxiv
+python -m testbot.entrypoints.cli --mode cli --source-ingestion arxiv
 ```
 
 Alternative query example:

@@ -12,13 +12,15 @@ from urllib.error import HTTPError
 
 import pytest
 
-from testbot.entrypoints import sat_cli
+from testbot.entrypoints import cli, sat_cli
+from testbot.entrypoints.runtime_legacy_bridge import read_runtime_env
 from testbot.adapters.ask_gateway import AskTurnInput, STOP_DECISION_ID
 from testbot.interaction_policy import InteractionPolicyRequest
 from testbot.interaction_standards import InteractionRequirements
 from testbot.entrypoints import sat_runtime_modes
 from testbot.sat_chatbot_memory_v2 import CLARIFY_ANSWER, parse_args, resolve_mode, resolve_turn_intent
 from testbot import sat_chatbot_memory_v2 as runtime
+import testbot.runtime_capability_service as runtime_capability_service
 
 
 
@@ -33,7 +35,7 @@ def test_entrypoints_package_exposes_lazy_main_wrapper_without_eager_sat_cli_imp
     source = Path("src/testbot/entrypoints/__init__.py").read_text()
     assert "from .sat_cli import main\n" not in source
     assert "def main(" in source
-    assert "from .sat_cli import main as sat_cli_main" in source
+    assert "from .cli import main as cli_main" in source
 
 
 def test_sat_runtime_modes_does_not_depend_on_runtime_legacy_bridge_symbols() -> None:
@@ -43,16 +45,16 @@ def test_sat_runtime_modes_does_not_depend_on_runtime_legacy_bridge_symbols() ->
 
 def test_runtime_legacy_bridge_warns_on_monolith_compat_usage() -> None:
     with pytest.deprecated_call(match="runtime_legacy_bridge depends on testbot.sat_chatbot_memory_v2"):
-        sat_cli.read_runtime_env()
+        read_runtime_env()
 
 
-def test_legacy_runtime_main_warns_once_and_delegates_to_sat_cli(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_legacy_runtime_main_warns_once_and_delegates_to_cli(monkeypatch: pytest.MonkeyPatch) -> None:
     forwarded: list[list[str] | None] = []
 
-    def _fake_sat_cli_main(argv: list[str] | None = None) -> None:
+    def _fake_cli_main(argv: list[str] | None = None) -> None:
         forwarded.append(argv)
 
-    monkeypatch.setattr("testbot.entrypoints.sat_cli.main", _fake_sat_cli_main)
+    monkeypatch.setattr("testbot.entrypoints.cli.main", _fake_cli_main)
     runtime._LEGACY_MAIN_WARNING_EMITTED = False
 
     with pytest.warns(DeprecationWarning, match=r"testbot\.sat_chatbot_memory_v2\.main\(\.\.\.\)"):
@@ -64,8 +66,8 @@ def test_legacy_runtime_main_warns_once_and_delegates_to_sat_cli(monkeypatch: py
     assert forwarded[1] == ["--mode", "satellite"]
 
 
-def test_sat_cli_uses_explicit_runtime_legacy_bridge_import() -> None:
-    source = Path(sat_cli.__file__).read_text()
+def test_cli_uses_explicit_runtime_legacy_bridge_import() -> None:
+    source = Path(cli.__file__).read_text()
     bridge_import_match = re.search(
         r"from testbot\.entrypoints\.runtime_legacy_bridge import \((?P<names>.*?)\)",
         source,
@@ -84,6 +86,12 @@ def test_sat_cli_uses_explicit_runtime_legacy_bridge_import() -> None:
     assert "from testbot.source_ingestion_entry import apply_source_ingestion_entry" in source
     assert "def _apply_source_ingestion_selection" not in source
     assert "from testbot.sat_chatbot_memory_v2 import" not in source
+
+
+def test_sat_cli_is_transitional_wrapper_to_canonical_cli() -> None:
+    source = Path(sat_cli.__file__).read_text()
+    assert "Transitional compatibility wrapper" in source
+    assert "from .cli import main as cli_main" in source
 
 
 def test_run_satellite_mode_uses_gateway_with_stable_stop_id(monkeypatch) -> None:
@@ -1077,7 +1085,7 @@ def test_runtime_env_loads_ollama_values_from_process_env(monkeypatch) -> None:
 
 
 def test_runtime_and_live_smoke_resolve_ollama_env_from_same_process_env(monkeypatch) -> None:
-    monkeypatch.setenv("HA_BASE_URL", "http://127.0.0.1:8123")
+    monkeypatch.setenv("HA_API_URL", "http://127.0.0.1:8123")
     monkeypatch.setenv("HA_API_TOKEN", "ha-test-supersecret-token")
     monkeypatch.setenv("HA_SATELLITE_ENTITY_ID", "assist_satellite.test")
     monkeypatch.setenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434")
@@ -1170,9 +1178,9 @@ def test_ollama_connection_error_returns_validation_error_before_urlopen(monkeyp
         called["urlopen"] = True
         raise AssertionError("urlopen should not be called for invalid base URL")
 
-    monkeypatch.setattr(runtime, "urlopen", _unexpected_urlopen)
+    monkeypatch.setattr(runtime_capability_service, "urlopen", _unexpected_urlopen)
 
-    err = runtime._ollama_connection_error("localhost:11434", "llama3.1:latest", "nomic-embed-text")
+    err = runtime_capability_service.ollama_connection_error("localhost:11434", "llama3.1:latest", "nomic-embed-text")
 
     assert err == "Invalid OLLAMA_BASE_URL 'localhost:11434'; must be full http(s) URL"
     assert called["urlopen"] is False
@@ -1187,8 +1195,8 @@ def test_ollama_connection_error_accepts_implicit_latest_alias(monkeypatch) -> N
         def read(self):
             return b'{"models":[{"model":"llama3.1:latest"},{"model":"nomic-embed-text:latest"}]}'
 
-    monkeypatch.setattr(runtime, "urlopen", lambda *_args, **_kwargs: _Resp())
-    err = runtime._ollama_connection_error("http://localhost:11434", "llama3.1:latest", "nomic-embed-text")
+    monkeypatch.setattr(runtime_capability_service, "urlopen", lambda *_args, **_kwargs: _Resp())
+    err = runtime_capability_service.ollama_connection_error("http://localhost:11434", "llama3.1:latest", "nomic-embed-text")
     assert err is None
 
 
@@ -1209,8 +1217,8 @@ def test_ollama_connection_error_includes_x_ollama_key_when_configured(monkeypat
         observed["x_ollama_key"] = request.get_header("X-ollama-key")
         return _Resp()
 
-    monkeypatch.setattr(runtime, "urlopen", _fake_urlopen)
-    err = runtime._ollama_connection_error(
+    monkeypatch.setattr(runtime_capability_service, "urlopen", _fake_urlopen)
+    err = runtime_capability_service.ollama_connection_error(
         "http://localhost:11434",
         "llama3.1:latest",
         "nomic-embed-text",
@@ -1231,8 +1239,8 @@ def test_ollama_connection_error_accepts_explicit_latest_alias(monkeypatch) -> N
         def read(self):
             return b'{"models":[{"model":"llama3.1:latest"},{"model":"nomic-embed-text"}]}'
 
-    monkeypatch.setattr(runtime, "urlopen", lambda *_args, **_kwargs: _Resp())
-    err = runtime._ollama_connection_error("http://localhost:11434", "llama3.1:latest", "nomic-embed-text:latest")
+    monkeypatch.setattr(runtime_capability_service, "urlopen", lambda *_args, **_kwargs: _Resp())
+    err = runtime_capability_service.ollama_connection_error("http://localhost:11434", "llama3.1:latest", "nomic-embed-text:latest")
     assert err is None
 
 
@@ -1247,8 +1255,8 @@ def test_ollama_connection_error_detects_missing_embedding_model(monkeypatch) ->
         def read(self):
             return b'{"models":[{"model":"llama3.1:latest"}]}'
 
-    monkeypatch.setattr(runtime, "urlopen", lambda *_args, **_kwargs: _Resp())
-    err = runtime._ollama_connection_error("http://localhost:11434", "llama3.1:latest", "nomic-embed-text")
+    monkeypatch.setattr(runtime_capability_service, "urlopen", lambda *_args, **_kwargs: _Resp())
+    err = runtime_capability_service.ollama_connection_error("http://localhost:11434", "llama3.1:latest", "nomic-embed-text")
     assert "embedding model" in str(err)
 
 
@@ -1280,8 +1288,8 @@ def _patch_main_dependencies(
     if runtime_overrides:
         runtime_env.update(runtime_overrides)
 
-    monkeypatch.setattr(sat_cli, "parse_args", lambda _argv=None: args)
-    monkeypatch.setattr(sat_cli, "read_runtime_env", lambda: runtime_env)
+    monkeypatch.setattr(cli, "parse_args", lambda _argv=None: args)
+    monkeypatch.setattr(cli, "read_runtime_env", lambda: runtime_env)
     monkeypatch.setattr(runtime, "_ha_connection_error", lambda *_args, **_kwargs: ha_error)
     monkeypatch.setattr(runtime, "_ollama_connection_error", lambda *_args, **_kwargs: ollama_error)
 
@@ -1321,10 +1329,12 @@ def _patch_main_dependencies(
             runtime_capability_status=SimpleNamespace(
                 debug_enabled=False,
                 debug_verbose=bool(runtime.get("debug_verbose", False)),
+                text_clarification_available=True,
+                satellite_ask_available=(effective_mode == "satellite"),
             ),
         )
 
-    monkeypatch.setattr(sat_cli, "build_capability_snapshot", _fake_build_capability_snapshot)
+    monkeypatch.setattr(cli, "build_capability_snapshot", _fake_build_capability_snapshot)
     if startup is not None:
         def _capture_startup(**kwargs):
             startup.update(kwargs)
@@ -1338,20 +1348,20 @@ def _patch_main_dependencies(
                     }
                 )
 
-        monkeypatch.setattr(sat_cli, "print_startup_status", _capture_startup)
+        monkeypatch.setattr(cli, "print_startup_status", _capture_startup)
     else:
-        monkeypatch.setattr(sat_cli, "print_startup_status", lambda **_kwargs: None)
-    monkeypatch.setattr(sat_cli, "ChatOllama", lambda *a, **k: object())
-    monkeypatch.setattr(sat_cli, "OllamaEmbeddings", lambda *a, **k: object())
-    monkeypatch.setattr(sat_cli, "build_runtime_memory_store", lambda *_args, **_kwargs: object())
-    monkeypatch.setattr(sat_cli, "append_session_log", lambda *_args, **_kwargs: None)
+        monkeypatch.setattr(cli, "print_startup_status", lambda **_kwargs: None)
+    monkeypatch.setattr(cli, "ChatOllama", lambda *a, **k: object())
+    monkeypatch.setattr(cli, "OllamaEmbeddings", lambda *a, **k: object())
+    monkeypatch.setattr(cli, "build_runtime_memory_store", lambda *_args, **_kwargs: object())
+    monkeypatch.setattr(cli, "append_session_log", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(
-        sat_cli,
+        cli,
         "run_source_ingestion",
         lambda **_kwargs: calls.__setitem__("ingestion", calls["ingestion"] + 1) if "ingestion" in calls else None,
     )
-    monkeypatch.setattr(sat_cli, "run_cli_mode", lambda **_kwargs: calls.__setitem__("cli", calls["cli"] + 1))
-    monkeypatch.setattr(sat_cli, "run_satellite_mode", lambda **_kwargs: calls.__setitem__("satellite", calls["satellite"] + 1))
+    monkeypatch.setattr(cli, "run_cli_mode", lambda **_kwargs: calls.__setitem__("cli", calls["cli"] + 1))
+    monkeypatch.setattr(cli, "run_satellite_mode", lambda **_kwargs: calls.__setitem__("satellite", calls["satellite"] + 1))
 
 
 def test_main_auto_daemon_ha_unavailable_exits_without_cli_fallback(monkeypatch, capsys) -> None:
@@ -1398,7 +1408,7 @@ def test_main_passes_argv_to_entrypoint_parse_args(monkeypatch) -> None:
         ollama_error=None,
         calls=calls,
     )
-    monkeypatch.setattr(sat_cli, "parse_args", _parse)
+    monkeypatch.setattr(cli, "parse_args", _parse)
 
     runtime.main(["--mode", "cli"])
 
@@ -1425,7 +1435,7 @@ def test_main_kicks_off_source_ingestion_and_applies_debug_verbose_override(monk
         assert captured_runtime["debug_verbose"] is True
         calls["cli"] += 1
 
-    monkeypatch.setattr(sat_cli, "run_cli_mode", _capture_cli)
+    monkeypatch.setattr(cli, "run_cli_mode", _capture_cli)
 
     runtime.main([])
 
@@ -1455,7 +1465,7 @@ def test_main_cli_source_ingestion_selection_is_authoritative_over_env(monkeypat
         observed["connector"] = runtime["source_connector_type"]
         observed["selected_via"] = runtime["source_ingest_selection_source"]
 
-    monkeypatch.setattr(sat_cli, "run_source_ingestion", _capture_ingestion)
+    monkeypatch.setattr(cli, "run_source_ingestion", _capture_ingestion)
     runtime.main([])
 
     assert observed == {
@@ -1477,13 +1487,13 @@ def test_main_uses_domain_clock_provider_for_cli_wiring(monkeypatch) -> None:
         ollama_error=None,
         calls=calls,
     )
-    monkeypatch.setattr(sat_cli, "build_system_clock", lambda: provided_clock)
+    monkeypatch.setattr(cli, "build_system_clock", lambda: provided_clock)
 
     def _capture_cli(**kwargs):
         captured["clock"] = kwargs["clock"]
         calls["cli"] += 1
 
-    monkeypatch.setattr(sat_cli, "run_cli_mode", _capture_cli)
+    monkeypatch.setattr(cli, "run_cli_mode", _capture_cli)
     runtime.main([])
 
     assert calls["cli"] == 1
@@ -1527,7 +1537,7 @@ def test_main_auto_non_daemon_ha_unavailable_emits_cli_fallback_and_continuity_m
         calls=calls,
         runtime_overrides={"memory_store_backend": "in_memory"},
     )
-    monkeypatch.setattr(sat_cli, "print_startup_status", _capture_startup_output)
+    monkeypatch.setattr(cli, "print_startup_status", _capture_startup_output)
 
     runtime.main([])
 
@@ -1850,11 +1860,11 @@ def test_main_reaches_cli_when_source_connector_fetch_raises_http_error(monkeypa
             "source_ingest_cursor": None,
         },
     )
-    monkeypatch.setattr(runtime, "SourceIngestor", _FetchFailingIngestor)
+    monkeypatch.setattr("testbot.source_ingestion_startup.SourceIngestor", _FetchFailingIngestor)
     monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: logs.append((event, payload)))
-    monkeypatch.setattr(sat_cli, "append_session_log", lambda event, payload: logs.append((event, payload)))
-    monkeypatch.setattr(runtime, "_build_source_connector", lambda _runtime: SimpleNamespace(source_type="fixture"))
-    monkeypatch.setattr(sat_cli, "run_source_ingestion", runtime.run_source_ingestion)
+    monkeypatch.setattr(cli, "append_session_log", lambda event, payload: logs.append((event, payload)))
+    monkeypatch.setattr("testbot.source_ingestion_startup.build_source_connector", lambda **_kwargs: SimpleNamespace(source_type="fixture"))
+    monkeypatch.setattr(cli, "run_source_ingestion", runtime.run_source_ingestion)
 
     runtime.main([])
 
@@ -1889,11 +1899,11 @@ def test_main_reaches_cli_when_source_store_add_documents_raises(monkeypatch) ->
             "source_ingest_cursor": None,
         },
     )
-    monkeypatch.setattr(runtime, "SourceIngestor", _StoreFailingIngestor)
+    monkeypatch.setattr("testbot.source_ingestion_startup.SourceIngestor", _StoreFailingIngestor)
     monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: logs.append((event, payload)))
-    monkeypatch.setattr(sat_cli, "append_session_log", lambda event, payload: logs.append((event, payload)))
-    monkeypatch.setattr(runtime, "_build_source_connector", lambda _runtime: SimpleNamespace(source_type="fixture"))
-    monkeypatch.setattr(sat_cli, "run_source_ingestion", runtime.run_source_ingestion)
+    monkeypatch.setattr(cli, "append_session_log", lambda event, payload: logs.append((event, payload)))
+    monkeypatch.setattr("testbot.source_ingestion_startup.build_source_connector", lambda **_kwargs: SimpleNamespace(source_type="fixture"))
+    monkeypatch.setattr(cli, "run_source_ingestion", runtime.run_source_ingestion)
 
     runtime.main([])
 

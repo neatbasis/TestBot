@@ -90,3 +90,35 @@ def test_build_runtime_capability_status_reports_actual_channel_resolution() -> 
     assert status.fallback_used is True
     assert status.resolution_fallback_reason == "policy_override_recent_unavailable"
     assert status.satellite_ask_available is False
+
+
+def test_build_runtime_capability_status_reports_ask_runtime_available_in_cli_mode() -> None:
+    status = build_runtime_capability_status(
+        requested_mode="cli",
+        effective_mode="cli",
+        daemon_mode=False,
+        fallback_reason=None,
+        runtime={"memory_store_backend": "in_memory", "debug_verbose": False},
+        ha_error="Missing HA_API_TOKEN",
+        ollama_error=None,
+    )
+
+    assert status.text_clarification_available is True
+    assert status.satellite_ask_available is False
+    assert status.resolved_channel == "terminal"
+
+
+def test_build_runtime_capability_status_reports_ask_runtime_available_in_satellite_mode() -> None:
+    status = build_runtime_capability_status(
+        requested_mode="satellite",
+        effective_mode="satellite",
+        daemon_mode=False,
+        fallback_reason=None,
+        runtime={"memory_store_backend": "in_memory", "debug_verbose": False},
+        ha_error=None,
+        ollama_error=None,
+    )
+
+    assert status.text_clarification_available is True
+    assert status.satellite_ask_available is True
+    assert status.resolved_channel == "satellite"

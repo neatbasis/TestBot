@@ -71,6 +71,8 @@ def test_startup_status_prints_yellow_install_warning_when_ha_unavailable(capsys
 
     output = capsys.readouterr().out
     assert "Install warning [YELLOW]" in output
+    assert "Ask-backed turn input: available" in output
+    assert "Satellite Ask channel: unavailable." in output
 
 
 def test_startup_status_prints_green_install_warning_when_ha_available(capsys) -> None:
@@ -84,6 +86,8 @@ def test_startup_status_prints_green_install_warning_when_ha_available(capsys) -
 
     output = capsys.readouterr().out
     assert "Install warning [GREEN]" in output
+    assert "Ask-backed turn input: available" in output
+    assert "Satellite Ask channel: available." in output
 
 
 def test_startup_status_prints_degraded_cli_fallback_note_and_continuity_message(capsys) -> None:

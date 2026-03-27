@@ -33,7 +33,7 @@ dev = [
 ]
 
 [project.scripts]
-testbot = "testbot.entrypoints.sat_cli:main"
+testbot = "testbot.entrypoints.cli:main"
 seem-bot = "seem_bot.cli:main"
 
 [tool.setuptools]

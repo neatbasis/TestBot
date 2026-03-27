@@ -20,6 +20,8 @@ class StartupRuntimeView(TypedDict):
 class RuntimeCapabilityStatusView(Protocol):
     debug_enabled: bool
     debug_verbose: bool
+    text_clarification_available: bool
+    satellite_ask_available: bool
 
 
 class CapabilitySnapshotView(Protocol):
@@ -90,6 +92,13 @@ def render_startup_status_lines(*, snapshot: CapabilitySnapshotView) -> list[str
         lines.append(
             f"Source ingestion: disabled ({selection_detail_text})"
         )
+    ask_runtime_available = "available" if snapshot.runtime_capability_status.text_clarification_available else "unavailable"
+    satellite_channel_available = "available" if snapshot.runtime_capability_status.satellite_ask_available else "unavailable"
+    lines.append(
+        f"Ask-backed turn input: {ask_runtime_available} (runtime requires at least one usable Ask channel)."
+    )
+    lines.append(f"Satellite Ask channel: {satellite_channel_available}.")
+
     debug_mode = "enabled" if snapshot.runtime_capability_status.debug_enabled else "disabled"
     debug_verbose = "enabled" if snapshot.runtime_capability_status.debug_verbose else "disabled"
     lines.append(

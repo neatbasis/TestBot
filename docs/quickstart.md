@@ -106,13 +106,14 @@ testbot --mode satellite --daemon
 Alternative module run (same canonical entrypoint):
 
 ```bash
-python -m testbot.entrypoints.sat_cli
+python -m testbot.entrypoints.cli
 ```
 
 Say `stop` to end the loop.
 
 Operational note for CLI mode:
-- Turn acquisition is Ask-backed (`terminal` Ask channel) with explicit stop/cancel collapse to `stop`.
+- Runtime turn acquisition is Ask-backed and only requires at least one usable Ask channel.
+- In CLI mode that Ask channel is typically `terminal`; satellite Ask remains optional/channel-specific.
 - Assistant output remains direct CLI printing for now (intentional temporary split).
 
 ## Quick acceptance checklist
