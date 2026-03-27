@@ -22,6 +22,10 @@ class RuntimeCapabilityStatusView(Protocol):
     debug_verbose: bool
     text_clarification_available: bool
     satellite_ask_available: bool
+    ask_runtime_state: str
+    available_ask_channels: tuple[str, ...]
+    primary_ask_channel: str | None
+    ask_runtime_reason: str | None
 
 
 class CapabilitySnapshotView(Protocol):
@@ -92,10 +96,21 @@ def render_startup_status_lines(*, snapshot: CapabilitySnapshotView) -> list[str
         lines.append(
             f"Source ingestion: disabled ({selection_detail_text})"
         )
+    ask_runtime_state = getattr(snapshot.runtime_capability_status, "ask_runtime_state", "terminal_only")
+    ask_channels = getattr(snapshot.runtime_capability_status, "available_ask_channels", ("terminal",))
+    ask_primary = getattr(snapshot.runtime_capability_status, "primary_ask_channel", "terminal")
+    ask_reason = getattr(snapshot.runtime_capability_status, "ask_runtime_reason", None)
     ask_runtime_available = "available" if snapshot.runtime_capability_status.text_clarification_available else "unavailable"
     satellite_channel_available = "available" if snapshot.runtime_capability_status.satellite_ask_available else "unavailable"
+    ask_channel_text = ", ".join(ask_channels) if ask_channels else "none"
+    ask_detail_segments = [f"state={ask_runtime_state}", f"channels={ask_channel_text}"]
+    if ask_primary is not None:
+        ask_detail_segments.append(f"primary={ask_primary}")
+    if ask_reason:
+        ask_detail_segments.append(f"reason={ask_reason}")
+    ask_detail_text = ", ".join(ask_detail_segments)
     lines.append(
-        f"Ask-backed turn input: {ask_runtime_available} (runtime requires at least one usable Ask channel)."
+        f"Ask-backed turn input: {ask_runtime_available} (runtime requires at least one usable Ask channel: {ask_detail_text})."
     )
     lines.append(f"Satellite Ask channel: {satellite_channel_available}.")
 

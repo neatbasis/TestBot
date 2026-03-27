@@ -4,6 +4,15 @@ This document covers logs, troubleshooting, and environment notes for running Te
 
 Program anchor: [`issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md`](issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md).
 
+Entrypoint authority note: `testbot.entrypoints.cli` is canonical. Treat `testbot.entrypoints.sat_cli` as compatibility-only transitional surface (ISSUE-0021) and do not introduce it in new operational scripts/examples.
+
+Ask-channel operational taxonomy (startup contract):
+- `terminal_only`: runtime Ask is usable via terminal channel only.
+- `satellite_available`: runtime Ask is usable via satellite channel only.
+- `multi_channel`: runtime Ask is usable via both terminal and satellite channels.
+- `unavailable`: no Ask channel is currently usable.
+- `misconfigured`: runtime requested a channel policy (for example daemon+satellite) but no usable Ask channel is available.
+
 ## Logs
 
 The v0 loop writes structured JSONL logs to:

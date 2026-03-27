@@ -90,7 +90,7 @@ def test_cli_uses_explicit_runtime_legacy_bridge_import() -> None:
 
 def test_sat_cli_is_transitional_wrapper_to_canonical_cli() -> None:
     source = Path(sat_cli.__file__).read_text()
-    assert "Transitional compatibility wrapper" in source
+    assert "compatibility-only" in source
     assert "from .cli import main as cli_main" in source
 
 

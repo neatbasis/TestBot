@@ -427,6 +427,9 @@ Progress discipline for each `TASK-CX-*` slice:
   - Evidence: `docs/issues/evidence/2026-03-17-issue-0013-decisioning-temporal-followup-continuity.md`.
 
 - 2026-03-19: Workstream A extraction sequencing advanced by moving alignment scoring into a dedicated pure-logic module.
+
+- 2026-03-28: Added explicit readiness-debt evidence record for the pre-existing `product_behave` failure state referenced by PR #659, including linked remediation ownership and blocking/non-blocking interpretation guidance.
+  - Evidence: `docs/issues/evidence/readiness-gate-bdd-failure-status-2026-03-28.md`.
   - Extracted module: `src/testbot/logic/alignment.py` now owns `evaluate_alignment_decision` and directly-coupled pure scoring helpers/constants.
   - Compatibility timeline: `src/testbot/sat_chatbot_memory_v2.py` keeps a temporary shim export for `evaluate_alignment_decision` and emits `DeprecationWarning`; planned shim removal target is after **2026-06-30** once downstream imports complete migration.
   - Migration evidence: `tests/test_alignment_transitions.py` and `tests/test_answer_contract.py` now import `evaluate_alignment_decision` from `testbot.logic.alignment`.

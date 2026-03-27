@@ -626,6 +626,10 @@ class RuntimeCapabilityStatus:
     debug_verbose: bool
     text_clarification_available: bool
     satellite_ask_available: bool
+    ask_runtime_state: str = "terminal_only"
+    available_ask_channels: tuple[str, ...] = ("terminal",)
+    primary_ask_channel: str | None = "terminal"
+    ask_runtime_reason: str | None = None
 
 
 @dataclass(frozen=True)
@@ -3662,6 +3666,10 @@ def _build_runtime_capability_status(
         debug_verbose=service_status.debug_verbose,
         text_clarification_available=service_status.text_clarification_available,
         satellite_ask_available=service_status.satellite_ask_available,
+        ask_runtime_state=service_status.ask_runtime_state,
+        available_ask_channels=service_status.available_ask_channels,
+        primary_ask_channel=service_status.primary_ask_channel,
+        ask_runtime_reason=service_status.ask_runtime_reason,
     )
 
 
@@ -3685,6 +3693,10 @@ def build_capability_snapshot(*, requested_mode: str, daemon_mode: bool, runtime
         debug_verbose=service_snapshot.runtime_capability_status.debug_verbose,
         text_clarification_available=service_snapshot.runtime_capability_status.text_clarification_available,
         satellite_ask_available=service_snapshot.runtime_capability_status.satellite_ask_available,
+        ask_runtime_state=service_snapshot.runtime_capability_status.ask_runtime_state,
+        available_ask_channels=service_snapshot.runtime_capability_status.available_ask_channels,
+        primary_ask_channel=service_snapshot.runtime_capability_status.primary_ask_channel,
+        ask_runtime_reason=service_snapshot.runtime_capability_status.ask_runtime_reason,
     )
     return CapabilitySnapshot(
         runtime=runtime,
