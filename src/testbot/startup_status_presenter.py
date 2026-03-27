@@ -1,7 +1,20 @@
+"""Startup status presenter.
+
+Owns presentation of startup capability state; does not probe capabilities.
+"""
+
 from __future__ import annotations
 
-from collections.abc import Mapping
-from typing import Protocol
+from typing import Protocol, TypedDict
+
+
+class StartupRuntimeView(TypedDict):
+    ollama_base_url: str
+    ollama_model: str
+    ollama_embedding_model: str
+    memory_store_backend: str
+    ha_api_url: str
+    ha_satellite_entity_id: str
 
 
 class RuntimeCapabilityStatusView(Protocol):
@@ -10,7 +23,9 @@ class RuntimeCapabilityStatusView(Protocol):
 
 
 class CapabilitySnapshotView(Protocol):
-    runtime: Mapping[str, object]
+    """Typed read-model used by startup status presentation only."""
+
+    runtime: StartupRuntimeView
     effective_mode: str | None
     requested_mode: str
     daemon_mode: bool

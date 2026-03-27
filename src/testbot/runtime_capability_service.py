@@ -1,3 +1,8 @@
+"""Runtime capability authority service.
+
+Owns capability probing, mode resolution, and capability snapshot construction.
+"""
+
 from __future__ import annotations
 
 import json

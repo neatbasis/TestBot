@@ -1,3 +1,8 @@
+"""Interaction-profile planner.
+
+Planner owns selection of `InteractionRequirements`; translation is handled downstream by AskGateway.
+"""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

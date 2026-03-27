@@ -29,6 +29,7 @@ class AskGateway:
     """TestBot-owned Ask seam.
 
     TestBot decides *why* it needs interaction and how to interpret stable ids.
+    AskGateway does not select interaction profiles; it translates supplied requirements to AskSpec.
     Ask executes channel-aware prompting/collection.
     """
 
