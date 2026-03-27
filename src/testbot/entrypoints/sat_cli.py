@@ -23,12 +23,12 @@ from testbot.startup_status_presenter import print_startup_status
 # as extracted runtime ownership becomes stable.
 from testbot.entrypoints.runtime_legacy_bridge import (
     build_runtime_memory_store,
-    parse_args,
     read_runtime_env,
     run_chat_loop,
     run_source_ingestion,
     sat_say,
 )
+from testbot.runtime_cli_args import parse_args
 
 
 def main(argv: list[str] | None = None) -> None:
