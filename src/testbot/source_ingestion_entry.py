@@ -1,4 +1,4 @@
-"""User-facing source-ingestion entry surface.
+"""Canonical owner for user-facing source-ingestion selection.
 
 Design baseline follows Ask terminal demo patterns:
 - visible scenario-style menu
@@ -11,6 +11,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Callable
+
+
+DIRECT_CONNECTOR_MODES: frozenset[str] = frozenset({"fixture", "local_markdown", "wikipedia", "arxiv"})
 
 
 @dataclass(frozen=True)
@@ -204,6 +207,14 @@ def apply_source_ingestion_entry(
     print_fn: Callable[[str], None] = print,
 ) -> SourceIngestionSelection:
     mode = str(getattr(args, "source_ingestion", "env") or "env").strip().lower()
+    reference_key_arg = str(getattr(args, "source_reference", REFERENCE_EXAMPLE_KEYS[0]) or "").strip()
+    freeform_request_arg = str(getattr(args, "source_freeform", "") or "").strip()
+
+    if mode != "reference" and reference_key_arg and reference_key_arg != REFERENCE_EXAMPLE_KEYS[0]:
+        raise ValueError("--source-reference can only be used with --source-ingestion reference.")
+    if mode != "freeform" and freeform_request_arg:
+        raise ValueError("--source-freeform can only be used with --source-ingestion freeform.")
+
     if mode == "env":
         selection = SourceIngestionSelection(
             mode="env",
@@ -221,11 +232,11 @@ def apply_source_ingestion_entry(
         return selection
 
     if mode == "reference":
-        reference_key = str(getattr(args, "source_reference", REFERENCE_EXAMPLE_KEYS[0]) or REFERENCE_EXAMPLE_KEYS[0]).strip()
+        reference_key = reference_key_arg or REFERENCE_EXAMPLE_KEYS[0]
         return apply_reference_example(runtime=runtime, reference_key=reference_key, selected_via="cli")
 
     if mode == "freeform":
-        freeform_request = str(getattr(args, "source_freeform", "") or "").strip()
+        freeform_request = freeform_request_arg
         if not freeform_request:
             freeform_request = input_fn("Enter freeform request (<connector>:<value>): ").strip()
         return apply_freeform_request(runtime=runtime, request=freeform_request, selected_via="cli")
@@ -233,7 +244,7 @@ def apply_source_ingestion_entry(
     if mode == "menu":
         return run_source_ingestion_entry_menu(runtime=runtime, input_fn=input_fn, print_fn=print_fn)
 
-    if mode in {"fixture", "local_markdown", "wikipedia", "arxiv"}:
+    if mode in DIRECT_CONNECTOR_MODES:
         return _apply_direct_connector(runtime=runtime, connector_type=mode, selected_via="cli")
 
     raise ValueError(f"Unsupported source-ingestion mode '{mode}'.")

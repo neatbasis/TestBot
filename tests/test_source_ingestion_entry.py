@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
+import pytest
+
 from testbot.source_ingestion_entry import (
     apply_freeform_request,
     apply_reference_example,
@@ -84,3 +86,98 @@ def test_menu_copy_exposes_canonical_entry_modes() -> None:
     assert "Choose a direct connector" in joined
     assert "Keep ingestion disabled" in joined
     assert selection.mode == "off"
+
+
+@pytest.mark.parametrize(
+    ("mode", "kwargs", "expected"),
+    [
+        (
+            "env",
+            {},
+            {
+                "mode": "env",
+                "enabled": False,
+                "connector": "fixture",
+                "source": "environment",
+            },
+        ),
+        (
+            "off",
+            {},
+            {
+                "mode": "off",
+                "enabled": False,
+                "connector": "",
+                "source": "cli",
+            },
+        ),
+        (
+            "reference",
+            {"source_reference": "local_alignment_docs"},
+            {
+                "mode": "reference",
+                "enabled": True,
+                "connector": "local_markdown",
+                "source": "cli",
+                "reference": "local_alignment_docs",
+            },
+        ),
+        (
+            "freeform",
+            {"source_freeform": "wikipedia:Hilbert space"},
+            {
+                "mode": "freeform",
+                "enabled": True,
+                "connector": "wikipedia",
+                "source": "cli",
+                "freeform": "wikipedia:Hilbert space",
+            },
+        ),
+        (
+            "wikipedia",
+            {},
+            {
+                "mode": "wikipedia",
+                "enabled": True,
+                "connector": "wikipedia",
+                "source": "cli",
+            },
+        ),
+    ],
+)
+def test_source_ingestion_modes_emit_expected_runtime_shape(mode: str, kwargs: dict[str, str], expected: dict[str, object]) -> None:
+    runtime: dict[str, object] = {
+        "source_ingest_enabled": False,
+        "source_connector_type": "fixture",
+    }
+    args_payload = {"source_ingestion": mode, "source_reference": "wikipedia_hilbert", "source_freeform": ""}
+    args_payload.update(kwargs)
+    args = SimpleNamespace(**args_payload)
+    selection = apply_source_ingestion_entry(args=args, runtime=runtime, input_fn=lambda _prompt: "", print_fn=lambda _line: None)
+
+    assert selection.mode == expected["mode"]
+    assert selection.enabled is expected["enabled"]
+    assert selection.connector_type == expected["connector"]
+    assert runtime["source_ingest_selection_source"] == expected["source"]
+    if "reference" in expected:
+        assert runtime["source_ingest_reference_key"] == expected["reference"]
+    if "freeform" in expected:
+        assert runtime["source_ingest_freeform_request"] == expected["freeform"]
+
+
+def test_source_ingestion_reference_flag_is_rejected_for_non_reference_modes() -> None:
+    runtime: dict[str, object] = {}
+    with pytest.raises(ValueError, match="--source-reference can only be used"):
+        apply_source_ingestion_entry(
+            args=SimpleNamespace(source_ingestion="wikipedia", source_reference="local_alignment_docs", source_freeform=""),
+            runtime=runtime,
+        )
+
+
+def test_source_ingestion_freeform_flag_is_rejected_for_non_freeform_modes() -> None:
+    runtime: dict[str, object] = {}
+    with pytest.raises(ValueError, match="--source-freeform can only be used"):
+        apply_source_ingestion_entry(
+            args=SimpleNamespace(source_ingestion="reference", source_reference="wikipedia_hilbert", source_freeform="wikipedia:Hilbert space"),
+            runtime=runtime,
+        )

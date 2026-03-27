@@ -73,6 +73,8 @@ def test_sat_cli_uses_explicit_runtime_legacy_bridge_import() -> None:
     assert "from testbot.startup_status_presenter import print_startup_status" in source
     assert "from testbot.runtime_cli_args import parse_args" in source
     assert "from testbot.source_ingestion_startup import run_source_ingestion" in source
+    assert "from testbot.source_ingestion_entry import apply_source_ingestion_entry" in source
+    assert "def _apply_source_ingestion_selection" not in source
     assert "from testbot.sat_chatbot_memory_v2 import" not in source
 
 

@@ -37,24 +37,25 @@ def parse_args(argv: list[str] | None = None) -> Namespace:
         choices=("env", "menu", "reference", "freeform", "off", "fixture", "local_markdown", "wikipedia", "arxiv"),
         default="env",
         help=(
-            "User-facing source-ingestion selection. "
-            "'menu' shows an Ask-demo-style entry menu; "
-            "'reference' applies a known-good reference example; "
-            "'freeform' accepts <connector>:<value>; "
-            "'env' keeps deployment SOURCE_* settings; "
-            "'off' disables ingestion; direct connector choices force that connector."
+            "User-facing source-ingestion selection mode. "
+            "'env' keeps deployment SOURCE_* runtime parameters; "
+            "'off' disables startup ingestion; "
+            "'menu' prompts for reference/freeform/direct connector/off; "
+            "'reference' requires optional --source-reference; "
+            "'freeform' requires --source-freeform <connector>:<value>; "
+            "direct connector values ('fixture', 'local_markdown', 'wikipedia', 'arxiv') force that connector."
         ),
     )
     parser.add_argument(
         "--source-reference",
         choices=("wikipedia_hilbert", "local_alignment_docs", "arxiv_category_theory"),
         default="wikipedia_hilbert",
-        help="Reference example key used when --source-ingestion reference is selected.",
+        help="Reference example key for --source-ingestion reference; invalid with other --source-ingestion modes.",
     )
     parser.add_argument(
         "--source-freeform",
         default="",
-        help="Freeform ingestion request in '<connector>:<value>' format used by --source-ingestion freeform.",
+        help="Freeform '<connector>:<value>' request for --source-ingestion freeform; invalid with other modes.",
     )
     return parser.parse_args(argv)
 
