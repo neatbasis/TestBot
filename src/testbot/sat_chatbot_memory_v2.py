@@ -253,7 +253,6 @@ CanonicalTurnOrchestrator = _CanonicalTurnOrchestrator
 __all__ = [
     "ASSIST_ALTERNATIVES_ANSWER",
     "AnswerAssembleResult",
-    "AnswerValidateResult",
     "CLARIFY_ANSWER",
     # Compatibility-only façade export; canonical owner remains testbot.canonical_turn_orchestrator.
     "CanonicalTurnOrchestrator",
@@ -263,7 +262,6 @@ __all__ = [
     "NON_KNOWLEDGE_UNCERTAINTY_ANSWER",
     "ROUTE_TO_ASK_ANSWER",
     "RuntimeCapabilityStatus",
-    "ambiguity_score",
     "answer_assemble",
     "append_session_log",
     "build_capability_snapshot",
@@ -272,14 +270,12 @@ __all__ = [
     "build_provenance_metadata",
     "collect_used_source_evidence_refs",
     "decision_object_from_assembled",
-    "derive_response_blocker_reason",
     "evaluate_alignment_decision",
     "format_debug_turn_trace",
     "format_debug_turn_trace_payload",
     "generate_reflection_yaml",
     "has_required_memory_citation",
     "has_sufficient_context_confidence",
-    "intent_label",
     "parse_args",
     "print_startup_status",
     "raw_claim_like_text_detected",
@@ -295,7 +291,6 @@ __all__ = [
     "run_source_ingestion",
     "stage_rerank",
     "stage_rewrite_query",
-    "user_followup_signal_proxy",
     "validate_answer_contract",
 ]
 

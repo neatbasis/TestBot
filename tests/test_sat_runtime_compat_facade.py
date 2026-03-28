@@ -29,3 +29,15 @@ def test_compatibility_exports_include_governed_retirement_metadata() -> None:
     assert metadata["owner_decision"] == "compatibility_only"
     assert metadata["removal_criteria"]
     assert metadata["deprecation_note"]
+
+
+def test_bucket_c_symbols_are_not_public_compatibility_exports() -> None:
+    bucket_c_removed_exports = {
+        "AnswerValidateResult",
+        "ambiguity_score",
+        "intent_label",
+        "derive_response_blocker_reason",
+        "user_followup_signal_proxy",
+    }
+
+    assert bucket_c_removed_exports.isdisjoint(set(runtime.__all__))

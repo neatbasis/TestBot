@@ -115,3 +115,12 @@
 - Execute PR-1 caller migration.
 - Re-run import census; verify remaining façade imports are compatibility-only or explicitly grandfathered.
 - Then execute PR-2 export prune with deterministic regression checks.
+
+## 2026-03-28 update — PR-2 Bucket C prune execution evidence
+
+- Re-ran targeted caller census for Bucket C symbol imports from `testbot.sat_chatbot_memory_v2`:
+  - `rg -n "from testbot\\.sat_chatbot_memory_v2 import .*\\b(AnswerValidateResult|ambiguity_score|intent_label|derive_response_blocker_reason|user_followup_signal_proxy)\\b" src tests docs features scripts`
+  - Result: no direct in-repo importers found for the listed Bucket C symbols.
+- Applied safe façade surface prune:
+  - removed `AnswerValidateResult`, `ambiguity_score`, `intent_label`, `derive_response_blocker_reason`, and `user_followup_signal_proxy` from `sat_chatbot_memory_v2.__all__`;
+  - retained internal/helper definitions to avoid behavior churn in this step.
