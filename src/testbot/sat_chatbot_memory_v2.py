@@ -132,7 +132,6 @@ from testbot.logic.provenance import (
 from testbot.retrieval_routing import decide_retrieval_routing, is_definitional_query_form
 from testbot.adapters.ask_gateway import AskGateway
 from testbot.adapters.ha_satellite_output import send_satellite_output
-from testbot.application.services.turn_service import TurnPipelineDependencies
 from testbot.runtime_capability_service import (
     CapabilitySnapshotData as CapabilitySnapshot,
     RuntimeCapabilityStatusData as RuntimeCapabilityStatus,
@@ -150,7 +149,7 @@ from testbot.source_ingestion_startup import (
     run_source_ingestion as run_startup_source_ingestion,
 )
 from testbot.entrypoints import runtime_bootstrap as runtime_bootstrap_entrypoint
-from testbot.application.services.canonical_turn_runtime import run_canonical_turn_pipeline
+from testbot.entrypoints.runtime_turn_pipeline import RuntimeTurnPipelineHooks, run_runtime_turn_pipeline
 from testbot.canonical_turn_orchestrator import CanonicalTurnOrchestrator as _CanonicalTurnOrchestrator
 from testbot.logic.decision_helpers import (
     decision_object_from_assembled as _decision_object_from_fallback_action,
@@ -1692,31 +1691,7 @@ def _run_canonical_turn_pipeline(
     clock: Clock,
     io_channel: str = "cli",
 ) -> tuple[PipelineState, list[Document]]:
-    deps = TurnPipelineDependencies(
-        append_session_log=append_session_log,
-        validate_and_log_transition=_validate_and_log_transition,
-        stage_rewrite_query=stage_rewrite_query,
-        generate_reflection_yaml=generate_reflection_yaml,
-        intent_classifier_confidence=_intent_classifier_confidence,
-        optional_string=_optional_string,
-        should_force_memory_retrieval_for_identity_recall=_should_force_memory_retrieval_for_identity_recall,
-        resolve_context_fn=resolve_context,
-        intent_telemetry_payload=_intent_telemetry_payload,
-        poll_background_source_ingestion=_poll_background_source_ingestion,
-        start_background_source_ingestion=_start_background_source_ingestion,
-        stage_retrieve=_stage_retrieve_for_turn_service,
-        stage_rerank=_stage_rerank_for_turn_service,
-        selected_decision_from_confidence=_selected_decision_from_confidence,
-        minimal_confidence_decision_for_direct_answer=_minimal_confidence_decision_for_direct_answer,
-        resolve_answer_routing_for_stage=_resolve_answer_routing_for_stage,
-        answer_assemble=_answer_assemble_for_turn_service,
-        answer_validate=_answer_validate_for_turn_service,
-        detect_capability_offer=_detect_capability_offer,
-        ambiguity_score=_ambiguity_score,
-        store_doc_fn=store_doc,
-        intent_classifier_confidence_threshold=INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD,
-    )
-    next_state, normalized_hits = run_canonical_turn_pipeline(
+    return run_runtime_turn_pipeline(
         runtime=runtime,
         llm=llm,
         store=store,
@@ -1730,9 +1705,32 @@ def _run_canonical_turn_pipeline(
         capability_snapshot=capability_snapshot,
         clock=clock,
         io_channel=io_channel,
-        deps=deps,
+        hooks=RuntimeTurnPipelineHooks(
+            append_session_log=append_session_log,
+            validate_and_log_transition=_validate_and_log_transition,
+            stage_rewrite_query=stage_rewrite_query,
+            generate_reflection_yaml=generate_reflection_yaml,
+            intent_classifier_confidence=_intent_classifier_confidence,
+            optional_string=_optional_string,
+            should_force_memory_retrieval_for_identity_recall=_should_force_memory_retrieval_for_identity_recall,
+            resolve_context_fn=resolve_context,
+            intent_telemetry_payload=_intent_telemetry_payload,
+            poll_background_source_ingestion=_poll_background_source_ingestion,
+            start_background_source_ingestion=_start_background_source_ingestion,
+            stage_retrieve=_stage_retrieve_for_turn_service,
+            stage_rerank=_stage_rerank_for_turn_service,
+            selected_decision_from_confidence=_selected_decision_from_confidence,
+            minimal_confidence_decision_for_direct_answer=_minimal_confidence_decision_for_direct_answer,
+            resolve_answer_routing_for_stage=_resolve_answer_routing_for_stage,
+            answer_assemble=_answer_assemble_for_turn_service,
+            answer_validate=_answer_validate_for_turn_service,
+            detect_capability_offer=_detect_capability_offer,
+            ambiguity_score=_ambiguity_score,
+            store_doc_fn=store_doc,
+            intent_classifier_confidence_threshold=INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD,
+            document_from_retrieval_input=_document_from_retrieval_input,
+        ),
     )
-    return next_state, [_document_from_retrieval_input(record) for record in normalized_hits]
 
 def _run_chat_loop(
     *,

@@ -1,22 +1,21 @@
 from collections import deque
 
 from testbot import sat_chatbot_memory_v2 as runtime
-from testbot.application.services.turn_service import TurnPipelineDependencies
-from testbot.evidence_retrieval import RetrievalInputRecord
+from testbot.entrypoints.runtime_turn_pipeline import RuntimeTurnPipelineHooks
 
 
 class _CapabilitySnapshotStub:
     runtime_capability_status = None
 
 
-def test_run_canonical_turn_pipeline_delegates_to_application_service(monkeypatch):
+def test_run_canonical_turn_pipeline_delegates_to_runtime_turn_pipeline_helper(monkeypatch):
     captured: dict[str, object] = {}
 
     def _service_stub(**kwargs):
         captured.update(kwargs)
-        return "state-result", [RetrievalInputRecord(ref_id="hit-result", score=1.0, content="hit", metadata={})]
+        return "state-result", []
 
-    monkeypatch.setattr(runtime, "run_canonical_turn_pipeline", _service_stub)
+    monkeypatch.setattr(runtime, "run_runtime_turn_pipeline", _service_stub)
 
     result = runtime._run_canonical_turn_pipeline(
         runtime={"test": True},
@@ -34,11 +33,10 @@ def test_run_canonical_turn_pipeline_delegates_to_application_service(monkeypatc
     )
 
     assert result[0] == "state-result"
-    assert len(result[1]) == 1
-    assert result[1][0].id == "hit-result"
+    assert result[1] == []
     assert captured["utterance"] == "hello"
     assert captured["io_channel"] == "cli"
-    deps = captured["deps"]
-    assert isinstance(deps, TurnPipelineDependencies)
-    assert deps.append_session_log is runtime.append_session_log
-    assert deps.intent_classifier_confidence_threshold == runtime.INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD
+    hooks = captured["hooks"]
+    assert isinstance(hooks, RuntimeTurnPipelineHooks)
+    assert hooks.append_session_log is runtime.append_session_log
+    assert hooks.intent_classifier_confidence_threshold == runtime.INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD
