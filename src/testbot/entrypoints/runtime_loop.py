@@ -28,6 +28,7 @@ from testbot.entrypoints.runtime_background_ingestion import (
     poll_background_source_ingestion,
 )
 from testbot.entrypoints.runtime_turn_pipeline import RuntimeTurnPipelineHooks, run_runtime_turn_pipeline
+from testbot.entrypoints.runtime_turn_telemetry import RuntimeTurnTelemetryDependencies, emit_runtime_turn_telemetry
 from testbot import sat_chatbot_memory_v2 as _legacy_runtime
 from testbot.domain import Clock
 from testbot.ports import MemoryStorePort
@@ -178,79 +179,21 @@ def run_chat_loop(
             ),
         )
 
-        ambiguity_score = _legacy_runtime._ambiguity_score(state.confidence_decision)
-        chosen_action = str(state.invariant_decisions.get("fallback_action", "NONE"))
-        followup_proxy = _legacy_runtime._user_followup_signal_proxy(
-            final_answer=state.final_answer,
-            fallback_action=chosen_action,
-            ambiguity_score=ambiguity_score,
-        )
-
-        _legacy_runtime.append_session_log(
-            "fallback_action_selected",
-            _legacy_runtime._intent_telemetry_payload(
-                state=state,
-                utterance=utterance,
-                extra={
-                    "ambiguity_score": ambiguity_score,
-                    "chosen_action": chosen_action,
-                    "user_followup_signal_proxy": followup_proxy,
-                },
+        emit_runtime_turn_telemetry(
+            state=state,
+            utterance=utterance,
+            hits=hits,
+            capability_snapshot=capability_snapshot,
+            send_assistant_text=send_assistant_text,
+            deps=RuntimeTurnTelemetryDependencies(
+                append_session_log=_legacy_runtime.append_session_log,
+                intent_telemetry_payload=_legacy_runtime._intent_telemetry_payload,
+                ambiguity_score=_legacy_runtime._ambiguity_score,
+                user_followup_signal_proxy=_legacy_runtime._user_followup_signal_proxy,
+                build_debug_turn_payload=_legacy_runtime._build_debug_turn_payload,
+                format_debug_turn_trace_payload=_legacy_runtime._format_debug_turn_trace_payload,
             ),
         )
-        _legacy_runtime.append_session_log(
-            "provenance_summary",
-            _legacy_runtime._intent_telemetry_payload(
-                state=state,
-                utterance=utterance,
-                extra={
-                    "ambiguity_score": ambiguity_score,
-                    "chosen_action": chosen_action,
-                    "user_followup_signal_proxy": followup_proxy,
-                    "claims": state.claims,
-                    "provenance_types": [p.value for p in state.provenance_types],
-                    "used_memory_refs": state.used_memory_refs,
-                    "used_source_evidence_refs": state.used_source_evidence_refs,
-                    "source_evidence_attribution": state.source_evidence_attribution,
-                    "basis_statement": state.basis_statement,
-                },
-            ),
-        )
-        _legacy_runtime.append_session_log(
-            "alignment_decision_evaluated",
-            _legacy_runtime._intent_telemetry_payload(
-                state=state,
-                utterance=utterance,
-                extra={
-                    "alignment_decision": state.alignment_decision.to_dict(),
-                    "alignment_dimension_inputs_raw": state.alignment_decision.typed_dimension_inputs().get("raw", {}),
-                    "alignment_dimension_inputs_normalized": state.alignment_decision.typed_dimension_inputs().get(
-                        "normalized", {}
-                    ),
-                    "alignment_dimensions": dict(state.alignment_decision.dimensions),
-                },
-            ),
-        )
-
-        if capability_snapshot.runtime_capability_status.debug_enabled:
-            debug_payload = _legacy_runtime._build_debug_turn_payload(
-                state=state,
-                intent_label=state.resolved_intent,
-                hits=hits,
-            )
-            debug_trace = _legacy_runtime._format_debug_turn_trace_payload(
-                payload=debug_payload,
-                verbose=capability_snapshot.runtime_capability_status.debug_verbose,
-            )
-            _legacy_runtime.append_session_log(
-                "debug_turn_trace",
-                {
-                    "utterance": utterance,
-                    "payload": debug_payload,
-                    "trace": debug_trace,
-                },
-            )
-            send_assistant_text(debug_trace)
 
         unresolved_intent = (
             state.resolved_intent

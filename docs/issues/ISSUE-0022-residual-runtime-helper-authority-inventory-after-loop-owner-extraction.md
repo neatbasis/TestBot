@@ -113,3 +113,27 @@ Done vs Deferred:
   assembled under `entrypoints/runtime_background_ingestion.py`.
 - **Deferred:** telemetry/debug hooks, answer-stage hooks, and context/retrieval hooks remain compatibility-wired through
   `sat_chatbot_memory_v2` and are explicitly out of scope for this narrow extraction.
+
+## 2026-03-28 update — telemetry/debug helper cluster extraction (narrow)
+
+- Extracted canonical runtime-owned turn telemetry/debug helper:
+  - `testbot.entrypoints.runtime_turn_telemetry`
+  - dependency contract: `RuntimeTurnTelemetryDependencies`
+- Rewired canonical runtime loop owner:
+  - `testbot.entrypoints.runtime_loop.run_chat_loop` now delegates loop-level telemetry/debug emission to
+    `emit_runtime_turn_telemetry(...)`.
+  - canonical loop no longer inlines fallback/provenance/alignment telemetry payload assembly and debug-trace emission
+    logic.
+- Compatibility kept:
+  - telemetry payload formatting + debug payload generation implementations still come from compatibility helpers in
+    `testbot.sat_chatbot_memory_v2` via dependency injection.
+- Added focused anti-regression guard:
+  - runtime-mode ownership test now asserts `runtime_loop.py` imports canonical runtime turn-telemetry helper and does
+    not directly call monolith telemetry/debug helper functions.
+
+Done vs Deferred:
+
+- **Done:** loop-level telemetry/debug helper authority is canonically assembled under
+  `entrypoints/runtime_turn_telemetry.py`, reducing in-loop helper authority concentration.
+- **Deferred:** commit-persistence helper extraction and answer-stage/context-retrieval helper extraction remain
+  compatibility-wired through `sat_chatbot_memory_v2` and are intentionally out of scope for this narrow step.
