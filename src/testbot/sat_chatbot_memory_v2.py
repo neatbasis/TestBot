@@ -7,7 +7,6 @@ Keep wrappers thin and add new runtime behavior in canonical owners.
 
 from __future__ import annotations
 
-import json
 import logging
 import os
 import re
@@ -52,7 +51,6 @@ from testbot.rerank import (
     rerank_confidence_thresholds,
     adaptive_sigma_fractional,
     has_sufficient_context_confidence_from_objective,
-    is_source_evidence_doc,
     mix_source_evidence_with_memory_cards,
     rerank_docs_with_time_and_type_outcome,
 )
@@ -90,7 +88,7 @@ from testbot.intent_router import (
 )
 from testbot.time_reasoning import elapsed_since_last_user_message, resolve_relative_date
 from testbot.source_ingest import SourceIngestor
-from testbot.history_packer import PackedHistory, labeled_history_claims, pack_chat_history, render_packed_history
+from testbot.history_packer import PackedHistory, pack_chat_history, render_packed_history
 from testbot.response_planner import build_response_plan, plan_to_dict, render_response_plan_block
 from testbot.reject_taxonomy import derive_reject_signal
 from testbot.turn_observation import observe_turn
@@ -119,16 +117,18 @@ from testbot.logic.alignment import (
     GENERAL_KNOWLEDGE_SUPPORT_MIN,
     assess_general_knowledge_contract,
     evaluate_alignment_decision as _evaluate_alignment_decision,
-    extract_claims,
     has_general_knowledge_marker,
     has_required_memory_citation,
-    is_non_trivial_answer,
     is_unsafe_user_request,
     passes_general_knowledge_confidence_gate,
     raw_claim_like_text_detected,
     response_contains_claims,
     validate_answer_contract,
     validate_general_knowledge_contract,
+)
+from testbot.logic.provenance import (
+    build_provenance_metadata as build_provenance_metadata_from_logic,
+    collect_used_source_evidence_refs as collect_used_source_evidence_refs_from_logic,
 )
 from testbot.retrieval_routing import decide_retrieval_routing, is_definitional_query_form
 from testbot.adapters.ask_gateway import AskGateway
@@ -1353,7 +1353,7 @@ def answer_validate(
         hits=hits,
         chat_history=chat_history,
         pending_lookup_override=pending_lookup_override,
-        build_provenance_metadata=build_provenance_metadata,
+        build_provenance_metadata=build_provenance_metadata_from_logic,
         evaluate_alignment_decision=_evaluate_alignment_decision,
         fallback_answer=FALLBACK_ANSWER,
         deny_answer=DENY_ANSWER,
@@ -1667,40 +1667,9 @@ def has_sufficient_context_confidence(
     )
 
 
-def collect_used_memory_refs(hits: list[Document]) -> list[str]:
-    refs: list[str] = []
-    for d in hits:
-        if is_source_evidence_doc(d):
-            continue
-        doc_id = str(d.metadata.get("doc_id") or d.id or "").strip()
-        if not doc_id:
-            continue
-        ts = str(d.metadata.get("ts") or "").strip()
-        refs.append(f"{doc_id}@{ts}" if ts else doc_id)
-    return sorted(dict.fromkeys(refs))
-
-
 def collect_used_source_evidence_refs(hits: list[Document]) -> tuple[list[str], list[dict[str, str]]]:
-    refs: list[str] = []
-    attributions: list[dict[str, str]] = []
-    for d in hits:
-        if not is_source_evidence_doc(d):
-            continue
-        doc_id = str(d.metadata.get("doc_id") or d.id or "").strip()
-        if doc_id:
-            refs.append(doc_id)
-        attribution = {
-            "doc_id": doc_id,
-            "source_type": str(d.metadata.get("source_type") or ""),
-            "source_uri": str(d.metadata.get("source_uri") or ""),
-            "retrieved_at": str(d.metadata.get("retrieved_at") or ""),
-            "trust_tier": str(d.metadata.get("trust_tier") or ""),
-        }
-        attributions.append(attribution)
-    deduped_refs = sorted(dict.fromkeys(refs))
-    deduped_attributions = list({json.dumps(item, sort_keys=True): item for item in attributions}.values())
-    deduped_attributions.sort(key=lambda item: (item.get("doc_id", ""), item.get("source_uri", ""), item.get("retrieved_at", "")))
-    return deduped_refs, deduped_attributions
+    """Compatibility wrapper; canonical owner is testbot.logic.provenance.collect_used_source_evidence_refs."""
+    return collect_used_source_evidence_refs_from_logic(hits)
 
 
 def build_provenance_metadata(
@@ -1710,59 +1679,12 @@ def build_provenance_metadata(
     chat_history: deque[ChatMsg],
     packed_history: PackedHistory,
 ) -> tuple[list[ProvenanceType], list[str], str, list[str], list[str], list[dict[str, str]]]:
-    if not is_non_trivial_answer(final_answer):
-        return (
-            [ProvenanceType.UNKNOWN],
-            [],
-            "Trivial fallback/deny/clarification response with no substantive claim.",
-            [],
-            [],
-            [],
-        )
-
-    used_memory_refs = collect_used_memory_refs(hits)
-    used_source_evidence_refs, source_evidence_attribution = collect_used_source_evidence_refs(hits)
-    claims = [f"INFERENCE: {claim}" for claim in extract_claims(final_answer)]
-    claims.extend(labeled_history_claims(packed_history))
-    claims = claims[:8]
-    provenance_types: list[ProvenanceType] = [ProvenanceType.INFERENCE]
-    if used_memory_refs or used_source_evidence_refs:
-        provenance_types.append(ProvenanceType.MEMORY)
-    else:
-        provenance_types.append(ProvenanceType.GENERAL_KNOWLEDGE)
-    if chat_history:
-        provenance_types.append(ProvenanceType.CHAT_HISTORY)
-
-    if used_memory_refs and used_source_evidence_refs:
-        basis_statement = (
-            "Answer synthesized from reranked memory context and source evidence documents"
-            + (" with recent chat history signals." if chat_history else ".")
-        )
-    elif used_memory_refs:
-        basis_statement = (
-            "Answer synthesized from reranked memory context"
-            + (" and recent chat history." if chat_history else ".")
-        )
-    elif used_source_evidence_refs:
-        basis_statement = (
-            "Answer synthesized from reranked source evidence documents"
-            + (" and recent chat history." if chat_history else ".")
-        )
-    elif chat_history:
-        basis_statement = (
-            "Relevance summary basis: synthesized from recent chat history signals."
-            if final_answer.startswith("Relevant summary:")
-            else "Answer synthesized from recent chat history (advisory signals only)."
-        )
-    else:
-        basis_statement = "General-knowledge basis: no supporting memory references were retrieved."
-    return (
-        list(dict.fromkeys(provenance_types)),
-        claims,
-        basis_statement,
-        used_memory_refs,
-        used_source_evidence_refs,
-        source_evidence_attribution,
+    """Compatibility wrapper; canonical owner is testbot.logic.provenance.build_provenance_metadata."""
+    return build_provenance_metadata_from_logic(
+        final_answer=final_answer,
+        hits=hits,
+        chat_history=chat_history,
+        packed_history=packed_history,
     )
 
 
