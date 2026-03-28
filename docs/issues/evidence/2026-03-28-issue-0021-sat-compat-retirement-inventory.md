@@ -266,6 +266,29 @@ Done vs Deferred:
 - **Done:** repository wording/evidence now reflects the resolved ownership split (adapter owns outbound transport, runtime_loop owns import seam only).
 - **Deferred:** full extraction of `run_chat_loop` implementation out of `sat_chatbot_memory_v2` into canonical runtime-loop ownership, including future decisions on whether any outbound surface should be promoted under Ask-backed ownership.
 
+## 2026-03-28 follow-up — telemetry/debug helper authority moved under canonical runtime entrypoint
+
+- Established canonical loop-level telemetry/debug owner module:
+  - `testbot.entrypoints.runtime_turn_telemetry`
+- Updated canonical loop owner (`testbot.entrypoints.runtime_loop`) to call
+  `emit_runtime_turn_telemetry(...)` instead of inlining telemetry/debug helper logic.
+- Kept compatibility behavior stable:
+  - runtime telemetry payload shaping and debug payload formatting implementations still delegate to
+    `testbot.sat_chatbot_memory_v2` helper functions via dependency injection while retirement is in progress.
+- Added anti-regression ownership guard in runtime-mode tests to enforce:
+  - canonical runtime loop imports runtime turn telemetry entrypoint;
+  - canonical runtime loop does not directly call monolith telemetry helper symbols.
+
+Status impact for retirement inventory:
+
+- Runtime loop telemetry/debug helper authority: moved from implicit monolith-inline coupling to **B migrated (wrapper retained)**.
+
+Done vs Deferred:
+
+- **Done:** canonical loop telemetry/debug assembly ownership now lives under an extracted `entrypoints` owner.
+- **Deferred:** commit-persistence helper extraction and broader answer-stage/context-retrieval helper retirement remain
+  follow-on work under ISSUE-0022 / ISSUE-0021.
+
 ## 2026-03-28 follow-up — runtime loop implementation extraction into canonical owner
 
 - Moved the **actual runtime loop control-flow implementation** into `testbot.entrypoints.runtime_loop.run_chat_loop`.
