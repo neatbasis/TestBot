@@ -22,6 +22,7 @@ from homeassistant_api import Client
 from langchain_core.embeddings import Embeddings
 from langchain_ollama import ChatOllama
 
+from testbot.entrypoints import runtime_bootstrap as _runtime_bootstrap
 from testbot import sat_chatbot_memory_v2 as _legacy_runtime
 from testbot.domain import Clock
 from testbot.ports import MemoryStorePort
@@ -48,12 +49,12 @@ def _warn_legacy_runtime_bridge() -> None:
 
 def read_runtime_env() -> dict[str, object]:
     _warn_legacy_runtime_bridge()
-    return _legacy_runtime.read_runtime_env()
+    return _runtime_bootstrap.read_runtime_env()
 
 
 def build_runtime_memory_store(*, runtime: dict[str, object], embeddings: Embeddings) -> MemoryStorePort:
     _warn_legacy_runtime_bridge()
-    return _legacy_runtime.build_runtime_memory_store(runtime=runtime, embeddings=embeddings)
+    return _runtime_bootstrap.build_runtime_memory_store(runtime=runtime, embeddings=embeddings)
 
 
 def run_chat_loop(

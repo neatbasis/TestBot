@@ -68,8 +68,9 @@ def test_legacy_runtime_main_warns_once_and_delegates_to_cli(monkeypatch: pytest
     assert forwarded[1] == ["--mode", "satellite"]
 
 
-def test_cli_uses_explicit_runtime_legacy_bridge_import() -> None:
+def test_cli_uses_runtime_bootstrap_owner_and_limits_legacy_bridge_imports() -> None:
     source = Path(cli.__file__).read_text()
+    assert "from testbot.entrypoints.runtime_bootstrap import build_runtime_memory_store, read_runtime_env" in source
     bridge_import_match = re.search(
         r"from testbot\.entrypoints\.runtime_legacy_bridge import \((?P<names>.*?)\)",
         source,
@@ -77,10 +78,8 @@ def test_cli_uses_explicit_runtime_legacy_bridge_import() -> None:
     )
     assert bridge_import_match is not None
     bridge_import_names = bridge_import_match.group("names")
-    assert "build_capability_snapshot" not in bridge_import_names
-    assert "print_startup_status" not in bridge_import_names
-    assert "parse_args" not in bridge_import_names
-    assert "run_source_ingestion" not in bridge_import_names
+    assert "read_runtime_env" not in bridge_import_names
+    assert "build_runtime_memory_store" not in bridge_import_names
     assert "from testbot.runtime_capability_service import build_capability_snapshot" in source
     assert "from testbot.startup_status_presenter import print_startup_status" in source
     assert "from testbot.runtime_cli_args import parse_args" in source

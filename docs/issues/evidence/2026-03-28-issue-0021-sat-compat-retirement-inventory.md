@@ -166,3 +166,24 @@ Done vs Deferred:
 
 - **Done:** canonicalized stable answer-stage contract strings under a single owner and reduced façade constants to compatibility export behavior.
 - **Deferred:** broader answer-stage API cleanup (e.g., token-to-string mapping centralization and remaining façade call-site migration) remains tracked under ISSUE-0021 follow-on steps.
+
+## 2026-03-28 update — runtime bootstrap ownership seam extraction evidence
+
+- Established canonical bootstrap owner module: `testbot.entrypoints.runtime_bootstrap`.
+- Extracted bootstrap ownership symbols:
+  - `read_runtime_env`
+  - `build_runtime_memory_store`
+- Updated canonical CLI entrypoint (`testbot.entrypoints.cli`) to import these symbols directly from the bootstrap owner, reducing authority held by `entrypoints/runtime_legacy_bridge.py`.
+- Kept compatibility behavior intact:
+  - `testbot.sat_chatbot_memory_v2` façade exports now delegate to canonical bootstrap owner.
+  - `testbot.entrypoints.runtime_legacy_bridge` wrappers still expose the same symbol names and deprecation warning behavior.
+
+Status impact for retirement inventory:
+
+- `read_runtime_env`: moved from **D decide later** to **B migrated (wrapper retained)**.
+- `build_runtime_memory_store`: moved from **D decide later** to **B migrated (wrapper retained)**.
+
+Done vs Deferred:
+
+- **Done:** canonical bootstrap ownership is explicit under `entrypoints/runtime_bootstrap.py`, and bridge/façade ownership was reduced without behavioral broadening.
+- **Deferred:** `run_chat_loop` and `sat_say` remain compatibility-owned by `runtime_legacy_bridge`/`sat_chatbot_memory_v2`; extracting those seams is intentionally out of scope for this narrow step.
