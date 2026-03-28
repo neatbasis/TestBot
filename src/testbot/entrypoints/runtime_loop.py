@@ -1,10 +1,13 @@
 """Canonical runtime loop entrypoint helpers.
 
 Ownership:
-- This module is the canonical owner for runtime loop invocation and
-  satellite output helpers used by the CLI runtime entrypoint.
-- During retirement, implementation delegates to the compatibility façade
-  while this module remains the stable import surface for runtime callers.
+- This module is the canonical import surface for runtime loop invocation
+  used by the CLI runtime entrypoint.
+- `run_chat_loop` remains a compatibility wrapper that delegates to the
+  legacy runtime implementation pending loop extraction.
+- Satellite output transport ownership lives in
+  ``testbot.adapters.ha_satellite_output``; ``sat_say`` is retained only as
+  a compatibility wrapper.
 """
 
 from __future__ import annotations

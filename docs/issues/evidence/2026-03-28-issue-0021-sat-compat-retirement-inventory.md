@@ -239,3 +239,26 @@ Done vs Deferred:
 
 - **Done:** direct HA satellite output transport details are removed from runtime-loop/monolith ownership and placed under a narrow canonical adapter.
 - **Deferred:** Ask-backed outbound output ownership design and full compatibility-wrapper retirement remain out of scope.
+
+## 2026-03-28 follow-up — runtime loop ownership truth-alignment after HA outbound extraction
+
+- Re-aligned runtime loop ownership wording to match post-extraction reality:
+  - `testbot.entrypoints.runtime_loop` is the canonical runtime-loop import surface;
+  - `run_chat_loop` remains a compatibility delegation seam into `sat_chatbot_memory_v2`;
+  - satellite outbound transport ownership remains in `testbot.adapters.ha_satellite_output`.
+- Reclassified `sat_say` as compatibility-only wrapper surface (not a primary architectural seam).
+- Captured current caller census for wrapper retirement planning:
+  - `testbot.entrypoints.runtime_loop.sat_say`: referenced by `testbot.entrypoints.runtime_legacy_bridge.sat_say` and runtime-loop delegation tests;
+  - `testbot.sat_chatbot_memory_v2.sat_say`: no direct in-repo callers/importers found (compatibility façade export only).
+- Confirmed next substantive extraction target:
+  - `run_chat_loop` implementation still lives in `testbot.sat_chatbot_memory_v2` and remains the primary remaining runtime seam.
+
+Status impact for retirement inventory:
+
+- `sat_say`: remains **B migrated (wrapper retained)**, now explicitly tracked as compatibility-only wrapper over `send_satellite_output`.
+- `run_chat_loop`: remains **B migrated (wrapper retained)**, with follow-up extraction prioritized as the next architectural step.
+
+Done vs Deferred:
+
+- **Done:** repository wording/evidence now reflects the resolved ownership split (adapter owns outbound transport, runtime_loop owns import seam only).
+- **Deferred:** full extraction of `run_chat_loop` implementation out of `sat_chatbot_memory_v2` into canonical runtime-loop ownership.
