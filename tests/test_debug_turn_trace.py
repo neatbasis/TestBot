@@ -3,7 +3,7 @@ from __future__ import annotations
 from langchain_core.documents import Document
 
 from testbot.pipeline_state import PipelineState
-from testbot.sat_chatbot_memory_v2 import format_debug_turn_trace
+from testbot.observability.turn_debug_payload import format_debug_turn_trace
 
 
 def test_format_debug_turn_trace_reports_ambiguous_memory_blocker_reason() -> None:

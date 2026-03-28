@@ -8,7 +8,7 @@ from testbot.candidate_encoding import encode_turn_candidates
 from testbot.canonical_turn_orchestrator import CanonicalStage, CanonicalTurnContext, CanonicalTurnOrchestrator
 from testbot.pipeline_state import PipelineState
 from testbot.policy_decision import DecisionClass, DecisionObject
-from testbot.sat_chatbot_memory_v2 import resolve_answer_routing_from_decision_object
+from testbot.logic.decision_helpers import resolve_answer_routing_from_decision_object
 from testbot.turn_observation import observe_turn
 
 

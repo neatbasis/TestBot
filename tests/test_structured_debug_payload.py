@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from testbot.pipeline_state import PipelineState
-from testbot.sat_chatbot_memory_v2 import build_debug_turn_payload, format_debug_turn_trace, format_debug_turn_trace_payload
+from testbot.observability.turn_debug_payload import build_debug_turn_payload, format_debug_turn_trace, format_debug_turn_trace_payload
 
 
 REQUIRED_DEBUG_KEYS = {

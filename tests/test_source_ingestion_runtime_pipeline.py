@@ -5,12 +5,10 @@ import json
 
 from testbot.clock import SystemClock
 from testbot.ports import MemorySearchQuery, PortDocument, ScoredPortDocument
-from testbot.sat_chatbot_memory_v2 import (
-    CapabilitySnapshot,
-    RuntimeCapabilityStatus,
-    run_chat_loop,
-    run_source_ingestion,
-)
+from testbot.runtime_capability_service import CapabilitySnapshotData as CapabilitySnapshot
+from testbot.runtime_capability_service import RuntimeCapabilityStatusData as RuntimeCapabilityStatus
+from testbot.sat_chatbot_memory_v2 import run_chat_loop
+from testbot.source_ingestion_startup import run_source_ingestion
 
 
 class _FakeStore:
@@ -66,7 +64,7 @@ def test_fixture_source_ingestion_pipeline_emits_completion_and_provenance(monke
 
     monkeypatch.setattr("testbot.sat_chatbot_memory_v2.append_session_log", _capture_session_log)
 
-    run_source_ingestion(runtime=runtime, store=store)
+    run_source_ingestion(runtime=runtime, store=store, append_session_log=_capture_session_log)
 
     replies: list[str] = []
     prompts = iter(["What is a Hilbert space?", "stop"])

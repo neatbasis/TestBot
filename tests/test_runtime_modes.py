@@ -18,7 +18,9 @@ from testbot.adapters.ask_gateway import AskTurnInput, STOP_DECISION_ID
 from testbot.interaction_policy import InteractionPolicyRequest
 from testbot.interaction_standards import InteractionRequirements
 from testbot.entrypoints import sat_runtime_modes
-from testbot.sat_chatbot_memory_v2 import CLARIFY_ANSWER, parse_args, resolve_mode, resolve_turn_intent
+from testbot.runtime_capability_service import resolve_mode
+from testbot.runtime_cli_args import parse_args
+from testbot.sat_chatbot_memory_v2 import CLARIFY_ANSWER, resolve_turn_intent
 from testbot import sat_chatbot_memory_v2 as runtime
 import testbot.runtime_capability_service as runtime_capability_service
 
