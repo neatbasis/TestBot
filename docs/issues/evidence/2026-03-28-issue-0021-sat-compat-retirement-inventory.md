@@ -1,0 +1,117 @@
+# 2026-03-28 — ISSUE-0021 SAT compatibility façade retirement inventory
+
+- **Issue:** `ISSUE-0021`
+- **Scope:** `src/testbot/sat_chatbot_memory_v2.py` public `__all__` compatibility surface.
+- **Goal:** classify every export into retirement-readiness buckets and identify authoritative callers that still depend on the façade.
+
+## What is done in this note
+
+1. Enumerated all `45` exported symbols from `sat_chatbot_memory_v2.__all__`.
+2. Ran an in-repo caller census for `testbot.sat_chatbot_memory_v2` imports across `src/`, `tests/`, `docs/`, and `scripts/`.
+3. Classified each export into one of four buckets:
+   - **A**: keep temporarily
+   - **B**: migrate now
+   - **C**: remove now
+   - **D**: decide later (missing usage evidence)
+4. Defined a two-PR migration/removal sequence.
+
+## Authoritative caller census (repo)
+
+### Runtime / production path (authoritative)
+
+- `src/testbot/entrypoints/runtime_legacy_bridge.py` imports `sat_chatbot_memory_v2` as an explicit transitional bridge.
+- This is the only non-test in-repo runtime import path still depending on the façade.
+
+### Docs / scripts usage (authoritative-adjacent)
+
+- No active docs or scripts import the façade module as executable authority in current in-repo scan.
+- Existing docs references are descriptive/governance mentions, not launch-path imports.
+
+### Test usage split
+
+- **Compatibility-only tests** (explicitly façade-compat intent by naming):
+  - `tests/test_sat_runtime_compat_facade.py`
+  - `tests/test_answer_stage_runtime_compat_wrappers.py`
+  - `tests/test_answer_stage_flow_delegation.py`
+  - `tests/test_canonical_orchestrator_compatibility_exports.py`
+  - `tests/test_session_log_compatibility.py`
+
+- **Non-compatibility tests currently importing façade symbols** (migration candidates):
+  - intent/routing/assertion suites (`tests/test_intent_router.py`, `tests/test_decisioning_stages.py`, `tests/test_pipeline_semantic_contracts.py`, `tests/test_answer_routing_bridge.py`, `tests/test_canonical_turn_orchestrator.py`)
+  - runtime behavior suites (`tests/test_answer_contract.py`, `tests/test_runtime_logging_events.py`, `tests/test_runtime_modes.py`, `tests/test_time_reasoning.py`, `tests/test_eval_runtime_parity.py`, `tests/test_capabilities_help.py`, `tests/test_capabilities_runtime_status.py`, `tests/test_startup_status.py`)
+  - source/debug/helper suites (`tests/test_source_fusion.py`, `tests/test_source_ingestion_runtime_pipeline.py`, `tests/test_structured_debug_payload.py`, `tests/test_debug_turn_trace.py`, `tests/test_turn_debug_payload_module.py`, `tests/test_reject_taxonomy.py`)
+  - selected integration/live-smoke suites still import façade APIs.
+
+## Export inventory and retirement bucketing
+
+> `Target issue/date` values below use the active deprecation anchor `ISSUE-0021` with phased windows.
+
+| Symbol | Canonical owner | Why symbol still exists today | Caller class | Bucket | Removal condition | Target issue/date |
+|---|---|---|---|---|---|---|
+| `main` (legacy entrypoint) | `testbot.entrypoints.cli.main` | historical executable/import compatibility surface | runtime bridge + external unknown | A keep temporarily | remove after bridge + external migration evidence | ISSUE-0021 / review 2026-06-30 |
+| `parse_args` | `testbot.runtime_cli_args.parse_args` | compatibility import path in runtime-mode tests | tests (non-compat) | B migrate now | move tests/callers to canonical args module | ISSUE-0021 / 2026-04-15 |
+| `resolve_mode` | `testbot.runtime_capability_service.resolve_mode` | compatibility import path in runtime-mode tests | tests (non-compat) | B migrate now | import canonical runtime capability service directly | ISSUE-0021 / 2026-04-15 |
+| `read_runtime_env` | runtime env helpers in façade/startup stack | retained for live-smoke/runtime bootstrap checks | tests (live-smoke) + external unknown | D decide later | confirm external usage + extract owner module if retained | ISSUE-0021 / 2026-04-30 |
+| `build_runtime_memory_store` | `testbot.adapters.memory_store_factory.build_memory_store` | compatibility wiring helper | unknown/external + no direct in-repo import | D decide later | prove no external callers or add explicit replacement path | ISSUE-0021 / 2026-04-30 |
+| `run_source_ingestion` | `testbot.source_ingestion_startup.run_source_ingestion` | compatibility wrapper used in runtime pipeline tests | tests (non-compat) | B migrate now | import startup ingestion owner directly | ISSUE-0021 / 2026-04-15 |
+| `print_startup_status` | `testbot.startup_status_presenter.print_startup_status` | compatibility wrapper used by startup tests | tests (non-compat) | B migrate now | import presenter directly | ISSUE-0021 / 2026-04-15 |
+| `run_chat_loop` | façade runtime loop helper | still used in source-ingestion runtime test harness | tests (non-compat) + external unknown | D decide later | extract owner or migrate tests to narrower canonical orchestration seam | ISSUE-0021 / 2026-04-30 |
+| `run_canonical_answer_stage_flow` | canonical turn runtime service path | currently central callable used across runtime tests | tests (non-compat/live-smoke) | A keep temporarily | keep until test migration lands on canonical service entry API | ISSUE-0021 / review 2026-05-15 |
+| `run_answer_stage_flow` | alias to `run_canonical_answer_stage_flow` | explicit deprecated compatibility alias | compatibility + possible external legacy | A keep temporarily | remove per deprecation criteria once imports/tests migrated | ISSUE-0021 / removal target 2026-04-01* |
+| `evaluate_alignment_decision` | `testbot.logic.alignment.evaluate_alignment_decision` | explicit deprecated shim | compatibility + possible external legacy | A keep temporarily | remove per existing deprecation criteria | ISSUE-0021 / removal target 2026-04-01* |
+| `CanonicalTurnOrchestrator` | `testbot.canonical_turn_orchestrator.CanonicalTurnOrchestrator` | governed compatibility re-export | compatibility tests + legacy import stability | A keep temporarily | remove after in-repo and external import migration evidence | ISSUE-0021 / review 2026-06-30 |
+| `resolve_answer_routing_from_decision_object` | `testbot.logic.decision_helpers.resolve_answer_routing_from_decision_object` | compatibility bridge helper | tests (non-compat) | B migrate now | import from decision helper module directly | ISSUE-0021 / 2026-04-15 |
+| `decision_object_from_assembled` | `testbot.logic.decision_helpers.decision_object_from_assembled` | compatibility bridge helper | unknown (no direct imports found) | D decide later | remove if no external imports; otherwise migrate | ISSUE-0021 / 2026-04-30 |
+| `build_debug_turn_payload` | `testbot.observability.turn_debug_payload.build_debug_turn_payload` | compatibility re-export for debug tests | tests (non-compat) | B migrate now | migrate tests/importers to observability owner | ISSUE-0021 / 2026-04-15 |
+| `format_debug_turn_trace` | `testbot.observability.turn_debug_payload.format_debug_turn_trace` | compatibility re-export for debug tests | tests (non-compat) | B migrate now | migrate imports to observability owner | ISSUE-0021 / 2026-04-15 |
+| `format_debug_turn_trace_payload` | `testbot.observability.turn_debug_payload.format_debug_turn_trace_payload` | compatibility re-export for debug tests | tests (non-compat) | B migrate now | migrate imports to observability owner | ISSUE-0021 / 2026-04-15 |
+| `append_session_log` | `testbot.observability.session_log.append_session_log` | compatibility re-export for legacy call sites | unknown (no direct imports found) | D decide later | evidence no callers -> remove; else migrate to observability import | ISSUE-0021 / 2026-04-30 |
+| `build_capability_snapshot` | `testbot.runtime_capability_service.build_capability_snapshot` | compatibility wrapper used in tests | tests (non-compat + live-smoke) | B migrate now | direct-import runtime capability service | ISSUE-0021 / 2026-04-15 |
+| `CapabilitySnapshot` | `testbot.runtime_capability_service.CapabilitySnapshotData` | type compatibility export | tests (non-compat) | B migrate now | import type from runtime capability service | ISSUE-0021 / 2026-04-15 |
+| `RuntimeCapabilityStatus` | `testbot.runtime_capability_service.RuntimeCapabilityStatusData` | type compatibility export | tests (non-compat) | B migrate now | import type from runtime capability service | ISSUE-0021 / 2026-04-15 |
+| `ASSIST_ALTERNATIVES_ANSWER` | façade fallback policy constants | test assertions depend on exact value | tests (non-compat) | D decide later | move constants to dedicated policy/constants owner then migrate imports | ISSUE-0021 / 2026-04-30 |
+| `CLARIFY_ANSWER` | façade fallback policy constants | test assertions depend on exact value | tests (non-compat) | D decide later | same as above | ISSUE-0021 / 2026-04-30 |
+| `DENY_ANSWER` | façade fallback policy constants | external compatibility/public constant surface | unknown | D decide later | establish canonical constants owner or remove if unused | ISSUE-0021 / 2026-04-30 |
+| `FALLBACK_ANSWER` | façade fallback policy constants | test assertions depend on exact value | tests (non-compat) | D decide later | move to canonical constants owner | ISSUE-0021 / 2026-04-30 |
+| `NON_KNOWLEDGE_UNCERTAINTY_ANSWER` | façade fallback policy constants | test assertions depend on exact value | tests (non-compat) | D decide later | move to canonical constants owner | ISSUE-0021 / 2026-04-30 |
+| `ROUTE_TO_ASK_ANSWER` | façade fallback policy constants | test assertions depend on exact value | tests (non-compat) | D decide later | move to canonical constants owner | ISSUE-0021 / 2026-04-30 |
+| `resolve_turn_intent` | intent-routing runtime helper in façade | still referenced by intent/runtime tests | tests (non-compat) | A keep temporarily | extract/declare canonical intent-runtime entry and migrate tests | ISSUE-0021 / review 2026-05-15 |
+| `validate_answer_contract` | `testbot.logic.alignment.validate_answer_contract` | compatibility re-export for answer contract tests | tests (non-compat) | B migrate now | direct-import from logic alignment | ISSUE-0021 / 2026-04-15 |
+| `has_required_memory_citation` | `testbot.logic.alignment.has_required_memory_citation` | compatibility re-export for answer contract tests | tests (non-compat) | B migrate now | direct-import from logic alignment | ISSUE-0021 / 2026-04-15 |
+| `raw_claim_like_text_detected` | `testbot.logic.alignment.raw_claim_like_text_detected` | compatibility re-export for answer contract tests | tests (non-compat) | B migrate now | direct-import from logic alignment | ISSUE-0021 / 2026-04-15 |
+| `response_contains_claims` | `testbot.logic.alignment.response_contains_claims` | compatibility re-export for answer contract tests | tests (non-compat) | B migrate now | direct-import from logic alignment | ISSUE-0021 / 2026-04-15 |
+| `has_sufficient_context_confidence` | `testbot.rerank.has_sufficient_context_confidence_from_objective` | compatibility re-export for parity tests | tests (non-compat) | B migrate now | import from rerank module directly | ISSUE-0021 / 2026-04-15 |
+| `build_provenance_metadata` | façade/source fusion helper | used by source-fusion + runtime logging tests | tests (non-compat) | A keep temporarily | extract to canonical provenance module first | ISSUE-0021 / review 2026-05-15 |
+| `collect_used_source_evidence_refs` | façade/source fusion helper | used by source-fusion tests | tests (non-compat) | A keep temporarily | extract to canonical provenance module first | ISSUE-0021 / review 2026-05-15 |
+| `render_context` | façade rendering helper | used by answer-contract tests | tests (non-compat) | D decide later | identify canonical rendering owner or remove if obsolete | ISSUE-0021 / 2026-04-30 |
+| `generate_reflection_yaml` | façade helper | used in runtime logging tests | tests (non-compat) | D decide later | identify canonical owner + migrate imports | ISSUE-0021 / 2026-04-30 |
+| `answer_assemble` | `testbot.application.services.answer_stage_runtime.answer_assemble` | compatibility callable export | unknown direct imports | D decide later | remove if no callers; otherwise migrate to service import | ISSUE-0021 / 2026-04-30 |
+| `AnswerAssembleResult` | `testbot.application.services.answer_stage_runtime.AnswerAssembleResult` | compatibility type export | tests (non-compat) | B migrate now | import type from canonical answer stage runtime module | ISSUE-0021 / 2026-04-15 |
+| `AnswerValidateResult` | `testbot.application.services.answer_stage_runtime.AnswerValidateResult` | compatibility type export | unknown direct imports | C remove now | drop from façade export set if no caller evidence | ISSUE-0021 / 2026-04-05 |
+| `ambiguity_score` | façade/runtime helper | no direct in-repo imports found | unknown/external | C remove now | remove from `__all__`; keep private only if still internally required | ISSUE-0021 / 2026-04-05 |
+| `intent_label` | façade wrapper over decision helper | no direct in-repo imports found | unknown/external | C remove now | remove from `__all__` once compatibility check confirms no external dependency | ISSUE-0021 / 2026-04-05 |
+| `derive_response_blocker_reason` | façade helper | no direct in-repo imports found | unknown/external | C remove now | remove from `__all__` (keep internal helper as needed) | ISSUE-0021 / 2026-04-05 |
+| `stage_rerank` | façade stage helper | used by time-reasoning tests | tests (non-compat) | A keep temporarily | migrate to canonical stage owner before pruning | ISSUE-0021 / review 2026-05-15 |
+| `stage_rewrite_query` | façade stage helper | used by runtime logging tests | tests (non-compat) | A keep temporarily | migrate to canonical stage owner before pruning | ISSUE-0021 / review 2026-05-15 |
+| `user_followup_signal_proxy` | façade helper | no direct in-repo imports found | unknown/external | C remove now | remove from `__all__` with compatibility note in release docs | ISSUE-0021 / 2026-04-05 |
+
+\* Existing in-code metadata still states `2026-04-01` targets for selected deprecated aliases; if unmet by that date, update metadata and ISSUE-0021 status with explicit rationale.
+
+## Ordered migration/removal sequence
+
+1. **PR-1 (authoritative caller migration):**
+   - migrate non-compatibility tests importing clear canonical owners (`logic.alignment`, `observability.turn_debug_payload`, `runtime_capability_service`, `runtime_cli_args`, `source_ingestion_startup`, `rerank`, `decision_helpers`);
+   - keep dedicated compatibility tests unchanged.
+
+2. **PR-2 (safe façade prune):**
+   - remove Bucket C exports from `__all__` and tighten compatibility docstring/governance notes;
+   - if any Bucket D symbols remain unresolved, either (a) promote to temporary keep with explicit owner/evidence or (b) remove with release-note callout.
+
+3. **PR-3 (bridge + legacy entry retirement):**
+   - retire `entrypoints/runtime_legacy_bridge.py` and `sat_chatbot_memory_v2.main` only after runtime caller evidence is clean and compatibility window closes.
+
+## What remains after this note
+
+- Execute PR-1 caller migration.
+- Re-run import census; verify remaining façade imports are compatibility-only or explicitly grandfathered.
+- Then execute PR-2 export prune with deterministic regression checks.

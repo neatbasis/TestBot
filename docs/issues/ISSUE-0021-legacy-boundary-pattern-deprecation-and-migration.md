@@ -20,6 +20,7 @@ Recent architecture-boundary enforcement and canonical pipeline stage-contract t
 - `docs/architecture-boundaries.md` now declares boundary rules enforced by `tests/architecture/test_import_boundaries.py` and explicitly marks prohibited patterns as deprecated.
 - New deterministic tests under `tests/pipeline/` codify canonical stage contracts and decision-matrix behavior around `intent.resolve`, `retrieve.evidence`, `policy.decide`, `answer.validate`, `answer.commit`, and metrics contracts.
 - The canonical program issue `ISSUE-0013` remains open/blocked pending evidence; this deprecation issue scopes migration debt made explicit by the new boundary checks.
+- Retirement-readiness inventory and migration plan for `sat_chatbot_memory_v2` compatibility exports captured in `docs/issues/evidence/2026-03-28-issue-0021-sat-compat-retirement-inventory.md` (export-by-export bucket classification + caller census).
 
 ## Impact
 
@@ -37,7 +38,7 @@ Recent architecture-boundary enforcement and canonical pipeline stage-contract t
 
 ## Work Plan
 
-1. Inventory remaining legacy call sites/patterns that conflict with `docs/architecture-boundaries.md` direction.
+1. ✅ Completed (2026-03-28): inventory remaining legacy call sites/patterns for `sat_chatbot_memory_v2` compatibility exports and classify migration/removal disposition in the linked evidence note.
 2. Add migration subtasks under this issue grouped by pattern class (import coupling, stage-order duplication, raw-to-render shortcuts).
 3. Remove or isolate legacy paths behind canonical orchestrator boundaries with deterministic regression tests.
 4. Update linked documentation (`docs/architecture.md`, `docs/testing.md`, `docs/issues/ISSUE-0013...`) as milestones are completed.
