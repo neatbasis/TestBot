@@ -144,3 +144,25 @@ Done vs Deferred (naming/responsibility truth):
 
 - **Done:** established `testbot.logic.provenance` as the canonical owner for provenance assembly plus evidence-ref collection, and reduced façade ownership to compatibility wrappers.
 - **Deferred:** reassess whether `build_provenance_metadata` is accurately named or should be renamed/split now that the seam is explicit, because current behavior includes evidence collection + provenance interpretation/summary (not only metadata serialization).
+
+## 2026-03-28 update — answer contract constants canonicalization evidence
+
+- Established canonical owner module: `testbot.answer_contract_constants`.
+- Migrated duplicated answer/fallback literals to canonical imports in:
+  - `testbot.sat_chatbot_memory_v2` (compatibility façade now re-exports canonical constants);
+  - `testbot.logic.alignment` (contract checks now consume canonical constants);
+  - `testbot.stage_transitions` (transition guards now consume canonical constants).
+
+Status impact for retirement inventory:
+
+- `ASSIST_ALTERNATIVES_ANSWER`: moved from **D decide later** to **B migrated (wrapper retained)**.
+- `CLARIFY_ANSWER`: moved from **D decide later** to **B migrated (wrapper retained)**.
+- `DENY_ANSWER`: moved from **D decide later** to **B migrated (wrapper retained)**.
+- `FALLBACK_ANSWER`: moved from **D decide later** to **B migrated (wrapper retained)**.
+- `NON_KNOWLEDGE_UNCERTAINTY_ANSWER`: moved from **D decide later** to **B migrated (wrapper retained)**.
+- `ROUTE_TO_ASK_ANSWER`: moved from **D decide later** to **B migrated (wrapper retained)**.
+
+Done vs Deferred:
+
+- **Done:** canonicalized stable answer-stage contract strings under a single owner and reduced façade constants to compatibility export behavior.
+- **Deferred:** broader answer-stage API cleanup (e.g., token-to-string mapping centralization and remaining façade call-site migration) remains tracked under ISSUE-0021 follow-on steps.
