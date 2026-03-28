@@ -149,6 +149,15 @@ from testbot.source_ingestion_startup import (
     run_source_ingestion as run_startup_source_ingestion,
 )
 from testbot.entrypoints import runtime_bootstrap as runtime_bootstrap_entrypoint
+from testbot.entrypoints.runtime_background_ingestion import (
+    RuntimeBackgroundIngestionDependencies,
+    emit_obligation_transition as emit_runtime_obligation_transition,
+    format_background_ingestion_completion_message as format_runtime_background_ingestion_completion_message,
+    poll_background_source_ingestion as poll_runtime_background_source_ingestion,
+    poll_pending_ingestion_obligations as poll_runtime_pending_ingestion_obligations,
+    process_background_ingestion_completion as process_runtime_background_ingestion_completion,
+    start_background_source_ingestion as start_runtime_background_source_ingestion,
+)
 from testbot.entrypoints.runtime_turn_pipeline import RuntimeTurnPipelineHooks, run_runtime_turn_pipeline
 from testbot.canonical_turn_orchestrator import CanonicalTurnOrchestrator as _CanonicalTurnOrchestrator
 from testbot.logic.decision_helpers import (
@@ -206,6 +215,18 @@ def _utc_now_iso() -> str:
     return arrow.utcnow().isoformat()
 
 
+def _runtime_background_ingestion_deps() -> RuntimeBackgroundIngestionDependencies:
+    return RuntimeBackgroundIngestionDependencies(
+        append_session_log=append_session_log,
+        build_source_connector=_build_source_connector,
+        source_ingestor_cls=SourceIngestor,
+        answer_commit_persistence=answer_commit_persistence,
+        run_canonical_turn_pipeline=_run_canonical_turn_pipeline,
+        pipeline_state_cls=PipelineState,
+        knowledge_question_intent=IntentType.KNOWLEDGE_QUESTION.value,
+    )
+
+
 def _emit_obligation_transition(
     *,
     ingestion_request_id: str,
@@ -215,8 +236,8 @@ def _emit_obligation_transition(
     attempt_count: int,
     deadline_at: str,
 ) -> None:
-    background_ingestion_runtime_service.emit_obligation_transition(
-        append_session_log=append_session_log,
+    emit_runtime_obligation_transition(
+        deps=_runtime_background_ingestion_deps(),
         ingestion_request_id=ingestion_request_id,
         status=status,
         created_at=created_at,
@@ -227,11 +248,10 @@ def _emit_obligation_transition(
 
 
 def _poll_pending_ingestion_obligations(*, runtime: dict[str, object]) -> None:
-    background_ingestion_runtime_service.poll_pending_ingestion_obligations(
+    poll_runtime_pending_ingestion_obligations(
         runtime=runtime,
-        append_session_log=append_session_log,
+        deps=_runtime_background_ingestion_deps(),
         obligation_timeout_seconds=BACKGROUND_INGESTION_OBLIGATION_TIMEOUT_SECONDS,
-        utcnow=arrow.utcnow,
     )
 _LOGGER = logging.getLogger(__name__)
 
@@ -344,27 +364,23 @@ def _start_background_source_ingestion(
     store: MemoryStorePort,
     ingestion_request_id: str = "",
 ) -> dict[str, object]:
-    return background_ingestion_runtime_service.start_background_source_ingestion(
+    return start_runtime_background_source_ingestion(
         runtime=runtime,
         store=store,
-        execute_source_ingestion=_execute_source_ingestion,
-        append_session_log=append_session_log,
+        deps=_runtime_background_ingestion_deps(),
         ingestion_request_id=ingestion_request_id,
     )
 
 
 def _poll_background_source_ingestion(*, runtime: dict[str, object]) -> dict[str, object] | None:
-    return background_ingestion_runtime_service.poll_background_source_ingestion(
+    return poll_runtime_background_source_ingestion(
         runtime=runtime,
-        append_session_log=append_session_log,
+        deps=_runtime_background_ingestion_deps(),
     )
 
 
 def _format_background_ingestion_completion_message(*, correlation_id: str) -> str:
-    return background_ingestion_runtime_service.format_background_ingestion_completion_message(
-        correlation_id=correlation_id,
-        template=BACKGROUND_INGESTION_COMPLETION_MESSAGE_TEMPLATE,
-    )
+    return format_runtime_background_ingestion_completion_message(correlation_id=correlation_id)
 
 
 def _process_background_ingestion_completion(
@@ -382,7 +398,7 @@ def _process_background_ingestion_completion(
     last_user_message_ts: str,
     prior_pipeline_state: PipelineState | None,
 ) -> tuple[str, PipelineState | None, bool]:
-    return background_ingestion_runtime_service.process_background_ingestion_completion(
+    return process_runtime_background_ingestion_completion(
         runtime=runtime,
         llm=llm,
         store=store,
@@ -395,15 +411,7 @@ def _process_background_ingestion_completion(
         send_assistant_text=send_assistant_text,
         last_user_message_ts=last_user_message_ts,
         prior_pipeline_state=prior_pipeline_state,
-        poll_background_source_ingestion=_poll_background_source_ingestion,
-        emit_obligation_transition=_emit_obligation_transition,
-        utc_now_iso=_utc_now_iso,
-        append_session_log=append_session_log,
-        format_background_ingestion_completion_message=_format_background_ingestion_completion_message,
-        run_canonical_turn_pipeline=_run_canonical_turn_pipeline,
-        pipeline_state_cls=PipelineState,
-        knowledge_question_intent=IntentType.KNOWLEDGE_QUESTION.value,
-        answer_commit_persistence=answer_commit_persistence,
+        deps=_runtime_background_ingestion_deps(),
     )
 INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD = 0.75
 RETRIEVAL_SCORE_THRESHOLD = 0.0

@@ -57,16 +57,16 @@ def test_runtime_loop_owner_handles_none_input_as_immediate_return(monkeypatch: 
     completion_calls: list[dict[str, object]] = []
 
     monkeypatch.setattr(
-        runtime,
-        "_poll_pending_ingestion_obligations",
-        lambda *, runtime: poll_calls.append(runtime),
+        runtime_loop,
+        "poll_pending_ingestion_obligations",
+        lambda *, runtime, deps: poll_calls.append(runtime),
     )
 
     def _fake_completion(**kwargs):
         completion_calls.append(kwargs)
         return "", None, False
 
-    monkeypatch.setattr(runtime, "_process_background_ingestion_completion", _fake_completion)
+    monkeypatch.setattr(runtime_loop, "process_background_ingestion_completion", _fake_completion)
 
     runtime_loop.run_chat_loop(
         runtime={},
@@ -95,8 +95,8 @@ def test_runtime_loop_owner_handles_stop_command_without_turn_pipeline(monkeypat
     sent: list[str] = []
     run_pipeline_called = False
 
-    monkeypatch.setattr(runtime, "_poll_pending_ingestion_obligations", lambda **_kwargs: None)
-    monkeypatch.setattr(runtime, "_process_background_ingestion_completion", lambda **_kwargs: ("", None, False))
+    monkeypatch.setattr(runtime_loop, "poll_pending_ingestion_obligations", lambda **_kwargs: None)
+    monkeypatch.setattr(runtime_loop, "process_background_ingestion_completion", lambda **_kwargs: ("", None, False))
 
     def _unexpected_pipeline_call(**_kwargs):
         nonlocal run_pipeline_called
@@ -238,7 +238,10 @@ def test_runtime_loop_owner_uses_canonical_turn_pipeline_helper_not_monolith_tur
     from testbot.entrypoints import runtime_loop
 
     source = Path(runtime_loop.__file__).read_text()
+    assert "from testbot.entrypoints.runtime_background_ingestion import (" in source
     assert "from testbot.entrypoints.runtime_turn_pipeline import RuntimeTurnPipelineHooks, run_runtime_turn_pipeline" in source
+    assert "_poll_pending_ingestion_obligations(" not in source
+    assert "_process_background_ingestion_completion(" not in source
     assert "_run_canonical_turn_pipeline(" not in source
     assert "run_canonical_turn_pipeline(" not in source
     assert "TurnPipelineDependencies(" not in source
@@ -2166,6 +2169,8 @@ def test_background_source_ingestion_start_generates_namespaced_request_id(monke
 
 
 def test_chat_loop_registers_pending_ingestion_context_by_request_id(monkeypatch) -> None:
+    from testbot.entrypoints import runtime_loop
+
     events: list[tuple[str, dict[str, object]]] = []
     monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: events.append((event, payload)))
     monkeypatch.setattr(runtime, "store_doc", lambda *args, **kwargs: None)
@@ -2196,7 +2201,7 @@ def test_chat_loop_registers_pending_ingestion_context_by_request_id(monkeypatch
             [],
         )
 
-    monkeypatch.setattr(runtime, "_run_canonical_turn_pipeline", _pipeline)
+    monkeypatch.setattr(runtime_loop, "run_runtime_turn_pipeline", _pipeline)
 
     rt: dict[str, object] = {"seed": True}
     prompts = iter(["What changed?", "stop"])
@@ -2349,13 +2354,23 @@ def test_chat_loop_polls_pending_ingestion_obligation_each_turn(monkeypatch) -> 
 
 def test_background_source_ingestion_start_and_poll_completion(monkeypatch) -> None:
     logs: list[tuple[str, dict[str, object]]] = []
+    from testbot.entrypoints import runtime_background_ingestion
 
     def _fake_execute(*, runtime: dict[str, object], store, background: bool = False, ingestion_request_id: str = ""):
         del runtime, store
         return {"ok": True, "status": "completed", "payload": {"background": background, "stored_count": 2, "ingestion_request_id": ingestion_request_id}}
 
     monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: logs.append((event, payload)))
-    monkeypatch.setattr(runtime, "_execute_source_ingestion", _fake_execute)
+    monkeypatch.setattr(
+        runtime_background_ingestion,
+        "execute_source_ingestion",
+        lambda *, runtime, store, deps, background=False, ingestion_request_id="": _fake_execute(
+            runtime=runtime,
+            store=store,
+            background=background,
+            ingestion_request_id=ingestion_request_id,
+        ),
+    )
 
     rt = {"source_ingest_background_future": None, "source_ingest_background_in_progress": False, "source_ingest_background_request_id": ""}
     started = runtime._start_background_source_ingestion(runtime=rt, store=object(), ingestion_request_id="turn-abc")
@@ -2379,6 +2394,8 @@ def test_background_source_ingestion_start_and_poll_completion(monkeypatch) -> N
 
 
 def test_cli_mode_proactively_emits_completion_without_extra_prompt(monkeypatch) -> None:
+    from testbot.entrypoints import runtime_background_ingestion, runtime_loop
+
     monkeypatch.setattr(runtime, "store_doc", lambda *args, **kwargs: None)
     monkeypatch.setattr(runtime, "generate_reflection_yaml", lambda *args, **kwargs: "claims: []")
     monkeypatch.setattr(runtime, "persist_promoted_context", lambda *args, **kwargs: [])
@@ -2402,7 +2419,11 @@ def test_cli_mode_proactively_emits_completion_without_extra_prompt(monkeypatch)
             }
         return None
 
-    monkeypatch.setattr(runtime, "_poll_background_source_ingestion", _poll)
+    monkeypatch.setattr(
+        runtime_background_ingestion,
+        "poll_background_source_ingestion",
+        lambda *, runtime, deps: _poll(runtime=runtime),
+    )
 
     def _pipeline(**kwargs):
         state = kwargs["state"]
