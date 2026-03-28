@@ -17,10 +17,7 @@ from langchain_ollama import ChatOllama, OllamaEmbeddings
 from testbot.adapters.ask_gateway import AskGateway
 from testbot.domain import build_system_clock
 from testbot.entrypoints.runtime_bootstrap import build_runtime_memory_store, read_runtime_env
-from testbot.entrypoints.runtime_legacy_bridge import (
-    run_chat_loop,
-    sat_say,
-)
+from testbot.entrypoints.runtime_loop import run_chat_loop, sat_say
 from testbot.entrypoints.sat_runtime_modes import run_cli_mode, run_satellite_mode
 from testbot.observability.session_log import append_session_log
 from testbot.runtime_capability_service import build_capability_snapshot

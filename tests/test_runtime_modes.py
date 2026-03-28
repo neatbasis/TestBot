@@ -50,6 +50,63 @@ def test_runtime_legacy_bridge_warns_on_monolith_compat_usage() -> None:
         read_runtime_env()
 
 
+def test_runtime_loop_owner_delegates_to_monolith_runtime_loop(monkeypatch: pytest.MonkeyPatch) -> None:
+    from testbot.entrypoints import runtime_loop
+
+    called: dict[str, object] = {}
+
+    def _fake_run_chat_loop(**kwargs):
+        called.update(kwargs)
+
+    monkeypatch.setattr("testbot.sat_chatbot_memory_v2.run_chat_loop", _fake_run_chat_loop)
+    runtime_loop.run_chat_loop(
+        runtime={},
+        llm=object(),
+        store=object(),
+        chat_history=deque(),
+        near_tie_delta=0.1,
+        io_channel="cli",
+        capability_status="ok",
+        capability_snapshot=object(),
+        read_user_utterance=lambda: None,
+        send_assistant_text=lambda _text: None,
+        clock=object(),
+    )
+
+    assert called["io_channel"] == "cli"
+    assert callable(called["read_user_utterance"])
+    assert callable(called["send_assistant_text"])
+
+
+def test_runtime_legacy_bridge_run_chat_loop_delegates_to_runtime_loop(monkeypatch: pytest.MonkeyPatch) -> None:
+    from testbot.entrypoints import runtime_legacy_bridge
+
+    runtime_legacy_bridge._LEGACY_RUNTIME_WARNING_EMITTED = False
+    captured: dict[str, object] = {}
+
+    def _fake_runtime_loop(**kwargs):
+        captured.update(kwargs)
+
+    monkeypatch.setattr("testbot.entrypoints.runtime_loop.run_chat_loop", _fake_runtime_loop)
+    with pytest.deprecated_call(match="runtime_legacy_bridge depends on testbot.sat_chatbot_memory_v2"):
+        runtime_legacy_bridge.run_chat_loop(
+            runtime={},
+            llm=object(),
+            store=object(),
+            chat_history=deque(),
+            near_tie_delta=0.3,
+            io_channel="satellite",
+            capability_status="ok",
+            capability_snapshot=object(),
+            read_user_utterance=lambda: None,
+            send_assistant_text=lambda _text: None,
+            clock=object(),
+        )
+
+    assert captured["io_channel"] == "satellite"
+    assert captured["near_tie_delta"] == 0.3
+
+
 def test_legacy_runtime_main_warns_once_and_delegates_to_cli(monkeypatch: pytest.MonkeyPatch) -> None:
     forwarded: list[list[str] | None] = []
 
@@ -71,15 +128,8 @@ def test_legacy_runtime_main_warns_once_and_delegates_to_cli(monkeypatch: pytest
 def test_cli_uses_runtime_bootstrap_owner_and_limits_legacy_bridge_imports() -> None:
     source = Path(cli.__file__).read_text()
     assert "from testbot.entrypoints.runtime_bootstrap import build_runtime_memory_store, read_runtime_env" in source
-    bridge_import_match = re.search(
-        r"from testbot\.entrypoints\.runtime_legacy_bridge import \((?P<names>.*?)\)",
-        source,
-        re.DOTALL,
-    )
-    assert bridge_import_match is not None
-    bridge_import_names = bridge_import_match.group("names")
-    assert "read_runtime_env" not in bridge_import_names
-    assert "build_runtime_memory_store" not in bridge_import_names
+    assert "from testbot.entrypoints.runtime_loop import run_chat_loop, sat_say" in source
+    assert "from testbot.entrypoints.runtime_legacy_bridge import" not in source
     assert "from testbot.runtime_capability_service import build_capability_snapshot" in source
     assert "from testbot.startup_status_presenter import print_startup_status" in source
     assert "from testbot.runtime_cli_args import parse_args" in source
