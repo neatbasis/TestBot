@@ -187,3 +187,27 @@ Done vs Deferred:
 
 - **Done:** canonical bootstrap ownership is explicit under `entrypoints/runtime_bootstrap.py`, and bridge/façade ownership was reduced without behavioral broadening.
 - **Deferred:** `run_chat_loop` and `sat_say` remain compatibility-owned by `runtime_legacy_bridge`/`sat_chatbot_memory_v2`; extracting those seams is intentionally out of scope for this narrow step.
+
+## 2026-03-28 update — runtime loop ownership seam extraction evidence
+
+- Established canonical runtime loop owner module: `testbot.entrypoints.runtime_loop`.
+- Extracted canonical ownership symbols:
+  - `run_chat_loop`
+  - `sat_say`
+- Updated canonical CLI entrypoint (`testbot.entrypoints.cli`) to import runtime loop symbols from `entrypoints/runtime_loop` directly, removing launch-path dependency on `entrypoints/runtime_legacy_bridge`.
+- Reduced transitional bridge authority:
+  - `testbot.entrypoints.runtime_legacy_bridge` now delegates loop/output wrappers to canonical `runtime_loop` owner while preserving deprecation warning behavior.
+  - `testbot.entrypoints.runtime_legacy_bridge` remains compatibility-facing for transitional callers only.
+- Added focused regression coverage for seam behavior:
+  - canonical runtime loop owner delegates to compatibility façade implementation;
+  - legacy bridge delegates to canonical runtime loop owner and still emits deprecation warning.
+
+Status impact for retirement inventory:
+
+- `run_chat_loop`: moved from **D decide later** to **B migrated (wrapper retained)**.
+- `sat_say`: newly tracked as **B migrated (wrapper retained)** under runtime loop ownership.
+
+Done vs Deferred:
+
+- **Done:** stable runtime loop import surface now exists under `entrypoints/runtime_loop.py`, CLI runtime path is migrated to it, and bridge ownership is reduced.
+- **Deferred:** full implementation extraction out of `sat_chatbot_memory_v2` into non-façade runtime services remains follow-on work; current step is ownership and wiring extraction only.

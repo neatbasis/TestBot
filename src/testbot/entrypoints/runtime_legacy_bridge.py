@@ -23,7 +23,7 @@ from langchain_core.embeddings import Embeddings
 from langchain_ollama import ChatOllama
 
 from testbot.entrypoints import runtime_bootstrap as _runtime_bootstrap
-from testbot import sat_chatbot_memory_v2 as _legacy_runtime
+from testbot.entrypoints import runtime_loop as _runtime_loop
 from testbot.domain import Clock
 from testbot.ports import MemoryStorePort
 
@@ -72,7 +72,7 @@ def run_chat_loop(
     clock: Clock,
 ) -> None:
     _warn_legacy_runtime_bridge()
-    _legacy_runtime.run_chat_loop(
+    _runtime_loop.run_chat_loop(
         runtime=runtime,
         llm=llm,
         store=store,
@@ -89,7 +89,7 @@ def run_chat_loop(
 
 def sat_say(client: Client, entity_id: str, text: str) -> None:
     _warn_legacy_runtime_bridge()
-    _legacy_runtime.sat_say(client, entity_id, text)
+    _runtime_loop.sat_say(client, entity_id, text)
 
 
 __all__ = [
