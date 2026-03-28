@@ -250,6 +250,9 @@ Done vs Deferred:
 - Captured current caller census for wrapper retirement planning:
   - `testbot.entrypoints.runtime_loop.sat_say`: referenced by `testbot.entrypoints.runtime_legacy_bridge.sat_say` and runtime-loop delegation tests;
   - `testbot.sat_chatbot_memory_v2.sat_say`: no direct in-repo callers/importers found (compatibility façade export only).
+- Confirmed Ask/transport boundary split from current in-repo evidence:
+  - Ask-backed runtime interaction currently owns input/spec/channel-resolution concerns via `AskGateway`;
+  - no canonical Ask-backed outbound satellite speaking API is currently evidenced in-repo.
 - Confirmed next substantive extraction target:
   - `run_chat_loop` implementation still lives in `testbot.sat_chatbot_memory_v2` and remains the primary remaining runtime seam.
 
@@ -261,4 +264,4 @@ Status impact for retirement inventory:
 Done vs Deferred:
 
 - **Done:** repository wording/evidence now reflects the resolved ownership split (adapter owns outbound transport, runtime_loop owns import seam only).
-- **Deferred:** full extraction of `run_chat_loop` implementation out of `sat_chatbot_memory_v2` into canonical runtime-loop ownership.
+- **Deferred:** full extraction of `run_chat_loop` implementation out of `sat_chatbot_memory_v2` into canonical runtime-loop ownership, including future decisions on whether any outbound surface should be promoted under Ask-backed ownership.
