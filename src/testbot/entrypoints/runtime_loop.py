@@ -29,6 +29,10 @@ from testbot.entrypoints.runtime_background_ingestion import (
 )
 from testbot.entrypoints.runtime_turn_pipeline import RuntimeTurnPipelineHooks, run_runtime_turn_pipeline
 from testbot.entrypoints.runtime_turn_telemetry import RuntimeTurnTelemetryDependencies, emit_runtime_turn_telemetry
+from testbot.entrypoints.runtime_commit_persistence import (
+    RuntimeCommitPersistenceDependencies,
+    answer_commit_persistence as persist_answer_commit,
+)
 from testbot import sat_chatbot_memory_v2 as _legacy_runtime
 from testbot.domain import Clock
 from testbot.ports import MemoryStorePort
@@ -59,11 +63,18 @@ def run_chat_loop(
 
     last_user_message_ts = ""
     prior_pipeline_state = None
+    commit_persistence_deps = RuntimeCommitPersistenceDependencies(
+        append_session_log=_legacy_runtime.append_session_log,
+        generate_reflection_yaml=_legacy_runtime.generate_reflection_yaml,
+    )
     background_ingestion_deps = RuntimeBackgroundIngestionDependencies(
         append_session_log=_legacy_runtime.append_session_log,
         build_source_connector=_legacy_runtime._build_source_connector,
         source_ingestor_cls=_legacy_runtime.SourceIngestor,
-        answer_commit_persistence=_legacy_runtime.answer_commit_persistence,
+        answer_commit_persistence=lambda **kwargs: persist_answer_commit(
+            deps=commit_persistence_deps,
+            **kwargs,
+        ),
         run_canonical_turn_pipeline=_legacy_runtime._run_canonical_turn_pipeline,
         pipeline_state_cls=_legacy_runtime.PipelineState,
         knowledge_question_intent=_legacy_runtime.IntentType.KNOWLEDGE_QUESTION.value,
@@ -241,12 +252,13 @@ def run_chat_loop(
         chat_history.append({"role": "assistant", "content": state.final_answer})
         prior_pipeline_state = state
 
-        _legacy_runtime.answer_commit_persistence(
+        persist_answer_commit(
             llm=llm,
             store=store,
             state=state,
             io_channel=io_channel,
             clock=clock,
+            deps=commit_persistence_deps,
         )
 
 

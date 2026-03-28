@@ -158,6 +158,10 @@ from testbot.entrypoints.runtime_background_ingestion import (
     process_background_ingestion_completion as process_runtime_background_ingestion_completion,
     start_background_source_ingestion as start_runtime_background_source_ingestion,
 )
+from testbot.entrypoints.runtime_commit_persistence import (
+    RuntimeCommitPersistenceDependencies,
+    answer_commit_persistence as persist_runtime_answer_commit,
+)
 from testbot.entrypoints.runtime_turn_pipeline import RuntimeTurnPipelineHooks, run_runtime_turn_pipeline
 from testbot.canonical_turn_orchestrator import CanonicalTurnOrchestrator as _CanonicalTurnOrchestrator
 from testbot.logic.decision_helpers import (
@@ -1437,81 +1441,17 @@ def answer_commit_persistence(
     io_channel: str,
     clock: Clock,
 ) -> None:
-    a_ts = clock.now().isoformat()
-    a_id = str(uuid.uuid4())
-    a_card = make_utterance_card(
-        ts_iso=a_ts,
-        speaker="assistant",
-        text=state.final_answer,
-        doc_id=a_id,
-        channel=io_channel,
-    )
-    commit_segment = derive_segment_descriptor(utterance=state.user_input, has_dialogue_state=False)
-    store_doc(
-        store,
-        doc_id=a_id,
-        content=a_card,
-        metadata=apply_persistence_metadata(
-            metadata={
-                "ts": a_ts,
-                "type": "assistant_utterance",
-                "speaker": "assistant",
-                "channel": io_channel,
-                "doc_id": a_id,
-                "raw": state.final_answer,
-            },
-            stratum=MemoryStratum.EPISODIC,
-            segment=commit_segment,
-            member_doc_id=a_id,
-        ),
-    )
-
-    a_ref_yaml = generate_reflection_yaml(llm, speaker="assistant", text=state.final_answer)
-    a_ref_ts = clock.now().isoformat()
-    a_ref_id = str(uuid.uuid4())
-    a_ref_card = make_reflection_card(
-        ts_iso=a_ref_ts,
-        about="assistant",
-        source_doc_id=a_id,
-        doc_id=a_ref_id,
-        reflection_yaml=a_ref_yaml,
-    )
-    store_doc(
-        store,
-        doc_id=a_ref_id,
-        content=a_ref_card,
-        metadata=apply_persistence_metadata(
-            metadata={
-                "ts": a_ref_ts,
-                "type": "reflection",
-                "about": "assistant",
-                "source_doc_id": a_id,
-                "doc_id": a_ref_id,
-            },
-            stratum=MemoryStratum.SEMANTIC,
-            segment=commit_segment,
-            member_doc_id=a_ref_id,
-        ),
-    )
-
-    promoted_doc_ids = persist_promoted_context(
+    persist_runtime_answer_commit(
+        llm=llm,
         store=store,
-        ts_iso=a_ref_ts,
-        source_doc_id=a_id,
-        source_reflection_id=a_ref_id,
-        reflection_yaml=a_ref_yaml,
-        channel=io_channel,
+        state=state,
+        io_channel=io_channel,
+        clock=clock,
+        deps=RuntimeCommitPersistenceDependencies(
+            append_session_log=append_session_log,
+            generate_reflection_yaml=generate_reflection_yaml,
+        ),
     )
-    if promoted_doc_ids:
-        append_session_log(
-            "promoted_context_persisted",
-            {
-                "source_doc_id": a_id,
-                "source_reflection_id": a_ref_id,
-                "promoted_doc_ids": promoted_doc_ids,
-                "count": len(promoted_doc_ids),
-            },
-        )
 
 def _validate_and_log_transition(result) -> None:
     append_transition_validation_log(result)

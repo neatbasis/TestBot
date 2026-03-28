@@ -239,6 +239,7 @@ def test_runtime_loop_owner_uses_canonical_turn_pipeline_helper_not_monolith_tur
 
     source = Path(runtime_loop.__file__).read_text()
     assert "from testbot.entrypoints.runtime_background_ingestion import (" in source
+    assert "from testbot.entrypoints.runtime_commit_persistence import (" in source
     assert "from testbot.entrypoints.runtime_turn_pipeline import RuntimeTurnPipelineHooks, run_runtime_turn_pipeline" in source
     assert "from testbot.entrypoints.runtime_turn_telemetry import RuntimeTurnTelemetryDependencies, emit_runtime_turn_telemetry" in source
     assert "_poll_pending_ingestion_obligations(" not in source
@@ -248,6 +249,7 @@ def test_runtime_loop_owner_uses_canonical_turn_pipeline_helper_not_monolith_tur
     assert "_build_debug_turn_payload(" not in source
     assert "_format_debug_turn_trace_payload(" not in source
     assert "run_canonical_turn_pipeline(" not in source
+    assert "_legacy_runtime.answer_commit_persistence(" not in source
     assert "TurnPipelineDependencies(" not in source
 
 
@@ -2180,7 +2182,7 @@ def test_chat_loop_registers_pending_ingestion_context_by_request_id(monkeypatch
     monkeypatch.setattr(runtime, "store_doc", lambda *args, **kwargs: None)
     monkeypatch.setattr(runtime, "generate_reflection_yaml", lambda *args, **kwargs: "claims: []")
     monkeypatch.setattr(runtime, "persist_promoted_context", lambda *args, **kwargs: [])
-    monkeypatch.setattr(runtime, "answer_commit_persistence", lambda **kwargs: None)
+    monkeypatch.setattr(runtime_loop, "persist_answer_commit", lambda **kwargs: None)
 
     def _pipeline(**kwargs):
         state = kwargs["state"]
@@ -2403,7 +2405,7 @@ def test_cli_mode_proactively_emits_completion_without_extra_prompt(monkeypatch)
     monkeypatch.setattr(runtime, "store_doc", lambda *args, **kwargs: None)
     monkeypatch.setattr(runtime, "generate_reflection_yaml", lambda *args, **kwargs: "claims: []")
     monkeypatch.setattr(runtime, "persist_promoted_context", lambda *args, **kwargs: [])
-    monkeypatch.setattr(runtime, "answer_commit_persistence", lambda **kwargs: None)
+    monkeypatch.setattr(runtime_loop, "persist_answer_commit", lambda **kwargs: None)
 
     class _Clock:
         def now(self):

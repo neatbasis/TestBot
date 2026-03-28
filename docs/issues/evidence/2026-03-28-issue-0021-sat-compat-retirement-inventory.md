@@ -370,3 +370,39 @@ Done vs Deferred:
   runtime authority concentration in `sat_chatbot_memory_v2` on the canonical loop path.
 - **Deferred:** background-ingestion lifecycle helper extraction, telemetry/debug helper extraction, commit-persistence extraction,
   and broader compatibility façade retirement remain follow-on work under ISSUE-0021/ISSUE-0022.
+
+## 2026-03-28 follow-up — commit-persistence extraction + post-telemetry residual authority ranking
+
+- Established canonical runtime-owned commit-persistence module:
+  - `testbot.entrypoints.runtime_commit_persistence`
+  - exported symbols:
+    - `RuntimeCommitPersistenceDependencies`
+    - `answer_commit_persistence`
+- Rewired canonical runtime loop commit call path:
+  - `testbot.entrypoints.runtime_loop.run_chat_loop` now commits via
+    `testbot.entrypoints.runtime_commit_persistence.answer_commit_persistence(...)`.
+  - runtime-loop source no longer calls monolith `testbot.sat_chatbot_memory_v2.answer_commit_persistence(...)` directly.
+- Preserved compatibility behavior:
+  - `testbot.sat_chatbot_memory_v2.answer_commit_persistence(...)` is now a compatibility wrapper delegating to the canonical commit owner.
+  - background-ingestion continuation path still receives commit persistence via callable injection, now targeting the canonical commit owner from the runtime loop.
+- Added anti-regression guard:
+  - runtime ownership test now asserts canonical runtime-loop imports the commit-persistence owner and does not directly call
+    `_legacy_runtime.answer_commit_persistence(...)`.
+
+Post-telemetry residual authority-density ranking refresh (runtime-loop path):
+
+1. **answer-stage residual helpers** (highest remaining density):
+   - still represented by a broad hook surface in `RuntimeTurnPipelineHooks`;
+   - still dominated by compatibility-wired dependencies sourced from `sat_chatbot_memory_v2`.
+2. **context/retrieval helpers** (second-highest):
+   - still turn-critical and invoked every turn through the hook bag;
+   - still mostly supplied by monolith-owned helper implementations.
+3. **commit-persistence** (now reduced):
+   - orchestration ownership moved to canonical `entrypoints` owner;
+   - compatibility wrapper retained for façade continuity during retirement window.
+
+Retirement leverage created by this step:
+
+- Simplifies future façade retirement checks by isolating commit persistence behind a canonical owner module.
+- Creates a narrower caller-census surface for determining when monolith `answer_commit_persistence` can move to compatibility-only/export-only status.
+- Provides a concrete anti-regression assertion that helps prevent runtime-loop drift back to direct monolith commit helper calls.
