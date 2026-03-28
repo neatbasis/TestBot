@@ -55,6 +55,8 @@ def test_run_canonical_answer_stage_flow_routes_seeded_inputs_through_canonical_
 
 
 def test_chat_loop_routes_raw_utterance_via_canonical_turn_pipeline(monkeypatch: pytest.MonkeyPatch) -> None:
+    from testbot.entrypoints import runtime_loop
+
     calls: list[tuple[str, str]] = []
 
     def _fake_pipeline(**kwargs):
@@ -69,7 +71,7 @@ def test_chat_loop_routes_raw_utterance_via_canonical_turn_pipeline(monkeypatch:
             [],
         )
 
-    monkeypatch.setattr(runtime, "_run_canonical_turn_pipeline", _fake_pipeline)
+    monkeypatch.setattr(runtime_loop, "run_runtime_turn_pipeline", _fake_pipeline)
     monkeypatch.setattr(
         runtime,
         "run_canonical_answer_stage_flow",

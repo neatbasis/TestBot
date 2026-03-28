@@ -279,6 +279,34 @@ Done vs Deferred:
 
 Status impact for retirement inventory:
 
+## 2026-03-28 follow-up — background-ingestion helper authority extraction into canonical entrypoint owner
+
+- Established canonical runtime-owned background-ingestion entrypoint module:
+  - `testbot.entrypoints.runtime_background_ingestion`
+- Extracted background-ingestion dependency assembly used by runtime loop / turn-pipeline wiring:
+  - `poll_pending_ingestion_obligations`
+  - `process_background_ingestion_completion`
+  - `poll_background_source_ingestion`
+  - `start_background_source_ingestion`
+  - plus shared dependency contract `RuntimeBackgroundIngestionDependencies`.
+- Updated canonical runtime loop ownership path:
+  - `testbot.entrypoints.runtime_loop.run_chat_loop` now calls canonical background-ingestion owner directly and wires
+    retrieve-stage background start/poll hooks from that owner.
+  - canonical loop no longer directly depends on monolith background-ingestion wrapper functions.
+- Kept compatibility wrappers in place:
+  - `testbot.sat_chatbot_memory_v2` background-ingestion helper wrappers now delegate into
+    `testbot.entrypoints.runtime_background_ingestion`.
+- Added regression guard for seam ownership:
+  - runtime ownership test asserts `runtime_loop.py` imports canonical background-ingestion helper owner and does not call
+    monolith `_poll_pending_ingestion_obligations` / `_process_background_ingestion_completion` helpers.
+
+Done vs Deferred:
+
+- **Done:** background-ingestion helper authority on the canonical runtime path moved from monolith wrappers to a canonical
+  `entrypoints` owner while preserving compatibility wrappers.
+- **Deferred:** telemetry/debug, answer-stage, and context/retrieval hook clusters are still primarily compatibility-wired and
+  remain follow-on extraction candidates under ISSUE-0022 ranking.
+
 - `run_chat_loop`: advanced from **B migrated (wrapper retained)** to **A keep temporarily (canonical owner active, compatibility export retained)**.
 
 Done vs Deferred:

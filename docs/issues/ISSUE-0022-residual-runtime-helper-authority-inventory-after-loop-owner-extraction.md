@@ -88,3 +88,28 @@ Done vs Deferred:
   depends on monolith turn-pipeline helper calls.
 - **Deferred:** background-ingestion lifecycle helpers, telemetry/debug helper extraction, and commit-persistence extraction remain
   explicitly out of scope for this narrow step.
+
+## 2026-03-28 update — background-ingestion helper cluster extraction (narrow)
+
+- Extracted canonical runtime-owned background-ingestion dependency-assembly helper:
+  - `testbot.entrypoints.runtime_background_ingestion`
+  - dependency contract: `RuntimeBackgroundIngestionDependencies`
+- Rewired canonical runtime loop owner:
+  - `testbot.entrypoints.runtime_loop.run_chat_loop` now calls canonical background-ingestion helpers for:
+    - pending obligation polling
+    - completion processing continuation
+    - turn-pipeline retrieval-stage start/poll hook wiring
+  - canonical loop no longer directly calls background-ingestion helper wrappers from `testbot.sat_chatbot_memory_v2`.
+- Compatibility kept:
+  - `testbot.sat_chatbot_memory_v2` background-ingestion wrappers now delegate to
+    `testbot.entrypoints.runtime_background_ingestion`.
+- Added focused anti-regression guard:
+  - runtime-mode ownership test now asserts `runtime_loop.py` imports the canonical background-ingestion entrypoint and
+    does not call monolith background-ingestion wrappers.
+
+Done vs Deferred:
+
+- **Done:** background-ingestion helper authority used by canonical loop + turn-pipeline hook wiring is now canonically
+  assembled under `entrypoints/runtime_background_ingestion.py`.
+- **Deferred:** telemetry/debug hooks, answer-stage hooks, and context/retrieval hooks remain compatibility-wired through
+  `sat_chatbot_memory_v2` and are explicitly out of scope for this narrow extraction.

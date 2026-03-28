@@ -20,6 +20,13 @@ from homeassistant_api import Client
 from langchain_ollama import ChatOllama
 
 from testbot.adapters.ha_satellite_output import send_satellite_output
+from testbot.entrypoints.runtime_background_ingestion import (
+    RuntimeBackgroundIngestionDependencies,
+    poll_pending_ingestion_obligations,
+    process_background_ingestion_completion,
+    start_background_source_ingestion,
+    poll_background_source_ingestion,
+)
 from testbot.entrypoints.runtime_turn_pipeline import RuntimeTurnPipelineHooks, run_runtime_turn_pipeline
 from testbot import sat_chatbot_memory_v2 as _legacy_runtime
 from testbot.domain import Clock
@@ -51,10 +58,19 @@ def run_chat_loop(
 
     last_user_message_ts = ""
     prior_pipeline_state = None
+    background_ingestion_deps = RuntimeBackgroundIngestionDependencies(
+        append_session_log=_legacy_runtime.append_session_log,
+        build_source_connector=_legacy_runtime._build_source_connector,
+        source_ingestor_cls=_legacy_runtime.SourceIngestor,
+        answer_commit_persistence=_legacy_runtime.answer_commit_persistence,
+        run_canonical_turn_pipeline=_legacy_runtime._run_canonical_turn_pipeline,
+        pipeline_state_cls=_legacy_runtime.PipelineState,
+        knowledge_question_intent=_legacy_runtime.IntentType.KNOWLEDGE_QUESTION.value,
+    )
 
     while True:
-        _legacy_runtime._poll_pending_ingestion_obligations(runtime=runtime)
-        last_user_message_ts, prior_pipeline_state, _ = _legacy_runtime._process_background_ingestion_completion(
+        poll_pending_ingestion_obligations(runtime=runtime, deps=background_ingestion_deps)
+        last_user_message_ts, prior_pipeline_state, _ = process_background_ingestion_completion(
             runtime=runtime,
             llm=llm,
             store=store,
@@ -67,6 +83,7 @@ def run_chat_loop(
             send_assistant_text=send_assistant_text,
             last_user_message_ts=last_user_message_ts,
             prior_pipeline_state=prior_pipeline_state,
+            deps=background_ingestion_deps,
         )
 
         utterance = read_user_utterance()
@@ -136,8 +153,14 @@ def run_chat_loop(
                 ),
                 resolve_context_fn=_legacy_runtime.resolve_context,
                 intent_telemetry_payload=_legacy_runtime._intent_telemetry_payload,
-                poll_background_source_ingestion=_legacy_runtime._poll_background_source_ingestion,
-                start_background_source_ingestion=_legacy_runtime._start_background_source_ingestion,
+                poll_background_source_ingestion=lambda **kwargs: poll_background_source_ingestion(
+                    deps=background_ingestion_deps,
+                    **kwargs,
+                ),
+                start_background_source_ingestion=lambda **kwargs: start_background_source_ingestion(
+                    deps=background_ingestion_deps,
+                    **kwargs,
+                ),
                 stage_retrieve=_legacy_runtime._stage_retrieve_for_turn_service,
                 stage_rerank=_legacy_runtime._stage_rerank_for_turn_service,
                 selected_decision_from_confidence=_legacy_runtime._selected_decision_from_confidence,
