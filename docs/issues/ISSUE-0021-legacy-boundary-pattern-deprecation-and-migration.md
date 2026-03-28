@@ -39,10 +39,11 @@ Recent architecture-boundary enforcement and canonical pipeline stage-contract t
 ## Work Plan
 
 1. ✅ Completed (2026-03-28): inventory remaining legacy call sites/patterns for `sat_chatbot_memory_v2` compatibility exports and classify migration/removal disposition in the linked evidence note.
-2. Add migration subtasks under this issue grouped by pattern class (import coupling, stage-order duplication, raw-to-render shortcuts).
-3. Remove or isolate legacy paths behind canonical orchestrator boundaries with deterministic regression tests.
-4. Update linked documentation (`docs/architecture.md`, `docs/testing.md`, `docs/issues/ISSUE-0013...`) as milestones are completed.
-5. Close only when migration inventory is empty and canonical gate evidence is green.
+2. ✅ Completed (2026-03-28): freeze loop-owner extraction contract in evidence and open follow-on ISSUE-0022 for residual helper-level runtime authority ranking/extraction sequencing.
+3. Pending: add migration subtasks under this issue grouped by pattern class (import coupling, stage-order duplication, raw-to-render shortcuts).
+4. Pending: remove or isolate legacy paths behind canonical orchestrator boundaries with deterministic regression tests.
+5. Pending: update linked documentation (`docs/architecture.md`, `docs/testing.md`, `docs/issues/ISSUE-0013...`) as milestones are completed.
+6. Pending: close only when migration inventory is empty and canonical gate evidence is green.
 
 ## Verification
 
@@ -54,4 +55,4 @@ python scripts/all_green_gate.py
 
 ## Closure Notes
 
-Pending.
+Pending. Follow-on residual authority inventory and seam-ranking work is tracked in `docs/issues/ISSUE-0022-residual-runtime-helper-authority-inventory-after-loop-owner-extraction.md`.
