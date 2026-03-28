@@ -83,7 +83,7 @@ def test_answer_validate_wrapper_delegates_to_answer_stage_runtime(monkeypatch) 
     )
 
     assert actual is expected
-    assert observed["build_provenance_metadata"] is runtime.build_provenance_metadata
+    assert observed["build_provenance_metadata"] is runtime.build_provenance_metadata_from_logic
     assert observed["evaluate_alignment_decision"] is runtime._evaluate_alignment_decision
 
 

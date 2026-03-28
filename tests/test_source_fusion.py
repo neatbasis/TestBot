@@ -5,6 +5,10 @@ from collections import deque
 from langchain_core.documents import Document
 
 from testbot.history_packer import PackedHistory
+from testbot.logic.provenance import (
+    build_provenance_metadata as build_provenance_metadata_canonical,
+    collect_used_source_evidence_refs as collect_used_source_evidence_refs_canonical,
+)
 from testbot.pipeline_state import ProvenanceType
 from testbot.rerank import mix_source_evidence_with_memory_cards
 from testbot.sat_chatbot_memory_v2 import build_provenance_metadata, collect_used_source_evidence_refs
@@ -156,3 +160,40 @@ def test_collect_used_source_evidence_refs_prefers_metadata_doc_id_over_wrapper_
 
     assert refs == ["src-55"]
     assert attribution[0]["doc_id"] == "src-55"
+
+
+def test_sat_provenance_wrappers_match_canonical_logic_owner() -> None:
+    hits = [
+        Document(
+            id="mem-42",
+            page_content="Remember Tuesday planning.",
+            metadata={"type": "utterance_memory", "record_kind": "utterance_memory", "doc_id": "mem-42", "ts": "2026-03-09T10:00:00Z"},
+        ),
+        Document(
+            id="src-42",
+            page_content="Calendar confirms Tuesday planning at 09:00.",
+            metadata={
+                "type": "source_evidence",
+                "source_type": "calendar",
+                "source_uri": "calendar://planning/42",
+                "retrieved_at": "2026-03-09T09:00:00Z",
+                "trust_tier": "verified",
+            },
+        ),
+    ]
+    packed_history = _packed_history()
+    chat_history = deque()
+    final_answer = "Tuesday planning is at 09:00. (doc_id: mem-42, ts: 2026-03-09T10:00:00Z)"
+
+    assert collect_used_source_evidence_refs(hits) == collect_used_source_evidence_refs_canonical(hits)
+    assert build_provenance_metadata(
+        final_answer=final_answer,
+        hits=hits,
+        chat_history=chat_history,
+        packed_history=packed_history,
+    ) == build_provenance_metadata_canonical(
+        final_answer=final_answer,
+        hits=hits,
+        chat_history=chat_history,
+        packed_history=packed_history,
+    )

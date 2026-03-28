@@ -18,6 +18,11 @@ from testbot.logic.alignment import (
     validate_answer_contract,
     validate_general_knowledge_contract,
 )
+from testbot.logic.provenance import (
+    build_provenance_metadata,
+    collect_used_memory_refs,
+    collect_used_source_evidence_refs,
+)
 
 __all__ = [
     "ALIGNMENT_OBJECTIVE_VERSION",
@@ -36,6 +41,9 @@ __all__ = [
     "response_contains_claims",
     "validate_answer_contract",
     "validate_general_knowledge_contract",
+    "build_provenance_metadata",
+    "collect_used_memory_refs",
+    "collect_used_source_evidence_refs",
 ]
 from testbot.logic.stage_artifacts import StageArtifacts
 

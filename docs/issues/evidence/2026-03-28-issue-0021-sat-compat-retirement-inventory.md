@@ -124,3 +124,23 @@
 - Applied safe façade surface prune:
   - removed `AnswerValidateResult`, `ambiguity_score`, `intent_label`, `derive_response_blocker_reason`, and `user_followup_signal_proxy` from `sat_chatbot_memory_v2.__all__`;
   - retained internal/helper definitions to avoid behavior churn in this step.
+
+## 2026-03-28 update — provenance seam extraction evidence
+
+- Extracted provenance assembly helpers to canonical owner `testbot.logic.provenance`:
+  - `build_provenance_metadata`
+  - `collect_used_source_evidence_refs`
+  - coupled helper `collect_used_memory_refs`
+- Updated answer-stage validation wiring to use canonical provenance owner directly (no longer passes façade wrapper as primary dependency).
+- Kept façade exports as compatibility wrappers delegating to `testbot.logic.provenance`.
+- Added wrapper-parity regression coverage to prove façade wrappers return byte-for-byte equivalent outputs relative to canonical logic owner.
+
+Status impact for retirement inventory:
+
+- `build_provenance_metadata`: moved from **A keep temporarily** to **B migrated (wrapper retained)**.
+- `collect_used_source_evidence_refs`: moved from **A keep temporarily** to **B migrated (wrapper retained)**.
+
+Done vs Deferred (naming/responsibility truth):
+
+- **Done:** established `testbot.logic.provenance` as the canonical owner for provenance assembly plus evidence-ref collection, and reduced façade ownership to compatibility wrappers.
+- **Deferred:** reassess whether `build_provenance_metadata` is accurately named or should be renamed/split now that the seam is explicit, because current behavior includes evidence collection + provenance interpretation/summary (not only metadata serialization).
