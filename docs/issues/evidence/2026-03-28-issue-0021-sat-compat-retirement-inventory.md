@@ -435,3 +435,25 @@ Done vs Deferred:
 
 - **Done:** canonical runtime path no longer sources answer-stage turn-service adapter hooks from monolith wrappers.
 - **Deferred:** broader compatibility façade prune and context/retrieval helper extraction remain tracked follow-on work.
+
+## 2026-03-28 follow-up — post-PR-681 pre-merge investigation census refresh
+
+Investigation-only refresh (no additional runtime behavior changes):
+
+- `answer_stage_runtime` coherence check:
+  - module remains primarily answer-stage semantic owner;
+  - newly extracted turn-service adapters are narrow boundary shims and do not yet justify internal owner split.
+- Canonical runtime-path monolith touchpoints after PR-681:
+  - answer-stage hook sourcing moved to canonical owner (`answer_stage_runtime`);
+  - residual monolith density remains concentrated in context/retrieval and related runtime hook wiring.
+- Façade caller census refresh:
+  - authoritative runtime path remains migrated to canonical entrypoint owners;
+  - remaining `sat_chatbot_memory_v2` / `runtime_legacy_bridge` imports are predominantly compatibility and test surfaces.
+- Next anti-regression guard recommendation:
+  - add a deterministic allowlist-based ownership test for monolith helper symbols referenced by `entrypoints/runtime_loop.py`
+    so any new monolith touchpoint requires explicit review.
+
+Status impact:
+
+- answer-stage helper extraction remains validated as a meaningful density reduction.
+- next highest-leverage extraction seam remains context/retrieval helper wiring.
