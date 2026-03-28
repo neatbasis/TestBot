@@ -3,9 +3,9 @@
 Ownership:
 - This module is the canonical runtime-loop owner used by CLI/runtime mode
   entrypoints.
-- Runtime loop control flow authority lives here; compatibility façades may
-  delegate into this module while extraction of lower-level stage helpers
-  continues.
+- Runtime loop control-flow authority lives here.
+- ``testbot.sat_chatbot_memory_v2`` is compatibility-only for this boundary and
+  delegates to this module for loop sequencing.
 - Satellite output transport ownership lives in
   ``testbot.adapters.ha_satellite_output``; ``sat_say`` is retained only as
   a compatibility wrapper.
