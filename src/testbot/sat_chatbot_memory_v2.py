@@ -131,6 +131,7 @@ from testbot.logic.provenance import (
 )
 from testbot.retrieval_routing import decide_retrieval_routing, is_definitional_query_form
 from testbot.adapters.ask_gateway import AskGateway
+from testbot.adapters.ha_satellite_output import send_satellite_output
 from testbot.application.services.turn_service import TurnPipelineDependencies
 from testbot.runtime_capability_service import (
     CapabilitySnapshotData as CapabilitySnapshot,
@@ -178,13 +179,7 @@ from langchain_ollama import ChatOllama, OllamaEmbeddings
 # HA satellite output
 # ---------------------------
 def sat_say(client: Client, entity_id: str, text: str) -> None:
-    client.trigger_service(
-        "assist_satellite",
-        "start_conversation",
-        entity_id=entity_id,
-        start_message=text,
-        preannounce=False,
-    )
+    send_satellite_output(client, entity_id, text)
 
 
 # ---------------------------
