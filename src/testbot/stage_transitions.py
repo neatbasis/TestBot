@@ -7,21 +7,18 @@ from pathlib import Path
 from typing import Callable
 
 from testbot.memory_cards import utc_now_iso
+from testbot.answer_contract_constants import (
+    ASSIST_ALTERNATIVES_ANSWER,
+    BACKGROUND_INGESTION_PROGRESS_ANSWER,
+    CLARIFY_ANSWER,
+    DENY_ANSWER,
+    FALLBACK_ANSWER,
+    NON_KNOWLEDGE_UNCERTAINTY_ANSWER,
+    ROUTE_TO_ASK_ANSWER,
+)
 from testbot.pipeline_state import CandidateHit, PipelineState, ProvenanceType, StageArtifact
 
 
-FALLBACK_ANSWER = "I don't know from memory."
-DENY_ANSWER = "I can't comply with that request."
-NON_KNOWLEDGE_UNCERTAINTY_ANSWER = (
-    "I'm not fully confident in a reliable answer right now. "
-    "I can offer a best-effort response and suggest a quick way to verify it."
-)
-BACKGROUND_INGESTION_PROGRESS_ANSWER = "I'm ingesting external sources in the background now…"
-ASSIST_ALTERNATIVES_ANSWER = (
-    "I don't have enough reliable memory to answer directly. "
-    "I can either help you reconstruct the timeline from what you remember, "
-    "or suggest where to check next for the missing detail."
-)
 TRANSITION_VALIDATION_SCHEMA_VERSION = 4
 
 # One-release migration bridge for downstream telemetry consumers that still
@@ -108,8 +105,8 @@ def _is_non_trivial_answer(answer: str) -> bool:
         "",
         FALLBACK_ANSWER,
         DENY_ANSWER,
-        "Can you clarify which memory and time window you mean?",
-        "I can disambiguate this with a quick follow-up question.",
+        CLARIFY_ANSWER,
+        ROUTE_TO_ASK_ANSWER,
         ASSIST_ALTERNATIVES_ANSWER,
     }
 

@@ -5,21 +5,20 @@ from collections.abc import Callable
 from typing import Mapping
 
 from testbot.pipeline_state import ConfidenceDecision, ProvenanceType
-from testbot.stage_transitions import (
+from testbot.answer_contract_constants import (
     ASSIST_ALTERNATIVES_ANSWER,
     BACKGROUND_INGESTION_PROGRESS_ANSWER,
+    CLARIFY_ANSWER,
     DENY_ANSWER,
     FALLBACK_ANSWER,
     NON_KNOWLEDGE_UNCERTAINTY_ANSWER,
+    ROUTE_TO_ASK_ANSWER,
 )
 
 GENERAL_KNOWLEDGE_MARKER_PREFIX = "General definition (not from your memory):"
 GENERAL_KNOWLEDGE_CONFIDENCE_MIN = 0.85
 GENERAL_KNOWLEDGE_SUPPORT_MIN = 2
 ALIGNMENT_OBJECTIVE_VERSION = "2026-03-10.v4"
-
-CLARIFY_ANSWER = "Can you clarify which memory and time window you mean?"
-ROUTE_TO_ASK_ANSWER = "I can disambiguate this with a quick follow-up question."
 
 
 def is_non_trivial_answer(text: str) -> bool:
