@@ -286,3 +286,36 @@ Done vs Deferred:
 - **Done:** canonical runtime-loop owner now contains loop sequencing authority, and monolith delegation in the CLI runtime path is removed.
 - **Deferred:** lower-level stage/telemetry helper extraction from `sat_chatbot_memory_v2` remains follow-on work so long as behavior contracts continue to rely on those helper boundaries.
 - **Residual monolith authority after this step:** stage helper implementations, telemetry helper details, and compatibility export surface remain in `sat_chatbot_memory_v2`; the loop contract boundary itself now resides in `entrypoints/runtime_loop`.
+
+## 2026-03-28 follow-up — runtime turn-pipeline dependency-assembly extraction into canonical runtime owner
+
+- Established canonical runtime-owned turn-pipeline dependency assembly module:
+  - `testbot.entrypoints.runtime_turn_pipeline`
+  - exported symbols:
+    - `RuntimeTurnPipelineHooks`
+    - `run_runtime_turn_pipeline`
+- Extracted dependency assembly authority from monolith helper:
+  - `testbot.entrypoints.runtime_loop.run_chat_loop` now calls `run_runtime_turn_pipeline(...)`;
+  - canonical loop no longer calls `testbot.sat_chatbot_memory_v2._run_canonical_turn_pipeline(...)`.
+- Preserved compatibility behavior:
+  - `testbot.sat_chatbot_memory_v2._run_canonical_turn_pipeline(...)` now delegates to the canonical helper.
+- Added focused anti-regression guard:
+  - runtime-mode test verifies `runtime_loop.py` uses canonical helper import and does not contain monolith helper call.
+- Residual authority statement (explicit):
+  - this step removes direct monolith ownership of the turn-pipeline dependency-assembly seam;
+  - but `RuntimeTurnPipelineHooks` remains a large compatibility hook bag wired mostly from
+    `testbot.sat_chatbot_memory_v2`, so helper-authority concentration is reduced but still significant.
+
+Residual hook clusters captured for follow-on extraction sequencing:
+
+- background-ingestion hooks;
+- telemetry/debug hooks;
+- answer-stage hooks;
+- context/retrieval hooks.
+
+Done vs Deferred:
+
+- **Done:** runtime turn-pipeline dependency assembly is now canonically owned in `entrypoints`, materially reducing helper-level
+  runtime authority concentration in `sat_chatbot_memory_v2` on the canonical loop path.
+- **Deferred:** background-ingestion lifecycle helper extraction, telemetry/debug helper extraction, commit-persistence extraction,
+  and broader compatibility façade retirement remain follow-on work under ISSUE-0021/ISSUE-0022.

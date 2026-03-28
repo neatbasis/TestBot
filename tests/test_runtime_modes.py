@@ -234,6 +234,16 @@ def test_cli_uses_runtime_bootstrap_owner_and_limits_legacy_bridge_imports() -> 
     assert "from testbot.sat_chatbot_memory_v2 import" not in source
 
 
+def test_runtime_loop_owner_uses_canonical_turn_pipeline_helper_not_monolith_turn_pipeline_helper() -> None:
+    from testbot.entrypoints import runtime_loop
+
+    source = Path(runtime_loop.__file__).read_text()
+    assert "from testbot.entrypoints.runtime_turn_pipeline import RuntimeTurnPipelineHooks, run_runtime_turn_pipeline" in source
+    assert "_run_canonical_turn_pipeline(" not in source
+    assert "run_canonical_turn_pipeline(" not in source
+    assert "TurnPipelineDependencies(" not in source
+
+
 def test_sat_cli_is_transitional_wrapper_to_canonical_cli() -> None:
     source = Path(sat_cli.__file__).read_text()
     assert "compatibility-only" in source

@@ -54,4 +54,37 @@ python scripts/all_green_gate.py
 
 ## Closure Notes
 
-Pending.
+This issue remains open; the update below records the completed narrow extraction increment and explicit deferrals.
+
+## 2026-03-28 update — turn-pipeline dependency-assembly seam extraction (narrow)
+
+- Extracted canonical runtime-owned dependency-assembly helper:
+  - `testbot.entrypoints.runtime_turn_pipeline.run_runtime_turn_pipeline`
+  - hook contract: `RuntimeTurnPipelineHooks`
+- Rewired canonical loop owner:
+  - `testbot.entrypoints.runtime_loop.run_chat_loop` now invokes `run_runtime_turn_pipeline(...)` and no longer calls
+    `testbot.sat_chatbot_memory_v2._run_canonical_turn_pipeline(...)`.
+- Compatibility kept:
+  - `testbot.sat_chatbot_memory_v2._run_canonical_turn_pipeline(...)` now delegates to
+    `testbot.entrypoints.runtime_turn_pipeline.run_runtime_turn_pipeline(...)`.
+- Added focused anti-regression guard:
+  - runtime-mode test asserts `runtime_loop.py` imports canonical runtime turn-pipeline helper and does not call monolith
+    `_run_canonical_turn_pipeline(...)`.
+- Residual authority shape (explicit):
+  - this extraction removes direct monolith ownership of the turn-pipeline assembly seam;
+  - however `RuntimeTurnPipelineHooks` still carries a large compatibility hook bag wired primarily from
+    `testbot.sat_chatbot_memory_v2`, so helper-authority density remains concentrated behind that compatibility surface.
+
+Residual hook clusters for next-step prioritization:
+
+- background-ingestion hooks (`poll/start/process` continuation surfaces);
+- telemetry/debug hooks (session-log and structured debug payload surfaces);
+- answer-stage hooks (assemble/validate + decision projection helpers);
+- context/retrieval hooks (context resolve + retrieve/rerank + conversion helpers).
+
+Done vs Deferred:
+
+- **Done:** runtime turn-pipeline dependency assembly is now canonically owned under `entrypoints` and loop wiring no longer
+  depends on monolith turn-pipeline helper calls.
+- **Deferred:** background-ingestion lifecycle helpers, telemetry/debug helper extraction, and commit-persistence extraction remain
+  explicitly out of scope for this narrow step.

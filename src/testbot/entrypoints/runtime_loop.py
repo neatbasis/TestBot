@@ -20,6 +20,7 @@ from homeassistant_api import Client
 from langchain_ollama import ChatOllama
 
 from testbot.adapters.ha_satellite_output import send_satellite_output
+from testbot.entrypoints.runtime_turn_pipeline import RuntimeTurnPipelineHooks, run_runtime_turn_pipeline
 from testbot import sat_chatbot_memory_v2 as _legacy_runtime
 from testbot.domain import Clock
 from testbot.ports import MemoryStorePort
@@ -109,7 +110,7 @@ def run_chat_loop(
         )
         turn_id = str(uuid.uuid4())
 
-        state, hits = _legacy_runtime._run_canonical_turn_pipeline(
+        state, hits = run_runtime_turn_pipeline(
             runtime=runtime,
             llm=llm,
             store=store,
@@ -123,6 +124,35 @@ def run_chat_loop(
             capability_snapshot=capability_snapshot,
             clock=clock,
             io_channel=io_channel,
+            hooks=RuntimeTurnPipelineHooks(
+                append_session_log=_legacy_runtime.append_session_log,
+                validate_and_log_transition=_legacy_runtime._validate_and_log_transition,
+                stage_rewrite_query=_legacy_runtime.stage_rewrite_query,
+                generate_reflection_yaml=_legacy_runtime.generate_reflection_yaml,
+                intent_classifier_confidence=_legacy_runtime._intent_classifier_confidence,
+                optional_string=_legacy_runtime._optional_string,
+                should_force_memory_retrieval_for_identity_recall=(
+                    _legacy_runtime._should_force_memory_retrieval_for_identity_recall
+                ),
+                resolve_context_fn=_legacy_runtime.resolve_context,
+                intent_telemetry_payload=_legacy_runtime._intent_telemetry_payload,
+                poll_background_source_ingestion=_legacy_runtime._poll_background_source_ingestion,
+                start_background_source_ingestion=_legacy_runtime._start_background_source_ingestion,
+                stage_retrieve=_legacy_runtime._stage_retrieve_for_turn_service,
+                stage_rerank=_legacy_runtime._stage_rerank_for_turn_service,
+                selected_decision_from_confidence=_legacy_runtime._selected_decision_from_confidence,
+                minimal_confidence_decision_for_direct_answer=(
+                    _legacy_runtime._minimal_confidence_decision_for_direct_answer
+                ),
+                resolve_answer_routing_for_stage=_legacy_runtime._resolve_answer_routing_for_stage,
+                answer_assemble=_legacy_runtime._answer_assemble_for_turn_service,
+                answer_validate=_legacy_runtime._answer_validate_for_turn_service,
+                detect_capability_offer=_legacy_runtime._detect_capability_offer,
+                ambiguity_score=_legacy_runtime._ambiguity_score,
+                store_doc_fn=_legacy_runtime.store_doc,
+                intent_classifier_confidence_threshold=_legacy_runtime.INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD,
+                document_from_retrieval_input=_legacy_runtime._document_from_retrieval_input,
+            ),
         )
 
         ambiguity_score = _legacy_runtime._ambiguity_score(state.confidence_decision)
