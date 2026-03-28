@@ -50,15 +50,24 @@ def test_runtime_legacy_bridge_warns_on_monolith_compat_usage() -> None:
         read_runtime_env()
 
 
-def test_runtime_loop_owner_delegates_to_monolith_runtime_loop(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_runtime_loop_owner_handles_none_input_as_immediate_return(monkeypatch: pytest.MonkeyPatch) -> None:
     from testbot.entrypoints import runtime_loop
 
-    called: dict[str, object] = {}
+    poll_calls: list[dict[str, object]] = []
+    completion_calls: list[dict[str, object]] = []
 
-    def _fake_run_chat_loop(**kwargs):
-        called.update(kwargs)
+    monkeypatch.setattr(
+        runtime,
+        "_poll_pending_ingestion_obligations",
+        lambda *, runtime: poll_calls.append(runtime),
+    )
 
-    monkeypatch.setattr("testbot.sat_chatbot_memory_v2.run_chat_loop", _fake_run_chat_loop)
+    def _fake_completion(**kwargs):
+        completion_calls.append(kwargs)
+        return "", None, False
+
+    monkeypatch.setattr(runtime, "_process_background_ingestion_completion", _fake_completion)
+
     runtime_loop.run_chat_loop(
         runtime={},
         llm=object(),
@@ -67,15 +76,53 @@ def test_runtime_loop_owner_delegates_to_monolith_runtime_loop(monkeypatch: pyte
         near_tie_delta=0.1,
         io_channel="cli",
         capability_status="ok",
-        capability_snapshot=object(),
+        capability_snapshot=SimpleNamespace(
+            runtime_capability_status=SimpleNamespace(debug_enabled=False, debug_verbose=False)
+        ),
         read_user_utterance=lambda: None,
         send_assistant_text=lambda _text: None,
-        clock=object(),
+        clock=SimpleNamespace(now=lambda: runtime.arrow.get("2026-01-01T00:00:00+00:00")),
     )
 
-    assert called["io_channel"] == "cli"
-    assert callable(called["read_user_utterance"])
-    assert callable(called["send_assistant_text"])
+    assert len(poll_calls) == 1
+    assert len(completion_calls) == 1
+
+
+
+def test_runtime_loop_owner_handles_stop_command_without_turn_pipeline(monkeypatch: pytest.MonkeyPatch) -> None:
+    from testbot.entrypoints import runtime_loop
+
+    sent: list[str] = []
+    run_pipeline_called = False
+
+    monkeypatch.setattr(runtime, "_poll_pending_ingestion_obligations", lambda **_kwargs: None)
+    monkeypatch.setattr(runtime, "_process_background_ingestion_completion", lambda **_kwargs: ("", None, False))
+
+    def _unexpected_pipeline_call(**_kwargs):
+        nonlocal run_pipeline_called
+        run_pipeline_called = True
+        raise AssertionError("pipeline should not run for stop command")
+
+    monkeypatch.setattr(runtime, "_run_canonical_turn_pipeline", _unexpected_pipeline_call)
+
+    runtime_loop.run_chat_loop(
+        runtime={},
+        llm=object(),
+        store=object(),
+        chat_history=deque(),
+        near_tie_delta=0.1,
+        io_channel="cli",
+        capability_status="ok",
+        capability_snapshot=SimpleNamespace(
+            runtime_capability_status=SimpleNamespace(debug_enabled=False, debug_verbose=False)
+        ),
+        read_user_utterance=lambda: " stop ",
+        send_assistant_text=sent.append,
+        clock=SimpleNamespace(now=lambda: runtime.arrow.get("2026-01-01T00:00:00+00:00")),
+    )
+
+    assert sent == ["Stopping. Bye."]
+    assert run_pipeline_called is False
 
 
 def test_runtime_loop_sat_say_delegates_to_ha_satellite_output_adapter(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -125,6 +172,32 @@ def test_runtime_legacy_bridge_run_chat_loop_delegates_to_runtime_loop(monkeypat
         )
 
     assert captured["io_channel"] == "satellite"
+    assert captured["near_tie_delta"] == 0.3
+
+
+def test_monolith_run_chat_loop_delegates_to_runtime_loop_owner(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: dict[str, object] = {}
+
+    def _fake_runtime_loop(**kwargs):
+        captured.update(kwargs)
+
+    monkeypatch.setattr("testbot.entrypoints.runtime_loop.run_chat_loop", _fake_runtime_loop)
+
+    runtime.run_chat_loop(
+        runtime={},
+        llm=object(),
+        store=object(),
+        chat_history=deque(),
+        near_tie_delta=0.3,
+        io_channel="cli",
+        capability_status="ok",
+        capability_snapshot=object(),
+        read_user_utterance=lambda: None,
+        send_assistant_text=lambda _text: None,
+        clock=object(),
+    )
+
+    assert captured["io_channel"] == "cli"
     assert captured["near_tie_delta"] == 0.3
 
 
