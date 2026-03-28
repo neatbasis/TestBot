@@ -265,3 +265,24 @@ Done vs Deferred:
 
 - **Done:** repository wording/evidence now reflects the resolved ownership split (adapter owns outbound transport, runtime_loop owns import seam only).
 - **Deferred:** full extraction of `run_chat_loop` implementation out of `sat_chatbot_memory_v2` into canonical runtime-loop ownership, including future decisions on whether any outbound surface should be promoted under Ask-backed ownership.
+
+## 2026-03-28 follow-up — runtime loop implementation extraction into canonical owner
+
+- Moved the **actual runtime loop control-flow implementation** into `testbot.entrypoints.runtime_loop.run_chat_loop`.
+  - The canonical owner now directly executes loop sequencing responsibilities: obligation polling/completion checks, user-input ingest/stop handling, turn-state initialization, canonical turn-pipeline invocation, loop-level telemetry emission, debug-trace emission, pending-ingestion registry updates, chat-history progression, and commit persistence dispatch.
+- Reduced monolith runtime authority:
+  - `testbot.sat_chatbot_memory_v2._run_chat_loop` is now a compatibility wrapper that delegates to `testbot.entrypoints.runtime_loop.run_chat_loop`.
+  - `testbot.sat_chatbot_memory_v2.run_chat_loop` remains a compatibility export but no longer owns runtime-loop sequencing logic.
+- Behavior-preservation basis:
+  - The canonical loop implementation intentionally reuses existing stage/telemetry/persistence helpers from `sat_chatbot_memory_v2` (e.g., `_run_canonical_turn_pipeline`, `_process_background_ingestion_completion`, `answer_commit_persistence`) without changing their contract.
+  - Focused regression tests cover loop stop/return control behavior at the new owner and verify the monolith wrapper delegates into the canonical runtime-loop owner.
+
+Status impact for retirement inventory:
+
+- `run_chat_loop`: advanced from **B migrated (wrapper retained)** to **A keep temporarily (canonical owner active, compatibility export retained)**.
+
+Done vs Deferred:
+
+- **Done:** canonical runtime-loop owner now contains loop sequencing authority, and monolith delegation in the CLI runtime path is removed.
+- **Deferred:** lower-level stage/telemetry helper extraction from `sat_chatbot_memory_v2` remains follow-on work so long as behavior contracts continue to rely on those helper boundaries.
+- **Residual monolith authority after this step:** stage helper implementations, telemetry helper details, and compatibility export surface remain in `sat_chatbot_memory_v2`; the loop contract boundary itself now resides in `entrypoints/runtime_loop`.
