@@ -258,6 +258,50 @@ def test_runtime_loop_owner_uses_canonical_turn_pipeline_helper_not_monolith_tur
     assert "TurnPipelineDependencies(" not in source
 
 
+def test_runtime_loop_monolith_touchpoints_are_allowlisted_for_deliberate_shrink_only() -> None:
+    from testbot.entrypoints import runtime_loop
+
+    source = Path(runtime_loop.__file__).read_text()
+    observed_symbols = set(re.findall(r"_legacy_runtime\.([A-Za-z_][A-Za-z0-9_]*)", source))
+    allowed_symbols = {
+        "BACKGROUND_INGESTION_OBLIGATION_TIMEOUT_SECONDS",
+        "INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD",
+        "IntentType",
+        "PipelineState",
+        "SourceIngestor",
+        "_ClockBackedSnapshotTimeProvider",
+        "_ambiguity_score",
+        "_build_debug_turn_payload",
+        "_build_source_connector",
+        "_document_from_retrieval_input",
+        "_emit_obligation_transition",
+        "_format_debug_turn_trace_payload",
+        "_intent_classifier_confidence",
+        "_intent_telemetry_payload",
+        "_is_capabilities_help_answer",
+        "_minimal_confidence_decision_for_direct_answer",
+        "_optional_string",
+        "_run_canonical_turn_pipeline",
+        "_selected_decision_from_confidence",
+        "_should_force_memory_retrieval_for_identity_recall",
+        "_stage_rerank_for_turn_service",
+        "_stage_retrieve_for_turn_service",
+        "_user_followup_signal_proxy",
+        "_utc_now_iso",
+        "_validate_and_log_transition",
+        "append_pipeline_snapshot",
+        "append_session_log",
+        "arrow",
+        "generate_reflection_yaml",
+        "is_clarification_answer",
+        "replace",
+        "resolve_context",
+        "stage_rewrite_query",
+        "store_doc",
+    }
+    assert observed_symbols == allowed_symbols
+
+
 def test_sat_cli_is_transitional_wrapper_to_canonical_cli() -> None:
     source = Path(sat_cli.__file__).read_text()
     assert "compatibility-only" in source

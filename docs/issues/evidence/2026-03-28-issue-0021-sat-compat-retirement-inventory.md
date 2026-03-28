@@ -452,6 +452,9 @@ Investigation-only refresh (no additional runtime behavior changes):
 - Next anti-regression guard recommendation:
   - add a deterministic allowlist-based ownership test for monolith helper symbols referenced by `entrypoints/runtime_loop.py`
     so any new monolith touchpoint requires explicit review.
+- Guard status:
+  - allowlist ownership guard now exists in `tests/test_runtime_modes.py` and enforces explicit review for any
+    newly introduced `_legacy_runtime.<symbol>` touchpoint in `runtime_loop.py`.
 
 Status impact:
 

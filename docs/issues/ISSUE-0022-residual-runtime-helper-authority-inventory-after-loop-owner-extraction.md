@@ -190,6 +190,9 @@ Post-681 investigation summary (narrow, no additional runtime behavior changes):
 - recommended smallest next anti-regression guard:
   - add an ownership inventory assertion for `runtime_loop` that enumerates the currently allowed monolith helper symbols and
     fails on additions (explicit allowlist guard prevents “silent” hook-bag backsliding).
+- guard implementation status:
+  - **implemented in tests** via a deterministic allowlist assertion for `_legacy_runtime.<symbol>` touchpoints in
+    `tests/test_runtime_modes.py`; future extractions should shrink the allowlist deliberately.
 
 Done vs Deferred (investigation pass):
 
