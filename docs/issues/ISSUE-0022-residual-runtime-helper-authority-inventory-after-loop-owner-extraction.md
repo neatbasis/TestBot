@@ -137,3 +137,34 @@ Done vs Deferred:
   `entrypoints/runtime_turn_telemetry.py`, reducing in-loop helper authority concentration.
 - **Deferred:** commit-persistence helper extraction and answer-stage/context-retrieval helper extraction remain
   compatibility-wired through `sat_chatbot_memory_v2` and are intentionally out of scope for this narrow step.
+
+## 2026-03-28 update — answer-stage residual helper wiring extraction (narrow)
+
+- Extracted canonical answer-stage turn-service adapters into canonical owner module:
+  - `testbot.application.services.answer_stage_runtime.answer_assemble_for_turn_service`
+  - `testbot.application.services.answer_stage_runtime.answer_validate_for_turn_service`
+  - `testbot.application.services.answer_stage_runtime.detect_capability_offer`
+- Rewired canonical runtime loop owner:
+  - `testbot.entrypoints.runtime_loop.run_chat_loop` now wires answer-stage hooks in
+    `RuntimeTurnPipelineHooks` from `answer_stage_runtime` directly for:
+    - answer routing for stage
+    - answer assemble adapter
+    - answer validate adapter
+    - capability-offer detection
+  - canonical loop no longer sources those answer-stage helper hooks from
+    `testbot.sat_chatbot_memory_v2`.
+- Compatibility kept:
+  - `testbot.sat_chatbot_memory_v2` wrappers
+    `_answer_assemble_for_turn_service`, `_answer_validate_for_turn_service`, and
+    `_detect_capability_offer` now delegate to canonical
+    `answer_stage_runtime` helpers.
+- Added focused anti-regression coverage:
+  - runtime-mode ownership guard asserts runtime loop imports canonical answer-stage service owner and does not reference monolith answer-stage helper symbols;
+  - compatibility wrapper tests assert monolith wrappers delegate to
+    canonical answer-stage runtime helpers.
+
+Done vs Deferred:
+
+- **Done:** answer-stage hook authority on the canonical runtime path is now sourced from
+  `application/services/answer_stage_runtime.py` rather than monolith helper wrappers.
+- **Deferred:** context/retrieval hook extraction and remaining legacy helper pruning are out of scope for this narrow seam.

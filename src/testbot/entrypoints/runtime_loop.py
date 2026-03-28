@@ -33,6 +33,7 @@ from testbot.entrypoints.runtime_commit_persistence import (
     RuntimeCommitPersistenceDependencies,
     answer_commit_persistence as persist_answer_commit,
 )
+from testbot.application.services import answer_stage_runtime as answer_stage_runtime_service
 from testbot import sat_chatbot_memory_v2 as _legacy_runtime
 from testbot.domain import Clock
 from testbot.ports import MemoryStorePort
@@ -179,10 +180,10 @@ def run_chat_loop(
                 minimal_confidence_decision_for_direct_answer=(
                     _legacy_runtime._minimal_confidence_decision_for_direct_answer
                 ),
-                resolve_answer_routing_for_stage=_legacy_runtime._resolve_answer_routing_for_stage,
-                answer_assemble=_legacy_runtime._answer_assemble_for_turn_service,
-                answer_validate=_legacy_runtime._answer_validate_for_turn_service,
-                detect_capability_offer=_legacy_runtime._detect_capability_offer,
+                resolve_answer_routing_for_stage=answer_stage_runtime_service.resolve_answer_routing_for_stage,
+                answer_assemble=answer_stage_runtime_service.answer_assemble_for_turn_service,
+                answer_validate=answer_stage_runtime_service.answer_validate_for_turn_service,
+                detect_capability_offer=answer_stage_runtime_service.detect_capability_offer,
                 ambiguity_score=_legacy_runtime._ambiguity_score,
                 store_doc_fn=_legacy_runtime.store_doc,
                 intent_classifier_confidence_threshold=_legacy_runtime.INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD,

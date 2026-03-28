@@ -406,3 +406,32 @@ Retirement leverage created by this step:
 - Simplifies future façade retirement checks by isolating commit persistence behind a canonical owner module.
 - Creates a narrower caller-census surface for determining when monolith `answer_commit_persistence` can move to compatibility-only/export-only status.
 - Provides a concrete anti-regression assertion that helps prevent runtime-loop drift back to direct monolith commit helper calls.
+
+## 2026-03-28 follow-up — answer-stage helper wiring moved to canonical answer-stage runtime owner
+
+- Established canonical answer-stage turn-service wiring helpers under:
+  - `testbot.application.services.answer_stage_runtime.answer_assemble_for_turn_service`
+  - `testbot.application.services.answer_stage_runtime.answer_validate_for_turn_service`
+  - `testbot.application.services.answer_stage_runtime.detect_capability_offer`
+- Updated canonical runtime-loop hook assembly (`testbot.entrypoints.runtime_loop`) to source:
+  - `resolve_answer_routing_for_stage`
+  - `answer_assemble_for_turn_service`
+  - `answer_validate_for_turn_service`
+  - `detect_capability_offer`
+  from `answer_stage_runtime` directly instead of `sat_chatbot_memory_v2` wrappers.
+- Kept compatibility façade behavior stable:
+  - `_answer_assemble_for_turn_service`, `_answer_validate_for_turn_service`, and `_detect_capability_offer`
+    in `sat_chatbot_memory_v2` now delegate to canonical answer-stage runtime service helpers.
+- Added anti-regression tests:
+  - runtime-loop ownership guard for answer-stage helper sourcing;
+  - compatibility-wrapper delegation assertions for extracted answer-stage helpers.
+
+Status impact for retirement inventory:
+
+- answer-stage helper wiring (`_answer_assemble_for_turn_service`, `_answer_validate_for_turn_service`, `_detect_capability_offer`):
+  moved from compatibility-owned authority to **B migrated (wrapper retained)**.
+
+Done vs Deferred:
+
+- **Done:** canonical runtime path no longer sources answer-stage turn-service adapter hooks from monolith wrappers.
+- **Deferred:** broader compatibility façade prune and context/retrieval helper extraction remain tracked follow-on work.

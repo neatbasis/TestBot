@@ -242,12 +242,17 @@ def test_runtime_loop_owner_uses_canonical_turn_pipeline_helper_not_monolith_tur
     assert "from testbot.entrypoints.runtime_commit_persistence import (" in source
     assert "from testbot.entrypoints.runtime_turn_pipeline import RuntimeTurnPipelineHooks, run_runtime_turn_pipeline" in source
     assert "from testbot.entrypoints.runtime_turn_telemetry import RuntimeTurnTelemetryDependencies, emit_runtime_turn_telemetry" in source
+    assert "from testbot.application.services import answer_stage_runtime as answer_stage_runtime_service" in source
     assert "_poll_pending_ingestion_obligations(" not in source
     assert "_process_background_ingestion_completion(" not in source
     assert "_run_canonical_turn_pipeline(" not in source
     assert "_intent_telemetry_payload(" not in source
     assert "_build_debug_turn_payload(" not in source
     assert "_format_debug_turn_trace_payload(" not in source
+    assert "_resolve_answer_routing_for_stage" not in source
+    assert "_answer_assemble_for_turn_service" not in source
+    assert "_answer_validate_for_turn_service" not in source
+    assert "_detect_capability_offer" not in source
     assert "run_canonical_turn_pipeline(" not in source
     assert "_legacy_runtime.answer_commit_persistence(" not in source
     assert "TurnPipelineDependencies(" not in source

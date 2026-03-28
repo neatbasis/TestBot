@@ -977,16 +977,25 @@ def _answer_assemble_for_turn_service(
     runtime_capability_status: CapabilityStatus | None = None,
     clock: Clock | None = None,
 ):
-    docs = [_document_from_retrieval_input(record) for record in hits]
-    return answer_assemble(
+    return answer_stage_runtime_service.answer_assemble_for_turn_service(
         llm,
         state,
         chat_history=chat_history,
-        hits=docs,
+        hits=hits,
         capability_status=capability_status,
         answer_routing=answer_routing,
         runtime_capability_status=runtime_capability_status,
         clock=clock,
+        document_from_retrieval_input=_document_from_retrieval_input,
+        render_context=render_context,
+        answer_prompt=ANSWER_PROMPT,
+        build_partial_memory_clarifier=build_partial_memory_clarifier,
+        append_session_log=append_session_log,
+        deny_answer=DENY_ANSWER,
+        route_to_ask_answer=ROUTE_TO_ASK_ANSWER,
+        assist_alternatives_answer=ASSIST_ALTERNATIVES_ANSWER,
+        fallback_answer=FALLBACK_ANSWER,
+        non_knowledge_uncertainty_answer=NON_KNOWLEDGE_UNCERTAINTY_ANSWER,
     )
 
 
@@ -998,13 +1007,21 @@ def _answer_validate_for_turn_service(
     chat_history: deque[ChatMsg],
     pending_lookup_override: bool = False,
 ):
-    docs = [_document_from_retrieval_input(record) for record in hits]
-    return answer_validate(
+    return answer_stage_runtime_service.answer_validate_for_turn_service(
         state,
         assembled=assembled,
-        hits=docs,
+        hits=hits,
         chat_history=chat_history,
         pending_lookup_override=pending_lookup_override,
+        document_from_retrieval_input=_document_from_retrieval_input,
+        build_provenance_metadata=build_provenance_metadata_from_logic,
+        evaluate_alignment_decision=_evaluate_alignment_decision,
+        fallback_answer=FALLBACK_ANSWER,
+        deny_answer=DENY_ANSWER,
+        assist_alternatives_answer=ASSIST_ALTERNATIVES_ANSWER,
+        non_knowledge_uncertainty_answer=NON_KNOWLEDGE_UNCERTAINTY_ANSWER,
+        clarify_answer=CLARIFY_ANSWER,
+        route_to_ask_answer=ROUTE_TO_ASK_ANSWER,
     )
 
 
@@ -1114,29 +1131,8 @@ def _is_capabilities_help_answer(text: str) -> bool:
     return normalized.startswith("runtime mode:") and "memory recall:" in normalized and "home assistant" in normalized
 
 
-_CAPABILITY_OFFER_PATTERN = re.compile(
-    r"\b("
-    r"i can look up|"
-    r"i can find|"
-    r"i can search|"
-    r"i can help you find|"
-    r"would you like me to|"
-    r"i can define|"
-    r"i can look that up|"
-    r"i can either\b[^.?!]*\bor\b|"
-    r"suggest where to check next|"
-    r"suggest a quick way to verify|"
-    r"offer a best-effort response|"
-    r"help you reconstruct the timeline"
-    r")\b",
-    re.IGNORECASE,
-)
-
-
 def _detect_capability_offer(text: str) -> str:
-    if _CAPABILITY_OFFER_PATTERN.search(text or ""):
-        return "capability_offer"
-    return ""
+    return answer_stage_runtime_service.detect_capability_offer(text)
 
 
 def _intent_label(intent: IntentType) -> str:

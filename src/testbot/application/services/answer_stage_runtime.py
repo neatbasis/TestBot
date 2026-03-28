@@ -4,6 +4,7 @@ import uuid
 import warnings
 from collections import deque
 from dataclasses import dataclass, replace
+import re
 
 import arrow
 from langchain_core.documents import Document
@@ -36,6 +37,7 @@ from testbot.runtime_capability_service import (
     CapabilitySnapshotData as CapabilitySnapshot,
     RuntimeCapabilityStatusData as RuntimeCapabilityStatus,
 )
+from testbot.evidence_retrieval import RetrievalInputRecord
 from testbot.time_reasoning import elapsed_since_last_user_message, resolve_relative_date
 from testbot.logic.decision_helpers import (
     decision_object_from_assembled as _decision_object_from_fallback_action,
@@ -45,6 +47,110 @@ from testbot.logic.decision_helpers import (
 )
 
 ChatMsg = dict[str, str]
+
+
+_CAPABILITY_OFFER_PATTERN = re.compile(
+    r"\b("
+    r"i can look up|"
+    r"i can find|"
+    r"i can search|"
+    r"i can help you find|"
+    r"would you like me to|"
+    r"i can define|"
+    r"i can look that up|"
+    r"i can either\b[^.?!]*\bor\b|"
+    r"suggest where to check next|"
+    r"suggest a quick way to verify|"
+    r"offer a best-effort response|"
+    r"help you reconstruct the timeline"
+    r")\b",
+    re.IGNORECASE,
+)
+
+
+def detect_capability_offer(text: str) -> str:
+    if _CAPABILITY_OFFER_PATTERN.search(text or ""):
+        return "capability_offer"
+    return ""
+
+
+def answer_assemble_for_turn_service(
+    llm: ChatOllama,
+    state: PipelineState,
+    *,
+    chat_history: deque[ChatMsg],
+    hits: list[RetrievalInputRecord],
+    capability_status: CapabilityStatus,
+    answer_routing: AnswerRoutingDecision,
+    runtime_capability_status: RuntimeCapabilityStatus | None = None,
+    clock: Clock | None = None,
+    document_from_retrieval_input,
+    render_context,
+    answer_prompt,
+    build_partial_memory_clarifier,
+    append_session_log,
+    deny_answer: str,
+    route_to_ask_answer: str,
+    assist_alternatives_answer: str,
+    fallback_answer: str,
+    non_knowledge_uncertainty_answer: str,
+) -> AnswerAssembleResult:
+    docs = [document_from_retrieval_input(record) for record in hits]
+    return answer_assemble(
+        llm,
+        state,
+        chat_history=chat_history,
+        hits=docs,
+        capability_status=capability_status,
+        answer_routing=answer_routing,
+        runtime_capability_status=runtime_capability_status,
+        clock=clock,
+        timezone="Europe/Helsinki",
+        render_context=render_context,
+        answer_prompt=answer_prompt,
+        build_partial_memory_clarifier=build_partial_memory_clarifier,
+        append_session_log=append_session_log,
+        deny_answer=deny_answer,
+        route_to_ask_answer=route_to_ask_answer,
+        assist_alternatives_answer=assist_alternatives_answer,
+        fallback_answer=fallback_answer,
+        non_knowledge_uncertainty_answer=non_knowledge_uncertainty_answer,
+    )
+
+
+def answer_validate_for_turn_service(
+    state: PipelineState,
+    *,
+    assembled: AnswerAssembleResult,
+    hits: list[RetrievalInputRecord],
+    chat_history: deque[ChatMsg],
+    pending_lookup_override: bool | None = None,
+    document_from_retrieval_input,
+    build_provenance_metadata,
+    evaluate_alignment_decision,
+    fallback_answer: str,
+    deny_answer: str,
+    assist_alternatives_answer: str,
+    non_knowledge_uncertainty_answer: str,
+    clarify_answer: str,
+    route_to_ask_answer: str,
+) -> AnswerValidateResult:
+    docs = [document_from_retrieval_input(record) for record in hits]
+    return answer_validate(
+        state,
+        assembled=assembled,
+        hits=docs,
+        chat_history=chat_history,
+        pending_lookup_override=pending_lookup_override,
+        build_provenance_metadata=build_provenance_metadata,
+        evaluate_alignment_decision=evaluate_alignment_decision,
+        fallback_answer=fallback_answer,
+        deny_answer=deny_answer,
+        assist_alternatives_answer=assist_alternatives_answer,
+        non_knowledge_uncertainty_answer=non_knowledge_uncertainty_answer,
+        clarify_answer=clarify_answer,
+        route_to_ask_answer=route_to_ask_answer,
+    )
 
 
 @dataclass(frozen=True)
