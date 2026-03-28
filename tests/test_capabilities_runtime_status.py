@@ -3,11 +3,8 @@ from __future__ import annotations
 from collections import deque
 
 from testbot.pipeline_state import PipelineState
-from testbot.sat_chatbot_memory_v2 import (
-    _print_startup_status,
-    build_capability_snapshot,
-    run_canonical_answer_stage_flow,
-)
+from testbot.runtime_capability_service import build_capability_snapshot
+from testbot.sat_chatbot_memory_v2 import _print_startup_status, run_canonical_answer_stage_flow
 
 
 class _FailIfInvokedLLM:
@@ -46,13 +43,13 @@ def _capabilities_help_answer(snapshot) -> str:
 
 def test_shared_snapshot_keeps_cli_fallback_truth_consistent(monkeypatch, capsys) -> None:
     runtime = _base_runtime()
-    monkeypatch.setattr("testbot.sat_chatbot_memory_v2._ha_connection_error", lambda *_args: "Missing HA_API_TOKEN")
-    monkeypatch.setattr(
-        "testbot.sat_chatbot_memory_v2._ollama_connection_error",
-        lambda *_args, **_kwargs: None,
+    snapshot = build_capability_snapshot(
+        requested_mode="auto",
+        daemon_mode=False,
+        runtime=runtime,
+        ha_connection_error_fn=lambda *_args: "Missing HA_API_TOKEN",
+        ollama_connection_error_fn=lambda *_args, **_kwargs: None,
     )
-
-    snapshot = build_capability_snapshot(requested_mode="auto", daemon_mode=False, runtime=runtime)
     _print_startup_status(snapshot=snapshot)
 
     startup_output = capsys.readouterr().out
@@ -74,13 +71,13 @@ def test_shared_snapshot_keeps_cli_fallback_truth_consistent(monkeypatch, capsys
 def test_shared_snapshot_keeps_satellite_truth_consistent(monkeypatch, capsys) -> None:
     runtime = _base_runtime()
     runtime["ha_api_token"] = "top-secret"
-    monkeypatch.setattr("testbot.sat_chatbot_memory_v2._ha_connection_error", lambda *_args: None)
-    monkeypatch.setattr(
-        "testbot.sat_chatbot_memory_v2._ollama_connection_error",
-        lambda *_args, **_kwargs: None,
+    snapshot = build_capability_snapshot(
+        requested_mode="satellite",
+        daemon_mode=False,
+        runtime=runtime,
+        ha_connection_error_fn=lambda *_args: None,
+        ollama_connection_error_fn=lambda *_args, **_kwargs: None,
     )
-
-    snapshot = build_capability_snapshot(requested_mode="satellite", daemon_mode=False, runtime=runtime)
     _print_startup_status(snapshot=snapshot)
 
     startup_output = capsys.readouterr().out

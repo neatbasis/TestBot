@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from testbot.sat_chatbot_memory_v2 import CapabilitySnapshot, RuntimeCapabilityStatus, print_startup_status
+from testbot.runtime_capability_service import CapabilitySnapshotData as CapabilitySnapshot
+from testbot.runtime_capability_service import RuntimeCapabilityStatusData as RuntimeCapabilityStatus
+from testbot.startup_status_presenter import print_startup_status
 
 
 def _snapshot(

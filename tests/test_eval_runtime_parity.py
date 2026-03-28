@@ -24,7 +24,7 @@ from testbot.intent_router import IntentType
 from testbot.pipeline_state import PipelineState
 from testbot.evidence_retrieval import continuity_evidence_from_prior_state
 from testbot.rerank import adaptive_sigma_fractional, rerank_docs_with_time_and_type_outcome
-from testbot.sat_chatbot_memory_v2 import has_sufficient_context_confidence
+from testbot.rerank import has_sufficient_context_confidence_from_objective
 
 FIXED_NOW = arrow.get("2026-03-10T11:00:00+00:00")
 NEAR_TIE_DELTA = 0.02
@@ -62,8 +62,8 @@ def _runtime_path_result(utterance: str, candidates: list[dict[str, Any]]) -> di
         near_tie_delta=NEAR_TIE_DELTA,
     )
 
-    context_confident = has_sufficient_context_confidence(
-        outcome.scored_candidates,
+    context_confident = has_sufficient_context_confidence_from_objective(
+        scored_candidates=outcome.scored_candidates,
         ambiguity_detected=outcome.ambiguity_detected,
     )
     intent = "memory-grounded" if context_confident else "dont-know"

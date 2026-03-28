@@ -3,7 +3,7 @@ from __future__ import annotations
 from langchain_core.documents import Document
 
 from testbot.pipeline_state import PipelineState
-from testbot.sat_chatbot_memory_v2 import build_debug_turn_payload
+from testbot.observability.turn_debug_payload import build_debug_turn_payload
 
 
 def _policy_for(*, intent: str, answer_mode: str, fallback_action: str, context_confident: bool, ambiguity: bool, hit_count: int = 0, answer_contract_valid: bool = True, general_knowledge_contract_valid: bool = True, general_knowledge_contract_applicability: str = "applicable") -> dict[str, object]:
