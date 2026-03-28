@@ -77,7 +77,7 @@ def test_chat_loop_routes_raw_utterance_via_canonical_turn_pipeline(monkeypatch:
         "run_canonical_answer_stage_flow",
         lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("seeded answer stage flow must not be used")),
     )
-    monkeypatch.setattr(runtime, "answer_commit_persistence", lambda **_kwargs: None)
+    monkeypatch.setattr(runtime_loop, "persist_answer_commit", lambda **_kwargs: None)
 
     utterances = iter(["hello", "stop"])
     outputs: list[str] = []

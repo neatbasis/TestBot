@@ -2232,11 +2232,13 @@ def test_run_canonical_answer_stage_flow_distinguishes_knowing_success_and_unkno
 
 
 def test_chat_loop_emits_completion_event_user_message_and_linked_answer(tmp_path, monkeypatch) -> None:
+    from testbot.entrypoints import runtime_background_ingestion
+
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(runtime, "store_doc", lambda *args, **kwargs: None)
     monkeypatch.setattr(runtime, "generate_reflection_yaml", lambda *args, **kwargs: "claims: []")
     monkeypatch.setattr(runtime, "persist_promoted_context", lambda *args, **kwargs: [])
-    monkeypatch.setattr(runtime, "answer_commit_persistence", lambda **kwargs: None)
+    monkeypatch.setattr("testbot.entrypoints.runtime_loop.persist_answer_commit", lambda **kwargs: None)
 
     poll_calls = {"count": 0}
 
@@ -2250,7 +2252,11 @@ def test_chat_loop_emits_completion_event_user_message_and_linked_answer(tmp_pat
             }
         return None
 
-    monkeypatch.setattr(runtime, "_poll_background_source_ingestion", _poll)
+    monkeypatch.setattr(
+        runtime_background_ingestion,
+        "poll_background_source_ingestion",
+        lambda *, runtime, deps: _poll(runtime=runtime),
+    )
 
     def _pipeline(**kwargs):
         state = kwargs["state"]
