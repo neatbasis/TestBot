@@ -1,3 +1,10 @@
+"""Canonical provenance assembly seam.
+
+Note: ``build_provenance_metadata`` currently performs more than metadata
+serialization; it also coordinates evidence-ref collection and provenance
+interpretation/basis synthesis. Name/split follow-up is intentionally deferred.
+"""
+
 from __future__ import annotations
 
 import json

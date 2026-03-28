@@ -139,3 +139,8 @@ Status impact for retirement inventory:
 
 - `build_provenance_metadata`: moved from **A keep temporarily** to **B migrated (wrapper retained)**.
 - `collect_used_source_evidence_refs`: moved from **A keep temporarily** to **B migrated (wrapper retained)**.
+
+Done vs Deferred (naming/responsibility truth):
+
+- **Done:** established `testbot.logic.provenance` as the canonical owner for provenance assembly plus evidence-ref collection, and reduced façade ownership to compatibility wrappers.
+- **Deferred:** reassess whether `build_provenance_metadata` is accurately named or should be renamed/split now that the seam is explicit, because current behavior includes evidence collection + provenance interpretation/summary (not only metadata serialization).
