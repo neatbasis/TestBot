@@ -240,6 +240,8 @@ def test_runtime_loop_owner_uses_canonical_turn_pipeline_helper_not_monolith_tur
     source = Path(runtime_loop.__file__).read_text()
     assert "from testbot.entrypoints.runtime_turn_pipeline import RuntimeTurnPipelineHooks, run_runtime_turn_pipeline" in source
     assert "_run_canonical_turn_pipeline(" not in source
+    assert "run_canonical_turn_pipeline(" not in source
+    assert "TurnPipelineDependencies(" not in source
 
 
 def test_sat_cli_is_transitional_wrapper_to_canonical_cli() -> None:

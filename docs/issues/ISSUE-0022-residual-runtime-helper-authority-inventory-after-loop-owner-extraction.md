@@ -70,6 +70,17 @@ This issue remains open; the update below records the completed narrow extractio
 - Added focused anti-regression guard:
   - runtime-mode test asserts `runtime_loop.py` imports canonical runtime turn-pipeline helper and does not call monolith
     `_run_canonical_turn_pipeline(...)`.
+- Residual authority shape (explicit):
+  - this extraction removes direct monolith ownership of the turn-pipeline assembly seam;
+  - however `RuntimeTurnPipelineHooks` still carries a large compatibility hook bag wired primarily from
+    `testbot.sat_chatbot_memory_v2`, so helper-authority density remains concentrated behind that compatibility surface.
+
+Residual hook clusters for next-step prioritization:
+
+- background-ingestion hooks (`poll/start/process` continuation surfaces);
+- telemetry/debug hooks (session-log and structured debug payload surfaces);
+- answer-stage hooks (assemble/validate + decision projection helpers);
+- context/retrieval hooks (context resolve + retrieve/rerank + conversion helpers).
 
 Done vs Deferred:
 

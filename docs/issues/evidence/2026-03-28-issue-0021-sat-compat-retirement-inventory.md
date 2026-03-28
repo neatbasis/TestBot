@@ -301,6 +301,17 @@ Done vs Deferred:
   - `testbot.sat_chatbot_memory_v2._run_canonical_turn_pipeline(...)` now delegates to the canonical helper.
 - Added focused anti-regression guard:
   - runtime-mode test verifies `runtime_loop.py` uses canonical helper import and does not contain monolith helper call.
+- Residual authority statement (explicit):
+  - this step removes direct monolith ownership of the turn-pipeline dependency-assembly seam;
+  - but `RuntimeTurnPipelineHooks` remains a large compatibility hook bag wired mostly from
+    `testbot.sat_chatbot_memory_v2`, so helper-authority concentration is reduced but still significant.
+
+Residual hook clusters captured for follow-on extraction sequencing:
+
+- background-ingestion hooks;
+- telemetry/debug hooks;
+- answer-stage hooks;
+- context/retrieval hooks.
 
 Done vs Deferred:
 
