@@ -15,9 +15,10 @@ from types import SimpleNamespace
 from langchain_ollama import ChatOllama, OllamaEmbeddings
 
 from testbot.adapters.ask_gateway import AskGateway
+from testbot.adapters.ha_satellite_output import send_satellite_output
 from testbot.domain import build_system_clock
 from testbot.entrypoints.runtime_bootstrap import build_runtime_memory_store, read_runtime_env
-from testbot.entrypoints.runtime_loop import run_chat_loop, sat_say
+from testbot.entrypoints.runtime_loop import run_chat_loop
 from testbot.entrypoints.sat_runtime_modes import run_cli_mode, run_satellite_mode
 from testbot.observability.session_log import append_session_log
 from testbot.runtime_capability_service import build_capability_snapshot
@@ -106,7 +107,7 @@ def main(argv: list[str] | None = None) -> None:
             clock=clock,
             ask_gateway=AskGateway.from_runtime(runtime),
             run_chat_loop=run_chat_loop,
-            satellite_say=sat_say,
+            satellite_say=send_satellite_output,
         )
         return
 

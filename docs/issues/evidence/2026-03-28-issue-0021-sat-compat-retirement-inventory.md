@@ -211,3 +211,31 @@ Done vs Deferred:
 
 - **Done:** stable runtime loop import surface now exists under `entrypoints/runtime_loop.py`, CLI runtime path is migrated to it, and bridge ownership is reduced.
 - **Deferred:** full implementation extraction out of `sat_chatbot_memory_v2` into non-façade runtime services remains follow-on work; current step is ownership and wiring extraction only.
+
+## 2026-03-28 update — Home Assistant satellite outbound transport extraction evidence
+
+- Established canonical Home Assistant satellite outbound transport owner module:
+  - `testbot.adapters.ha_satellite_output`
+- Extracted HA transport implementation details:
+  - `assist_satellite.start_conversation` service invocation
+  - outbound payload details (`entity_id`, `start_message`, `preannounce=False`)
+- Updated canonical runtime launch wiring:
+  - `testbot.entrypoints.cli` now injects `send_satellite_output` directly into `run_satellite_mode(...)`.
+- Reduced compatibility/legacy authority:
+  - `testbot.entrypoints.runtime_loop.sat_say` now delegates to the HA satellite adapter owner (wrapper retained for compatibility import surface).
+  - `testbot.sat_chatbot_memory_v2.sat_say` now delegates to the HA satellite adapter owner (compatibility façade wrapper retained).
+- Added focused regression coverage:
+  - adapter-level service call contract test for `send_satellite_output`;
+  - runtime-loop `sat_say` wrapper delegation test to adapter;
+  - CLI import/wiring expectation updated to canonical HA outbound adapter.
+
+Status impact for retirement inventory:
+
+- `sat_say`: remains **B migrated (wrapper retained)** with ownership narrowed further:
+  - runtime/orchestration no longer owns HA outbound service details;
+  - compatibility wrappers delegate to canonical adapter owner.
+
+Done vs Deferred:
+
+- **Done:** direct HA satellite output transport details are removed from runtime-loop/monolith ownership and placed under a narrow canonical adapter.
+- **Deferred:** Ask-backed outbound output ownership design and full compatibility-wrapper retirement remain out of scope.

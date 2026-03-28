@@ -14,6 +14,7 @@ from collections import deque
 from homeassistant_api import Client
 from langchain_ollama import ChatOllama
 
+from testbot.adapters.ha_satellite_output import send_satellite_output
 from testbot import sat_chatbot_memory_v2 as _legacy_runtime
 from testbot.domain import Clock
 from testbot.ports import MemoryStorePort
@@ -51,7 +52,7 @@ def run_chat_loop(
 
 
 def sat_say(client: Client, entity_id: str, text: str) -> None:
-    _legacy_runtime.sat_say(client, entity_id, text)
+    send_satellite_output(client, entity_id, text)
 
 
 __all__ = ["run_chat_loop", "sat_say"]

@@ -78,6 +78,27 @@ def test_runtime_loop_owner_delegates_to_monolith_runtime_loop(monkeypatch: pyte
     assert callable(called["send_assistant_text"])
 
 
+def test_runtime_loop_sat_say_delegates_to_ha_satellite_output_adapter(monkeypatch: pytest.MonkeyPatch) -> None:
+    from testbot.entrypoints import runtime_loop
+
+    captured: dict[str, object] = {}
+
+    def _fake_send_satellite_output(client, entity_id: str, text: str) -> None:
+        captured["client"] = client
+        captured["entity_id"] = entity_id
+        captured["text"] = text
+
+    monkeypatch.setattr("testbot.entrypoints.runtime_loop.send_satellite_output", _fake_send_satellite_output)
+    fake_client = object()
+    runtime_loop.sat_say(fake_client, "assist_satellite.kitchen", "hello")
+
+    assert captured == {
+        "client": fake_client,
+        "entity_id": "assist_satellite.kitchen",
+        "text": "hello",
+    }
+
+
 def test_runtime_legacy_bridge_run_chat_loop_delegates_to_runtime_loop(monkeypatch: pytest.MonkeyPatch) -> None:
     from testbot.entrypoints import runtime_legacy_bridge
 
@@ -128,7 +149,8 @@ def test_legacy_runtime_main_warns_once_and_delegates_to_cli(monkeypatch: pytest
 def test_cli_uses_runtime_bootstrap_owner_and_limits_legacy_bridge_imports() -> None:
     source = Path(cli.__file__).read_text()
     assert "from testbot.entrypoints.runtime_bootstrap import build_runtime_memory_store, read_runtime_env" in source
-    assert "from testbot.entrypoints.runtime_loop import run_chat_loop, sat_say" in source
+    assert "from testbot.entrypoints.runtime_loop import run_chat_loop" in source
+    assert "from testbot.adapters.ha_satellite_output import send_satellite_output" in source
     assert "from testbot.entrypoints.runtime_legacy_bridge import" not in source
     assert "from testbot.runtime_capability_service import build_capability_snapshot" in source
     assert "from testbot.startup_status_presenter import print_startup_status" in source
