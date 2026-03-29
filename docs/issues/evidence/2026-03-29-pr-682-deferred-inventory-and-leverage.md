@@ -157,5 +157,7 @@ Ideal future state for this slice: canonical runtime execution computes rerank i
 ## 2026-03-29 handoff checkpoint — residual rank clarity after #687
 
 - **Processed in #687:** rerank invocation-policy assembly.
-- **Now residual rank 1:** threshold/profile policy.
-- **Still deferred:** confidence projection, wrapper retirement, scorer internals.
+- **Processed in follow-up extraction:** threshold/profile policy assembly now delegates through
+  `context_retrieval_runtime.assemble_rerank_threshold_profile_policy(...)` (and downstream runtime-owned decision policy bundling).
+- **Now residual rank 1:** confidence-decision projection / telemetry shaping.
+- **Still deferred:** wrapper retirement and scorer internals.

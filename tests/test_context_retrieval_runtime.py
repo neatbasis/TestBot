@@ -307,3 +307,31 @@ def test_assemble_rerank_threshold_profile_policy_normalizes_threshold_fields() 
     assert policy.min_margin_to_second == 0.07
     assert policy.allow_ambiguity_override is True
     assert policy.ambiguity_override_top_final_score_min == 0.95
+
+
+def test_assemble_rerank_decision_policy_combines_invocation_and_threshold_profile() -> None:
+    thresholds = context_retrieval_runtime.ContextConfidenceThresholds(
+        top_final_score_min=0.44,
+        min_margin_to_second=0.05,
+        allow_ambiguity_override=False,
+        ambiguity_override_top_final_score_min=0.88,
+    )
+
+    policy = context_retrieval_runtime.assemble_rerank_decision_policy(
+        sigma_seconds=42.0,
+        user_doc_id="user-doc",
+        user_reflection_doc_id="reflection-doc",
+        near_tie_delta=0.09,
+        top_k=5,
+        rerank_confidence_thresholds_fn=lambda: thresholds,
+    )
+
+    assert policy.invocation_policy.sigma_seconds == 42.0
+    assert policy.invocation_policy.exclude_doc_ids == {"user-doc", "reflection-doc"}
+    assert policy.invocation_policy.exclude_source_ids == {"user-doc"}
+    assert policy.invocation_policy.top_k == 5
+    assert policy.invocation_policy.near_tie_delta == 0.09
+    assert policy.threshold_profile_policy.top_final_score_min == 0.44
+    assert policy.threshold_profile_policy.min_margin_to_second == 0.05
+    assert policy.threshold_profile_policy.allow_ambiguity_override is False
+    assert policy.threshold_profile_policy.ambiguity_override_top_final_score_min == 0.88

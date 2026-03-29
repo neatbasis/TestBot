@@ -410,7 +410,7 @@ def test_runtime_loop_runtime_hooks_resolve_context_retrieval_control_point_at_r
     assert sent[0] == "ok"
 
 
-def test_runtime_loop_canonical_stage_rerank_path_consumes_runtime_invocation_policy_assembly(
+def test_runtime_loop_canonical_stage_rerank_path_consumes_runtime_decision_policy_assembly(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from dataclasses import replace
@@ -499,7 +499,7 @@ def test_runtime_loop_canonical_stage_rerank_path_consumes_runtime_invocation_po
     monkeypatch.setattr(context_retrieval_runtime_service, "filter_documents_for_temporal_window", lambda *, docs_and_scores, bridge: docs_and_scores)
     monkeypatch.setattr(context_retrieval_runtime_service, "resolve_rerank_target_time", lambda *, utterance, bridge, now: now)
 
-    def _fake_assemble_invocation_policy(*, sigma_seconds, user_doc_id, user_reflection_doc_id, near_tie_delta, top_k=4):
+    def _fake_assemble_decision_policy(*, sigma_seconds, user_doc_id, user_reflection_doc_id, near_tie_delta, top_k=4):
         observed["assembled"] = {
             "sigma_seconds": sigma_seconds,
             "user_doc_id": user_doc_id,
@@ -507,15 +507,23 @@ def test_runtime_loop_canonical_stage_rerank_path_consumes_runtime_invocation_po
             "near_tie_delta": near_tie_delta,
             "top_k": top_k,
         }
-        return context_retrieval_runtime_service.RerankInvocationPolicy(
-            sigma_seconds=77.0,
-            exclude_doc_ids={"policy-doc"},
-            exclude_source_ids={"policy-source"},
-            top_k=3,
-            near_tie_delta=0.27,
+        return context_retrieval_runtime_service.RerankDecisionPolicy(
+            invocation_policy=context_retrieval_runtime_service.RerankInvocationPolicy(
+                sigma_seconds=77.0,
+                exclude_doc_ids={"policy-doc"},
+                exclude_source_ids={"policy-source"},
+                top_k=3,
+                near_tie_delta=0.27,
+            ),
+            threshold_profile_policy=context_retrieval_runtime_service.RerankThresholdProfilePolicy(
+                top_final_score_min=0.51,
+                min_margin_to_second=0.08,
+                allow_ambiguity_override=True,
+                ambiguity_override_top_final_score_min=0.9,
+            ),
         )
 
-    monkeypatch.setattr(context_retrieval_runtime_service, "assemble_rerank_invocation_policy", _fake_assemble_invocation_policy)
+    monkeypatch.setattr(context_retrieval_runtime_service, "assemble_rerank_decision_policy", _fake_assemble_decision_policy)
     monkeypatch.setattr(
         runtime,
         "rerank_docs_with_time_and_type_outcome",
@@ -529,7 +537,7 @@ def test_runtime_loop_canonical_stage_rerank_path_consumes_runtime_invocation_po
         def now(self):
             return now
 
-    hooks.stage_rerank(
+    updated_state, _ = hooks.stage_rerank(
         runtime.PipelineState(user_input="probe", rewritten_query="probe", confidence_decision={}),
         [runtime.RetrievalInputRecord(ref_id="seed", score=0.5, content="seed", metadata={"doc_id": "seed"})],
         utterance="probe",
@@ -538,6 +546,7 @@ def test_runtime_loop_canonical_stage_rerank_path_consumes_runtime_invocation_po
         near_tie_delta=0.1,
         clock=_Clock(),
     )
+    observed["state"] = updated_state
 
     assert observed["assembled"] == {
         "sigma_seconds": 600.0,
@@ -551,6 +560,10 @@ def test_runtime_loop_canonical_stage_rerank_path_consumes_runtime_invocation_po
     assert observed["rerank_kwargs"]["exclude_source_ids"] == {"policy-source"}
     assert observed["rerank_kwargs"]["top_k"] == 3
     assert observed["rerank_kwargs"]["near_tie_delta"] == 0.27
+    assert observed["state"].confidence_decision["top_final_score_min"] == 0.51
+    assert observed["state"].confidence_decision["min_margin_to_second"] == 0.08
+    assert observed["state"].confidence_decision["allow_ambiguity_override"] is True
+    assert observed["state"].confidence_decision["ambiguity_override_top_final_score_min"] == 0.9
 
 
 def test_sat_cli_is_transitional_wrapper_to_canonical_cli() -> None:
