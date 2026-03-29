@@ -131,3 +131,9 @@ The strongest bounded claim is: scorer-category debt is now decomposed into conc
 ## PR-ready summary
 
 This PR decomposes the remaining scorer-category debt (post-wrapper-retirement) into explicit contract-boundary and implementation-internals subcategories, ranks them by leverage-to-scope ratio, and recommends one bounded next execution slice: runtime-owned scorer execution contract extraction. This makes later scorer moves easier by turning broad “scorer redesign” debt into a small contract-first sequence with concrete evidence requirements and preserved compatibility posture.
+
+## Merge-note explicit status lines
+
+- **Rows remaining:** none for the rerank wrapper-retirement row program.
+- **Category debt remaining:** scorer-category debt.
+- **Recommended next unit:** scorer execution contract/boundary slice (not broad scorer internals redesign).

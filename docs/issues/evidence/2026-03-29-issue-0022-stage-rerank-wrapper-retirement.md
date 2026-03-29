@@ -101,6 +101,10 @@ Issue: ISSUE-0022
 - Unit type processed: scorer **category debt decomposition** (not another deferred row), because wrapper-retirement rows are complete.
 - Ranked next-step options now explicitly separate scorer contract/boundary slices from scorer implementation/internals slices.
 - Recommended next bounded slice: runtime-owned scorer execution contract/boundary extraction (keep scorer internals redesign out of scope).
+- Explicit merge-note status:
+  - **Rows remaining:** none for the rerank wrapper-retirement row program.
+  - **Category debt remaining:** scorer-category debt.
+  - **Recommended next unit:** scorer execution contract/boundary slice, not broad scorer internals redesign.
 
 ## Options opened by this PR
 
