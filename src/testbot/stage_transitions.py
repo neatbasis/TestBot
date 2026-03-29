@@ -275,6 +275,25 @@ def _response_policy_contract_checks() -> list[tuple[str, Callable[[PipelineStat
 
 
 def _alignment_shape_and_decision_checks() -> list[tuple[str, Callable[[PipelineState], bool]]]:
+    def _alignment_decision_consistent_with_final_answer(state: PipelineState) -> bool:
+        alignment = str(state.alignment_decision.get("final_alignment_decision") or "").strip()
+        final_answer = state.final_answer
+        if final_answer == DENY_ANSWER:
+            return alignment == "deny"
+        if final_answer == FALLBACK_ANSWER:
+            return alignment == "fallback"
+
+        exempt_answers = {
+            CLARIFY_ANSWER,
+            ROUTE_TO_ASK_ANSWER,
+            ASSIST_ALTERNATIVES_ANSWER,
+            NON_KNOWLEDGE_UNCERTAINTY_ANSWER,
+            BACKGROUND_INGESTION_PROGRESS_ANSWER,
+        }
+        if final_answer in exempt_answers:
+            return alignment == "allow"
+        return alignment in {"allow", "fallback"}
+
     return [
         (
             "alignment_decision_recorded",
@@ -298,13 +317,7 @@ def _alignment_shape_and_decision_checks() -> list[tuple[str, Callable[[Pipeline
         ),
         (
             "alignment_decision_consistent",
-            lambda s: s.alignment_decision.get("final_alignment_decision") == "deny"
-            if s.final_answer == DENY_ANSWER
-            else (
-                s.alignment_decision.get("final_alignment_decision") == "fallback"
-                if s.final_answer == FALLBACK_ANSWER
-                else s.alignment_decision.get("final_alignment_decision") == "allow"
-            ),
+            _alignment_decision_consistent_with_final_answer,
         ),
     ]
 

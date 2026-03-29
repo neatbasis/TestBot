@@ -561,6 +561,11 @@ def answer_validate(
             claims=[],
             provenance_types=[],
             basis_statement="No factual claims.",
+            is_clarification_answer=lambda text: is_clarification_answer(
+                text,
+                clarify_answer=clarify_answer,
+                route_to_ask_answer=route_to_ask_answer,
+            ),
         )
         alignment_decision["final_alignment_decision"] = "allow"
         return AnswerValidateResult(
@@ -628,6 +633,11 @@ def answer_validate(
         claims=claims,
         provenance_types=provenance_types,
         basis_statement=basis_statement,
+        is_clarification_answer=lambda text: is_clarification_answer(
+            text,
+            clarify_answer=clarify_answer,
+            route_to_ask_answer=route_to_ask_answer,
+        ),
     )
     if assembled.intent_class == "time_query" or assembled.fallback_action == "ANSWER_TIME":
         alignment_decision["final_alignment_decision"] = "allow"
