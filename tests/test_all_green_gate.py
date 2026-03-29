@@ -620,17 +620,29 @@ def test_resolve_profile_defaults_to_readiness_in_ci(monkeypatch: pytest.MonkeyP
     assert all_green_gate.resolve_profile(None) == "readiness"
 
 
-def test_summarize_groups_product_and_governance_failures() -> None:
+def test_summarize_groups_product_qa_pytest_and_governance_failures() -> None:
     summary = all_green_gate.summarize(
         results=[
             _result(name="product_eval_recall_topk4", command="eval", status="failed", exit_code=2, duration_s=0.2),
+            _result(
+                name="qa_pytest_not_live_smoke",
+                command="pytest",
+                status="failed",
+                exit_code=1,
+                duration_s=0.3,
+            ),
             _result(name="qa_validate_issues", command="issues", status="failed", exit_code=3, duration_s=0.1),
         ],
         continue_on_failure=False,
     )
 
     assert [failure["name"] for failure in summary["product_failures"]] == ["product_eval_recall_topk4"]
+    assert [failure["name"] for failure in summary["qa_failures"]] == [
+        "qa_pytest_not_live_smoke",
+        "qa_validate_issues",
+    ]
     assert [failure["name"] for failure in summary["governance_failures"]] == ["qa_validate_issues"]
+    assert [failure["name"] for failure in summary["pytest_failures"]] == ["qa_pytest_not_live_smoke"]
 
 
 @pytest.fixture
