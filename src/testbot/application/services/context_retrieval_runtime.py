@@ -24,8 +24,10 @@ from testbot.pipeline_state import PipelineState
 from testbot.ports import MemorySearchQuery, MemoryStorePort
 from testbot.rerank import (
     ContextConfidenceThresholds,
+    RerankObjectiveConfig,
     RerankOutcome,
     has_sufficient_context_confidence_from_objective,
+    load_rerank_objective_config,
     rerank_confidence_thresholds,
     rerank_docs_with_time_and_type_outcome,
 )
@@ -178,6 +180,12 @@ class ScorerExecutionRequest:
     exclude_source_ids: set[str]
     top_k: int
     near_tie_delta: float
+    scorer_config: RerankObjectiveConfig
+
+
+@dataclass(frozen=True)
+class ScorerExecutionConfig:
+    objective_config: RerankObjectiveConfig
 
 
 @dataclass(frozen=True)
@@ -206,7 +214,36 @@ def execute_rerank_scorer_contract(
             exclude_source_ids=request.exclude_source_ids,
             top_k=request.top_k,
             near_tie_delta=request.near_tie_delta,
+            scorer_config=request.scorer_config,
         )
+    )
+
+
+def materialize_rerank_scorer_config(
+    *,
+    load_rerank_objective_config_fn: Callable[[], RerankObjectiveConfig] = load_rerank_objective_config,
+) -> ScorerExecutionConfig:
+    return ScorerExecutionConfig(objective_config=load_rerank_objective_config_fn())
+
+
+def normalize_scorer_execution_request(
+    *,
+    docs_and_scores: list[tuple[Document, float]],
+    now: arrow.Arrow,
+    target: arrow.Arrow,
+    invocation_policy: RerankInvocationPolicy,
+    scorer_config: ScorerExecutionConfig,
+) -> ScorerExecutionRequest:
+    return ScorerExecutionRequest(
+        docs_and_scores=list(docs_and_scores),
+        now=now,
+        target=target,
+        sigma_seconds=float(invocation_policy.sigma_seconds),
+        exclude_doc_ids={value for value in invocation_policy.exclude_doc_ids if value},
+        exclude_source_ids={value for value in invocation_policy.exclude_source_ids if value},
+        top_k=int(invocation_policy.top_k),
+        near_tie_delta=float(invocation_policy.near_tie_delta),
+        scorer_config=scorer_config.objective_config,
     )
 
 
@@ -545,6 +582,7 @@ __all__ = [
     "RerankInvocationPolicy",
     "RerankThresholdProfilePolicy",
     "ScorerExecutionRequest",
+    "ScorerExecutionConfig",
     "ScorerExecutionResult",
     "ScorerInterpretationResult",
     "assemble_rerank_decision_policy",
@@ -555,7 +593,9 @@ __all__ = [
     "execute_rerank_scorer_contract",
     "interpret_rerank_scorer_result",
     "normalize_retrieval_filter_scope",
+    "normalize_scorer_execution_request",
     "project_rerank_confidence_decision",
+    "materialize_rerank_scorer_config",
     "resolve_rerank_target_time",
     "resolve_temporal_anaphora_bridge",
     "resolve_context",

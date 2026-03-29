@@ -495,8 +495,9 @@ def rerank_objective_score_components(
     target: arrow.Arrow,
     sigma_seconds: float,
     coefficients: RerankObjectiveCoefficients | None = None,
+    objective_config: RerankObjectiveConfig | None = None,
 ) -> dict[str, float | str]:
-    active_config = load_rerank_objective_config()
+    active_config = objective_config or load_rerank_objective_config()
     effective_coefficients = coefficients or active_config.coefficients
     temporal_gaussian_weight, timestamp_quality = _temporal_weight_and_quality(
         doc_ts_iso,
@@ -570,6 +571,7 @@ def rerank_docs_with_time_and_type(
     exclude_source_ids: set[str],
     top_k: int = 4,
     near_tie_delta: float = 0.02,
+    scorer_config: RerankObjectiveConfig | None = None,
 ) -> list[Document]:
     return rerank_docs_with_time_and_type_outcome(
         docs_and_scores,
@@ -580,6 +582,7 @@ def rerank_docs_with_time_and_type(
         exclude_source_ids=exclude_source_ids,
         top_k=top_k,
         near_tie_delta=near_tie_delta,
+        scorer_config=scorer_config,
     ).docs
 
 
@@ -593,6 +596,7 @@ def rerank_docs_with_time_and_type_outcome(
     exclude_source_ids: set[str],
     top_k: int = 4,
     near_tie_delta: float = 0.02,
+    scorer_config: RerankObjectiveConfig | None = None,
 ) -> RerankOutcome:
     """
     docs_and_scores: output of similarity_search_with_score -> [(doc, sim_score), ...]
@@ -600,6 +604,7 @@ def rerank_docs_with_time_and_type_outcome(
     del now  # kept for call-site signature parity.
 
     scored: list[tuple[float, Document, dict[str, float | str]]] = []
+    active_scorer_config = scorer_config or load_rerank_objective_config()
 
     for doc, sim in docs_and_scores:
         doc_id = _doc_id(doc)
@@ -614,11 +619,13 @@ def rerank_docs_with_time_and_type_outcome(
             doc_ts_iso=doc.metadata.get("ts", ""),
             target=target,
             sigma_seconds=sigma_seconds,
+            coefficients=active_scorer_config.coefficients,
+            objective_config=active_scorer_config,
         )
         scored.append((float(objective_components["final_score"]), doc, objective_components))
 
     scored.sort(key=lambda x: _stable_rank_key(x[0], x[1]))
-    fusion_config = load_rerank_objective_config().lane_fusion
+    fusion_config = active_scorer_config.lane_fusion
     lane_quotas: dict[LaneName, int] = {
         lane: fusion_config.get(lane, 0)
         for lane in _LANE_FUSION_ORDER

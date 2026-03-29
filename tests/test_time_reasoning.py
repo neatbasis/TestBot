@@ -87,6 +87,29 @@ def test_stage_rerank_delegates_scorer_execution_contract_to_runtime_owner(monke
     frozen_now = arrow.get("2026-03-10T12:00:00+00:00")
     state = PipelineState(user_input="what happened")
     observed: dict[str, object] = {}
+    base_objective_config = runtime.context_retrieval_runtime_service.load_rerank_objective_config()
+
+    monkeypatch.setattr(
+        runtime.context_retrieval_runtime_service,
+        "materialize_rerank_scorer_config",
+        lambda: runtime.context_retrieval_runtime_service.ScorerExecutionConfig(objective_config=base_objective_config),
+    )
+
+    def _fake_normalize_request(**kwargs):
+        observed["normalized_kwargs"] = kwargs
+        return runtime.context_retrieval_runtime_service.ScorerExecutionRequest(
+            docs_and_scores=kwargs["docs_and_scores"],
+            now=kwargs["now"],
+            target=kwargs["target"],
+            sigma_seconds=kwargs["invocation_policy"].sigma_seconds,
+            exclude_doc_ids=kwargs["invocation_policy"].exclude_doc_ids,
+            exclude_source_ids=kwargs["invocation_policy"].exclude_source_ids,
+            top_k=kwargs["invocation_policy"].top_k,
+            near_tie_delta=kwargs["invocation_policy"].near_tie_delta,
+            scorer_config=kwargs["scorer_config"].objective_config,
+        )
+
+    monkeypatch.setattr(runtime.context_retrieval_runtime_service, "normalize_scorer_execution_request", _fake_normalize_request)
 
     def _fake_execute(request):
         observed["request"] = request
@@ -113,9 +136,11 @@ def test_stage_rerank_delegates_scorer_execution_contract_to_runtime_owner(monke
 
     request = observed["request"]
     assert isinstance(request, runtime.context_retrieval_runtime_service.ScorerExecutionRequest)
+    assert observed["normalized_kwargs"]["scorer_config"].objective_config is base_objective_config
     assert request.top_k == 4
     assert request.exclude_doc_ids == {"u1", "r1"}
     assert request.exclude_source_ids == {"u1"}
+    assert request.scorer_config is base_objective_config
     assert len(hits) == 1
     assert updated.reranked_hits[0].doc_id == "doc-1"
 
