@@ -440,6 +440,36 @@ def test_execute_rerank_scorer_contract_delegates_invocation_and_returns_outcome
     assert result.rerank_outcome is expected_outcome
 
 
+def test_interpret_rerank_scorer_result_normalizes_hits_and_context_signal() -> None:
+    doc = Document(id="doc-1", page_content="winner", metadata={"doc_id": "doc-1"})
+    scorer_result = context_retrieval_runtime.ScorerExecutionResult(
+        rerank_outcome=context_retrieval_runtime.RerankOutcome(
+            docs=[doc],
+            ambiguity_detected=True,
+            near_tie_candidates=[{"doc_id": "doc-2"}],
+            scored_candidates=[{"doc_id": "doc-1", "final_score": 0.7}],
+        )
+    )
+    observed: dict[str, object] = {}
+
+    def _fake_confidence(*, scored_candidates, ambiguity_detected):
+        observed["scored_candidates"] = scored_candidates
+        observed["ambiguity_detected"] = ambiguity_detected
+        return False
+
+    interpreted = context_retrieval_runtime.interpret_rerank_scorer_result(
+        scorer_result,
+        has_sufficient_context_confidence_fn=_fake_confidence,
+    )
+
+    assert interpreted.hits == [doc]
+    assert interpreted.has_context is False
+    assert observed == {
+        "scored_candidates": [{"doc_id": "doc-1", "final_score": 0.7}],
+        "ambiguity_detected": True,
+    }
+
+
 def test_project_rerank_confidence_decision_projects_decision_aftermath_shape() -> None:
     now = arrow.get("2026-03-10T12:00:00+00:00")
     target = arrow.get("2026-03-10T11:30:00+00:00")

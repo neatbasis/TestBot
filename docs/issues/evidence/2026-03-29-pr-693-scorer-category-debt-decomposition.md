@@ -154,3 +154,23 @@ This PR decomposes the remaining scorer-category debt (post-wrapper-retirement) 
 - **Category debt remaining:** scorer internals / broader scorer-category redesign.
 - **Recommended next unit:** smallest scorer-internals slice, unless owners determine the #694 execution-boundary
   move materially changes remaining boundaries, in which case run a scorer-category decomposition refresh first.
+
+## 2026-03-29 execution update — scorer result-interpretation internals slice processed
+
+- Decision on #694 conditional: remaining scorer-category boundaries remain materially stable; no decomposition refresh required.
+- Processed unit type: **category-debt execution slice** (not a decomposition refresh).
+- Selected scorer-internals slice: **scorer output/result interpretation compatibility shaping**.
+- Bounded change:
+  - Added runtime-owned `ScorerInterpretationResult` and
+    `interpret_rerank_scorer_result(...)` in `context_retrieval_runtime`.
+  - Rewired `stage_rerank(...)` to consume scorer interpretation outputs (`hits`, `has_context`)
+    through the runtime-owned scorer result interpretation helper.
+- Runtime control-point evidence posture:
+  - Canonical path still executes through runtime-owned scorer contract boundary from #694.
+  - Canonical path now also consumes scorer-result interpretation through runtime-owned helper,
+    reducing stage-local scorer-assumption handling.
+- Compatibility posture:
+  - Scorer internals in `rerank.py` remain unchanged.
+  - Confidence payload shape and reranked-hit output shape remain unchanged.
+- **Category debt remaining:** broader scorer internals / redesign debt remains.
+- **Recommended next unit:** smallest scorer internals slice around scorer input normalization or temporal/scoring coupling ownership.
