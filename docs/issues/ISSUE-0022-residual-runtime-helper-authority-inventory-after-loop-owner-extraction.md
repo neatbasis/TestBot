@@ -232,6 +232,12 @@ Anti-backslide hardening:
   canonical owner).
 - Added focused compatibility wrapper tests to ensure monolith wrappers delegate to canonical context/retrieval runtime
   helpers rather than owning logic inline.
+- Added explicit residual-seam ownership assertions for runtime loop wiring:
+  - remaining legacy touchpoints for this seam are constrained to `stage_retrieve` / `stage_rerank` policy-core call sites only;
+  - legacy `resolve_context`, forced-retrieval helper, turn-service adapter wrappers, and retrieval conversion wrappers are
+    asserted as non-runtime-loop dependencies.
+- Added direct canonical-owner tests for `context_retrieval_runtime` to verify seam-owned behavior and adapter conversion logic
+  independent of monolith wrappers.
 
 Done vs Deferred:
 

@@ -305,6 +305,19 @@ def test_runtime_loop_monolith_touchpoints_are_allowlisted_for_deliberate_shrink
     assert observed_symbols == allowed_symbols
 
 
+def test_runtime_loop_context_retrieval_residual_monolith_touchpoints_are_explicit_policy_core_only() -> None:
+    from testbot.entrypoints import runtime_loop
+
+    source = Path(runtime_loop.__file__).read_text()
+    assert "_legacy_runtime.stage_retrieve" in source
+    assert "_legacy_runtime.stage_rerank" in source
+    assert "_legacy_runtime.resolve_context" not in source
+    assert "_legacy_runtime._should_force_memory_retrieval_for_identity_recall" not in source
+    assert "_legacy_runtime._stage_retrieve_for_turn_service" not in source
+    assert "_legacy_runtime._stage_rerank_for_turn_service" not in source
+    assert "_legacy_runtime._document_from_retrieval_input" not in source
+
+
 def test_sat_cli_is_transitional_wrapper_to_canonical_cli() -> None:
     source = Path(sat_cli.__file__).read_text()
     assert "compatibility-only" in source
