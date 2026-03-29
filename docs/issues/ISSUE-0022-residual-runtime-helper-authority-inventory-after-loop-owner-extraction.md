@@ -349,3 +349,14 @@ Post-slice handoff clarification:
 - remaining behave catch-up cluster: `time_awareness.feature` (`AC-0005-01`, `AC-0005-02`) stage-transition expectation drift;
 - recommended next behave catch-up slice: process `time_awareness.feature` (`AC-0005-01`, `AC-0005-02`) as the next bounded cluster;
 - scorer-category seam work remains deferred per cleanup→behave→scorer sequence.
+
+## 2026-03-29 post-merge inventory addendum — behave catch-up slice #3 time-awareness cluster
+
+A bounded behave catch-up workstream execution note for the residual time-awareness cluster has been added:
+
+- `docs/issues/evidence/2026-03-29-issue-0022-behave-catchup-workstream-execution-slice-3.md`
+
+Post-slice handoff clarification:
+- processed: `time_awareness.feature` (`AC-0005-01`, `AC-0005-02`) stale transition-coupled harness assumptions;
+- remaining behave catch-up cluster: none currently named;
+- recommended next execution category: resume bounded scorer-category seam sequence (candidate-output/projection shaping), preserving cleanup→behave→scorer ordering.
