@@ -323,6 +323,38 @@ def test_resolve_rerank_target_time_falls_back_when_override_invalid() -> None:
     assert target == context_retrieval_runtime.parse_target_time("what happened yesterday?", now=now)
 
 
+def test_resolve_rerank_sigma_seconds_delegates_to_sigma_policy_function() -> None:
+    now = arrow.get("2026-03-10T12:00:00+00:00")
+    target = arrow.get("2026-03-10T11:30:00+00:00")
+    observed: dict[str, object] = {}
+
+    def _fake_sigma_policy(*, now, target, frac):
+        observed["now"] = now
+        observed["target"] = target
+        observed["frac"] = frac
+        return 321.0
+
+    sigma = context_retrieval_runtime.resolve_rerank_sigma_seconds(
+        now=now,
+        target=target,
+        sigma_fraction=0.4,
+        sigma_policy_fn=_fake_sigma_policy,
+    )
+
+    assert sigma == 321.0
+    assert observed == {"now": now, "target": target, "frac": 0.4}
+
+
+def test_resolve_rerank_sigma_seconds_defaults_match_adaptive_policy_contract() -> None:
+    now = arrow.get("2026-03-10T12:00:00+00:00")
+    target = arrow.get("2026-03-10T11:30:00+00:00")
+
+    sigma = context_retrieval_runtime.resolve_rerank_sigma_seconds(now=now, target=target)
+    expected = context_retrieval_runtime.adaptive_sigma_fractional(now=now, target=target, frac=0.25)
+
+    assert sigma == expected
+
+
 def test_assemble_rerank_invocation_policy_normalizes_defaults_and_exclusions() -> None:
     policy = context_retrieval_runtime.assemble_rerank_invocation_policy(
         sigma_seconds=123.4,

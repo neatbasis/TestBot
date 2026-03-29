@@ -26,6 +26,7 @@ from testbot.rerank import (
     ContextConfidenceThresholds,
     RerankObjectiveConfig,
     RerankOutcome,
+    adaptive_sigma_fractional,
     has_sufficient_context_confidence_from_objective,
     load_rerank_objective_config,
     rerank_confidence_thresholds,
@@ -577,6 +578,16 @@ def resolve_rerank_target_time(
     return target
 
 
+def resolve_rerank_sigma_seconds(
+    *,
+    now: arrow.Arrow,
+    target: arrow.Arrow,
+    sigma_fraction: float = 0.25,
+    sigma_policy_fn: Callable[..., float] = adaptive_sigma_fractional,
+) -> float:
+    return float(sigma_policy_fn(now=now, target=target, frac=sigma_fraction))
+
+
 __all__ = [
     "RerankDecisionPolicy",
     "RerankInvocationPolicy",
@@ -597,6 +608,7 @@ __all__ = [
     "project_rerank_confidence_decision",
     "materialize_rerank_scorer_config",
     "resolve_rerank_target_time",
+    "resolve_rerank_sigma_seconds",
     "resolve_temporal_anaphora_bridge",
     "resolve_context",
     "retrieval_input_from_document",
