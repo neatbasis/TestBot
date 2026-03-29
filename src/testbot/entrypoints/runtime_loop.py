@@ -34,6 +34,7 @@ from testbot.entrypoints.runtime_commit_persistence import (
     answer_commit_persistence as persist_answer_commit,
 )
 from testbot.application.services import answer_stage_runtime as answer_stage_runtime_service
+from testbot.application.services import context_retrieval_runtime as context_retrieval_runtime_service
 from testbot import sat_chatbot_memory_v2 as _legacy_runtime
 from testbot.domain import Clock
 from testbot.ports import MemoryStorePort
@@ -154,6 +155,12 @@ def run_chat_loop(
             capability_snapshot=capability_snapshot,
             clock=clock,
             io_channel=io_channel,
+            # Context/retrieval seam inventory (canonical control point):
+            # - should_force_memory_retrieval_for_identity_recall
+            # - resolve_context
+            # - stage_retrieve_for_turn_service (adapter; policy-core deferred)
+            # - stage_rerank_for_turn_service (adapter; policy-core deferred)
+            # - document_from_retrieval_input
             hooks=RuntimeTurnPipelineHooks(
                 append_session_log=_legacy_runtime.append_session_log,
                 validate_and_log_transition=_legacy_runtime._validate_and_log_transition,
@@ -161,10 +168,8 @@ def run_chat_loop(
                 generate_reflection_yaml=_legacy_runtime.generate_reflection_yaml,
                 intent_classifier_confidence=_legacy_runtime._intent_classifier_confidence,
                 optional_string=_legacy_runtime._optional_string,
-                should_force_memory_retrieval_for_identity_recall=(
-                    _legacy_runtime._should_force_memory_retrieval_for_identity_recall
-                ),
-                resolve_context_fn=_legacy_runtime.resolve_context,
+                should_force_memory_retrieval_for_identity_recall=context_retrieval_runtime_service.should_force_memory_retrieval_for_identity_recall,
+                resolve_context_fn=context_retrieval_runtime_service.resolve_context,
                 intent_telemetry_payload=_legacy_runtime._intent_telemetry_payload,
                 poll_background_source_ingestion=lambda **kwargs: poll_background_source_ingestion(
                     deps=background_ingestion_deps,
@@ -174,8 +179,16 @@ def run_chat_loop(
                     deps=background_ingestion_deps,
                     **kwargs,
                 ),
-                stage_retrieve=_legacy_runtime._stage_retrieve_for_turn_service,
-                stage_rerank=_legacy_runtime._stage_rerank_for_turn_service,
+                stage_retrieve=lambda *args, **kwargs: context_retrieval_runtime_service.stage_retrieve_for_turn_service(
+                    *args,
+                    stage_retrieve_fn=_legacy_runtime.stage_retrieve,
+                    **kwargs,
+                ),
+                stage_rerank=lambda *args, **kwargs: context_retrieval_runtime_service.stage_rerank_for_turn_service(
+                    *args,
+                    stage_rerank_fn=_legacy_runtime.stage_rerank,
+                    **kwargs,
+                ),
                 selected_decision_from_confidence=_legacy_runtime._selected_decision_from_confidence,
                 minimal_confidence_decision_for_direct_answer=(
                     _legacy_runtime._minimal_confidence_decision_for_direct_answer
@@ -187,7 +200,7 @@ def run_chat_loop(
                 ambiguity_score=_legacy_runtime._ambiguity_score,
                 store_doc_fn=_legacy_runtime.store_doc,
                 intent_classifier_confidence_threshold=_legacy_runtime.INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD,
-                document_from_retrieval_input=_legacy_runtime._document_from_retrieval_input,
+                document_from_retrieval_input=context_retrieval_runtime_service.document_from_retrieval_input,
             ),
         )
 

@@ -243,6 +243,7 @@ def test_runtime_loop_owner_uses_canonical_turn_pipeline_helper_not_monolith_tur
     assert "from testbot.entrypoints.runtime_turn_pipeline import RuntimeTurnPipelineHooks, run_runtime_turn_pipeline" in source
     assert "from testbot.entrypoints.runtime_turn_telemetry import RuntimeTurnTelemetryDependencies, emit_runtime_turn_telemetry" in source
     assert "from testbot.application.services import answer_stage_runtime as answer_stage_runtime_service" in source
+    assert "from testbot.application.services import context_retrieval_runtime as context_retrieval_runtime_service" in source
     assert "_poll_pending_ingestion_obligations(" not in source
     assert "_process_background_ingestion_completion(" not in source
     assert "_run_canonical_turn_pipeline(" not in source
@@ -253,6 +254,11 @@ def test_runtime_loop_owner_uses_canonical_turn_pipeline_helper_not_monolith_tur
     assert "_answer_assemble_for_turn_service" not in source
     assert "_answer_validate_for_turn_service" not in source
     assert "_detect_capability_offer" not in source
+    assert "_should_force_memory_retrieval_for_identity_recall" not in source
+    assert "_stage_retrieve_for_turn_service" not in source
+    assert "_stage_rerank_for_turn_service" not in source
+    assert "_document_from_retrieval_input" not in source
+    assert "_legacy_runtime.resolve_context" not in source
     assert "run_canonical_turn_pipeline(" not in source
     assert "_legacy_runtime.answer_commit_persistence(" not in source
     assert "TurnPipelineDependencies(" not in source
@@ -273,7 +279,6 @@ def test_runtime_loop_monolith_touchpoints_are_allowlisted_for_deliberate_shrink
         "_ambiguity_score",
         "_build_debug_turn_payload",
         "_build_source_connector",
-        "_document_from_retrieval_input",
         "_emit_obligation_transition",
         "_format_debug_turn_trace_payload",
         "_intent_classifier_confidence",
@@ -283,9 +288,6 @@ def test_runtime_loop_monolith_touchpoints_are_allowlisted_for_deliberate_shrink
         "_optional_string",
         "_run_canonical_turn_pipeline",
         "_selected_decision_from_confidence",
-        "_should_force_memory_retrieval_for_identity_recall",
-        "_stage_rerank_for_turn_service",
-        "_stage_retrieve_for_turn_service",
         "_user_followup_signal_proxy",
         "_utc_now_iso",
         "_validate_and_log_transition",
@@ -295,11 +297,117 @@ def test_runtime_loop_monolith_touchpoints_are_allowlisted_for_deliberate_shrink
         "generate_reflection_yaml",
         "is_clarification_answer",
         "replace",
-        "resolve_context",
+        "stage_rerank",
+        "stage_retrieve",
         "stage_rewrite_query",
         "store_doc",
     }
     assert observed_symbols == allowed_symbols
+
+
+def test_runtime_loop_context_retrieval_residual_monolith_touchpoints_are_explicit_policy_core_only() -> None:
+    from testbot.entrypoints import runtime_loop
+
+    source = Path(runtime_loop.__file__).read_text()
+    assert "_legacy_runtime.stage_retrieve" in source
+    assert "_legacy_runtime.stage_rerank" in source
+    assert "_legacy_runtime.resolve_context" not in source
+    assert "_legacy_runtime._should_force_memory_retrieval_for_identity_recall" not in source
+    assert "_legacy_runtime._stage_retrieve_for_turn_service" not in source
+    assert "_legacy_runtime._stage_rerank_for_turn_service" not in source
+    assert "_legacy_runtime._document_from_retrieval_input" not in source
+
+
+def test_runtime_loop_binds_migrated_context_retrieval_hook_surfaces_via_canonical_service() -> None:
+    from testbot.entrypoints import runtime_loop
+
+    source = Path(runtime_loop.__file__).read_text()
+    assert (
+        "should_force_memory_retrieval_for_identity_recall="
+        "context_retrieval_runtime_service.should_force_memory_retrieval_for_identity_recall"
+    ) in source
+    assert "resolve_context_fn=context_retrieval_runtime_service.resolve_context" in source
+    assert "context_retrieval_runtime_service.stage_retrieve_for_turn_service(" in source
+    assert "context_retrieval_runtime_service.stage_rerank_for_turn_service(" in source
+    assert "document_from_retrieval_input=context_retrieval_runtime_service.document_from_retrieval_input" in source
+
+
+def test_runtime_loop_runtime_hooks_resolve_context_retrieval_control_point_at_runtime(monkeypatch: pytest.MonkeyPatch) -> None:
+    from dataclasses import replace
+
+    from testbot.application.services import context_retrieval_runtime as context_retrieval_runtime_service
+    from testbot.entrypoints import runtime_loop
+
+    captured: dict[str, object] = {}
+    sent: list[str] = []
+
+    monkeypatch.setattr(runtime_loop, "poll_pending_ingestion_obligations", lambda **_kwargs: None)
+    monkeypatch.setattr(runtime_loop, "process_background_ingestion_completion", lambda **_kwargs: ("", None, False))
+    monkeypatch.setattr(runtime_loop, "emit_runtime_turn_telemetry", lambda **_kwargs: None)
+    monkeypatch.setattr(runtime_loop, "persist_answer_commit", lambda **_kwargs: None)
+
+    def _fake_turn_pipeline(**kwargs):
+        captured["hooks"] = kwargs["hooks"]
+        state = kwargs["state"]
+        return (
+            replace(
+                state,
+                final_answer="ok",
+                commit_receipt={"pending_ingestion_request_id": ""},
+            ),
+            [],
+        )
+
+    monkeypatch.setattr(runtime_loop, "run_runtime_turn_pipeline", _fake_turn_pipeline)
+
+    utterances = iter(["hello", "stop"])
+    runtime_loop.run_chat_loop(
+        runtime={},
+        llm=object(),
+        store=object(),
+        chat_history=deque(),
+        near_tie_delta=0.1,
+        io_channel="cli",
+        capability_status="ask_unavailable",
+        capability_snapshot=object(),
+        read_user_utterance=lambda: next(utterances, None),
+        send_assistant_text=lambda text: sent.append(text),
+        clock=runtime.SystemClock(),
+    )
+
+    hooks = captured["hooks"]
+    assert hooks.should_force_memory_retrieval_for_identity_recall is context_retrieval_runtime_service.should_force_memory_retrieval_for_identity_recall
+    assert hooks.resolve_context_fn is context_retrieval_runtime_service.resolve_context
+    assert hooks.document_from_retrieval_input is context_retrieval_runtime_service.document_from_retrieval_input
+
+    observed: dict[str, object] = {}
+
+    def _fake_stage_retrieve_for_turn_service(*args, **kwargs):
+        observed["retrieve_kwargs"] = kwargs
+        return args[1], []
+
+    def _fake_stage_rerank_for_turn_service(*args, **kwargs):
+        observed["rerank_kwargs"] = kwargs
+        return args[0], []
+
+    monkeypatch.setattr(context_retrieval_runtime_service, "stage_retrieve_for_turn_service", _fake_stage_retrieve_for_turn_service)
+    monkeypatch.setattr(context_retrieval_runtime_service, "stage_rerank_for_turn_service", _fake_stage_rerank_for_turn_service)
+
+    probe_state = runtime.PipelineState(user_input="probe", rewritten_query="probe")
+    hooks.stage_retrieve(object(), probe_state)
+    hooks.stage_rerank(
+        probe_state,
+        [],
+        utterance="probe",
+        user_doc_id="user-doc",
+        user_reflection_doc_id="reflection-doc",
+        near_tie_delta=0.1,
+        clock=runtime.SystemClock(),
+    )
+
+    assert observed["retrieve_kwargs"]["stage_retrieve_fn"] is runtime.stage_retrieve
+    assert observed["rerank_kwargs"]["stage_rerank_fn"] is runtime.stage_rerank
+    assert sent[0] == "ok"
 
 
 def test_sat_cli_is_transitional_wrapper_to_canonical_cli() -> None:

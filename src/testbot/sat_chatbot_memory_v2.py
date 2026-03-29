@@ -93,7 +93,7 @@ from testbot.reject_taxonomy import derive_reject_signal
 from testbot.turn_observation import observe_turn
 from testbot.candidate_encoding import encode_turn_candidates
 from testbot.stabilization import StabilizedTurnState, stabilize_pre_route
-from testbot.context_resolution import resolve as resolve_context
+from testbot.context_resolution import resolve as _resolve_context_from_domain
 from testbot.intent_resolution import IntentResolutionInput, resolve as resolve_intent
 from testbot.evidence_retrieval import (
     EvidenceBundle,
@@ -163,6 +163,7 @@ from testbot.entrypoints.runtime_commit_persistence import (
     answer_commit_persistence as persist_runtime_answer_commit,
 )
 from testbot.entrypoints.runtime_turn_pipeline import RuntimeTurnPipelineHooks, run_runtime_turn_pipeline
+from testbot.application.services import context_retrieval_runtime as context_retrieval_runtime_service
 from testbot.canonical_turn_orchestrator import CanonicalTurnOrchestrator as _CanonicalTurnOrchestrator
 from testbot.logic.decision_helpers import (
     decision_object_from_assembled as _decision_object_from_fallback_action,
@@ -540,24 +541,8 @@ _SELF_IDENTITY_DECLARATION_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"^\s*my\s+name\s+is\s+[\w'-]+(?:\s+[\w'-]+)*\s*[.!?]*\s*$", re.IGNORECASE),
 )
 
-_SELF_REFERENTIAL_IDENTITY_RECALL_PATTERNS: tuple[re.Pattern[str], ...] = (
-    re.compile(r"^\s*who\s+am\s+i\b", re.IGNORECASE),
-    re.compile(r"^\s*what(?:\s+is|'s)\s+my\s+name\b", re.IGNORECASE),
-    re.compile(r"\bremind\s+me\s+(?:what\s+)?my\s+name\s+is\b", re.IGNORECASE),
-)
-
-_PRIOR_IDENTITY_CANDIDATE_PATTERNS: tuple[re.Pattern[str], ...] = (
-    re.compile(r"\bi\s*(?:am|'m|’m)\s+[\w'-]+", re.IGNORECASE),
-    re.compile(r"\bmy\s+name\s+is\s+[\w'-]+", re.IGNORECASE),
-)
-
-
 def _is_self_identity_declaration(utterance: str) -> bool:
     return any(pattern.match(utterance or "") is not None for pattern in _SELF_IDENTITY_DECLARATION_PATTERNS)
-
-
-def _is_self_referential_identity_recall_query(utterance: str) -> bool:
-    return any(pattern.search(utterance or "") is not None for pattern in _SELF_REFERENTIAL_IDENTITY_RECALL_PATTERNS)
 
 
 def _should_force_memory_retrieval_for_identity_recall(
@@ -567,34 +552,16 @@ def _should_force_memory_retrieval_for_identity_recall(
     continuity_evidence: tuple[str, ...],
     context_history_anchors: tuple[str, ...],
 ) -> bool:
-    return _is_self_referential_identity_recall_query(utterance) and _has_prior_identity_candidates_or_continuity_markers(
+    return context_retrieval_runtime_service.should_force_memory_retrieval_for_identity_recall(
+        utterance=utterance,
         prior_state=prior_state,
         continuity_evidence=continuity_evidence,
         context_history_anchors=context_history_anchors,
     )
 
 
-def _has_prior_identity_candidates_or_continuity_markers(
-    *,
-    prior_state: PipelineState | None,
-    continuity_evidence: tuple[str, ...],
-    context_history_anchors: tuple[str, ...],
-) -> bool:
-    if any(anchor.startswith("commit.confirmed_user_facts:") for anchor in continuity_evidence):
-        return True
-    if any(anchor.startswith("commit.confirmed_user_facts:") for anchor in context_history_anchors):
-        return True
-    if prior_state is None:
-        return False
-
-    for fact in prior_state.candidate_facts.facts:
-        if not isinstance(fact, dict):
-            continue
-        if str(fact.get("key") or "").strip() == "user_name":
-            return True
-
-    prior_utterance = str(prior_state.user_input or "")
-    return any(pattern.search(prior_utterance) is not None for pattern in _PRIOR_IDENTITY_CANDIDATE_PATTERNS)
+def resolve_context(*args, **kwargs):
+    return context_retrieval_runtime_service.resolve_context(*args, resolve_context_fn=_resolve_context_from_domain, **kwargs)
 
 
 def stage_rewrite_query(llm: ChatOllama, state: PipelineState) -> PipelineState:
@@ -701,22 +668,11 @@ def stage_retrieve(
 
 
 def _retrieval_input_from_document(doc: Document, *, score: float) -> RetrievalInputRecord:
-    metadata = doc.metadata if isinstance(doc.metadata, dict) else {}
-    return RetrievalInputRecord(
-        ref_id=str(doc.id or metadata.get("doc_id") or ""),
-        score=float(score),
-        content=str(doc.page_content or ""),
-        metadata=metadata,
-    )
+    return context_retrieval_runtime_service.retrieval_input_from_document(doc, score=score)
 
 
 def _document_from_retrieval_input(record: RetrievalInputRecord) -> Document:
-    metadata = record.metadata if isinstance(record.metadata, dict) else {}
-    return Document(
-        id=str(record.ref_id or metadata.get("doc_id") or ""),
-        page_content=str(record.content or ""),
-        metadata=metadata,
-    )
+    return context_retrieval_runtime_service.document_from_retrieval_input(record)
 
 
 def _stage_retrieve_for_turn_service(
@@ -729,16 +685,16 @@ def _stage_retrieve_for_turn_service(
     segment_ids: set[str] | None = None,
     segment_types: set[str] | None = None,
 ) -> tuple[PipelineState, list[RetrievalInputRecord]]:
-    updated_state, docs_and_scores = stage_retrieve(
+    return context_retrieval_runtime_service.stage_retrieve_for_turn_service(
         store,
         state,
+        stage_retrieve_fn=stage_retrieve,
         exclude_doc_ids=exclude_doc_ids,
         exclude_source_ids=exclude_source_ids,
         exclude_turn_scoped_ids=exclude_turn_scoped_ids,
         segment_ids=segment_ids,
         segment_types=segment_types,
     )
-    return updated_state, [_retrieval_input_from_document(doc, score=score) for doc, score in docs_and_scores]
 
 
 _ANAPHORA_PATTERNS: tuple[re.Pattern[str], ...] = (
@@ -952,18 +908,17 @@ def _stage_rerank_for_turn_service(
     clock: Clock,
     io_channel: str = "cli",
 ) -> tuple[PipelineState, list[RetrievalInputRecord]]:
-    del io_channel
-    docs_and_scores = [(_document_from_retrieval_input(record), float(record.score)) for record in retrieval_candidates]
-    updated_state, hits = stage_rerank(
+    return context_retrieval_runtime_service.stage_rerank_for_turn_service(
         state,
-        docs_and_scores,
+        retrieval_candidates,
+        stage_rerank_fn=stage_rerank,
         utterance=utterance,
         user_doc_id=user_doc_id,
         user_reflection_doc_id=user_reflection_doc_id,
         near_tie_delta=near_tie_delta,
         clock=clock,
+        io_channel=io_channel,
     )
-    return updated_state, [_retrieval_input_from_document(doc, score=1.0) for doc in hits]
 
 
 def _answer_assemble_for_turn_service(

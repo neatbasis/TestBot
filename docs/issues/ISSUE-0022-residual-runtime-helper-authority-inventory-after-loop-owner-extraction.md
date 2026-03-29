@@ -198,3 +198,55 @@ Done vs Deferred (investigation pass):
 
 - **Done:** post-681 residual authority ranking and canonical-path touchpoint inventory were refreshed for next-step selection.
 - **Deferred:** implementing context/retrieval extraction and allowlist guard hardening is intentionally left to the next narrow PR.
+
+## 2026-03-29 update — context/retrieval helper wiring seam extraction (narrow)
+
+Seam inventory (before → after):
+
+- Context/retrieval helper hooks still sourced from monolith in canonical runtime-loop wiring:
+  - `_should_force_memory_retrieval_for_identity_recall`
+  - `resolve_context`
+  - `_stage_retrieve_for_turn_service`
+  - `_stage_rerank_for_turn_service`
+  - `_document_from_retrieval_input`
+- New canonical owner for this seam:
+  - `testbot.application.services.context_retrieval_runtime`
+  - authoritative hook functions now sourced in `entrypoints/runtime_loop.py` from that module.
+- Compatibility posture:
+  - corresponding monolith helpers now remain as thin wrappers delegating to canonical context/retrieval runtime helpers.
+  - follow-up completion in this PR head also wraps monolith `resolve_context` as an explicit compatibility shim into the
+    canonical context/retrieval runtime owner (instead of a direct domain import alias), so the seam boundary is explicit at
+    the compatibility surface.
+
+Ask-boundary contract posture:
+
+- This seam extraction did not add new Ask-internal coupling.
+- Runtime-loop hook rewiring remains constrained to canonical runtime/service surfaces and does not introduce dependency on
+  demo-only or non-canonical Ask internals.
+
+Anti-backslide hardening:
+
+- Runtime ownership assertions now require `runtime_loop.py` to import canonical
+  `context_retrieval_runtime` and disallow monolith-owned context/retrieval helper symbol usage in loop wiring.
+- Monolith-touchpoint allowlist was intentionally narrowed for this seam (removed legacy helper symbols replaced by the
+  canonical owner).
+- Added focused compatibility wrapper tests to ensure monolith wrappers delegate to canonical context/retrieval runtime
+  helpers rather than owning logic inline.
+- Added explicit residual-seam ownership assertions for runtime loop wiring:
+  - remaining legacy touchpoints for this seam are constrained to `stage_retrieve` / `stage_rerank` policy-core call sites only;
+  - legacy `resolve_context`, forced-retrieval helper, turn-service adapter wrappers, and retrieval conversion wrappers are
+    asserted as non-runtime-loop dependencies.
+- Added direct canonical-owner tests for `context_retrieval_runtime` to verify seam-owned behavior and adapter conversion logic
+  independent of monolith wrappers.
+
+Done vs Deferred:
+
+- **Done:** context/retrieval hook wiring authority on the canonical runtime path moved to
+  `application/services/context_retrieval_runtime.py`; runtime-loop monolith touchpoints narrowed.
+  This is a runtime-facing seam/control-point extraction (wiring authority), not full retrieval/rerank policy-core semantic extraction.
+- **Deferred (explicit residual seam elements):**
+  - monolith `stage_retrieve(...)` policy/core retrieval implementation;
+  - monolith `stage_rerank(...)` policy/core rerank + temporal-bridge implementation;
+  - supporting rerank-temporal helper internals coupled to that policy core.
+  These remain intentionally deferred because this increment is scoped to runtime wiring/adapters and compatibility-surface
+  ownership, not retrieval/rerank policy-core redesign.
