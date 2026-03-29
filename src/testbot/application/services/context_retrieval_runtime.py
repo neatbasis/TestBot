@@ -138,6 +138,15 @@ class RetrievalFilterScope:
     segment_types: set[str]
 
 
+@dataclass(frozen=True)
+class RerankInvocationPolicy:
+    sigma_seconds: float
+    exclude_doc_ids: set[str]
+    exclude_source_ids: set[str]
+    top_k: int
+    near_tie_delta: float
+
+
 def normalize_retrieval_filter_scope(
     *,
     exclude_doc_ids: set[str] | None = None,
@@ -152,6 +161,23 @@ def normalize_retrieval_filter_scope(
         exclude_turn_scoped_ids={value for value in (exclude_turn_scoped_ids or set()) if value},
         segment_ids={value for value in (segment_ids or set()) if value},
         segment_types={value for value in (segment_types or set()) if value},
+    )
+
+
+def assemble_rerank_invocation_policy(
+    *,
+    sigma_seconds: float,
+    user_doc_id: str,
+    user_reflection_doc_id: str,
+    near_tie_delta: float,
+    top_k: int = 4,
+) -> RerankInvocationPolicy:
+    return RerankInvocationPolicy(
+        sigma_seconds=float(sigma_seconds),
+        exclude_doc_ids={value for value in {user_doc_id, user_reflection_doc_id} if value},
+        exclude_source_ids={value for value in {user_doc_id} if value},
+        top_k=int(top_k),
+        near_tie_delta=float(near_tie_delta),
     )
 
 
@@ -358,6 +384,8 @@ def resolve_rerank_target_time(
 
 
 __all__ = [
+    "RerankInvocationPolicy",
+    "assemble_rerank_invocation_policy",
     "filter_documents_for_temporal_window",
     "document_from_retrieval_input",
     "normalize_retrieval_filter_scope",

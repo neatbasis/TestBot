@@ -698,16 +698,22 @@ def stage_rerank(
         bridge=temporal_bridge,
         now=now,
     )
-    sigma = adaptive_sigma_fractional(now=now, target=target, frac=0.25)
+    invocation_policy = context_retrieval_runtime_service.assemble_rerank_invocation_policy(
+        sigma_seconds=adaptive_sigma_fractional(now=now, target=target, frac=0.25),
+        user_doc_id=user_doc_id,
+        user_reflection_doc_id=user_reflection_doc_id,
+        near_tie_delta=near_tie_delta,
+    )
+    sigma = invocation_policy.sigma_seconds
     rerank_outcome = rerank_docs_with_time_and_type_outcome(
         filtered_docs_and_scores,
         now=now,
         target=target,
         sigma_seconds=sigma,
-        exclude_doc_ids={user_doc_id, user_reflection_doc_id},
-        exclude_source_ids={user_doc_id},
-        top_k=4,
-        near_tie_delta=near_tie_delta,
+        exclude_doc_ids=invocation_policy.exclude_doc_ids,
+        exclude_source_ids=invocation_policy.exclude_source_ids,
+        top_k=invocation_policy.top_k,
+        near_tie_delta=invocation_policy.near_tie_delta,
     )
     hits = rerank_outcome.docs
     reranked_hits = [doc_to_candidate_hit(doc, score=0.0) for doc in hits]

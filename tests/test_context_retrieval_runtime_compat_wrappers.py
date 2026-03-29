@@ -183,3 +183,83 @@ def test_stage_rerank_uses_runtime_temporal_bridge_helpers(monkeypatch) -> None:
     assert observed["filter_called"] is True
     assert observed["resolve_target_time_called"] is True
     assert observed["rerank_target"] == "2026-03-10T11:30:00+00:00"
+
+
+def test_stage_rerank_uses_runtime_invocation_policy_assembly(monkeypatch) -> None:
+    now = arrow.get("2026-03-10T12:00:00+00:00")
+    state = PipelineState(user_input="who am i?", confidence_decision={})
+    docs_and_scores = [(Document(id="doc-1", page_content="candidate", metadata={"doc_id": "doc-1"}), 0.9)]
+    observed: dict[str, object] = {}
+
+    class _Clock:
+        def now(self):
+            return now
+
+    def _fake_resolve_bridge(*, utterance, docs_and_scores, now):
+        return {
+            "anaphora_detected": False,
+            "anchor_candidates": [],
+            "selected_anchor_doc_id": "",
+            "selected_anchor_ts": "",
+            "target_override_ts": "",
+            "delta_seconds_raw": None,
+            "delta_humanized": "",
+            "time_window": "",
+            "window_start": "",
+            "window_end": "",
+        }
+
+    def _fake_filter(*, docs_and_scores, bridge):
+        return docs_and_scores
+
+    def _fake_resolve_target(*, utterance, bridge, now):
+        return now
+
+    def _fake_assemble_policy(*, sigma_seconds, user_doc_id, user_reflection_doc_id, near_tie_delta, top_k=4):
+        observed["assembled"] = {
+            "sigma_seconds": sigma_seconds,
+            "user_doc_id": user_doc_id,
+            "user_reflection_doc_id": user_reflection_doc_id,
+            "near_tie_delta": near_tie_delta,
+            "top_k": top_k,
+        }
+        return runtime.context_retrieval_runtime_service.RerankInvocationPolicy(
+            sigma_seconds=42.0,
+            exclude_doc_ids={"assembled-doc"},
+            exclude_source_ids={"assembled-source"},
+            top_k=7,
+            near_tie_delta=0.33,
+        )
+
+    def _fake_rerank(*args, **kwargs):
+        observed["rerank_kwargs"] = kwargs
+        return RerankOutcome(docs=[], scored_candidates=[], ambiguity_detected=False, near_tie_candidates=[])
+
+    monkeypatch.setattr(runtime.context_retrieval_runtime_service, "resolve_temporal_anaphora_bridge", _fake_resolve_bridge)
+    monkeypatch.setattr(runtime.context_retrieval_runtime_service, "filter_documents_for_temporal_window", _fake_filter)
+    monkeypatch.setattr(runtime.context_retrieval_runtime_service, "resolve_rerank_target_time", _fake_resolve_target)
+    monkeypatch.setattr(runtime.context_retrieval_runtime_service, "assemble_rerank_invocation_policy", _fake_assemble_policy)
+    monkeypatch.setattr(runtime, "rerank_docs_with_time_and_type_outcome", _fake_rerank)
+
+    runtime.stage_rerank(
+        state,
+        docs_and_scores,
+        utterance="who am i?",
+        user_doc_id="user-doc",
+        user_reflection_doc_id="reflection-doc",
+        near_tie_delta=0.1,
+        clock=_Clock(),
+    )
+
+    assert observed["assembled"] == {
+        "sigma_seconds": 600.0,
+        "user_doc_id": "user-doc",
+        "user_reflection_doc_id": "reflection-doc",
+        "near_tie_delta": 0.1,
+        "top_k": 4,
+    }
+    assert observed["rerank_kwargs"]["sigma_seconds"] == 42.0
+    assert observed["rerank_kwargs"]["exclude_doc_ids"] == {"assembled-doc"}
+    assert observed["rerank_kwargs"]["exclude_source_ids"] == {"assembled-source"}
+    assert observed["rerank_kwargs"]["top_k"] == 7
+    assert observed["rerank_kwargs"]["near_tie_delta"] == 0.33

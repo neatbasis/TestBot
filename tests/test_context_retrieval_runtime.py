@@ -260,3 +260,32 @@ def test_resolve_rerank_target_time_falls_back_when_override_invalid() -> None:
     )
 
     assert target == context_retrieval_runtime.parse_target_time("what happened yesterday?", now=now)
+
+
+def test_assemble_rerank_invocation_policy_normalizes_defaults_and_exclusions() -> None:
+    policy = context_retrieval_runtime.assemble_rerank_invocation_policy(
+        sigma_seconds=123.4,
+        user_doc_id="user-doc",
+        user_reflection_doc_id="reflection-doc",
+        near_tie_delta=0.03,
+    )
+
+    assert policy.sigma_seconds == 123.4
+    assert policy.exclude_doc_ids == {"user-doc", "reflection-doc"}
+    assert policy.exclude_source_ids == {"user-doc"}
+    assert policy.top_k == 4
+    assert policy.near_tie_delta == 0.03
+
+
+def test_assemble_rerank_invocation_policy_strips_empty_identifiers() -> None:
+    policy = context_retrieval_runtime.assemble_rerank_invocation_policy(
+        sigma_seconds=10.0,
+        user_doc_id="",
+        user_reflection_doc_id="reflection-doc",
+        near_tie_delta=0.1,
+        top_k=6,
+    )
+
+    assert policy.exclude_doc_ids == {"reflection-doc"}
+    assert policy.exclude_source_ids == set()
+    assert policy.top_k == 6

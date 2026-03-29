@@ -128,3 +128,16 @@ Ideal future state for this slice: canonical runtime execution computes rerank i
   - compatibility wrapper proof that monolith `stage_rerank(...)` now calls runtime-owned target-time resolver.
 - Remaining deferred rerank slices are unchanged: scorer invocation policy assembly, confidence-decision projection,
   and residual wrapper retirement.
+
+## 2026-03-29 execution update — bounded rerank scoring invocation policy assembly slice processed
+
+- Processed deferred row: **Rank 1 rerank residual — scorer invocation policy assembly**.
+- Bounded delta: extracted rerank invocation contract assembly into canonical runtime-owned
+  `testbot.application.services.context_retrieval_runtime.assemble_rerank_invocation_policy(...)` with
+  explicit normalized outputs for `sigma_seconds`, `exclude_doc_ids`, `exclude_source_ids`, `top_k`, and
+  `near_tie_delta`.
+- Canonical runtime path impact: `sat_chatbot_memory_v2.stage_rerank(...)` now delegates scorer invocation-policy
+  assembly through the runtime-facing seam owner and consumes the returned normalized invocation contract when
+  calling `rerank_docs_with_time_and_type_outcome(...)`.
+- Remaining deferred rerank slices after this move: threshold/profile policy surface, confidence-decision projection /
+  telemetry shaping, and wrapper retirement posture.
