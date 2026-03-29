@@ -61,3 +61,12 @@ This is the **idealized planning end-state** for convergence, not a requirement 
   extraction path; clearer extraction claim language.
 - **Directional target:** incremental deltas continue, but each move must also reduce monolith semantic ownership and
   increase proof that canonical runtime execution no longer depends on monolith authority for extracted seams.
+
+## 2026-03-29 execution update — bounded retrieval policy-core slice processed
+
+- Processed deferred row: **Retrieval policy-core**.
+- Bounded delta: extracted retrieval filter normalization + store-query branching (`search_memory_records` vs
+  `similarity_search_with_score`) into canonical runtime-owned
+  `testbot.application.services.context_retrieval_runtime`.
+- Remaining deferred within the same row: retrieval candidate mixing/ranking semantics and broader retrieval policy
+  decisions still remain compatibility-owned in `sat_chatbot_memory_v2` pending additional bounded extractions.
