@@ -93,6 +93,11 @@ This slice catches up the next coherent retrieval-grounding/knowledge-question b
 ## 8. Finishability assessment
 
 Behave catch-up is materially closer to completion for this program order: selected-cluster failures are resolved and residual failures are now one named cluster only (**time-awareness / stage-transition cluster**).
+The **next recommended behave catch-up slice** is explicitly:
+
+- `features/testbot/time_awareness.feature`
+  - `AC-0005-01` elapsed minutes from previous user turn
+  - `AC-0005-02` resolve tomorrow in Europe/Helsinki
 
 ## 9. Options opened by this PR
 
