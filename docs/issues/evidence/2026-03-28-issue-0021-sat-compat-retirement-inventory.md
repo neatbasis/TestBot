@@ -406,3 +406,57 @@ Retirement leverage created by this step:
 - Simplifies future façade retirement checks by isolating commit persistence behind a canonical owner module.
 - Creates a narrower caller-census surface for determining when monolith `answer_commit_persistence` can move to compatibility-only/export-only status.
 - Provides a concrete anti-regression assertion that helps prevent runtime-loop drift back to direct monolith commit helper calls.
+
+## 2026-03-28 follow-up — answer-stage helper wiring moved to canonical answer-stage runtime owner
+
+- Established canonical answer-stage turn-service wiring helpers under:
+  - `testbot.application.services.answer_stage_runtime.answer_assemble_for_turn_service`
+  - `testbot.application.services.answer_stage_runtime.answer_validate_for_turn_service`
+  - `testbot.application.services.answer_stage_runtime.detect_capability_offer`
+- Updated canonical runtime-loop hook assembly (`testbot.entrypoints.runtime_loop`) to source:
+  - `resolve_answer_routing_for_stage`
+  - `answer_assemble_for_turn_service`
+  - `answer_validate_for_turn_service`
+  - `detect_capability_offer`
+  from `answer_stage_runtime` directly instead of `sat_chatbot_memory_v2` wrappers.
+- Kept compatibility façade behavior stable:
+  - `_answer_assemble_for_turn_service`, `_answer_validate_for_turn_service`, and `_detect_capability_offer`
+    in `sat_chatbot_memory_v2` now delegate to canonical answer-stage runtime service helpers.
+- Added anti-regression tests:
+  - runtime-loop ownership guard for answer-stage helper sourcing;
+  - compatibility-wrapper delegation assertions for extracted answer-stage helpers.
+
+Status impact for retirement inventory:
+
+- answer-stage helper wiring (`_answer_assemble_for_turn_service`, `_answer_validate_for_turn_service`, `_detect_capability_offer`):
+  moved from compatibility-owned authority to **B migrated (wrapper retained)**.
+
+Done vs Deferred:
+
+- **Done:** canonical runtime path no longer sources answer-stage turn-service adapter hooks from monolith wrappers.
+- **Deferred:** broader compatibility façade prune and context/retrieval helper extraction remain tracked follow-on work.
+
+## 2026-03-28 follow-up — post-PR-681 pre-merge investigation census refresh
+
+Investigation-only refresh (no additional runtime behavior changes):
+
+- `answer_stage_runtime` coherence check:
+  - module remains primarily answer-stage semantic owner;
+  - newly extracted turn-service adapters are narrow boundary shims and do not yet justify internal owner split.
+- Canonical runtime-path monolith touchpoints after PR-681:
+  - answer-stage hook sourcing moved to canonical owner (`answer_stage_runtime`);
+  - residual monolith density remains concentrated in context/retrieval and related runtime hook wiring.
+- Façade caller census refresh:
+  - authoritative runtime path remains migrated to canonical entrypoint owners;
+  - remaining `sat_chatbot_memory_v2` / `runtime_legacy_bridge` imports are predominantly compatibility and test surfaces.
+- Next anti-regression guard recommendation:
+  - add a deterministic allowlist-based ownership test for monolith helper symbols referenced by `entrypoints/runtime_loop.py`
+    so any new monolith touchpoint requires explicit review.
+- Guard status:
+  - allowlist ownership guard now exists in `tests/test_runtime_modes.py` and enforces explicit review for any
+    newly introduced `_legacy_runtime.<symbol>` touchpoint in `runtime_loop.py`.
+
+Status impact:
+
+- answer-stage helper extraction remains validated as a meaningful density reduction.
+- next highest-leverage extraction seam remains context/retrieval helper wiring.

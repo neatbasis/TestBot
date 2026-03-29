@@ -137,3 +137,64 @@ Done vs Deferred:
   `entrypoints/runtime_turn_telemetry.py`, reducing in-loop helper authority concentration.
 - **Deferred:** commit-persistence helper extraction and answer-stage/context-retrieval helper extraction remain
   compatibility-wired through `sat_chatbot_memory_v2` and are intentionally out of scope for this narrow step.
+
+## 2026-03-28 update — answer-stage residual helper wiring extraction (narrow)
+
+- Extracted canonical answer-stage turn-service adapters into canonical owner module:
+  - `testbot.application.services.answer_stage_runtime.answer_assemble_for_turn_service`
+  - `testbot.application.services.answer_stage_runtime.answer_validate_for_turn_service`
+  - `testbot.application.services.answer_stage_runtime.detect_capability_offer`
+- Rewired canonical runtime loop owner:
+  - `testbot.entrypoints.runtime_loop.run_chat_loop` now wires answer-stage hooks in
+    `RuntimeTurnPipelineHooks` from `answer_stage_runtime` directly for:
+    - answer routing for stage
+    - answer assemble adapter
+    - answer validate adapter
+    - capability-offer detection
+  - canonical loop no longer sources those answer-stage helper hooks from
+    `testbot.sat_chatbot_memory_v2`.
+- Compatibility kept:
+  - `testbot.sat_chatbot_memory_v2` wrappers
+    `_answer_assemble_for_turn_service`, `_answer_validate_for_turn_service`, and
+    `_detect_capability_offer` now delegate to canonical
+    `answer_stage_runtime` helpers.
+- Added focused anti-regression coverage:
+  - runtime-mode ownership guard asserts runtime loop imports canonical answer-stage service owner and does not reference monolith answer-stage helper symbols;
+  - compatibility wrapper tests assert monolith wrappers delegate to
+    canonical answer-stage runtime helpers.
+
+Done vs Deferred:
+
+- **Done:** answer-stage hook authority on the canonical runtime path is now sourced from
+  `application/services/answer_stage_runtime.py` rather than monolith helper wrappers.
+- **Deferred:** context/retrieval hook extraction and remaining legacy helper pruning are out of scope for this narrow seam.
+
+## 2026-03-28 pre-merge investigation update — post-PR-681 ownership shape and next seam selection
+
+Post-681 investigation summary (narrow, no additional runtime behavior changes):
+
+- `answer_stage_runtime` coherence after answer-stage extraction:
+  - **semantic owner surface remains coherent** (`answer_assemble`, `answer_validate`, answer-mode/routing/format helpers);
+  - newly added turn-service adapters (`answer_assemble_for_turn_service`, `answer_validate_for_turn_service`) and
+    `detect_capability_offer` are currently small boundary helpers directly tied to answer-stage contract assembly;
+  - extraction did not introduce a broad new “misc glue” bucket; defer any internal split until additional non-answer-stage
+    adapters accumulate.
+- residual monolith touchpoints on canonical runtime path after PR-681:
+  - answer-stage helper hooks are now sourced from `answer_stage_runtime` in `runtime_loop` hook assembly;
+  - highest remaining monolith density in `runtime_loop` hook/dependency wiring is now context/retrieval and related
+    conversion/policy-prep helpers (`resolve_context`, retrieve/rerank adapters, decision projection helpers, conversion utilities).
+- next residual-cluster ranking refresh:
+  1. context/retrieval helper wiring (highest remaining authority density on canonical path)
+  2. loop state/obligation helper details still wired through compatibility helpers
+  3. smaller residual conversion/helper touchpoints
+- recommended smallest next anti-regression guard:
+  - add an ownership inventory assertion for `runtime_loop` that enumerates the currently allowed monolith helper symbols and
+    fails on additions (explicit allowlist guard prevents “silent” hook-bag backsliding).
+- guard implementation status:
+  - **implemented in tests** via a deterministic allowlist assertion for `_legacy_runtime.<symbol>` touchpoints in
+    `tests/test_runtime_modes.py`; future extractions should shrink the allowlist deliberately.
+
+Done vs Deferred (investigation pass):
+
+- **Done:** post-681 residual authority ranking and canonical-path touchpoint inventory were refreshed for next-step selection.
+- **Deferred:** implementing context/retrieval extraction and allowlist guard hardening is intentionally left to the next narrow PR.
