@@ -140,9 +140,9 @@ Feature: Answer citation contract enforcement
 
 
   @ISSUE-0009 @AC-0009-15
-  Scenario: async background ingestion uses pending non-clarify fallback
+  Scenario: async background ingestion keeps retrieval-grounded non-clarify fallback
     Given a memory recall question awaiting background ingestion
     And a canonical decision object class "pending_lookup_background_ingestion"
     When stage answer runs with canonical decision authority
-    Then the fallback action should remain pending lookup
+    Then the fallback action should stay in knowledge-safe non-clarify set while lookup is pending
     And the answer mode should remain non-clarify while lookup is pending

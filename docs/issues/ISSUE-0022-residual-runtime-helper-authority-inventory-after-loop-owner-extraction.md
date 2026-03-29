@@ -336,3 +336,16 @@ execution:
 
 This sequencing update is an authority-drift prevention clarification only; it does not change scorer semantics
 or re-open completed row-program conclusions.
+
+## 2026-03-29 post-merge inventory addendum — behave catch-up slice #2 retrieval-grounding cluster
+
+A bounded behave catch-up workstream execution note for the next retrieval-grounding answer-contract cluster has been
+added:
+
+- `docs/issues/evidence/2026-03-29-issue-0022-behave-catchup-workstream-execution-slice-2.md`
+
+Post-slice handoff clarification:
+- processed: `answer_contract` retrieval-grounding failures (`AC-0009-10`, `AC-0009-15`) aligned to current decision-authority/control-point behavior;
+- remaining behave catch-up cluster: `time_awareness.feature` (`AC-0005-01`, `AC-0005-02`) stage-transition expectation drift;
+- recommended next behave catch-up slice: process `time_awareness.feature` (`AC-0005-01`, `AC-0005-02`) as the next bounded cluster;
+- scorer-category seam work remains deferred per cleanup→behave→scorer sequence.
