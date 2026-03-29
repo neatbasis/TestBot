@@ -124,11 +124,11 @@ Documentation naming note: when updating directive or architecture docs, follow 
 ### A.1 Runtime-enforced directives (`src/testbot/sat_chatbot_memory_v2.py` guardrails, logging, fallback)
 
 - Answer must be memory-grounded and use only provided context + recent chat.
-  - Source location: `ANSWER_PROMPT` system instructions in `src/testbot/sat_chatbot_memory_v2.py`.
+  - Source location: `ANSWER_PROMPT` system instructions in `src/testbot/application/services/answer_stage_presentation.py` (compatibly re-exported by `src/testbot/sat_chatbot_memory_v2.py`).
   - Enforcement mechanism: prompt-level runtime instruction passed to the model on every response generation.
   - Confidence level: **Advisory** (LLM-followed instruction, not a static type/runtime assert by itself).
 - Memory-insufficient turns use progressive fallback (bridging clarifier, assist alternatives, or explicit uncertainty) instead of direct memory fallback.
-  - Source location: `ANSWER_PROMPT` guidance + `decide_fallback_action(...)` + deterministic branches in `stage_answer(...)` (`build_partial_memory_clarifier`, `ASSIST_ALTERNATIVES_ANSWER`, `NON_KNOWLEDGE_UNCERTAINTY_ANSWER`).
+  - Source location: `ANSWER_PROMPT` guidance in `src/testbot/application/services/answer_stage_presentation.py` + `decide_fallback_action(...)` + deterministic branches in `stage_answer(...)` (`build_partial_memory_clarifier`, `ASSIST_ALTERNATIVES_ANSWER`, `NON_KNOWLEDGE_UNCERTAINTY_ANSWER`).
   - Enforcement mechanism: deterministic answer-stage routing applies policy-selected progressive fallback behavior when confidence/contract checks fail.
   - Confidence level: **Enforced**.
 - Factual answers must include citation fields (`doc_id` and `ts`).

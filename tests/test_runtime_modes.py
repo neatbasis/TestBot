@@ -243,6 +243,7 @@ def test_runtime_loop_owner_uses_canonical_turn_pipeline_helper_not_monolith_tur
     assert "from testbot.entrypoints.runtime_turn_pipeline import RuntimeTurnPipelineHooks, run_runtime_turn_pipeline" in source
     assert "from testbot.entrypoints.runtime_turn_telemetry import RuntimeTurnTelemetryDependencies, emit_runtime_turn_telemetry" in source
     assert "from testbot.application.services import answer_stage_runtime as answer_stage_runtime_service" in source
+    assert "from testbot.application.services import answer_stage_presentation as answer_stage_presentation_service" in source
     assert "from testbot.application.services import context_retrieval_runtime as context_retrieval_runtime_service" in source
     assert "_poll_pending_ingestion_obligations(" not in source
     assert "_process_background_ingestion_completion(" not in source
@@ -255,6 +256,8 @@ def test_runtime_loop_owner_uses_canonical_turn_pipeline_helper_not_monolith_tur
     assert "_answer_validate_for_turn_service" not in source
     assert "build_provenance_metadata=getattr(_legacy_runtime" not in source
     assert "evaluate_alignment_decision=getattr(_legacy_runtime" not in source
+    assert "render_context=getattr(_legacy_runtime" not in source
+    assert "answer_prompt=getattr(_legacy_runtime" not in source
     assert "_detect_capability_offer" not in source
     assert "_should_force_memory_retrieval_for_identity_recall" not in source
     assert "_stage_retrieve_for_turn_service" not in source
