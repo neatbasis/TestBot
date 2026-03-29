@@ -161,3 +161,15 @@ Ideal future state for this slice: canonical runtime execution computes rerank i
   `context_retrieval_runtime.assemble_rerank_threshold_profile_policy(...)` (and downstream runtime-owned decision policy bundling).
 - **Now residual rank 1:** confidence-decision projection / telemetry shaping.
 - **Still deferred:** wrapper retirement and scorer internals.
+
+## 2026-03-29 execution update — bounded rerank confidence-decision projection / telemetry shaping slice processed
+
+- Processed deferred row: **Rank 1 rerank residual — confidence-decision projection / telemetry shaping**.
+- Bounded delta: extracted canonical runtime-owned projection helper
+  `testbot.application.services.context_retrieval_runtime.project_rerank_confidence_decision(...)` that assembles the
+  rerank decision aftermath bundle (`context_confident`, ambiguity/temporal projection, objective metadata, and
+  threshold/profile projection fields) from runtime-owned policy + scorer outcome inputs.
+- Canonical runtime path impact: `sat_chatbot_memory_v2.stage_rerank(...)` now delegates confidence-decision
+  projection and telemetry shaping to the runtime-facing seam owner instead of authoring those fields inline.
+- Remaining deferred rerank slices after this move: residual wrapper retirement posture; scorer execution internals
+  remain explicitly deferred compatibility-owned implementation scope.

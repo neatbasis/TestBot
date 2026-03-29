@@ -57,6 +57,32 @@ def test_stage_rerank_uses_injected_clock_now() -> None:
     assert updated.confidence_decision["now_ts"] == frozen_now.isoformat()
 
 
+def test_stage_rerank_delegates_confidence_projection_to_runtime_owner(monkeypatch) -> None:
+    frozen_now = arrow.get("2026-03-10T12:00:00+00:00")
+    state = PipelineState(user_input="what happened")
+    observed: dict[str, object] = {}
+
+    def _fake_projection(**kwargs):
+        observed.update(kwargs)
+        return {"delegated_projection": True, "top_final_score_min": 0.123}
+
+    monkeypatch.setattr(runtime.context_retrieval_runtime_service, "project_rerank_confidence_decision", _fake_projection)
+
+    updated, _ = stage_rerank(
+        state,
+        [],
+        utterance="what happened",
+        user_doc_id="u1",
+        user_reflection_doc_id="r1",
+        near_tie_delta=0.02,
+        clock=FakeClock(frozen_now),
+    )
+
+    assert updated.confidence_decision.to_dict() == {"delegated_projection": True, "top_final_score_min": 0.123}
+    assert observed["has_context"] is False
+    assert observed["sigma_seconds"] > 0
+
+
 def test_run_canonical_answer_stage_flow_time_query_uses_fake_clock_and_helsinki() -> None:
     frozen_now = arrow.get("2026-03-10T22:30:00+00:00")
     state = PipelineState(user_input="what is tomorrow?", last_user_message_ts="2026-03-10T22:00:00+00:00")
