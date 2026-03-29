@@ -173,3 +173,31 @@ Ideal future state for this slice: canonical runtime execution computes rerank i
   projection and telemetry shaping to the runtime-facing seam owner instead of authoring those fields inline.
 - Remaining deferred rerank slices after this move: residual wrapper retirement posture; scorer execution internals
   remain explicitly deferred compatibility-owned implementation scope.
+
+## 2026-03-29 handoff checkpoint — residual clarity after #689
+
+- **Processed in #689:** confidence-decision projection / telemetry shaping.
+- **Now residual rerank row:** wrapper retirement.
+- **Still deferred category debt:** scorer internals.
+
+### Options opened by #689 (for next PR selection)
+
+1. **Retire wrapper now** if direct inspection confirms no rerank policy or rerank decision-aftermath authorship remains in
+   the wrapper path for canonical runtime execution.
+2. **Keep wrapper temporarily as compatibility execution bridge** while tightening explicit removal criteria and proving
+   zero required callers beyond compatibility shims.
+3. **Introduce scorer execution adapter/port first** if wrapper retirement depends on separating scorer execution contract
+   from wrapper posture in one additional bounded step.
+
+### Explicit wrapper-removal criteria
+
+Wrapper retirement is considered complete only when all are true:
+
+- Canonical runtime path executes rerank via runtime-owned seam helpers for invocation policy, threshold/profile policy,
+  and confidence-decision projection (already true after #689).
+- `sat_chatbot_memory_v2.stage_rerank(...)` no longer authors rerank policy or decision-aftermath semantics for the
+  canonical runtime path; any remaining role is compatibility-only and removable without semantic change.
+- In-repo caller census shows canonical runtime flow no longer requires `_stage_rerank_for_turn_service` wrapper
+  forwarding.
+- Deterministic seam tests prove runtime-only path equivalence (or stricter ownership assertions) after wrapper removal.
+- Compatibility inventory/docs explicitly confirm remaining deferred scope is scorer internals only.
