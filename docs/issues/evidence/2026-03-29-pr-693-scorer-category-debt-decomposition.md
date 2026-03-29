@@ -141,6 +141,7 @@ This PR decomposes the remaining scorer-category debt (post-wrapper-retirement) 
 ## 2026-03-29 execution update — scorer execution invocation/result contract slice processed
 
 - Processed unit type: **category-debt execution slice** (not a deferred row).
+- **Processed in #694:** scorer execution invocation/result contract boundary.
 - Processed slice: runtime-owned scorer execution invocation/result contract for canonical rerank path.
 - Bounded change:
   - Added `ScorerExecutionRequest`, `ScorerExecutionResult`, and
@@ -150,6 +151,6 @@ This PR decomposes the remaining scorer-category debt (post-wrapper-retirement) 
     of invoking scorer internals inline.
 - Compatibility posture: scorer internals (`rerank.py` objective/ambiguity/lane semantics) remain unchanged;
   only execution boundary ownership moved.
-- Recommended next slice after this execution:
-  - Scorer output/result contract normalization at runtime seam (shape-hardening + projection compatibility
-    assertions), while deferring broad scorer internals redesign.
+- **Category debt remaining:** scorer internals / broader scorer-category redesign.
+- **Recommended next unit:** smallest scorer-internals slice, unless owners determine the #694 execution-boundary
+  move materially changes remaining boundaries, in which case run a scorer-category decomposition refresh first.
