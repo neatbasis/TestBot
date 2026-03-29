@@ -5,6 +5,7 @@ from langchain_core.documents import Document
 from testbot.application.services import context_retrieval_runtime
 from testbot.pipeline_state import CandidateFactsArtifact, PipelineState
 from testbot.evidence_retrieval import RetrievalInputRecord
+from testbot.ports import MemorySearchQuery, PortDocument, ScoredPortDocument
 
 
 def test_should_force_memory_retrieval_for_identity_recall_true_on_commit_anchor() -> None:
@@ -98,3 +99,82 @@ def test_stage_rerank_for_turn_service_uses_injected_stage_function() -> None:
     assert observed["kwargs"]["user_doc_id"] == "user-doc"
     assert len(hits) == 1
     assert hits[0].ref_id == "doc-2"
+
+
+def test_normalize_retrieval_filter_scope_strips_empty_values() -> None:
+    scope = context_retrieval_runtime.normalize_retrieval_filter_scope(
+        exclude_doc_ids={"", "doc-1"},
+        exclude_source_ids={"source-1", ""},
+        exclude_turn_scoped_ids={"", "turn-1"},
+        segment_ids={"segment-1", ""},
+        segment_types={"", "memory"},
+    )
+
+    assert scope.exclude_doc_ids == {"doc-1"}
+    assert scope.exclude_source_ids == {"source-1"}
+    assert scope.exclude_turn_scoped_ids == {"turn-1"}
+    assert scope.segment_ids == {"segment-1"}
+    assert scope.segment_types == {"memory"}
+
+
+def test_search_memory_documents_for_retrieval_uses_port_query_when_available() -> None:
+    class _Store:
+        def __init__(self) -> None:
+            self.last_query: MemorySearchQuery | None = None
+
+        def search_memory_records(self, query: MemorySearchQuery):
+            self.last_query = query
+            return [
+                ScoredPortDocument(
+                    document=PortDocument(doc_id="doc-1", content="hello", metadata={"doc_id": "doc-1"}),
+                    score=0.9,
+                )
+            ]
+
+    store = _Store()
+    scope = context_retrieval_runtime.normalize_retrieval_filter_scope(exclude_doc_ids={"doc-9"})
+
+    docs_and_scores = context_retrieval_runtime.search_memory_documents_for_retrieval(
+        store,
+        rewritten_query="hello",
+        filter_scope=scope,
+        k=7,
+    )
+
+    assert store.last_query == MemorySearchQuery(query="hello", k=7, exclude_doc_ids={"doc-9"})
+    assert len(docs_and_scores) == 1
+    assert docs_and_scores[0][0].id == "doc-1"
+    assert docs_and_scores[0][1] == 0.9
+
+
+def test_search_memory_documents_for_retrieval_falls_back_to_similarity_search() -> None:
+    class _Store:
+        def __init__(self) -> None:
+            self.calls: list[dict[str, object]] = []
+
+        def similarity_search_with_score(self, query: str, **kwargs):
+            self.calls.append({"query": query, **kwargs})
+            return [(Document(id="doc-2", page_content="fallback", metadata={"doc_id": "doc-2"}), 0.4)]
+
+    store = _Store()
+    scope = context_retrieval_runtime.normalize_retrieval_filter_scope(exclude_source_ids={"src-1"})
+
+    docs_and_scores = context_retrieval_runtime.search_memory_documents_for_retrieval(
+        store,
+        rewritten_query="fallback",
+        filter_scope=scope,
+    )
+
+    assert store.calls == [
+        {
+            "query": "fallback",
+            "k": 18,
+            "exclude_doc_ids": set(),
+            "exclude_source_ids": {"src-1"},
+            "exclude_turn_scoped_ids": set(),
+            "segment_ids": set(),
+            "segment_types": set(),
+        }
+    ]
+    assert len(docs_and_scores) == 1
+    assert docs_and_scores[0][0].id == "doc-2"
