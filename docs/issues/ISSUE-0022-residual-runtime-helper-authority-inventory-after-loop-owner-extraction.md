@@ -275,3 +275,22 @@ Post-#697 scorer handoff clarification:
 - remaining scorer-category debt: scorer-internal temporal/objective implementation seams and broader scorer redesign;
 - recommended next smallest scorer-internals slice: temporal signal composition seam (gaussian temporal weighting +
   timestamp-quality attribution contract hardening) without objective semantics redesign.
+
+## 2026-03-29 post-merge inventory addendum — PR #698 temporal composition seam slice
+
+A bounded scorer category-debt execution note for scorer-internal temporal signal composition seam hardening
+(gaussian temporal weighting + timestamp-quality attribution contract) has been added:
+
+- `docs/issues/evidence/2026-03-29-pr-698-temporal-signal-composition-seam.md`
+
+Post-#698 scorer handoff clarification:
+- processed: scorer-internal temporal signal composition seam (`compute_temporal_signal_composition(...)`);
+- remaining scorer-category debt: broader scorer final-score component composition internals and objective/fusion redesign;
+- recommended next smallest scorer-internals slice: bounded final-score component composition seam hardening
+  (type/lane/temporal component assembly) without coefficient/objective redesign.
+
+Post-#698 merge-note tightening (explicit):
+- processed unit type: category-debt execution slice;
+- processed seam: temporal signal composition (gaussian temporal weighting + timestamp-quality attribution);
+- deferred debt: final-score composition internals and broader scorer redesign remain out of scope;
+- recommended next bounded unit: scorer-internal final-score component composition seam hardening.
