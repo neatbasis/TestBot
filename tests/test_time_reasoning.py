@@ -83,6 +83,43 @@ def test_stage_rerank_delegates_confidence_projection_to_runtime_owner(monkeypat
     assert observed["sigma_seconds"] > 0
 
 
+def test_stage_rerank_delegates_scorer_execution_contract_to_runtime_owner(monkeypatch) -> None:
+    frozen_now = arrow.get("2026-03-10T12:00:00+00:00")
+    state = PipelineState(user_input="what happened")
+    observed: dict[str, object] = {}
+
+    def _fake_execute(request):
+        observed["request"] = request
+        doc = Document(id="doc-1", page_content="winner", metadata={"doc_id": "doc-1", "ts": "2026-03-10T11:30:00+00:00"})
+        outcome = runtime.context_retrieval_runtime_service.RerankOutcome(
+            docs=[doc],
+            ambiguity_detected=False,
+            near_tie_candidates=[],
+            scored_candidates=[{"doc_id": "doc-1", "final_score": 0.9}],
+        )
+        return runtime.context_retrieval_runtime_service.ScorerExecutionResult(rerank_outcome=outcome)
+
+    monkeypatch.setattr(runtime.context_retrieval_runtime_service, "execute_rerank_scorer_contract", _fake_execute)
+
+    updated, hits = stage_rerank(
+        state,
+        [],
+        utterance="what happened",
+        user_doc_id="u1",
+        user_reflection_doc_id="r1",
+        near_tie_delta=0.02,
+        clock=FakeClock(frozen_now),
+    )
+
+    request = observed["request"]
+    assert isinstance(request, runtime.context_retrieval_runtime_service.ScorerExecutionRequest)
+    assert request.top_k == 4
+    assert request.exclude_doc_ids == {"u1", "r1"}
+    assert request.exclude_source_ids == {"u1"}
+    assert len(hits) == 1
+    assert updated.reranked_hits[0].doc_id == "doc-1"
+
+
 def test_run_canonical_answer_stage_flow_time_query_uses_fake_clock_and_helsinki() -> None:
     frozen_now = arrow.get("2026-03-10T22:30:00+00:00")
     state = PipelineState(user_input="what is tomorrow?", last_user_message_ts="2026-03-10T22:00:00+00:00")

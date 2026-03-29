@@ -22,7 +22,12 @@ from testbot.context_resolution import resolve as _resolve_context_from_domain
 from testbot.evidence_retrieval import RetrievalInputRecord
 from testbot.pipeline_state import PipelineState
 from testbot.ports import MemorySearchQuery, MemoryStorePort
-from testbot.rerank import ContextConfidenceThresholds, RerankOutcome, rerank_confidence_thresholds
+from testbot.rerank import (
+    ContextConfidenceThresholds,
+    RerankOutcome,
+    rerank_confidence_thresholds,
+    rerank_docs_with_time_and_type_outcome,
+)
 from testbot.time_parse import parse_target_time
 from testbot.domain import Clock
 
@@ -160,6 +165,42 @@ class RerankThresholdProfilePolicy:
 class RerankDecisionPolicy:
     invocation_policy: RerankInvocationPolicy
     threshold_profile_policy: RerankThresholdProfilePolicy
+
+
+@dataclass(frozen=True)
+class ScorerExecutionRequest:
+    docs_and_scores: list[tuple[Document, float]]
+    now: arrow.Arrow
+    target: arrow.Arrow
+    sigma_seconds: float
+    exclude_doc_ids: set[str]
+    exclude_source_ids: set[str]
+    top_k: int
+    near_tie_delta: float
+
+
+@dataclass(frozen=True)
+class ScorerExecutionResult:
+    rerank_outcome: RerankOutcome
+
+
+def execute_rerank_scorer_contract(
+    request: ScorerExecutionRequest,
+    *,
+    scorer_fn: Callable[..., RerankOutcome] = rerank_docs_with_time_and_type_outcome,
+) -> ScorerExecutionResult:
+    return ScorerExecutionResult(
+        rerank_outcome=scorer_fn(
+            request.docs_and_scores,
+            now=request.now,
+            target=request.target,
+            sigma_seconds=request.sigma_seconds,
+            exclude_doc_ids=request.exclude_doc_ids,
+            exclude_source_ids=request.exclude_source_ids,
+            top_k=request.top_k,
+            near_tie_delta=request.near_tie_delta,
+        )
+    )
 
 
 def project_rerank_confidence_decision(
@@ -480,11 +521,14 @@ __all__ = [
     "RerankDecisionPolicy",
     "RerankInvocationPolicy",
     "RerankThresholdProfilePolicy",
+    "ScorerExecutionRequest",
+    "ScorerExecutionResult",
     "assemble_rerank_decision_policy",
     "assemble_rerank_invocation_policy",
     "assemble_rerank_threshold_profile_policy",
     "filter_documents_for_temporal_window",
     "document_from_retrieval_input",
+    "execute_rerank_scorer_contract",
     "normalize_retrieval_filter_scope",
     "project_rerank_confidence_decision",
     "resolve_rerank_target_time",

@@ -398,6 +398,48 @@ def test_assemble_rerank_decision_policy_combines_invocation_and_threshold_profi
     assert policy.threshold_profile_policy.ambiguity_override_top_final_score_min == 0.88
 
 
+def test_execute_rerank_scorer_contract_delegates_invocation_and_returns_outcome() -> None:
+    now = arrow.get("2026-03-10T12:00:00+00:00")
+    target = arrow.get("2026-03-10T11:30:00+00:00")
+    docs_and_scores = [(Document(id="doc-1", page_content="candidate", metadata={"doc_id": "doc-1"}), 0.7)]
+    observed: dict[str, object] = {}
+    expected_outcome = context_retrieval_runtime.RerankOutcome(
+        docs=[docs_and_scores[0][0]],
+        ambiguity_detected=False,
+        near_tie_candidates=[],
+        scored_candidates=[{"doc_id": "doc-1", "final_score": 0.7}],
+    )
+
+    def _fake_scorer(input_docs_and_scores, **kwargs):
+        observed["docs_and_scores"] = input_docs_and_scores
+        observed["kwargs"] = kwargs
+        return expected_outcome
+
+    request = context_retrieval_runtime.ScorerExecutionRequest(
+        docs_and_scores=docs_and_scores,
+        now=now,
+        target=target,
+        sigma_seconds=123.0,
+        exclude_doc_ids={"user-doc"},
+        exclude_source_ids={"source-doc"},
+        top_k=3,
+        near_tie_delta=0.05,
+    )
+    result = context_retrieval_runtime.execute_rerank_scorer_contract(request, scorer_fn=_fake_scorer)
+
+    assert observed["docs_and_scores"] == docs_and_scores
+    assert observed["kwargs"] == {
+        "now": now,
+        "target": target,
+        "sigma_seconds": 123.0,
+        "exclude_doc_ids": {"user-doc"},
+        "exclude_source_ids": {"source-doc"},
+        "top_k": 3,
+        "near_tie_delta": 0.05,
+    }
+    assert result.rerank_outcome is expected_outcome
+
+
 def test_project_rerank_confidence_decision_projects_decision_aftermath_shape() -> None:
     now = arrow.get("2026-03-10T12:00:00+00:00")
     target = arrow.get("2026-03-10T11:30:00+00:00")
