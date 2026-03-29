@@ -7,105 +7,95 @@
 
 ## 1) Review scope
 
-This review covers the ISSUE-0022 transition from completed rerank wrapper-retirement rows into scorer-category debt execution and the immediate post-#700 handoff clarification.
+This review covers the ISSUE-0022 transition from completed rerank wrapper-retirement rows into scorer-category debt execution and immediate post-#700 handoff clarification.
 
-- Evidence X supports claim Y because Z: `2026-03-29-issue-0022-stage-rerank-wrapper-retirement.md` states rerank wrapper-retirement rows are complete and explicitly pivots remaining work to scorer-category debt, so this review can treat row retirement as phase-complete and focus on category debt landing state.
-- It does not yet support stronger claim W because Q: row completion evidence does not itself prove scorer-category closure; later scorer-category execution evidence is still required.
+- Evidence X supports claim Y because Z: `2026-03-29-issue-0022-stage-rerank-wrapper-retirement.md` states rerank wrapper-retirement rows are complete and pivots remaining work to scorer-category debt, so this review can treat row retirement as phase-complete and focus on category-debt landing state.
+- It does not yet support stronger claim W because Q: row completion evidence alone does not prove scorer-category closure; scorer-category execution evidence is still required.
 
-## 2) Program phases
+## 2) Current landing state
 
-### Phase A — runtime seam extraction / row-retirement phase
+- ISSUE-0022 has landed in a **split authority state**:
+  - runtime/control-point scorer boundaries are explicit for canonical path orchestration,
+  - scorer semantic internals remain implementation-owned and compatibility-preserving.
+- The monolith no longer owns retired wrapper-row forwarding mechanics.
+- Compatibility/legacy posture still applies for broader scorer internals and co-located scorer-category shaping not yet extracted.
 
-Status: **complete** for the rerank wrapper-retirement row program.
-
-- Evidence X supports claim Y because Z: the wrapper-retirement execution artifact records that no staged rerank wrapper rows remain and that `_stage_rerank_for_turn_service` retirement finished with direct runtime-service control-point wiring preserved.
-- It does not yet support stronger claim W because Q: wrapper-retirement completion is not equivalent to scorer-internal category completion.
-
-### Phase B — scorer-category phase
-
-Status: **active and partially complete**.
-
-- Evidence X supports claim Y because Z: decomposition + execution artifacts (`#693`, `#699`, `#700`) show scorer-category work progressed through bounded seams (final-score component composition, then lane/type prior determination) while preserving unchanged final-score semantics.
-- It does not yet support stronger claim W because Q: those artifacts explicitly retain remaining scorer-category seams (candidate-output/projection shaping and tie/ambiguity shaping), so the category is not closed.
+- Evidence X supports claim Y because Z: wrapper-retirement evidence establishes retired row ownership movement, and scorer-category evidence marks internals redesign as out of scope; together this supports a landing state of boundary progress plus explicit residual category debt.
+- It does not yet support stronger claim W because Q: current evidence does not show complete scorer-category seam closure end-to-end.
 
 ## 3) Completed phases and seams
 
-### 3.1 Completed phase-level moves
+### 3.1 Program phases
 
-1. **Rerank row-retirement phase complete** (no rerank wrapper rows remaining).
-2. **Scorer-category phase started and advanced through multiple bounded internal seams** (`#699`, `#700`) with explicit handoff framing tightened in `#701`.
+- **Phase A — runtime seam extraction / row-retirement phase:** complete for rerank wrapper-retirement rows.
+- **Phase B — scorer-category phase:** active and partially complete.
 
-### 3.2 Completed seams / authority transfers
+### 3.2 Completed program work (explicit)
 
-1. **Runtime-owned scorer boundary status:** runtime-owned scorer contract/interpretation/config materialization seams were already established in prior scorer-category execution updates, keeping canonical control-point ownership explicit while leaving scorer internals compatibility-owned.
-2. **Scorer-internal seam completion to date:**
+1. **Rerank row program completion:** no rerank wrapper-retirement rows remain.
+2. **Runtime/control-point extraction progress:** runtime-owned scorer boundary contract surfaces were made explicit in prior scorer-category execution updates (execution contract, interpretation, config materialization posture).
+3. **Scorer-category seams already made explicit:**
    - final-score component composition seam (`#699`),
-   - lane/type prior determination seam (`#700`).
-3. **Post-#700 authority framing tightened (`#701`):** handoff notes now explicitly separate completed scorer-internal seam work from remaining scorer-category debt.
+   - lane/type prior determination seam (`#700`),
+   - post-#700 handoff framing tightened in `#701` to keep unchanged final-score semantics and residual seam debt explicit.
 
-- Evidence X supports claim Y because Z: the `#699` and `#700` evidence files each identify one explicit bounded seam, unchanged formula semantics, and explicit residual debt; this supports a “bounded seam family completion in sequence” claim rather than a broad redesign claim.
-- It does not yet support stronger claim W because Q: neither artifact claims that scorer candidate-output composition/projection or ambiguity shaping has moved to explicit seams yet.
+- Evidence X supports claim Y because Z: `#699` and `#700` each record one bounded scorer-internal seam with unchanged semantics and explicit residual debt, which supports “completed seam-family slices” rather than “broad scorer redesign complete.”
+- It does not yet support stronger claim W because Q: neither artifact claims candidate-output/projection shaping or ambiguity shaping has already been fully extracted as explicit seams.
 
-## 4) Current landing state
+## 4) Remaining deferred scope
 
-### Where authority now lives
+### 4.1 Remaining bounded scorer-category seams
 
-- **Canonical runtime/control-point authority** for scorer boundary orchestration is explicit at runtime service seams.
-- **Scorer semantic internals authority** (objective math/fusion/ambiguity behavior) remains in scorer implementation paths.
+#### Next recommended seam (rank 1)
 
-### What the monolith no longer owns
+1. **Scorer candidate-output composition/projection shaping seam** (explicit seam upstream of confidence gating and downstream of final-score assembly).
 
-- It no longer owns the retired rerank wrapper-row forwarding surface and no longer serves as the authoritative control-point path for those retired row mechanics.
+#### Lower-priority scorer-category seams
 
-### What is still compatibility or legacy-owned
+2. **Tie/ambiguity projection shaping seam** (near-tie/unresolved-ambiguity shaping remains entangled in scorer flow).
+3. **Additional scorer-output shaping internals** still co-located in current scorer path.
 
-- Compatibility posture remains for broader scorer internals and co-located scorer-category shaping still resident in scorer execution paths.
+### 4.2 Broader deferred scorer redesign (intentionally out of scope)
 
-- Evidence X supports claim Y because Z: wrapper-retirement evidence establishes retired row ownership movement, and scorer-category evidence repeatedly marks internals redesign as out of scope; together this supports a split landing state (runtime boundary authority explicit, internals still deferred).
-- It does not yet support stronger claim W because Q: current evidence does not show complete scorer-category seam closure end-to-end.
+- Objective redesign, coefficient redesign, lane-fusion redesign, and full scorer algorithm redesign.
 
-## 5) Remaining deferred scope
+### 4.3 Ambient repo debt (outside the seam program)
 
-### 5.1 Remaining bounded scorer-category seams
+- **Behave/gate drift and broader readiness-gate instability** remain ambient repo debt.
+- Supporting artifacts may contain stale assumptions that should be handled as a separate cleanup stream, not conflated with bounded scorer-category seam execution.
 
-1. **Scorer candidate-output composition/projection shaping seam** (pre-confidence-gate/lane-fusion handoff shaping still co-located).
-2. **Tie/ambiguity projection shaping seam** (near-tie/unresolved-ambiguity shaping remains entangled with scorer flow).
+- Evidence X supports claim Y because Z: scorer-category artifacts identify bounded residual seam debt and broad redesign deferrals, while validation posture notes unrelated gate failures; this supports separating seam debt from ambient repository debt.
+- It does not yet support stronger claim W because Q: ambient gate failures alone do not localize to scorer-category ownership boundaries and should not be treated as scorer-phase completion evidence.
 
-### 5.2 Broader deferred scorer redesign
+## 5) Recommended next move
 
-- Objective redesign, coefficient redesign, lane-fusion redesign, and full scorer algorithm redesign remain explicitly out of scope.
-
-### 5.3 Ambient repo debt outside seam program
-
-- **Behave/gate drift and broader readiness-gate instability** remain ambient repo debt and are not evidence that scorer-category seam work is complete/incomplete by themselves.
-
-- Evidence X supports claim Y because Z: scorer-category artifacts explicitly name bounded residual seams and broad redesign deferrals, while validation notes acknowledge unrelated gate failures; this supports separating seam debt from ambient repo health debt.
-- It does not yet support stronger claim W because Q: ambient gate failures alone do not localize to scorer-category ownership boundaries.
-
-## 6) Recommended next bounded execution move
-
-**Recommended next move:** execute one bounded seam that extracts **scorer candidate-output composition/projection shaping** into an explicit seam immediately downstream of final-score assembly and upstream of confidence gating.
+**Recommended next bounded execution move:** execute one PR that extracts scorer candidate-output composition/projection shaping into an explicit seam immediately downstream of final-score assembly and upstream of confidence gating.
 
 Why this move next:
 
-- It is the next seam repeatedly identified by post-#700 handoff notes.
-- It tightens authority boundaries without opening broad scorer internals redesign.
-- It reduces ambiguity for downstream confidence/telemetry consumers by isolating one decision surface.
+- It is repeatedly named as the next bounded seam family in post-#700 handoff framing.
+- It advances authority-transfer clarity without reopening broad scorer internals redesign.
+- It creates a cleaner decision surface for downstream confidence/telemetry consumers.
 
-- Evidence X supports claim Y because Z: `#700` and post-#700 framing updates point to candidate-output/projection shaping as the next bounded seam family; this supports selecting one bounded execution move rather than reopening decomposition.
-- It does not yet support stronger claim W because Q: current evidence does not guarantee zero hidden coupling until that seam is actually extracted and validated.
+- Evidence X supports claim Y because Z: `#700` and post-#700 framing updates identify candidate-output/projection shaping as remaining seam-family debt, so selecting it preserves boundedness and continuity.
+- It does not yet support stronger claim W because Q: hidden coupling cannot be ruled out until this seam is extracted and validated with explicit control-point and parity evidence.
 
-## 7) Why this review matters now
+## 6) Implemented docs change
 
-This review creates one reusable landing-state reference so follow-on PRs can cite current phase completion, authority boundaries, remaining category debt, and the next bounded move without re-deriving the whole chain.
+- Added this single canonical review artifact in the existing ISSUE-0022 evidence area:
+  - `docs/issues/evidence/2026-03-29-issue-0022-progress-and-landing-review.md`
+- No runtime/scorer behavior changes; docs/evidence-only update.
 
-- Evidence X supports claim Y because Z: the chain now includes completed row retirement, multiple scorer-category seam slices, and post-#700 framing tightening, so ambiguity cost is now dominated by synthesis rather than missing raw evidence.
-- It does not yet support stronger claim W because Q: this artifact is a review baseline, not execution proof for future seams.
+## 7) Strongest justified claim
 
-## 8) Strongest justified claim
+**Strongest bounded claim:** ISSUE-0022 has landed at a phase boundary where rerank wrapper-retirement rows are complete, scorer-category work is active but not closed, explicit runtime boundary ownership has progressed, and one next bounded seam (candidate-output/projection shaping) is now the recommended execution move.
 
-**Strongest bounded claim:** ISSUE-0022 has landed in a state where rerank wrapper-retirement rows are complete, scorer-category seam work is actively progressed but not closed, authority transfer to explicit runtime scorer boundaries is in place, and the next justified move is a single bounded scorer candidate-output/projection seam extraction.
+## 8) PR-ready summary
 
-## 9) PR-ready summary
+ISSUE-0022 has crossed from completed rerank wrapper-row work into scorer-category seam execution. Completed seams include final-score component composition (`#699`) and lane/type prior determination (`#700`), with post-#700 framing tightened in `#701`. Remaining work is explicitly separated into bounded scorer-category seams (next: candidate-output/projection shaping), broad scorer redesign that remains out of scope, and ambient repo debt (behave/gate drift and stale-supporting-artifact assumptions). This review is the canonical landing-state anchor for follow-on bounded execution PRs.
 
-ISSUE-0022 has crossed a clear phase transition: rerank wrapper-retirement rows are complete, and the program is now in scorer-category debt execution with #699 and #700 completed seams plus #701 handoff-framing hardening. Landing-state authority is now explicit at runtime scorer boundaries, while remaining scorer-category seams (candidate-output/projection shaping and tie/ambiguity shaping) and broader scorer redesign remain deferred. Ambient behave/gate drift is tracked separately as repo debt. Recommended next move: one bounded scorer candidate-output/projection seam PR.
+## 9) Tests / validation run
+
+- `python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main` (pass)
+- `python scripts/validate_issues.py --all-issue-files --base-ref origin/main` (pass)
+- `python scripts/all_green_gate.py` (fails on pre-existing behave scenario failures unrelated to this docs-only change)
