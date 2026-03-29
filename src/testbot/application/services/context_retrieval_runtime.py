@@ -25,6 +25,7 @@ from testbot.ports import MemorySearchQuery, MemoryStorePort
 from testbot.rerank import (
     ContextConfidenceThresholds,
     RerankOutcome,
+    has_sufficient_context_confidence_from_objective,
     rerank_confidence_thresholds,
     rerank_docs_with_time_and_type_outcome,
 )
@@ -184,6 +185,12 @@ class ScorerExecutionResult:
     rerank_outcome: RerankOutcome
 
 
+@dataclass(frozen=True)
+class ScorerInterpretationResult:
+    hits: list[Document]
+    has_context: bool
+
+
 def execute_rerank_scorer_contract(
     request: ScorerExecutionRequest,
     *,
@@ -200,6 +207,22 @@ def execute_rerank_scorer_contract(
             top_k=request.top_k,
             near_tie_delta=request.near_tie_delta,
         )
+    )
+
+
+def interpret_rerank_scorer_result(
+    result: ScorerExecutionResult,
+    *,
+    has_sufficient_context_confidence_fn: Callable[..., bool] = has_sufficient_context_confidence_from_objective,
+) -> ScorerInterpretationResult:
+    rerank_outcome = result.rerank_outcome
+    hits = rerank_outcome.docs
+    return ScorerInterpretationResult(
+        hits=hits,
+        has_context=has_sufficient_context_confidence_fn(
+            scored_candidates=rerank_outcome.scored_candidates,
+            ambiguity_detected=rerank_outcome.ambiguity_detected,
+        ),
     )
 
 
@@ -523,12 +546,14 @@ __all__ = [
     "RerankThresholdProfilePolicy",
     "ScorerExecutionRequest",
     "ScorerExecutionResult",
+    "ScorerInterpretationResult",
     "assemble_rerank_decision_policy",
     "assemble_rerank_invocation_policy",
     "assemble_rerank_threshold_profile_policy",
     "filter_documents_for_temporal_window",
     "document_from_retrieval_input",
     "execute_rerank_scorer_contract",
+    "interpret_rerank_scorer_result",
     "normalize_retrieval_filter_scope",
     "project_rerank_confidence_decision",
     "resolve_rerank_target_time",

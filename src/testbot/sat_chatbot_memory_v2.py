@@ -715,13 +715,11 @@ def stage_rerank(
         near_tie_delta=invocation_policy.near_tie_delta,
     )
     scorer_result = context_retrieval_runtime_service.execute_rerank_scorer_contract(scorer_request)
+    scorer_interpretation = context_retrieval_runtime_service.interpret_rerank_scorer_result(scorer_result)
     rerank_outcome = scorer_result.rerank_outcome
-    hits = rerank_outcome.docs
+    hits = scorer_interpretation.hits
     reranked_hits = [doc_to_candidate_hit(doc, score=0.0) for doc in hits]
-    has_context = has_sufficient_context_confidence(
-        rerank_outcome.scored_candidates,
-        ambiguity_detected=rerank_outcome.ambiguity_detected,
-    )
+    has_context = scorer_interpretation.has_context
     threshold_profile_policy = decision_policy.threshold_profile_policy
     confidence_decision = context_retrieval_runtime_service.project_rerank_confidence_decision(
         prior_confidence_decision=dict(state.confidence_decision),

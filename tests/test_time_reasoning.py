@@ -120,6 +120,50 @@ def test_stage_rerank_delegates_scorer_execution_contract_to_runtime_owner(monke
     assert updated.reranked_hits[0].doc_id == "doc-1"
 
 
+def test_stage_rerank_delegates_scorer_result_interpretation_to_runtime_owner(monkeypatch) -> None:
+    frozen_now = arrow.get("2026-03-10T12:00:00+00:00")
+    state = PipelineState(user_input="what happened")
+    observed: dict[str, object] = {}
+
+    doc = Document(id="doc-1", page_content="winner", metadata={"doc_id": "doc-1", "ts": "2026-03-10T11:30:00+00:00"})
+    outcome = runtime.context_retrieval_runtime_service.RerankOutcome(
+        docs=[doc],
+        ambiguity_detected=False,
+        near_tie_candidates=[],
+        scored_candidates=[{"doc_id": "doc-1", "final_score": 0.9}],
+    )
+    scorer_result = runtime.context_retrieval_runtime_service.ScorerExecutionResult(rerank_outcome=outcome)
+
+    monkeypatch.setattr(
+        runtime.context_retrieval_runtime_service,
+        "execute_rerank_scorer_contract",
+        lambda request: scorer_result,
+    )
+
+    def _fake_interpret(result):
+        observed["result"] = result
+        return runtime.context_retrieval_runtime_service.ScorerInterpretationResult(
+            hits=[doc],
+            has_context=True,
+        )
+
+    monkeypatch.setattr(runtime.context_retrieval_runtime_service, "interpret_rerank_scorer_result", _fake_interpret)
+
+    updated, hits = stage_rerank(
+        state,
+        [],
+        utterance="what happened",
+        user_doc_id="u1",
+        user_reflection_doc_id="r1",
+        near_tie_delta=0.02,
+        clock=FakeClock(frozen_now),
+    )
+
+    assert observed["result"] is scorer_result
+    assert [h.doc_id for h in updated.reranked_hits] == ["doc-1"]
+    assert [d.id for d in hits] == ["doc-1"]
+
+
 def test_run_canonical_answer_stage_flow_time_query_uses_fake_clock_and_helsinki() -> None:
     frozen_now = arrow.get("2026-03-10T22:30:00+00:00")
     state = PipelineState(user_input="what is tomorrow?", last_user_message_ts="2026-03-10T22:00:00+00:00")
