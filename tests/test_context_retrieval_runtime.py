@@ -152,8 +152,14 @@ def test_stage_rerank_for_turn_service_runtime_path_is_equivalent_to_direct_stag
 def test_stage_rerank_wrapper_is_retired_in_src_tree_runtime_wiring() -> None:
     source_path = Path("src/testbot/sat_chatbot_memory_v2.py")
     source = source_path.read_text()
+    residual_refs = []
+    for path in Path("src").rglob("*.py"):
+        text = path.read_text()
+        if "_stage_rerank_for_turn_service" in text:
+            residual_refs.append(str(path))
 
     assert "_stage_rerank_for_turn_service" not in source
+    assert residual_refs == []
     assert "stage_rerank=lambda *args, **kwargs: context_retrieval_runtime_service.stage_rerank_for_turn_service(" in source
 
 

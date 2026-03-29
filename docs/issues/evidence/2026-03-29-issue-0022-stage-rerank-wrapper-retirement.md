@@ -83,13 +83,13 @@ Issue: ISSUE-0022
 
 ## Strongest justified claim
 
-- **Strongest bounded claim this PR justifies:** the stage rerank compatibility wrapper row is retired in-repo with canonical runtime control-point behavior preserved.
+- **Strongest bounded claim this PR justifies:** the staged rerank wrapper-retirement row program is complete in-repo, with canonical runtime control-point behavior preserved and scorer-category redesign explicitly out of scope.
 
 ## Remaining deferred scope
 
 ### Rows remaining
 
-- Broader compatibility façade retirement rows outside this specific wrapper.
+- None for the staged rerank wrapper-retirement row program.
 
 ### Category debt remaining
 
@@ -98,18 +98,18 @@ Issue: ISSUE-0022
 ## Options opened by this PR
 
 For each option include:
-- **What the option would do:** continue with next bounded compatibility retirement row in ISSUE-0021/ISSUE-0022 inventory.
-  - **What it depends on:** updated caller census + explicit ownership slice selection for that next row.
-  - **Recommended next option and why:** recommended, because this keeps control-point leverage incremental without mixing in scorer redesign debt.
-- **What the option would do:** begin scorer-category redesign.
-  - **What it depends on:** explicit design proposal and broader evidence scope.
-  - **Recommended next option and why:** not recommended immediately; larger blast radius than current retirement sequence.
+- **What the option would do:** produce scorer-category debt decomposition and select smallest bounded scorer-contract/scorer-execution slice.
+  - **What it depends on:** explicit category inventory, bounded slice selection criteria, and control-point invariants for that slice.
+  - **Recommended next option and why:** recommended, because wrapper-row leverage is now consumed and the next unit of progress is category-level decomposition.
+- **What the option would do:** perform broad scorer redesign immediately.
+  - **What it depends on:** substantial design + validation surface in one step.
+  - **Recommended next option and why:** not recommended immediately; weaker boundedness and higher blast radius than decomposition-first sequencing.
 
 ## How this PR makes later moves easier
 
 - **Ambiguity reduced:** wrapper retirement no longer blocks authority-map reads for rerank control point.
 - **Ownership boundary made clearer:** runtime hook now directly names canonical service owner and semantic stage hook.
-- **What future move is now safer/smaller/faster:** remaining retirement rows can use simpler caller-census checks without this wrapper branch.
+- **What future move is now safer/smaller/faster:** scorer-category decomposition can proceed without wrapper-retirement ambiguity.
 
 ## Operational posture (lightweight)
 
@@ -122,8 +122,8 @@ For each option include:
 - **Selected retirement row processed:** stage rerank wrapper retirement.
 - **Leverage consumed:** #690 caller-census + runtime-equivalence leverage, using #691 retirement template contract.
 - **Bounded authority moved (or readiness evidence hardened):** removed compatibility wrapper seam; direct canonical control-point wiring retained.
-- **Rows remaining + category debt remaining:** other retirement rows remain; scorer-category debt remains deferred.
-- **Recommended next move:** pick next smallest retirement row from inventory; avoid mixing with scorer redesign.
+- **Rows remaining + category debt remaining:** no rerank wrapper rows remain; scorer-category debt remains deferred.
+- **Recommended next move:** start scorer-category debt decomposition with smallest bounded scorer-contract/scorer-execution slice.
 
 ## Tests run
 
