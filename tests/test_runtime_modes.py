@@ -253,6 +253,8 @@ def test_runtime_loop_owner_uses_canonical_turn_pipeline_helper_not_monolith_tur
     assert "_resolve_answer_routing_for_stage" not in source
     assert "_answer_assemble_for_turn_service" not in source
     assert "_answer_validate_for_turn_service" not in source
+    assert "build_provenance_metadata=getattr(_legacy_runtime" not in source
+    assert "evaluate_alignment_decision=getattr(_legacy_runtime" not in source
     assert "_detect_capability_offer" not in source
     assert "_should_force_memory_retrieval_for_identity_recall" not in source
     assert "_stage_retrieve_for_turn_service" not in source

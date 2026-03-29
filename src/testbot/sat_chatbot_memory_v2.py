@@ -781,14 +781,6 @@ def _answer_validate_for_turn_service(
         chat_history=chat_history,
         pending_lookup_override=pending_lookup_override,
         document_from_retrieval_input=_document_from_retrieval_input,
-        build_provenance_metadata=build_provenance_metadata_from_logic,
-        evaluate_alignment_decision=_evaluate_alignment_decision,
-        fallback_answer=FALLBACK_ANSWER,
-        deny_answer=DENY_ANSWER,
-        assist_alternatives_answer=ASSIST_ALTERNATIVES_ANSWER,
-        non_knowledge_uncertainty_answer=NON_KNOWLEDGE_UNCERTAINTY_ANSWER,
-        clarify_answer=CLARIFY_ANSWER,
-        route_to_ask_answer=ROUTE_TO_ASK_ANSWER,
     )
 
 
