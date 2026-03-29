@@ -22,7 +22,7 @@ from testbot.context_resolution import resolve as _resolve_context_from_domain
 from testbot.evidence_retrieval import RetrievalInputRecord
 from testbot.pipeline_state import PipelineState
 from testbot.ports import MemorySearchQuery, MemoryStorePort
-from testbot.rerank import ContextConfidenceThresholds, rerank_confidence_thresholds
+from testbot.rerank import ContextConfidenceThresholds, RerankOutcome, rerank_confidence_thresholds
 from testbot.time_parse import parse_target_time
 from testbot.domain import Clock
 
@@ -160,6 +160,48 @@ class RerankThresholdProfilePolicy:
 class RerankDecisionPolicy:
     invocation_policy: RerankInvocationPolicy
     threshold_profile_policy: RerankThresholdProfilePolicy
+
+
+def project_rerank_confidence_decision(
+    *,
+    prior_confidence_decision: dict[str, object],
+    has_context: bool,
+    rerank_outcome: RerankOutcome,
+    temporal_bridge: dict[str, object],
+    threshold_profile_policy: RerankThresholdProfilePolicy,
+    now: arrow.Arrow,
+    target: arrow.Arrow,
+    sigma_seconds: float,
+) -> dict[str, object]:
+    scored_candidates = rerank_outcome.scored_candidates
+    objective = scored_candidates[0].get("objective", "") if scored_candidates else ""
+    objective_version = scored_candidates[0].get("objective_version", "") if scored_candidates else ""
+    return {
+        **prior_confidence_decision,
+        "context_confident": has_context,
+        "ambiguity_detected": rerank_outcome.ambiguity_detected,
+        "anaphora_detected": bool(temporal_bridge.get("anaphora_detected", False)),
+        "anchor_candidates": temporal_bridge.get("anchor_candidates", []),
+        "selected_anchor_doc_id": str(temporal_bridge.get("selected_anchor_doc_id") or ""),
+        "selected_anchor_ts": str(temporal_bridge.get("selected_anchor_ts") or ""),
+        "computed_delta_raw_seconds": temporal_bridge.get("delta_seconds_raw"),
+        "computed_delta_humanized": str(temporal_bridge.get("delta_humanized") or ""),
+        "ambiguous_candidates": rerank_outcome.near_tie_candidates,
+        "scored_candidates": scored_candidates,
+        "memory_hit_count": len(rerank_outcome.docs),
+        "objective": objective,
+        "objective_version": objective_version,
+        "top_final_score_min": threshold_profile_policy.top_final_score_min,
+        "min_margin_to_second": threshold_profile_policy.min_margin_to_second,
+        "allow_ambiguity_override": threshold_profile_policy.allow_ambiguity_override,
+        "ambiguity_override_top_final_score_min": threshold_profile_policy.ambiguity_override_top_final_score_min,
+        "now_ts": now.isoformat(),
+        "target_ts": target.isoformat(),
+        "sigma_seconds": sigma_seconds,
+        "time_window": str(temporal_bridge.get("time_window") or ""),
+        "window_start": str(temporal_bridge.get("window_start") or ""),
+        "window_end": str(temporal_bridge.get("window_end") or ""),
+    }
 
 
 def normalize_retrieval_filter_scope(
@@ -444,6 +486,7 @@ __all__ = [
     "filter_documents_for_temporal_window",
     "document_from_retrieval_input",
     "normalize_retrieval_filter_scope",
+    "project_rerank_confidence_decision",
     "resolve_rerank_target_time",
     "resolve_temporal_anaphora_bridge",
     "resolve_context",

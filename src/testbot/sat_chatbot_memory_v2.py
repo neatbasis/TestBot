@@ -722,32 +722,16 @@ def stage_rerank(
         ambiguity_detected=rerank_outcome.ambiguity_detected,
     )
     threshold_profile_policy = decision_policy.threshold_profile_policy
-    confidence_decision = {
-        **state.confidence_decision,
-        "context_confident": has_context,
-        "ambiguity_detected": rerank_outcome.ambiguity_detected,
-        "anaphora_detected": bool(temporal_bridge.get("anaphora_detected", False)),
-        "anchor_candidates": temporal_bridge.get("anchor_candidates", []),
-        "selected_anchor_doc_id": str(temporal_bridge.get("selected_anchor_doc_id") or ""),
-        "selected_anchor_ts": str(temporal_bridge.get("selected_anchor_ts") or ""),
-        "computed_delta_raw_seconds": temporal_bridge.get("delta_seconds_raw"),
-        "computed_delta_humanized": str(temporal_bridge.get("delta_humanized") or ""),
-        "ambiguous_candidates": rerank_outcome.near_tie_candidates,
-        "scored_candidates": rerank_outcome.scored_candidates,
-        "memory_hit_count": len(hits),
-        "objective": rerank_outcome.scored_candidates[0].get("objective", "") if rerank_outcome.scored_candidates else "",
-        "objective_version": rerank_outcome.scored_candidates[0].get("objective_version", "") if rerank_outcome.scored_candidates else "",
-        "top_final_score_min": threshold_profile_policy.top_final_score_min,
-        "min_margin_to_second": threshold_profile_policy.min_margin_to_second,
-        "allow_ambiguity_override": threshold_profile_policy.allow_ambiguity_override,
-        "ambiguity_override_top_final_score_min": threshold_profile_policy.ambiguity_override_top_final_score_min,
-        "now_ts": now.isoformat(),
-        "target_ts": target.isoformat(),
-        "sigma_seconds": sigma,
-        "time_window": str(temporal_bridge.get("time_window") or ""),
-        "window_start": str(temporal_bridge.get("window_start") or ""),
-        "window_end": str(temporal_bridge.get("window_end") or ""),
-    }
+    confidence_decision = context_retrieval_runtime_service.project_rerank_confidence_decision(
+        prior_confidence_decision=dict(state.confidence_decision),
+        has_context=has_context,
+        rerank_outcome=rerank_outcome,
+        temporal_bridge=temporal_bridge,
+        threshold_profile_policy=threshold_profile_policy,
+        now=now,
+        target=target,
+        sigma_seconds=sigma,
+    )
     return replace(state, reranked_hits=reranked_hits, confidence_decision=confidence_decision), hits
 
 

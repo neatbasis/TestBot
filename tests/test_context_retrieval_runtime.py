@@ -335,3 +335,70 @@ def test_assemble_rerank_decision_policy_combines_invocation_and_threshold_profi
     assert policy.threshold_profile_policy.min_margin_to_second == 0.05
     assert policy.threshold_profile_policy.allow_ambiguity_override is False
     assert policy.threshold_profile_policy.ambiguity_override_top_final_score_min == 0.88
+
+
+def test_project_rerank_confidence_decision_projects_decision_aftermath_shape() -> None:
+    now = arrow.get("2026-03-10T12:00:00+00:00")
+    target = arrow.get("2026-03-10T11:30:00+00:00")
+    rerank_outcome = context_retrieval_runtime.RerankOutcome(
+        docs=[
+            Document(
+                id="doc-1",
+                page_content="hit",
+                metadata={"doc_id": "doc-1", "ts": "2026-03-10T11:30:00+00:00"},
+            )
+        ],
+        ambiguity_detected=False,
+        near_tie_candidates=[{"doc_id": "doc-2", "score": 0.61}],
+        scored_candidates=[
+            {
+                "doc_id": "doc-1",
+                "final_score": 0.88,
+                "objective": "semantic_temporal_type_v2",
+                "objective_version": "v2",
+            }
+        ],
+    )
+    threshold_profile_policy = context_retrieval_runtime.RerankThresholdProfilePolicy(
+        top_final_score_min=0.4,
+        min_margin_to_second=0.08,
+        allow_ambiguity_override=True,
+        ambiguity_override_top_final_score_min=0.92,
+    )
+
+    projected = context_retrieval_runtime.project_rerank_confidence_decision(
+        prior_confidence_decision={"prior_key": "kept"},
+        has_context=True,
+        rerank_outcome=rerank_outcome,
+        temporal_bridge={
+            "anaphora_detected": True,
+            "anchor_candidates": [{"doc_id": "doc-1"}],
+            "selected_anchor_doc_id": "doc-1",
+            "selected_anchor_ts": "2026-03-10T11:30:00+00:00",
+            "delta_seconds_raw": 1800,
+            "delta_humanized": "30 minutes ago",
+            "time_window": "yesterday",
+            "window_start": "2026-03-09T00:00:00+00:00",
+            "window_end": "2026-03-09T23:59:59.999999+00:00",
+        },
+        threshold_profile_policy=threshold_profile_policy,
+        now=now,
+        target=target,
+        sigma_seconds=123.0,
+    )
+
+    assert projected["prior_key"] == "kept"
+    assert projected["context_confident"] is True
+    assert projected["ambiguity_detected"] is False
+    assert projected["selected_anchor_doc_id"] == "doc-1"
+    assert projected["computed_delta_raw_seconds"] == 1800
+    assert projected["objective"] == "semantic_temporal_type_v2"
+    assert projected["objective_version"] == "v2"
+    assert projected["top_final_score_min"] == 0.4
+    assert projected["min_margin_to_second"] == 0.08
+    assert projected["allow_ambiguity_override"] is True
+    assert projected["ambiguity_override_top_final_score_min"] == 0.92
+    assert projected["memory_hit_count"] == 1
+    assert projected["now_ts"] == "2026-03-10T12:00:00+00:00"
+    assert projected["target_ts"] == "2026-03-10T11:30:00+00:00"
+    assert projected["sigma_seconds"] == 123.0
