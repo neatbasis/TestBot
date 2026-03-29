@@ -41,6 +41,14 @@ class TemporalSignalComposition:
     temporal_blend: float
 
 
+@dataclass(frozen=True)
+class ObjectiveComponentComposition:
+    inferred_lane: RecordKind
+    type_prior: float
+    lane_prior: float
+    final_score: float
+
+
 DEFAULT_RERANK_OBJECTIVE_CONFIG_PATH = Path("config/rerank_objective.json")
 RERANK_OBJECTIVE_CONFIG_ENV = "TESTBOT_RERANK_OBJECTIVE_CONFIG"
 
@@ -505,6 +513,30 @@ def time_weight(doc_ts_iso: str, target: arrow.Arrow, sigma_seconds: float) -> f
     ).temporal_gaussian_weight
 
 
+def compute_objective_component_composition(
+    *,
+    sim_score: float,
+    doc_type: str,
+    temporal_signal: TemporalSignalComposition,
+    coefficients: RerankObjectiveCoefficients,
+) -> ObjectiveComponentComposition:
+    inferred_lane = _normalize_lane_name(doc_type)
+    type_prior = (
+        coefficients.reflection_type_prior
+        if inferred_lane == RECORD_KIND_REFLECTION_HYPOTHESIS
+        else coefficients.default_type_prior
+    )
+    lane_coefficients = coefficients.lane_coefficients or DEFAULT_LANE_COEFFICIENTS
+    lane_prior = lane_coefficients.get(inferred_lane, 1.0)
+    final_score = type_prior * lane_prior * float(sim_score) * temporal_signal.temporal_blend
+    return ObjectiveComponentComposition(
+        inferred_lane=inferred_lane,
+        type_prior=float(type_prior),
+        lane_prior=float(lane_prior),
+        final_score=float(final_score),
+    )
+
+
 def similarity_with_time_and_type_score(
     *,
     sim_score: float,
@@ -542,14 +574,12 @@ def rerank_objective_score_components(
         base_temporal_blend=effective_coefficients.base_temporal_blend,
         gaussian_temporal_blend=effective_coefficients.gaussian_temporal_blend,
     )
-    inferred_lane = _normalize_lane_name(doc_type)
-    type_prior = (
-        effective_coefficients.reflection_type_prior if inferred_lane == RECORD_KIND_REFLECTION_HYPOTHESIS else effective_coefficients.default_type_prior
+    objective_composition = compute_objective_component_composition(
+        sim_score=sim_score,
+        doc_type=doc_type,
+        temporal_signal=temporal_signal,
+        coefficients=effective_coefficients,
     )
-    lane_coefficients = effective_coefficients.lane_coefficients or DEFAULT_LANE_COEFFICIENTS
-    lane_prior = lane_coefficients.get(inferred_lane, 1.0)
-    temporal_blend = temporal_signal.temporal_blend
-    final_score = type_prior * lane_prior * float(sim_score) * temporal_blend
     return {
         "objective": _objective_label(active_config),
         "objective_version": active_config.objective_version,
@@ -557,12 +587,12 @@ def rerank_objective_score_components(
         "semantic_similarity": float(sim_score),
         "temporal_gaussian_weight": float(temporal_signal.temporal_gaussian_weight),
         "time_decay_freshness": float(temporal_signal.temporal_gaussian_weight),
-        "temporal_blend": float(temporal_blend),
+        "temporal_blend": float(temporal_signal.temporal_blend),
         "timestamp_quality": temporal_signal.timestamp_quality,
-        "type_prior": float(type_prior),
-        "lane_prior": float(lane_prior),
-        "lane": inferred_lane,
-        "final_score": float(final_score),
+        "type_prior": float(objective_composition.type_prior),
+        "lane_prior": float(objective_composition.lane_prior),
+        "lane": objective_composition.inferred_lane,
+        "final_score": float(objective_composition.final_score),
     }
 
 
