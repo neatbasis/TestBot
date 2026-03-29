@@ -258,6 +258,13 @@ next-step leverage framing:
 
 - `docs/issues/evidence/2026-03-29-pr-682-deferred-inventory-and-leverage.md`
 
+## 2026-03-29 post-merge inventory addendum — PR #697 sigma ownership slice
+
+A bounded scorer category-debt execution note for the residual temporal/scoring coupling ownership (`sigma` posture)
+has been added:
+
+- `docs/issues/evidence/2026-03-29-pr-697-sigma-ownership-slice.md`
+
 This addendum intentionally does not broaden implementation scope; it consolidates planning evidence for the
 next highest-leverage extraction steps (retrieval policy-core first, rerank/temporal policy-core next) while
 adding explicit ideal-future-state synthesis so deferred items are tracked as a convergent re-ownership program

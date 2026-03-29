@@ -47,9 +47,9 @@ from testbot.promotion_policy import persist_promoted_context
 from testbot.reflection_policy import CapabilityStatus, decide_fallback_action, fallback_reason as derive_fallback_reason
 from testbot.answer_policy import AnswerPolicyInput, AnswerRoutingDecision, resolve_answer_mode, resolve_answer_routing
 from testbot.rerank import (
-    adaptive_sigma_fractional,
     has_sufficient_context_confidence_from_objective,
     mix_source_evidence_with_memory_cards,
+    rerank_docs_with_time_and_type_outcome,
 )
 from testbot.stage_transitions import (
     append_transition_validation_log,
@@ -696,8 +696,9 @@ def stage_rerank(
         bridge=temporal_bridge,
         now=now,
     )
+    sigma_seconds = context_retrieval_runtime_service.resolve_rerank_sigma_seconds(now=now, target=target)
     decision_policy = context_retrieval_runtime_service.assemble_rerank_decision_policy(
-        sigma_seconds=adaptive_sigma_fractional(now=now, target=target, frac=0.25),
+        sigma_seconds=sigma_seconds,
         user_doc_id=user_doc_id,
         user_reflection_doc_id=user_reflection_doc_id,
         near_tie_delta=near_tie_delta,

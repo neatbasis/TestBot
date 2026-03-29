@@ -130,9 +130,11 @@ def test_stage_rerank_uses_runtime_temporal_bridge_helpers(monkeypatch) -> None:
         observed["filter_called"] = True
         return docs_and_scores
 
-    def _fake_rerank(*args, **kwargs):
-        observed["rerank_target"] = kwargs["target"].isoformat()
-        return RerankOutcome(docs=[], scored_candidates=[], ambiguity_detected=False, near_tie_candidates=[])
+    def _fake_execute_scorer_contract(request):
+        observed["rerank_target"] = request.target.isoformat()
+        return runtime.context_retrieval_runtime_service.ScorerExecutionResult(
+            rerank_outcome=RerankOutcome(docs=[], scored_candidates=[], ambiguity_detected=False, near_tie_candidates=[])
+        )
 
     def _fake_resolve_target_time(*, utterance, bridge, now):
         observed["resolve_target_time_called"] = True
@@ -141,7 +143,7 @@ def test_stage_rerank_uses_runtime_temporal_bridge_helpers(monkeypatch) -> None:
     monkeypatch.setattr(runtime.context_retrieval_runtime_service, "resolve_temporal_anaphora_bridge", _fake_bridge)
     monkeypatch.setattr(runtime.context_retrieval_runtime_service, "filter_documents_for_temporal_window", _fake_filter)
     monkeypatch.setattr(runtime.context_retrieval_runtime_service, "resolve_rerank_target_time", _fake_resolve_target_time)
-    monkeypatch.setattr(runtime, "rerank_docs_with_time_and_type_outcome", _fake_rerank)
+    monkeypatch.setattr(runtime.context_retrieval_runtime_service, "execute_rerank_scorer_contract", _fake_execute_scorer_contract)
 
     runtime.stage_rerank(
         state,
@@ -189,6 +191,14 @@ def test_stage_rerank_uses_runtime_invocation_policy_assembly(monkeypatch) -> No
     def _fake_resolve_target(*, utterance, bridge, now):
         return now
 
+    def _fake_resolve_sigma_seconds(*, now, target, sigma_fraction=0.25, sigma_policy_fn=None):
+        observed["sigma_source"] = {
+            "now": now,
+            "target": target,
+            "sigma_fraction": sigma_fraction,
+        }
+        return 77.0
+
     def _fake_assemble_policy(*, sigma_seconds, user_doc_id, user_reflection_doc_id, near_tie_delta, top_k=4):
         observed["assembled"] = {
             "sigma_seconds": sigma_seconds,
@@ -205,15 +215,24 @@ def test_stage_rerank_uses_runtime_invocation_policy_assembly(monkeypatch) -> No
             near_tie_delta=0.33,
         )
 
-    def _fake_rerank(*args, **kwargs):
-        observed["rerank_kwargs"] = kwargs
-        return RerankOutcome(docs=[], scored_candidates=[], ambiguity_detected=False, near_tie_candidates=[])
+    def _fake_execute_scorer_contract(request):
+        observed["rerank_kwargs"] = {
+            "sigma_seconds": request.sigma_seconds,
+            "exclude_doc_ids": request.exclude_doc_ids,
+            "exclude_source_ids": request.exclude_source_ids,
+            "top_k": request.top_k,
+            "near_tie_delta": request.near_tie_delta,
+        }
+        return runtime.context_retrieval_runtime_service.ScorerExecutionResult(
+            rerank_outcome=RerankOutcome(docs=[], scored_candidates=[], ambiguity_detected=False, near_tie_candidates=[])
+        )
 
     monkeypatch.setattr(runtime.context_retrieval_runtime_service, "resolve_temporal_anaphora_bridge", _fake_resolve_bridge)
     monkeypatch.setattr(runtime.context_retrieval_runtime_service, "filter_documents_for_temporal_window", _fake_filter)
     monkeypatch.setattr(runtime.context_retrieval_runtime_service, "resolve_rerank_target_time", _fake_resolve_target)
+    monkeypatch.setattr(runtime.context_retrieval_runtime_service, "resolve_rerank_sigma_seconds", _fake_resolve_sigma_seconds)
     monkeypatch.setattr(runtime.context_retrieval_runtime_service, "assemble_rerank_invocation_policy", _fake_assemble_policy)
-    monkeypatch.setattr(runtime, "rerank_docs_with_time_and_type_outcome", _fake_rerank)
+    monkeypatch.setattr(runtime.context_retrieval_runtime_service, "execute_rerank_scorer_contract", _fake_execute_scorer_contract)
 
     runtime.stage_rerank(
         state,
@@ -225,8 +244,13 @@ def test_stage_rerank_uses_runtime_invocation_policy_assembly(monkeypatch) -> No
         clock=_Clock(),
     )
 
+    assert observed["sigma_source"] == {
+        "now": now,
+        "target": now,
+        "sigma_fraction": 0.25,
+    }
     assert observed["assembled"] == {
-        "sigma_seconds": 600.0,
+        "sigma_seconds": 77.0,
         "user_doc_id": "user-doc",
         "user_reflection_doc_id": "reflection-doc",
         "near_tie_delta": 0.1,
@@ -279,7 +303,7 @@ def test_stage_rerank_uses_runtime_threshold_profile_policy_assembly(monkeypatch
         ),
     )
 
-    def _fake_threshold_policy():
+    def _fake_threshold_policy(**kwargs):
         observed["threshold_policy_called"] = True
         return runtime.context_retrieval_runtime_service.RerankThresholdProfilePolicy(
             top_final_score_min=0.77,
@@ -294,9 +318,11 @@ def test_stage_rerank_uses_runtime_threshold_profile_policy_assembly(monkeypatch
         _fake_threshold_policy,
     )
     monkeypatch.setattr(
-        runtime,
-        "rerank_docs_with_time_and_type_outcome",
-        lambda *args, **kwargs: RerankOutcome(docs=[], scored_candidates=[], ambiguity_detected=False, near_tie_candidates=[]),
+        runtime.context_retrieval_runtime_service,
+        "execute_rerank_scorer_contract",
+        lambda request: runtime.context_retrieval_runtime_service.ScorerExecutionResult(
+            rerank_outcome=RerankOutcome(docs=[], scored_candidates=[], ambiguity_detected=False, near_tie_candidates=[])
+        ),
     )
 
     updated_state, _ = runtime.stage_rerank(

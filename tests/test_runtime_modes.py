@@ -498,6 +498,11 @@ def test_runtime_loop_canonical_stage_rerank_path_consumes_runtime_decision_poli
     )
     monkeypatch.setattr(context_retrieval_runtime_service, "filter_documents_for_temporal_window", lambda *, docs_and_scores, bridge: docs_and_scores)
     monkeypatch.setattr(context_retrieval_runtime_service, "resolve_rerank_target_time", lambda *, utterance, bridge, now: now)
+    monkeypatch.setattr(
+        context_retrieval_runtime_service,
+        "resolve_rerank_sigma_seconds",
+        lambda *, now, target, sigma_fraction=0.25, sigma_policy_fn=None: 600.0,
+    )
 
     def _fake_assemble_decision_policy(*, sigma_seconds, user_doc_id, user_reflection_doc_id, near_tie_delta, top_k=4):
         observed["assembled"] = {
@@ -525,11 +530,22 @@ def test_runtime_loop_canonical_stage_rerank_path_consumes_runtime_decision_poli
 
     monkeypatch.setattr(context_retrieval_runtime_service, "assemble_rerank_decision_policy", _fake_assemble_decision_policy)
     monkeypatch.setattr(
-        runtime,
-        "rerank_docs_with_time_and_type_outcome",
-        lambda *args, **kwargs: (
-            observed.setdefault("rerank_kwargs", kwargs),
-            RerankOutcome(docs=[], scored_candidates=[], ambiguity_detected=False, near_tie_candidates=[]),
+        context_retrieval_runtime_service,
+        "execute_rerank_scorer_contract",
+        lambda request: (
+            observed.setdefault(
+                "rerank_kwargs",
+                {
+                    "sigma_seconds": request.sigma_seconds,
+                    "exclude_doc_ids": request.exclude_doc_ids,
+                    "exclude_source_ids": request.exclude_source_ids,
+                    "top_k": request.top_k,
+                    "near_tie_delta": request.near_tie_delta,
+                },
+            ),
+            context_retrieval_runtime_service.ScorerExecutionResult(
+                rerank_outcome=RerankOutcome(docs=[], scored_candidates=[], ambiguity_detected=False, near_tie_candidates=[])
+            ),
         )[1],
     )
 
