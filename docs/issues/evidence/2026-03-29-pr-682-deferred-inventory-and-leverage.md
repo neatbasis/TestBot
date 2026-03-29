@@ -82,3 +82,26 @@ This is the **idealized planning end-state** for convergence, not a requirement 
 - Remaining deferred within the same row: rerank scoring objective/threshold policy, time-target parsing policy,
   and broader temporal decision semantics still remain compatibility-owned in `sat_chatbot_memory_v2` pending
   deeper bounded extractions.
+
+## 2026-03-29 residual authority decomposition — `stage_rerank` after #685
+
+### Residual monolith-owned slices inside `sat_chatbot_memory_v2.stage_rerank`
+
+| Rank (leverage → scope) | Residual slice | Current owner/path | Why leverage is high now | Bounded extraction candidate | Wrapper-removal criterion | Required evidence to close slice |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | **Target override + target parsing resolution policy** (`parse_target_time`, anchor override application, fallback when override parse fails) | Monolith `stage_rerank` still owns target construction before calling rerank scorer. | Temporal bridge/window is already runtime-owned, so target resolution is now the smallest adjacent decision seam with low blast radius and high control-point reuse. | Add a runtime-owned `resolve_rerank_target_time(...)` helper that consumes utterance + bridge + now and returns target + telemetry fields. | Remove monolith-side target override branch when runtime helper is the only canonical caller for target derivation in runtime loop path. | Unit tests for target precedence (bridge override > parsed utterance > now baseline), invalid override fallback behavior, and runtime-loop hook-path assertion that canonical flow no longer relies on monolith target-resolution branch. |
+| 2 | **Rerank scoring invocation policy assembly** (`adaptive_sigma_fractional`, scorer call arguments, top_k/near_tie/exclusion wiring) | Monolith assembles scorer invocation contract in `stage_rerank`. | After target-resolution extraction, scorer invocation assembly becomes isolated and testable without moving scorer implementation itself. | Add runtime-owned `build_rerank_invocation(...)` (or equivalent) that returns normalized scorer inputs; keep scorer function unchanged. | Monolith wrapper can drop scorer-parameter assembly once canonical seam owner computes the invocation contract and monolith only forwards to scorer or receives already-scored outcome. | Deterministic tests on exclusion-set construction and top_k/near_tie defaults, plus seam tests proving canonical runtime path sources invocation parameters from runtime owner. |
+| 3 | **Confidence-decision projection / telemetry shaping** (construction of `confidence_decision` payload fields from rerank outcome + temporal fields) | Monolith formats confidence payload and writes policy-shaping fields. | Medium leverage: valuable anti-backslide signal, but coupled to policy vocabulary and downstream expectations. | Extract runtime-owned `project_rerank_confidence_decision(...)` while preserving field schema exactly. | Remove monolith payload-construction block only when schema conformance and debug-payload consumers validate against runtime-owned projection path. | Golden-shape tests for confidence payload keys/values, compatibility tests for structured debug payload consumers, and invariant/post-stage transition checks passing under canonical path. |
+| 4 | **Residual wrapper posture** (`_stage_rerank_for_turn_service` forwarding `stage_rerank_fn=stage_rerank`) | Compatibility wrapper remains in monolith module. | Lowest immediate leverage until slices 1–3 move, because wrapper still fronts legitimate residual authority. | Convert wrapper to thin deprecated shim after residual slices migrate; eventually remove. | Remove wrapper only when no in-repo call sites require monolith export and compatibility inventory shows no external blocker (or expiry accepted). | Caller census showing zero canonical-path dependencies, allowlist contraction diff, and deprecation/removal PR with green targeted seam tests. |
+
+### Recommended next bounded extraction target
+
+**Next target: Rank 1 — target override + target parsing resolution policy.**
+
+This is the highest leverage-to-scope step because it sits directly adjacent to the already-extracted temporal bridge/window helpers, uses the same runtime-facing seam ownership boundary, and avoids entangling scorer internals or confidence schema concerns.
+
+### Explicit bounded claim posture for that next step
+
+- **What it should prove:** canonical runtime path no longer sources target-resolution authority from monolith `stage_rerank`.
+- **What it should not claim yet:** full rerank policy-core extraction or wrapper retirement.
+- **Compatibility delegation posture to keep:** monolith may still host scorer invocation and confidence projection until their dedicated bounded steps.
