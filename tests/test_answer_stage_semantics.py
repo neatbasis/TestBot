@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import replace
 
 import pytest
+from langchain_core.documents import Document
 
 from testbot.answer_contract_constants import (
     ASSIST_ALTERNATIVES_ANSWER,
@@ -14,6 +15,13 @@ from testbot.answer_contract_constants import (
     ROUTE_TO_ASK_ANSWER,
 )
 from testbot.answer_stage_semantics import expected_alignment_decisions_for_final_answer
+from testbot.application.services.answer_stage_runtime import (
+    answer_assemble_for_turn_service,
+    answer_validate_for_turn_service,
+)
+from testbot.answer_policy import AnswerRoutingDecision
+from testbot.answer_stage_semantics import AnswerStageSemanticContract
+from testbot.evidence_retrieval import RetrievalInputRecord
 from testbot.pipeline_state import CandidateHit, PipelineState, ProvenanceType
 from testbot.stage_transitions import validate_answer_commit_post
 
@@ -107,3 +115,81 @@ def test_canonical_answer_semantics_reject_incompatible_alignment_decision() -> 
     result = validate_answer_commit_post(state)
     assert "alignment_decision_consistent" in result.failures
 
+
+def test_assemble_and_validate_share_canonical_clarifier_contract() -> None:
+    class _PromptStub:
+        def format_messages(self, **_kwargs):
+            return []
+
+    semantic_contract = AnswerStageSemanticContract()
+    assembled = answer_assemble_for_turn_service(
+        llm=object(),
+        state=PipelineState(user_input="who met me last week", resolved_intent="memory_recall"),
+        chat_history=[],
+        hits=[],
+        capability_status="ask_available",
+        answer_routing=AnswerRoutingDecision(
+            fallback_action="ASK_CLARIFYING_QUESTION",
+            clarification_allowed=True,
+            canonical_response_token="PARTIAL_MEMORY_CLARIFIER",
+            route_to_ask_expected=False,
+            rationale={},
+        ),
+        document_from_retrieval_input=lambda record: Document(page_content=record.content, metadata=record.metadata),
+        render_context=lambda _hits: "",
+        answer_prompt=_PromptStub(),
+        append_session_log=lambda *_args, **_kwargs: None,
+        semantic_contract=semantic_contract,
+    )
+
+    assert assembled.final_answer == semantic_contract.clarify_answer
+    assert expected_alignment_decisions_for_final_answer(
+        assembled.final_answer,
+        semantic_contract=semantic_contract,
+    ) == {"allow"}
+
+    validated = answer_validate_for_turn_service(
+        state=PipelineState(user_input="who met me last week", resolved_intent="memory_recall"),
+        assembled=assembled,
+        hits=[],
+        chat_history=[],
+        pending_lookup_override=False,
+        document_from_retrieval_input=lambda record: Document(page_content=record.content, metadata=record.metadata),
+        semantic_contract=semantic_contract,
+    )
+    assert validated.final_answer == semantic_contract.clarify_answer
+    assert validated.alignment_decision.get("final_alignment_decision") == "allow"
+
+
+def test_assemble_partial_memory_clarifier_is_owned_by_canonical_semantics() -> None:
+    class _PromptStub:
+        def format_messages(self, **_kwargs):
+            return []
+
+    assembled = answer_assemble_for_turn_service(
+        llm=object(),
+        state=PipelineState(user_input="what happened with deployment", resolved_intent="memory_recall"),
+        chat_history=[],
+        hits=[
+            RetrievalInputRecord(
+                ref_id="doc-1",
+                score=0.8,
+                content="Deployment runbook says verify the changelog and rollback checklist before release.",
+                metadata={"doc_id": "doc-1", "ts": "2026-03-01T00:00:00Z"},
+            )
+        ],
+        capability_status="ask_available",
+        answer_routing=AnswerRoutingDecision(
+            fallback_action="ASK_CLARIFYING_QUESTION",
+            clarification_allowed=True,
+            canonical_response_token="PARTIAL_MEMORY_CLARIFIER",
+            route_to_ask_expected=False,
+            rationale={},
+        ),
+        document_from_retrieval_input=lambda record: Document(page_content=record.content, metadata=record.metadata),
+        render_context=lambda _hits: "",
+        answer_prompt=_PromptStub(),
+        append_session_log=lambda *_args, **_kwargs: None,
+    )
+
+    assert assembled.final_answer.startswith("I found related memory fragments (")

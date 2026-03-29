@@ -1,19 +1,21 @@
-# 2026-03-29 PR-710 answer-stage semantic authority slice
+# 2026-03-29 PR-710/next answer-stage semantic authority slice
 
 ## Scope
-Bounded seam reduction for answer-stage alignment semantics.
+Bounded seam reduction for assemble-stage special-answer authority.
 
-## Findings (pre-change)
-- `answer_validate_for_turn_service(...)` accepted legacy-shaped injections for alignment evaluator and special-answer constants, and runtime loop wiring supplied those via `sat_chatbot_memory_v2`.
-- `validate_answer_commit_post(...).alignment_decision_consistent` carried local category logic instead of consuming one canonical answer-semantic owner.
+## Findings (pre-change after #710)
+- Validate-path semantics were canonicalized in #710, but `answer_assemble_for_turn_service(...)` still accepted legacy-injected special-answer constants and `build_partial_memory_clarifier`.
+- Runtime-loop answer-stage wiring still pulled those assemble semantics from `sat_chatbot_memory_v2`, preserving split authority between assemble and validate.
 
 ## Canonical vs transitional authority after this slice
 - **Canonical now**:
-  - `testbot.answer_stage_semantics` defines special-answer classes and expected alignment decisions.
-  - `answer_validate_for_turn_service(...)` defaults to canonical provenance/alignment functions and canonical answer semantic contract.
-  - `stage_transitions` consumes canonical answer-semantic expectations from `testbot.answer_stage_semantics`.
+  - `testbot.answer_stage_semantics` now owns partial-memory clarifier construction policy (`build_partial_memory_clarifier`) and the assembly/validation special-answer contract values.
+  - `answer_assemble_for_turn_service(...)` now consumes a canonical `AnswerStageSemanticContract` instead of per-call legacy answer constants/clarifier builder.
+  - `answer_validate_for_turn_service(...)` and `stage_transitions` continue to consume the same canonical semantic contract/expectation owner from #710.
 - **Still transitional/deferred**:
-  - `answer_assemble_for_turn_service(...)` still receives some legacy-shaped collaborators from `sat_chatbot_memory_v2` (prompt/render helpers and selected constants) pending a separate seam-reduction slice.
+  - `answer_assemble_for_turn_service(...)` still receives prompt/render collaborators (`ANSWER_PROMPT`, `render_context`) from `sat_chatbot_memory_v2` (presentational/plumbing seam).
+  - Runtime still routes telemetry/logging and some policy-core helpers via legacy façade symbols (plumbing/integration seam).
 
 ## Semantic authority moved/clarified in this PR
-- Moved answer/alignment category semantics from per-call legacy injection + validator-local heuristics to a shared canonical owner (`testbot.answer_stage_semantics`).
+- Moved assemble-stage clarifier wording/policy and special-answer constants from legacy per-call injection to canonical ownership in `testbot.answer_stage_semantics` via `AnswerStageSemanticContract`.
+- Runtime loop is less responsible for answer-stage semantic composition because it no longer injects those semantic collaborators.

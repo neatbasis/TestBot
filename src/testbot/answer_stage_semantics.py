@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from langchain_core.documents import Document
+
 from testbot.answer_contract_constants import (
     ASSIST_ALTERNATIVES_ANSWER,
     BACKGROUND_INGESTION_PROGRESS_ANSWER,
@@ -27,6 +29,21 @@ class AnswerStageSemanticContract:
 DEFAULT_ANSWER_STAGE_SEMANTIC_CONTRACT = AnswerStageSemanticContract()
 
 
+def build_partial_memory_clarifier(hits: list[Document], *, semantic_contract: AnswerStageSemanticContract) -> str:
+    snippets: list[str] = []
+    for doc in hits[:2]:
+        snippet = (doc.page_content or "").strip()
+        if snippet:
+            snippets.append(snippet[:80])
+    if snippets:
+        joined = "; ".join(snippets)
+        return (
+            f"I found related memory fragments ({joined}), but not enough to answer precisely. "
+            "Which person, event, or time window should I focus on?"
+        )
+    return semantic_contract.clarify_answer
+
+
 def expected_alignment_decisions_for_final_answer(
     final_answer: str,
     *,
@@ -45,4 +62,3 @@ def expected_alignment_decisions_for_final_answer(
     }:
         return {"allow"}
     return {"allow", "fallback"}
-
