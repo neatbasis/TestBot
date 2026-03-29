@@ -105,3 +105,16 @@ This is the highest leverage-to-scope step because it sits directly adjacent to 
 - **What it should prove:** canonical runtime path no longer sources target-resolution authority from monolith `stage_rerank`.
 - **What it should not claim yet:** full rerank policy-core extraction or wrapper retirement.
 - **Compatibility delegation posture to keep:** monolith may still host scorer invocation and confidence projection until their dedicated bounded steps.
+
+## 2026-03-29 execution update — bounded rerank target-time resolution slice processed
+
+- Processed deferred row: **Rank 1 rerank residual — target override + target parsing resolution policy**.
+- Bounded delta: extracted `resolve_rerank_target_time(...)` into canonical runtime-owned
+  `testbot.application.services.context_retrieval_runtime`, and rewired `sat_chatbot_memory_v2.stage_rerank(...)`
+  to delegate target-time resolution through the runtime-facing seam owner.
+- Behavior-preservation evidence added:
+  - explicit target override precedence when bridge override parses cleanly;
+  - invalid override fallback to parsed utterance target-time;
+  - compatibility wrapper proof that monolith `stage_rerank(...)` now calls runtime-owned target-time resolver.
+- Remaining deferred rerank slices are unchanged: scorer invocation policy assembly, confidence-decision projection,
+  and residual wrapper retirement.
