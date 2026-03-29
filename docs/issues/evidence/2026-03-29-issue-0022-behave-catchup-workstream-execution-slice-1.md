@@ -67,6 +67,17 @@ This slice catches one direct-answer contract-probe cluster up to the current ow
 - `features/testbot/answer_contract.feature` failures around memory-grounded and pending-background-ingestion answer-stage contract probes.
 - `features/testbot/time_awareness.feature` failures currently tripping answer-stage transition invariants.
 
+Explicit remaining failing scenarios at this slice boundary:
+
+1. `features/testbot/answer_contract.feature:86` — `known fact must not degrade to general-knowledge fallback`
+2. `features/testbot/answer_contract.feature:143` — `async background ingestion uses pending non-clarify fallback`
+3. `features/testbot/time_awareness.feature:8` — `elapsed minutes from previous user turn`
+4. `features/testbot/time_awareness.feature:14` — `resolve tomorrow in Europe/Helsinki`
+
+Recommended next coherent failing-scenario cluster:
+
+- **`answer_contract` cluster first** (`AC-0009-10`, `AC-0009-15`) because both failures share answer-stage decision/commit alignment assumptions and can be addressed as one bounded behave catch-up slice without mixing time-intent contract updates.
+
 ### Remaining scorer-category execution work
 
 - next scorer-category seam remains candidate-output composition/projection shaping, per landing-state anchor and meta sequencing.
