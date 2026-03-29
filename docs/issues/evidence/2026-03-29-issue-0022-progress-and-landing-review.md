@@ -69,16 +69,18 @@ This review covers the ISSUE-0022 transition from completed rerank wrapper-retir
 
 ## 5) Recommended next move
 
-**Recommended next bounded execution move:** execute one PR that extracts scorer candidate-output composition/projection shaping into an explicit seam immediately downstream of final-score assembly and upstream of confidence gating.
+**Recommended immediate next bounded execution move:** run one **cleanup workstream execution slice** first (stale wording/references/ownership framing), then one **behave catch-up workstream** slice, and only then proceed to the next scorer-category seam.
 
-Why this move next:
+**Recommended next scorer-category execution move (after cleanup + behave catch-up):** execute one PR that extracts scorer candidate-output composition/projection shaping into an explicit seam immediately downstream of final-score assembly and upstream of confidence gating.
 
-- It is repeatedly named as the next bounded seam family in post-#700 handoff framing.
-- It advances authority-transfer clarity without reopening broad scorer internals redesign.
-- It creates a cleaner decision surface for downstream confidence/telemetry consumers.
+Why this sequencing is now safer:
 
-- Evidence X supports claim Y because Z: `#700` and post-#700 framing updates identify candidate-output/projection shaping as remaining seam-family debt, so selecting it preserves boundedness and continuity.
-- It does not yet support stronger claim W because Q: hidden coupling cannot be ruled out until this seam is extracted and validated with explicit control-point and parity evidence.
+- It preserves the canonical row/category distinction while removing stale assumptions that could misframe reviewer interpretation.
+- It aligns validation language and scenario framing before additional scorer-category movement.
+- It keeps candidate-output/projection seam extraction as the next scorer-category move without conflating it with ambient cleanup debt.
+
+- Evidence X supports claim Y because Z: the post-landing meta program explicitly introduces cleanup-first and behave-catch-up-second sequencing, while retaining candidate-output/projection shaping as the next scorer-category debt family; this supports sequence-aware execution instead of jumping directly into another scorer slice.
+- It does not yet support stronger claim W because Q: sequencing guidance does not by itself prove behave alignment or scorer seam finishability; each follow-on slice still needs bounded execution evidence.
 
 ## 6) Implemented docs change
 
