@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import arrow
 from langchain_core.documents import Document
 
 from testbot.pipeline_state import PipelineState
+from testbot.rerank import RerankOutcome
 from testbot import sat_chatbot_memory_v2 as runtime
 
 
@@ -121,3 +123,57 @@ def test_document_conversion_wrappers_delegate_to_context_retrieval_runtime(monk
     assert runtime._document_from_retrieval_input(expected_record) is expected_doc
     assert observed["to_record"][1] == 0.8
     assert observed["to_doc"] is expected_record
+
+
+def test_stage_rerank_uses_runtime_temporal_bridge_helpers(monkeypatch) -> None:
+    now = arrow.get("2026-03-10T12:00:00+00:00")
+    observed: dict[str, object] = {}
+    state = PipelineState(user_input="how long ago was it?", confidence_decision={})
+    docs_and_scores = [
+        (Document(id="doc-1", page_content="candidate", metadata={"doc_id": "doc-1", "ts": "2026-03-10T11:30:00+00:00"}), 0.9)
+    ]
+
+    class _Clock:
+        def now(self):
+            return now
+
+    def _fake_bridge(*, utterance, docs_and_scores, now):
+        observed["bridge_called"] = True
+        return {
+            "anaphora_detected": True,
+            "anchor_candidates": [{"doc_id": "doc-1", "ts": "2026-03-10T11:30:00+00:00", "confidence": 0.9}],
+            "selected_anchor_doc_id": "doc-1",
+            "selected_anchor_ts": "2026-03-10T11:30:00+00:00",
+            "target_override_ts": "2026-03-10T11:30:00+00:00",
+            "delta_seconds_raw": 1800,
+            "delta_humanized": "30 minutes ago",
+            "time_window": "",
+            "window_start": "",
+            "window_end": "",
+        }
+
+    def _fake_filter(*, docs_and_scores, bridge):
+        observed["filter_called"] = True
+        return docs_and_scores
+
+    def _fake_rerank(*args, **kwargs):
+        observed["rerank_target"] = kwargs["target"].isoformat()
+        return RerankOutcome(docs=[], scored_candidates=[], ambiguity_detected=False, near_tie_candidates=[])
+
+    monkeypatch.setattr(runtime.context_retrieval_runtime_service, "resolve_temporal_anaphora_bridge", _fake_bridge)
+    monkeypatch.setattr(runtime.context_retrieval_runtime_service, "filter_documents_for_temporal_window", _fake_filter)
+    monkeypatch.setattr(runtime, "rerank_docs_with_time_and_type_outcome", _fake_rerank)
+
+    runtime.stage_rerank(
+        state,
+        docs_and_scores,
+        utterance="how long ago was it?",
+        user_doc_id="user-doc",
+        user_reflection_doc_id="reflection-doc",
+        near_tie_delta=0.1,
+        clock=_Clock(),
+    )
+
+    assert observed["bridge_called"] is True
+    assert observed["filter_called"] is True
+    assert observed["rerank_target"] == "2026-03-10T11:30:00+00:00"

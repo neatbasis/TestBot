@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import arrow
 from langchain_core.documents import Document
 
 from testbot.application.services import context_retrieval_runtime
@@ -178,3 +179,62 @@ def test_search_memory_documents_for_retrieval_falls_back_to_similarity_search()
     ]
     assert len(docs_and_scores) == 1
     assert docs_and_scores[0][0].id == "doc-2"
+
+
+def test_resolve_temporal_anaphora_bridge_extracts_anchor_and_elapsed_time_delta() -> None:
+    now = arrow.get("2026-03-10T12:00:00+00:00")
+    docs_and_scores = [
+        (
+            Document(
+                id="doc-1",
+                page_content="candidate",
+                metadata={"doc_id": "doc-1", "ts": "2026-03-10T11:30:00+00:00"},
+            ),
+            0.91,
+        )
+    ]
+
+    bridge = context_retrieval_runtime.resolve_temporal_anaphora_bridge(
+        utterance="how long ago was it?",
+        docs_and_scores=docs_and_scores,
+        now=now,
+    )
+
+    assert bridge["anaphora_detected"] is True
+    assert bridge["selected_anchor_doc_id"] == "doc-1"
+    assert bridge["target_override_ts"] == "2026-03-10T11:30:00+00:00"
+    assert bridge["delta_seconds_raw"] == 1800
+    assert bridge["delta_humanized"] == "30 minutes ago"
+
+
+def test_filter_documents_for_temporal_window_applies_yesterday_window() -> None:
+    docs_and_scores = [
+        (
+            Document(
+                id="doc-in",
+                page_content="inside window",
+                metadata={"doc_id": "doc-in", "ts": "2026-03-09T12:00:00+00:00"},
+            ),
+            0.8,
+        ),
+        (
+            Document(
+                id="doc-out",
+                page_content="outside window",
+                metadata={"doc_id": "doc-out", "ts": "2026-03-10T12:00:00+00:00"},
+            ),
+            0.7,
+        ),
+    ]
+    bridge = {
+        "window_start": "2026-03-09T00:00:00+00:00",
+        "window_end": "2026-03-09T23:59:59.999999+00:00",
+    }
+
+    filtered = context_retrieval_runtime.filter_documents_for_temporal_window(
+        docs_and_scores=docs_and_scores,
+        bridge=bridge,
+    )
+
+    assert len(filtered) == 1
+    assert filtered[0][0].id == "doc-in"

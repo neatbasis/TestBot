@@ -673,132 +673,6 @@ def _stage_retrieve_for_turn_service(
     )
 
 
-_ANAPHORA_PATTERNS: tuple[re.Pattern[str], ...] = (
-    re.compile(r"\bit\b", re.IGNORECASE),
-    re.compile(r"\bthat\b", re.IGNORECASE),
-)
-
-
-def _contains_anaphora_cue(utterance: str) -> bool:
-    text = utterance or ""
-    return any(pattern.search(text) is not None for pattern in _ANAPHORA_PATTERNS)
-
-
-def _contains_elapsed_time_cue(utterance: str) -> bool:
-    text = (utterance or "").lower()
-    return "how long ago" in text
-
-
-def _contains_yesterday_cue(utterance: str) -> bool:
-    return "yesterday" in (utterance or "").lower()
-
-
-def _humanize_seconds_delta(delta_seconds: int) -> str:
-    if delta_seconds < 60:
-        return f"{delta_seconds} seconds ago"
-    if delta_seconds < 3600:
-        minutes = max(1, round(delta_seconds / 60))
-        return f"{minutes} minutes ago"
-    if delta_seconds < 86400:
-        hours = max(1, round(delta_seconds / 3600))
-        return f"{hours} hours ago"
-    days = max(1, round(delta_seconds / 86400))
-    return f"{days} days ago"
-
-
-def _candidate_anchor_confidence(score: float) -> float:
-    return round(max(0.0, min(1.0, float(score))), 4)
-
-
-def _resolve_temporal_anaphora_bridge(
-    *,
-    utterance: str,
-    docs_and_scores: list[tuple[Document, float]],
-    now: arrow.Arrow,
-) -> dict[str, object]:
-    anaphora_detected = _contains_anaphora_cue(utterance)
-    elapsed_time_cue = _contains_elapsed_time_cue(utterance)
-    yesterday_cue = _contains_yesterday_cue(utterance)
-
-    anchor_candidates: list[dict[str, object]] = []
-    for doc, score in docs_and_scores[:5]:
-        metadata = doc.metadata if isinstance(doc.metadata, dict) else {}
-        anchor_candidates.append(
-            {
-                "doc_id": str(doc.id or metadata.get("doc_id") or ""),
-                "ts": str(metadata.get("ts") or ""),
-                "confidence": _candidate_anchor_confidence(score),
-            }
-        )
-
-    selected_anchor = anchor_candidates[0] if anchor_candidates else {"doc_id": "", "ts": "", "confidence": 0.0}
-    selected_anchor_ts = str(selected_anchor.get("ts") or "")
-    selected_anchor_doc_id = str(selected_anchor.get("doc_id") or "")
-
-    delta_seconds: int | None = None
-    if selected_anchor_ts and elapsed_time_cue:
-        try:
-            anchor_ts = arrow.get(selected_anchor_ts)
-            delta_seconds = max(0, int((now - anchor_ts).total_seconds()))
-        except Exception:
-            delta_seconds = None
-
-    target_override_ts = ""
-    if selected_anchor_ts and (anaphora_detected or elapsed_time_cue):
-        target_override_ts = selected_anchor_ts
-
-    window_start = ""
-    window_end = ""
-    if yesterday_cue:
-        window_start = now.shift(days=-1).floor("day").isoformat()
-        window_end = now.shift(days=-1).ceil("day").isoformat()
-
-    return {
-        "anaphora_detected": anaphora_detected,
-        "anchor_candidates": anchor_candidates,
-        "selected_anchor_doc_id": selected_anchor_doc_id,
-        "selected_anchor_ts": selected_anchor_ts,
-        "target_override_ts": target_override_ts,
-        "delta_seconds_raw": delta_seconds,
-        "delta_humanized": _humanize_seconds_delta(delta_seconds) if delta_seconds is not None else "",
-        "elapsed_time_cue": elapsed_time_cue,
-        "time_window": "yesterday" if yesterday_cue else "",
-        "window_start": window_start,
-        "window_end": window_end,
-    }
-
-
-def _filter_docs_for_temporal_window(
-    *,
-    docs_and_scores: list[tuple[Document, float]],
-    bridge: dict[str, object],
-) -> list[tuple[Document, float]]:
-    window_start = str(bridge.get("window_start") or "")
-    window_end = str(bridge.get("window_end") or "")
-    if not window_start or not window_end:
-        return docs_and_scores
-
-    try:
-        start_ts = arrow.get(window_start)
-        end_ts = arrow.get(window_end)
-    except Exception:
-        return docs_and_scores
-
-    filtered: list[tuple[Document, float]] = []
-    for doc, score in docs_and_scores:
-        metadata = doc.metadata if isinstance(doc.metadata, dict) else {}
-        raw_ts = str(metadata.get("ts") or "")
-        if not raw_ts:
-            continue
-        try:
-            doc_ts = arrow.get(raw_ts)
-        except Exception:
-            continue
-        if start_ts <= doc_ts <= end_ts:
-            filtered.append((doc, score))
-    return filtered
-
-
 def stage_rerank(
     state: PipelineState,
     docs_and_scores: list[tuple[Document, float]],
@@ -811,12 +685,12 @@ def stage_rerank(
     io_channel: str = "cli",
 ) -> tuple[PipelineState, list[Document]]:
     now = clock.now()
-    temporal_bridge = _resolve_temporal_anaphora_bridge(
+    temporal_bridge = context_retrieval_runtime_service.resolve_temporal_anaphora_bridge(
         utterance=utterance,
         docs_and_scores=docs_and_scores,
         now=now,
     )
-    filtered_docs_and_scores = _filter_docs_for_temporal_window(
+    filtered_docs_and_scores = context_retrieval_runtime_service.filter_documents_for_temporal_window(
         docs_and_scores=docs_and_scores,
         bridge=temporal_bridge,
     )
