@@ -238,3 +238,25 @@ def test_filter_documents_for_temporal_window_applies_yesterday_window() -> None
 
     assert len(filtered) == 1
     assert filtered[0][0].id == "doc-in"
+
+
+def test_resolve_rerank_target_time_prefers_valid_bridge_override() -> None:
+    now = arrow.get("2026-03-10T12:00:00+00:00")
+    target = context_retrieval_runtime.resolve_rerank_target_time(
+        utterance="what happened yesterday?",
+        bridge={"target_override_ts": "2026-03-10T11:30:00+00:00"},
+        now=now,
+    )
+
+    assert target.isoformat() == "2026-03-10T11:30:00+00:00"
+
+
+def test_resolve_rerank_target_time_falls_back_when_override_invalid() -> None:
+    now = arrow.get("2026-03-10T12:00:00+00:00")
+    target = context_retrieval_runtime.resolve_rerank_target_time(
+        utterance="what happened yesterday?",
+        bridge={"target_override_ts": "not-a-timestamp"},
+        now=now,
+    )
+
+    assert target == context_retrieval_runtime.parse_target_time("what happened yesterday?", now=now)

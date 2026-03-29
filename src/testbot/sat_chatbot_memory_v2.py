@@ -77,7 +77,6 @@ from testbot.stage_transitions import (
     validate_stabilize_pre_route_post,
     validate_stabilize_pre_route_pre,
 )
-from testbot.time_parse import parse_target_time
 from testbot.intent_router import (
     IntentType,
     classify_intent,
@@ -694,13 +693,11 @@ def stage_rerank(
         docs_and_scores=docs_and_scores,
         bridge=temporal_bridge,
     )
-    target = parse_target_time(utterance, now=now)
-    target_override_ts = str(temporal_bridge.get("target_override_ts") or "")
-    if target_override_ts:
-        try:
-            target = arrow.get(target_override_ts)
-        except Exception:
-            pass
+    target = context_retrieval_runtime_service.resolve_rerank_target_time(
+        utterance=utterance,
+        bridge=temporal_bridge,
+        now=now,
+    )
     sigma = adaptive_sigma_fractional(now=now, target=target, frac=0.25)
     rerank_outcome = rerank_docs_with_time_and_type_outcome(
         filtered_docs_and_scores,

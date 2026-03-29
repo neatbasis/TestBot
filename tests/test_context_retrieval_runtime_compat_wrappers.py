@@ -160,8 +160,13 @@ def test_stage_rerank_uses_runtime_temporal_bridge_helpers(monkeypatch) -> None:
         observed["rerank_target"] = kwargs["target"].isoformat()
         return RerankOutcome(docs=[], scored_candidates=[], ambiguity_detected=False, near_tie_candidates=[])
 
+    def _fake_resolve_target_time(*, utterance, bridge, now):
+        observed["resolve_target_time_called"] = True
+        return arrow.get("2026-03-10T11:30:00+00:00")
+
     monkeypatch.setattr(runtime.context_retrieval_runtime_service, "resolve_temporal_anaphora_bridge", _fake_bridge)
     monkeypatch.setattr(runtime.context_retrieval_runtime_service, "filter_documents_for_temporal_window", _fake_filter)
+    monkeypatch.setattr(runtime.context_retrieval_runtime_service, "resolve_rerank_target_time", _fake_resolve_target_time)
     monkeypatch.setattr(runtime, "rerank_docs_with_time_and_type_outcome", _fake_rerank)
 
     runtime.stage_rerank(
@@ -176,4 +181,5 @@ def test_stage_rerank_uses_runtime_temporal_bridge_helpers(monkeypatch) -> None:
 
     assert observed["bridge_called"] is True
     assert observed["filter_called"] is True
+    assert observed["resolve_target_time_called"] is True
     assert observed["rerank_target"] == "2026-03-10T11:30:00+00:00"

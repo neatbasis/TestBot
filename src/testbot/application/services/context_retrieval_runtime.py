@@ -22,6 +22,7 @@ from testbot.context_resolution import resolve as _resolve_context_from_domain
 from testbot.evidence_retrieval import RetrievalInputRecord
 from testbot.pipeline_state import PipelineState
 from testbot.ports import MemorySearchQuery, MemoryStorePort
+from testbot.time_parse import parse_target_time
 from testbot.domain import Clock
 
 _SELF_REFERENTIAL_IDENTITY_RECALL_PATTERNS: tuple[re.Pattern[str], ...] = (
@@ -340,10 +341,27 @@ def filter_documents_for_temporal_window(
     return filtered
 
 
+def resolve_rerank_target_time(
+    *,
+    utterance: str,
+    bridge: dict[str, object],
+    now: arrow.Arrow,
+) -> arrow.Arrow:
+    target = parse_target_time(utterance, now=now)
+    target_override_ts = str(bridge.get("target_override_ts") or "")
+    if target_override_ts:
+        try:
+            return arrow.get(target_override_ts)
+        except Exception:
+            return target
+    return target
+
+
 __all__ = [
     "filter_documents_for_temporal_window",
     "document_from_retrieval_input",
     "normalize_retrieval_filter_scope",
+    "resolve_rerank_target_time",
     "resolve_temporal_anaphora_bridge",
     "resolve_context",
     "retrieval_input_from_document",
