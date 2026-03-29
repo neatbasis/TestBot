@@ -198,6 +198,8 @@ This PR decomposes the remaining scorer-category debt (post-wrapper-retirement) 
 - **`sigma` ownership posture in this slice:** left separate on purpose; `sigma` computation remains in stage policy flow
   (`adaptive_sigma_fractional(...)` in `stage_rerank`) so temporal-coupling ownership can be handled as its own bounded
   scorer-category slice.
+- **Decomposition stability after #696:** scorer-category decomposition remains decision-grade and stable; no targeted
+  decomposition refresh is required before executing the next bounded `sigma` ownership slice.
 - **Remaining scorer-category debt (explicit):**
   1. residual temporal/scoring coupling ownership (`sigma` ownership posture);
   2. broader scorer internals redesign (objective/fusion/ambiguity semantics), still intentionally out of scope.
