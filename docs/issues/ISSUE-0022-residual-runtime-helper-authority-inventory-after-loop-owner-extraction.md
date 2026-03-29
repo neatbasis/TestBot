@@ -294,3 +294,16 @@ Post-#698 merge-note tightening (explicit):
 - processed seam: temporal signal composition (gaussian temporal weighting + timestamp-quality attribution);
 - deferred debt: final-score composition internals and broader scorer redesign remain out of scope;
 - recommended next bounded unit: scorer-internal final-score component composition seam hardening.
+
+## 2026-03-29 post-merge inventory addendum — PR #699 final-score component composition seam slice
+
+A bounded scorer category-debt execution note for scorer-internal final-score/objective component composition seam
+hardening has been added:
+
+- `docs/issues/evidence/2026-03-29-pr-699-final-score-component-composition-seam.md`
+
+Post-#699 scorer handoff clarification:
+- processed: scorer-internal final-score component composition seam (`compute_objective_component_composition(...)`);
+- remaining scorer-category debt: scorer candidate-output composition internals and broader objective/fusion redesign;
+- recommended next smallest scorer-internals slice: bounded scorer candidate-output composition seam hardening
+  before confidence-gating/fusion posture, without objective/coefficient redesign.
