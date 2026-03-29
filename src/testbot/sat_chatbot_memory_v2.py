@@ -735,30 +735,6 @@ def stage_rerank(
     return replace(state, reranked_hits=reranked_hits, confidence_decision=confidence_decision), hits
 
 
-def _stage_rerank_for_turn_service(
-    state: PipelineState,
-    retrieval_candidates: list[RetrievalInputRecord],
-    *,
-    utterance: str,
-    user_doc_id: str,
-    user_reflection_doc_id: str,
-    near_tie_delta: float,
-    clock: Clock,
-    io_channel: str = "cli",
-) -> tuple[PipelineState, list[RetrievalInputRecord]]:
-    return context_retrieval_runtime_service.stage_rerank_for_turn_service(
-        state,
-        retrieval_candidates,
-        stage_rerank_fn=stage_rerank,
-        utterance=utterance,
-        user_doc_id=user_doc_id,
-        user_reflection_doc_id=user_reflection_doc_id,
-        near_tie_delta=near_tie_delta,
-        clock=clock,
-        io_channel=io_channel,
-    )
-
-
 def _answer_assemble_for_turn_service(
     llm: ChatOllama,
     state: PipelineState,
@@ -1455,7 +1431,11 @@ def _run_canonical_turn_pipeline(
             poll_background_source_ingestion=_poll_background_source_ingestion,
             start_background_source_ingestion=_start_background_source_ingestion,
             stage_retrieve=_stage_retrieve_for_turn_service,
-            stage_rerank=_stage_rerank_for_turn_service,
+            stage_rerank=lambda *args, **kwargs: context_retrieval_runtime_service.stage_rerank_for_turn_service(
+                *args,
+                stage_rerank_fn=stage_rerank,
+                **kwargs,
+            ),
             selected_decision_from_confidence=_selected_decision_from_confidence,
             minimal_confidence_decision_for_direct_answer=_minimal_confidence_decision_for_direct_answer,
             resolve_answer_routing_for_stage=_resolve_answer_routing_for_stage,
