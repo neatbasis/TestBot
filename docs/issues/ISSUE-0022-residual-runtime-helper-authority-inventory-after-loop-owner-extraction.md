@@ -307,3 +307,20 @@ Post-#699 scorer handoff clarification:
 - remaining scorer-category debt: scorer candidate-output composition internals and broader objective/fusion redesign;
 - recommended next smallest scorer-internals slice: bounded scorer candidate-output composition seam hardening
   before confidence-gating/fusion posture, without objective/coefficient redesign.
+
+## 2026-03-29 post-merge inventory addendum — PR #700 lane/type prior determination seam slice
+
+A bounded scorer category-debt execution note for scorer-internal lane/type prior determination seam hardening
+has been added:
+
+- `docs/issues/evidence/2026-03-29-pr-700-lane-type-prior-determination-seam.md`
+
+Post-#700 scorer handoff clarification:
+- processed unit type: category-debt execution slice;
+- processed seam: scorer-internal lane/type prior determination (`PriorComponentComposition`,
+  `compute_prior_component_composition(...)`) consumed by `compute_objective_component_composition(...)`;
+- unchanged final-score semantics: `type_prior * lane_prior * semantic_score * temporal_blend`;
+- remaining scorer-category debt: scorer candidate-output composition/projection shaping plus tie/ambiguity projection
+  pathways in `rerank_docs_with_time_and_type_outcome(...)`;
+- recommended next smallest scorer-internals slice: extract scorer candidate-output composition/projection seam
+  upstream of confidence gating and downstream of final-score assembly.

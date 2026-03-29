@@ -37,3 +37,10 @@
   - tie/ambiguity projection shaping (`near_tie_candidates`, unresolved ambiguity flags) remains in the same scorer path.
 - Recommended next bounded scorer-internal seam:
   - extract scorer candidate-output composition/projection as one explicit seam upstream of confidence gating and downstream of final-score assembly.
+
+## Validation posture for this bounded slice
+
+- Focused scorer validation passed:
+  - `python -m pytest tests/test_rerank.py`
+- Broader readiness-gate failures observed outside this slice are treated as pre-existing and unrelated to the
+  scorer-internal lane/type prior determination seam extraction.
