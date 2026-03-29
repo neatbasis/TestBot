@@ -11,6 +11,10 @@ from langchain_core.documents import Document
 from langchain_ollama import ChatOllama
 
 from testbot.answer_policy import AnswerRoutingDecision, resolve_answer_mode
+from testbot.answer_stage_semantics import (
+    DEFAULT_ANSWER_STAGE_SEMANTIC_CONTRACT,
+    AnswerStageSemanticContract,
+)
 from testbot.clock import Clock, SystemClock
 from testbot.history_packer import pack_chat_history, render_packed_history
 from testbot.intent_router import (
@@ -21,6 +25,7 @@ from testbot.intent_router import (
 )
 from testbot.logic.alignment import (
     assess_general_knowledge_contract,
+    evaluate_alignment_decision as evaluate_alignment_decision_from_logic,
     has_general_knowledge_marker,
     has_required_memory_citation,
     is_non_trivial_answer,
@@ -29,6 +34,7 @@ from testbot.logic.alignment import (
     raw_claim_like_text_detected,
     validate_answer_contract,
 )
+from testbot.logic.provenance import build_provenance_metadata as build_provenance_metadata_from_logic
 from testbot.pipeline_state import PipelineState, ProvenanceType
 from testbot.policy_decision import DecisionClass, DecisionObject
 from testbot.reflection_policy import CapabilityStatus
@@ -126,14 +132,9 @@ def answer_validate_for_turn_service(
     chat_history: deque[ChatMsg],
     pending_lookup_override: bool | None = None,
     document_from_retrieval_input,
-    build_provenance_metadata,
-    evaluate_alignment_decision,
-    fallback_answer: str,
-    deny_answer: str,
-    assist_alternatives_answer: str,
-    non_knowledge_uncertainty_answer: str,
-    clarify_answer: str,
-    route_to_ask_answer: str,
+    build_provenance_metadata=build_provenance_metadata_from_logic,
+    evaluate_alignment_decision=evaluate_alignment_decision_from_logic,
+    semantic_contract: AnswerStageSemanticContract = DEFAULT_ANSWER_STAGE_SEMANTIC_CONTRACT,
 ) -> AnswerValidateResult:
     docs = [document_from_retrieval_input(record) for record in hits]
     return answer_validate(
@@ -144,12 +145,12 @@ def answer_validate_for_turn_service(
         pending_lookup_override=pending_lookup_override,
         build_provenance_metadata=build_provenance_metadata,
         evaluate_alignment_decision=evaluate_alignment_decision,
-        fallback_answer=fallback_answer,
-        deny_answer=deny_answer,
-        assist_alternatives_answer=assist_alternatives_answer,
-        non_knowledge_uncertainty_answer=non_knowledge_uncertainty_answer,
-        clarify_answer=clarify_answer,
-        route_to_ask_answer=route_to_ask_answer,
+        fallback_answer=semantic_contract.fallback_answer,
+        deny_answer=semantic_contract.deny_answer,
+        assist_alternatives_answer=semantic_contract.assist_alternatives_answer,
+        non_knowledge_uncertainty_answer=semantic_contract.non_knowledge_uncertainty_answer,
+        clarify_answer=semantic_contract.clarify_answer,
+        route_to_ask_answer=semantic_contract.route_to_ask_answer,
     )
 
 
@@ -561,6 +562,11 @@ def answer_validate(
             claims=[],
             provenance_types=[],
             basis_statement="No factual claims.",
+            is_clarification_answer=lambda text: is_clarification_answer(
+                text,
+                clarify_answer=clarify_answer,
+                route_to_ask_answer=route_to_ask_answer,
+            ),
         )
         alignment_decision["final_alignment_decision"] = "allow"
         return AnswerValidateResult(
@@ -628,6 +634,11 @@ def answer_validate(
         claims=claims,
         provenance_types=provenance_types,
         basis_statement=basis_statement,
+        is_clarification_answer=lambda text: is_clarification_answer(
+            text,
+            clarify_answer=clarify_answer,
+            route_to_ask_answer=route_to_ask_answer,
+        ),
     )
     if assembled.intent_class == "time_query" or assembled.fallback_action == "ANSWER_TIME":
         alignment_decision["final_alignment_decision"] = "allow"

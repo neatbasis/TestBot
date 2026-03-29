@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 from testbot.pipeline_state import CandidateHit, PipelineState
 import pytest
+from testbot.answer_contract_constants import CLARIFY_ANSWER
 from testbot.stage_transitions import (
     validate_answer_commit_post,
     validate_answer_post,
@@ -74,3 +77,55 @@ def test_legacy_answer_alias_forwards_with_deprecation_warning() -> None:
     canonical_result = validate_answer_commit_post(state)
 
     assert alias_result.to_dict() == canonical_result.to_dict()
+
+
+def test_validate_answer_commit_post_accepts_clarify_answer_with_allow_alignment() -> None:
+    state = replace(
+        _base_state(),
+        final_answer=CLARIFY_ANSWER,
+        invariant_decisions={
+            "answer_contract_valid": True,
+            "answer_mode": "clarify",
+            "fallback_action": "ASK_CLARIFYING_QUESTION",
+        },
+        alignment_decision={
+            "dimensions": {
+                "factual_grounding_reliability": "not_applicable",
+                "safety_compliance_strictness": 1.0,
+                "response_utility": 0.8,
+                "cost_latency_budget": 1.0,
+                "provenance_transparency": 0.0,
+            },
+            "final_alignment_decision": "allow",
+        },
+    )
+
+    result = validate_answer_commit_post(state)
+
+    assert "alignment_decision_consistent" not in result.failures
+
+
+def test_validate_answer_commit_post_allows_fallback_alignment_for_non_exempt_answer() -> None:
+    state = replace(
+        _base_state(),
+        final_answer="From memory, I found: release prep requires changelog review.",
+        invariant_decisions={
+            "answer_contract_valid": True,
+            "answer_mode": "memory-grounded",
+            "fallback_action": "ANSWER_FROM_MEMORY",
+        },
+        alignment_decision={
+            "dimensions": {
+                "factual_grounding_reliability": 0.4,
+                "safety_compliance_strictness": 1.0,
+                "response_utility": 0.65,
+                "cost_latency_budget": 1.0,
+                "provenance_transparency": 1.0,
+            },
+            "final_alignment_decision": "fallback",
+        },
+    )
+
+    result = validate_answer_commit_post(state)
+
+    assert "alignment_decision_consistent" not in result.failures

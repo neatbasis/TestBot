@@ -16,6 +16,7 @@ from testbot.answer_contract_constants import (
     NON_KNOWLEDGE_UNCERTAINTY_ANSWER,
     ROUTE_TO_ASK_ANSWER,
 )
+from testbot.answer_stage_semantics import expected_alignment_decisions_for_final_answer
 from testbot.pipeline_state import CandidateHit, PipelineState, ProvenanceType, StageArtifact
 
 
@@ -275,6 +276,11 @@ def _response_policy_contract_checks() -> list[tuple[str, Callable[[PipelineStat
 
 
 def _alignment_shape_and_decision_checks() -> list[tuple[str, Callable[[PipelineState], bool]]]:
+    def _alignment_decision_consistent_with_final_answer(state: PipelineState) -> bool:
+        alignment = str(state.alignment_decision.get("final_alignment_decision") or "").strip()
+        expected_decisions = expected_alignment_decisions_for_final_answer(state.final_answer)
+        return alignment in expected_decisions
+
     return [
         (
             "alignment_decision_recorded",
@@ -298,13 +304,7 @@ def _alignment_shape_and_decision_checks() -> list[tuple[str, Callable[[Pipeline
         ),
         (
             "alignment_decision_consistent",
-            lambda s: s.alignment_decision.get("final_alignment_decision") == "deny"
-            if s.final_answer == DENY_ANSWER
-            else (
-                s.alignment_decision.get("final_alignment_decision") == "fallback"
-                if s.final_answer == FALLBACK_ANSWER
-                else s.alignment_decision.get("final_alignment_decision") == "allow"
-            ),
+            _alignment_decision_consistent_with_final_answer,
         ),
     ]
 
