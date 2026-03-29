@@ -49,6 +49,13 @@ class ObjectiveComponentComposition:
     final_score: float
 
 
+@dataclass(frozen=True)
+class PriorComponentComposition:
+    inferred_lane: RecordKind
+    type_prior: float
+    lane_prior: float
+
+
 DEFAULT_RERANK_OBJECTIVE_CONFIG_PATH = Path("config/rerank_objective.json")
 RERANK_OBJECTIVE_CONFIG_ENV = "TESTBOT_RERANK_OBJECTIVE_CONFIG"
 
@@ -520,6 +527,29 @@ def compute_objective_component_composition(
     temporal_signal: TemporalSignalComposition,
     coefficients: RerankObjectiveCoefficients,
 ) -> ObjectiveComponentComposition:
+    prior_components = compute_prior_component_composition(
+        doc_type=doc_type,
+        coefficients=coefficients,
+    )
+    final_score = (
+        prior_components.type_prior
+        * prior_components.lane_prior
+        * float(sim_score)
+        * temporal_signal.temporal_blend
+    )
+    return ObjectiveComponentComposition(
+        inferred_lane=prior_components.inferred_lane,
+        type_prior=float(prior_components.type_prior),
+        lane_prior=float(prior_components.lane_prior),
+        final_score=float(final_score),
+    )
+
+
+def compute_prior_component_composition(
+    *,
+    doc_type: str,
+    coefficients: RerankObjectiveCoefficients,
+) -> PriorComponentComposition:
     inferred_lane = _normalize_lane_name(doc_type)
     type_prior = (
         coefficients.reflection_type_prior
@@ -528,12 +558,10 @@ def compute_objective_component_composition(
     )
     lane_coefficients = coefficients.lane_coefficients or DEFAULT_LANE_COEFFICIENTS
     lane_prior = lane_coefficients.get(inferred_lane, 1.0)
-    final_score = type_prior * lane_prior * float(sim_score) * temporal_signal.temporal_blend
-    return ObjectiveComponentComposition(
+    return PriorComponentComposition(
         inferred_lane=inferred_lane,
         type_prior=float(type_prior),
         lane_prior=float(lane_prior),
-        final_score=float(final_score),
     )
 
 

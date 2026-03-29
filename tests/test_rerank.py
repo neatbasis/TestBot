@@ -10,6 +10,7 @@ from testbot.rerank import (
     DEFAULT_RERANK_OBJECTIVE_CONFIG,
     DEFAULT_RERANK_COEFFICIENTS,
     compute_objective_component_composition,
+    compute_prior_component_composition,
     compute_temporal_signal_composition,
     has_sufficient_context_confidence_from_objective,
     load_rerank_objective_config,
@@ -242,6 +243,51 @@ def test_objective_component_composition_assembles_final_score_without_semantic_
     assert composed.type_prior == DEFAULT_RERANK_COEFFICIENTS.reflection_type_prior
     assert composed.lane_prior == DEFAULT_LANE_COEFFICIENTS["reflection_hypothesis"]
     assert composed.final_score == expected_score
+
+
+def test_prior_component_composition_determines_lane_and_priors_without_temporal_or_semantic_inputs() -> None:
+    composed = compute_prior_component_composition(
+        doc_type="reflection",
+        coefficients=DEFAULT_RERANK_COEFFICIENTS,
+    )
+
+    assert composed.inferred_lane == "reflection_hypothesis"
+    assert composed.type_prior == DEFAULT_RERANK_COEFFICIENTS.reflection_type_prior
+    assert composed.lane_prior == DEFAULT_LANE_COEFFICIENTS["reflection_hypothesis"]
+
+
+def test_objective_component_composition_routes_prior_selection_through_prior_composition_seam(
+    monkeypatch,
+) -> None:
+    observed: dict[str, object] = {}
+
+    def _fake_prior_compose(**kwargs):
+        observed.update(kwargs)
+        return compute_prior_component_composition(**kwargs)
+
+    monkeypatch.setattr(
+        "testbot.rerank.compute_prior_component_composition",
+        _fake_prior_compose,
+    )
+    target = arrow.get("2026-03-10T12:00:00+00:00")
+    temporal_signal = compute_temporal_signal_composition(
+        doc_ts_iso="2026-03-10T12:00:00+00:00",
+        target=target,
+        sigma_seconds=3600.0,
+        neutral_temporal_prior=DEFAULT_RERANK_COEFFICIENTS.neutral_temporal_prior,
+        base_temporal_blend=DEFAULT_RERANK_COEFFICIENTS.base_temporal_blend,
+        gaussian_temporal_blend=DEFAULT_RERANK_COEFFICIENTS.gaussian_temporal_blend,
+    )
+    composed = compute_objective_component_composition(
+        sim_score=0.8,
+        doc_type="memory",
+        temporal_signal=temporal_signal,
+        coefficients=DEFAULT_RERANK_COEFFICIENTS,
+    )
+
+    assert observed["doc_type"] == "memory"
+    assert composed.inferred_lane == "utterance_memory"
+    assert composed.type_prior == DEFAULT_RERANK_COEFFICIENTS.default_type_prior
 
 
 def test_rerank_objective_score_components_routes_final_score_assembly_through_objective_composition_seam(
