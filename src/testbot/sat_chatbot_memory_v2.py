@@ -93,7 +93,7 @@ from testbot.reject_taxonomy import derive_reject_signal
 from testbot.turn_observation import observe_turn
 from testbot.candidate_encoding import encode_turn_candidates
 from testbot.stabilization import StabilizedTurnState, stabilize_pre_route
-from testbot.context_resolution import resolve as resolve_context
+from testbot.context_resolution import resolve as _resolve_context_from_domain
 from testbot.intent_resolution import IntentResolutionInput, resolve as resolve_intent
 from testbot.evidence_retrieval import (
     EvidenceBundle,
@@ -558,6 +558,10 @@ def _should_force_memory_retrieval_for_identity_recall(
         continuity_evidence=continuity_evidence,
         context_history_anchors=context_history_anchors,
     )
+
+
+def resolve_context(*args, **kwargs):
+    return context_retrieval_runtime_service.resolve_context(*args, resolve_context_fn=_resolve_context_from_domain, **kwargs)
 
 
 def stage_rewrite_query(llm: ChatOllama, state: PipelineState) -> PipelineState:

@@ -13,7 +13,7 @@ from typing import Callable
 
 from langchain_core.documents import Document
 
-from testbot.context_resolution import resolve as resolve_context
+from testbot.context_resolution import resolve as _resolve_context_from_domain
 from testbot.evidence_retrieval import RetrievalInputRecord
 from testbot.pipeline_state import PipelineState
 from testbot.ports import MemoryStorePort
@@ -70,6 +70,10 @@ def should_force_memory_retrieval_for_identity_recall(
         continuity_evidence=continuity_evidence,
         context_history_anchors=context_history_anchors,
     )
+
+
+def resolve_context(*args, resolve_context_fn: Callable[..., object] = _resolve_context_from_domain, **kwargs):
+    return resolve_context_fn(*args, **kwargs)
 
 
 def retrieval_input_from_document(doc: Document, *, score: float) -> RetrievalInputRecord:

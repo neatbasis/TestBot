@@ -214,6 +214,9 @@ Seam inventory (before → after):
   - authoritative hook functions now sourced in `entrypoints/runtime_loop.py` from that module.
 - Compatibility posture:
   - corresponding monolith helpers now remain as thin wrappers delegating to canonical context/retrieval runtime helpers.
+  - follow-up completion in this PR head also wraps monolith `resolve_context` as an explicit compatibility shim into the
+    canonical context/retrieval runtime owner (instead of a direct domain import alias), so the seam boundary is explicit at
+    the compatibility surface.
 
 Ask-boundary contract posture:
 
@@ -234,4 +237,9 @@ Done vs Deferred:
 
 - **Done:** context/retrieval hook wiring authority on the canonical runtime path moved to
   `application/services/context_retrieval_runtime.py`; runtime-loop monolith touchpoints narrowed.
-- **Deferred:** deeper retrieval/rerank policy-core extraction beyond this hook seam remains out of scope for this narrow step.
+- **Deferred (explicit residual seam elements):**
+  - monolith `stage_retrieve(...)` policy/core retrieval implementation;
+  - monolith `stage_rerank(...)` policy/core rerank + temporal-bridge implementation;
+  - supporting rerank-temporal helper internals coupled to that policy core.
+  These remain intentionally deferred because this increment is scoped to runtime wiring/adapters and compatibility-surface
+  ownership, not retrieval/rerank policy-core redesign.

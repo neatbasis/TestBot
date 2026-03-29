@@ -30,6 +30,25 @@ def test_should_force_memory_retrieval_wrapper_delegates_to_context_retrieval_ru
     assert observed["utterance"] == "who am i?"
 
 
+def test_resolve_context_wrapper_delegates_to_context_retrieval_runtime(monkeypatch) -> None:
+    observed: dict[str, object] = {}
+    expected = {"entities": ["user_name"]}
+
+    def _fake_resolve_context(*args, **kwargs):
+        observed["args"] = args
+        observed["kwargs"] = kwargs
+        return expected
+
+    monkeypatch.setattr(runtime.context_retrieval_runtime_service, "resolve_context", _fake_resolve_context)
+
+    actual = runtime.resolve_context("hello", local_now_iso="2026-03-29T00:00:00+00:00")
+
+    assert actual is expected
+    assert observed["args"] == ("hello",)
+    assert observed["kwargs"]["local_now_iso"] == "2026-03-29T00:00:00+00:00"
+    assert observed["kwargs"]["resolve_context_fn"] is runtime._resolve_context_from_domain
+
+
 def test_stage_retrieve_for_turn_service_wrapper_delegates_to_context_retrieval_runtime(monkeypatch) -> None:
     observed: dict[str, object] = {}
     expected_state = PipelineState(user_input="q")
