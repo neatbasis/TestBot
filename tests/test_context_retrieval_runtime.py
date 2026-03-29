@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import arrow
 from langchain_core.documents import Document
 
@@ -100,6 +102,62 @@ def test_stage_rerank_for_turn_service_uses_injected_stage_function() -> None:
     assert observed["kwargs"]["user_doc_id"] == "user-doc"
     assert len(hits) == 1
     assert hits[0].ref_id == "doc-2"
+
+
+def test_stage_rerank_for_turn_service_runtime_path_is_equivalent_to_direct_stage_contract() -> None:
+    state = PipelineState(user_input="who am i?")
+    candidates = [
+        RetrievalInputRecord(ref_id="doc-1", score=0.8, content="candidate 1", metadata={"doc_id": "doc-1"}),
+        RetrievalInputRecord(ref_id="doc-2", score=0.7, content="candidate 2", metadata={"doc_id": "doc-2"}),
+    ]
+
+    expected_docs_and_scores = [
+        (context_retrieval_runtime.document_from_retrieval_input(record), float(record.score))
+        for record in candidates
+    ]
+
+    def _deterministic_stage_rerank(pipeline_state, docs_and_scores, **kwargs):
+        assert docs_and_scores == expected_docs_and_scores
+        assert kwargs["utterance"] == "who am i?"
+        assert kwargs["user_doc_id"] == "user-doc"
+        assert kwargs["user_reflection_doc_id"] == "reflection-doc"
+        assert kwargs["near_tie_delta"] == 0.1
+        return pipeline_state, [docs_and_scores[1][0], docs_and_scores[0][0]]
+
+    via_runtime_state, via_runtime_hits = context_retrieval_runtime.stage_rerank_for_turn_service(
+        state,
+        candidates,
+        stage_rerank_fn=_deterministic_stage_rerank,
+        utterance="who am i?",
+        user_doc_id="user-doc",
+        user_reflection_doc_id="reflection-doc",
+        near_tie_delta=0.1,
+        clock=object(),
+    )
+
+    direct_state, direct_docs = _deterministic_stage_rerank(
+        state,
+        expected_docs_and_scores,
+        utterance="who am i?",
+        user_doc_id="user-doc",
+        user_reflection_doc_id="reflection-doc",
+        near_tie_delta=0.1,
+        clock=object(),
+    )
+
+    assert via_runtime_state is direct_state
+    assert [hit.ref_id for hit in via_runtime_hits] == [doc.id for doc in direct_docs]
+
+
+def test_stage_rerank_wrapper_caller_census_is_compatibility_only_in_src_tree() -> None:
+    source_path = Path("src/testbot/sat_chatbot_memory_v2.py")
+    source = source_path.read_text()
+
+    occurrences = [line.strip() for line in source.splitlines() if "_stage_rerank_for_turn_service" in line]
+
+    assert len(occurrences) == 2
+    assert occurrences[0].startswith("def _stage_rerank_for_turn_service(")
+    assert occurrences[1] == "stage_rerank=_stage_rerank_for_turn_service,"
 
 
 def test_normalize_retrieval_filter_scope_strips_empty_values() -> None:
