@@ -322,5 +322,17 @@ Post-#700 scorer handoff clarification:
 - unchanged final-score semantics: `type_prior * lane_prior * semantic_score * temporal_blend`;
 - remaining scorer-category debt: scorer candidate-output composition/projection shaping plus tie/ambiguity projection
   pathways in `rerank_docs_with_time_and_type_outcome(...)`;
-- recommended next smallest scorer-internals slice: extract scorer candidate-output composition/projection seam
-  upstream of confidence gating and downstream of final-score assembly.
+- recommended next scorer-category seam (after cleanup + behave catch-up workstreams): extract scorer
+  candidate-output composition/projection seam upstream of confidence gating and downstream of final-score assembly.
+
+## 2026-03-29 post-merge inventory addendum — PR #703 cleanup/behave sequencing anchor
+
+Canonical sequencing is now explicitly split into two ambient follow-up workstreams before additional scorer-category
+execution:
+
+- first: cleanup workstream execution slices (stale terminology/references/ownership framing),
+- second: behave catch-up execution slices (validation scenario/gate alignment),
+- then: next scorer-category seam execution (candidate-output/projection shaping remains the leading scorer seam).
+
+This sequencing update is an authority-drift prevention clarification only; it does not change scorer semantics
+or re-open completed row-program conclusions.
