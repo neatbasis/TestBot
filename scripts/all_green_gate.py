@@ -314,6 +314,17 @@ INVARIANT_EXACT_PATHS = {
     "docs/invariants.md",
 }
 
+# Governance-specific readiness validators (excludes broad deterministic pytest).
+GOVERNANCE_CHECK_NAMES = {
+    "qa_validate_issue_links",
+    "qa_validate_issues",
+    "qa_validate_invariant_sync",
+    "qa_validate_markdown_paths",
+    "qa_architecture_boundary_report",
+    "qa_aggregate_turn_analytics",
+    "qa_validate_kpi_guardrails",
+}
+
 
 def detect_changed_paths(base_ref: str) -> tuple[set[str] | None, list[str]]:
     """Collect changed paths against a base ref with safe fallback diagnostics."""
@@ -684,11 +695,15 @@ def summarize(results: Sequence[CheckResult], continue_on_failure: bool) -> dict
         for result in results
         if result.status == "failed" and result.stage in {"product", "safety", "ops"}
     ]
-    governance_failures = [
+    qa_failures = [
         asdict(result)
         for result in results
         if result.status == "failed" and result.stage == "qa"
     ]
+    governance_failures = [
+        failure for failure in qa_failures if failure["name"] in GOVERNANCE_CHECK_NAMES
+    ]
+    pytest_failures = [failure for failure in qa_failures if failure["name"] == "qa_pytest_not_live_smoke"]
     skipped_checks = [
         {"check": result.name, "reason": result.diagnostic_reason}
         for result in results
@@ -701,7 +716,9 @@ def summarize(results: Sequence[CheckResult], continue_on_failure: bool) -> dict
         "warning_count": warning_count,
         "warning_diagnostics": warning_diagnostics,
         "product_failures": product_failures,
+        "qa_failures": qa_failures,
         "governance_failures": governance_failures,
+        "pytest_failures": pytest_failures,
         "skipped_checks": skipped_checks,
         "stages": stage_summaries,
         "checks": [asdict(result) for result in results],
