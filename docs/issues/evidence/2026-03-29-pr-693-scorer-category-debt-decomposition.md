@@ -174,3 +174,15 @@ This PR decomposes the remaining scorer-category debt (post-wrapper-retirement) 
   - Confidence payload shape and reranked-hit output shape remain unchanged.
 - **Category debt remaining:** broader scorer internals / redesign debt remains.
 - **Recommended next unit:** smallest scorer internals slice around scorer input normalization or temporal/scoring coupling ownership.
+
+### Post-#695 handoff (explicit next-decision surface)
+
+- **Processed unit type:** category-debt execution slice.
+- **Processed slice in #695:** scorer result interpretation / compatibility shaping behind runtime seam.
+- **Remaining scorer-category debt (explicit):**
+  1. scorer input normalization/config materialization contract hardening;
+  2. residual temporal/scoring coupling ownership (`sigma` ownership posture);
+  3. broader scorer internals redesign (objective/fusion/ambiguity semantics), still intentionally out of scope.
+- **Recommended next smallest scorer-internals slice:** scorer input normalization/config materialization
+  contract hardening, because it is adjacent to the newly explicit execution + interpretation seam and can be
+  moved without reopening objective semantics.
