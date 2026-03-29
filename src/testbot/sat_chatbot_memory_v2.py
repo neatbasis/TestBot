@@ -47,7 +47,6 @@ from testbot.promotion_policy import persist_promoted_context
 from testbot.reflection_policy import CapabilityStatus, decide_fallback_action, fallback_reason as derive_fallback_reason
 from testbot.answer_policy import AnswerPolicyInput, AnswerRoutingDecision, resolve_answer_mode, resolve_answer_routing
 from testbot.rerank import (
-    rerank_confidence_thresholds,
     adaptive_sigma_fractional,
     has_sufficient_context_confidence_from_objective,
     mix_source_evidence_with_memory_cards,
@@ -698,16 +697,22 @@ def stage_rerank(
         bridge=temporal_bridge,
         now=now,
     )
-    sigma = adaptive_sigma_fractional(now=now, target=target, frac=0.25)
+    invocation_policy = context_retrieval_runtime_service.assemble_rerank_invocation_policy(
+        sigma_seconds=adaptive_sigma_fractional(now=now, target=target, frac=0.25),
+        user_doc_id=user_doc_id,
+        user_reflection_doc_id=user_reflection_doc_id,
+        near_tie_delta=near_tie_delta,
+    )
+    sigma = invocation_policy.sigma_seconds
     rerank_outcome = rerank_docs_with_time_and_type_outcome(
         filtered_docs_and_scores,
         now=now,
         target=target,
         sigma_seconds=sigma,
-        exclude_doc_ids={user_doc_id, user_reflection_doc_id},
-        exclude_source_ids={user_doc_id},
-        top_k=4,
-        near_tie_delta=near_tie_delta,
+        exclude_doc_ids=invocation_policy.exclude_doc_ids,
+        exclude_source_ids=invocation_policy.exclude_source_ids,
+        top_k=invocation_policy.top_k,
+        near_tie_delta=invocation_policy.near_tie_delta,
     )
     hits = rerank_outcome.docs
     reranked_hits = [doc_to_candidate_hit(doc, score=0.0) for doc in hits]
@@ -715,6 +720,7 @@ def stage_rerank(
         rerank_outcome.scored_candidates,
         ambiguity_detected=rerank_outcome.ambiguity_detected,
     )
+    threshold_profile_policy = context_retrieval_runtime_service.assemble_rerank_threshold_profile_policy()
     confidence_decision = {
         **state.confidence_decision,
         "context_confident": has_context,
@@ -730,10 +736,10 @@ def stage_rerank(
         "memory_hit_count": len(hits),
         "objective": rerank_outcome.scored_candidates[0].get("objective", "") if rerank_outcome.scored_candidates else "",
         "objective_version": rerank_outcome.scored_candidates[0].get("objective_version", "") if rerank_outcome.scored_candidates else "",
-        "top_final_score_min": rerank_confidence_thresholds().top_final_score_min,
-        "min_margin_to_second": rerank_confidence_thresholds().min_margin_to_second,
-        "allow_ambiguity_override": rerank_confidence_thresholds().allow_ambiguity_override,
-        "ambiguity_override_top_final_score_min": rerank_confidence_thresholds().ambiguity_override_top_final_score_min,
+        "top_final_score_min": threshold_profile_policy.top_final_score_min,
+        "min_margin_to_second": threshold_profile_policy.min_margin_to_second,
+        "allow_ambiguity_override": threshold_profile_policy.allow_ambiguity_override,
+        "ambiguity_override_top_final_score_min": threshold_profile_policy.ambiguity_override_top_final_score_min,
         "now_ts": now.isoformat(),
         "target_ts": target.isoformat(),
         "sigma_seconds": sigma,

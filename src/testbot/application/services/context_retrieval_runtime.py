@@ -22,6 +22,7 @@ from testbot.context_resolution import resolve as _resolve_context_from_domain
 from testbot.evidence_retrieval import RetrievalInputRecord
 from testbot.pipeline_state import PipelineState
 from testbot.ports import MemorySearchQuery, MemoryStorePort
+from testbot.rerank import ContextConfidenceThresholds, rerank_confidence_thresholds
 from testbot.time_parse import parse_target_time
 from testbot.domain import Clock
 
@@ -138,6 +139,23 @@ class RetrievalFilterScope:
     segment_types: set[str]
 
 
+@dataclass(frozen=True)
+class RerankInvocationPolicy:
+    sigma_seconds: float
+    exclude_doc_ids: set[str]
+    exclude_source_ids: set[str]
+    top_k: int
+    near_tie_delta: float
+
+
+@dataclass(frozen=True)
+class RerankThresholdProfilePolicy:
+    top_final_score_min: float
+    min_margin_to_second: float
+    allow_ambiguity_override: bool
+    ambiguity_override_top_final_score_min: float
+
+
 def normalize_retrieval_filter_scope(
     *,
     exclude_doc_ids: set[str] | None = None,
@@ -152,6 +170,36 @@ def normalize_retrieval_filter_scope(
         exclude_turn_scoped_ids={value for value in (exclude_turn_scoped_ids or set()) if value},
         segment_ids={value for value in (segment_ids or set()) if value},
         segment_types={value for value in (segment_types or set()) if value},
+    )
+
+
+def assemble_rerank_invocation_policy(
+    *,
+    sigma_seconds: float,
+    user_doc_id: str,
+    user_reflection_doc_id: str,
+    near_tie_delta: float,
+    top_k: int = 4,
+) -> RerankInvocationPolicy:
+    return RerankInvocationPolicy(
+        sigma_seconds=float(sigma_seconds),
+        exclude_doc_ids={value for value in {user_doc_id, user_reflection_doc_id} if value},
+        exclude_source_ids={value for value in {user_doc_id} if value},
+        top_k=int(top_k),
+        near_tie_delta=float(near_tie_delta),
+    )
+
+
+def assemble_rerank_threshold_profile_policy(
+    *,
+    rerank_confidence_thresholds_fn: Callable[[], ContextConfidenceThresholds] = rerank_confidence_thresholds,
+) -> RerankThresholdProfilePolicy:
+    thresholds = rerank_confidence_thresholds_fn()
+    return RerankThresholdProfilePolicy(
+        top_final_score_min=float(thresholds.top_final_score_min),
+        min_margin_to_second=float(thresholds.min_margin_to_second),
+        allow_ambiguity_override=bool(thresholds.allow_ambiguity_override),
+        ambiguity_override_top_final_score_min=float(thresholds.ambiguity_override_top_final_score_min),
     )
 
 
@@ -358,6 +406,10 @@ def resolve_rerank_target_time(
 
 
 __all__ = [
+    "RerankInvocationPolicy",
+    "RerankThresholdProfilePolicy",
+    "assemble_rerank_invocation_policy",
+    "assemble_rerank_threshold_profile_policy",
     "filter_documents_for_temporal_window",
     "document_from_retrieval_input",
     "normalize_retrieval_filter_scope",
