@@ -40,8 +40,19 @@ Still deferred broader debt:
 
 ## Remaining scorer-category debt after this slice
 
-Recommended next bounded slice:
-- threshold-profile ownership tightening as a dedicated runtime contract object with explicit anti-backslide coverage.
+Processed explicitly in this slice:
+- `sigma` ownership posture is now runtime control-point owned (`resolve_rerank_sigma_seconds(...)`) and threaded through the
+  existing scorer decision/invocation contract without changing scorer math.
+
+Remaining explicit debt (adjacent and broader):
+- scorer internals still own temporal/objective implementation details (for example temporal gaussian weighting, timestamp quality,
+  and final-score component composition inside `rerank_objective_score_components(...)`);
+- broader scorer algorithm/internals redesign remains out of scope.
+
+Recommended next smallest scorer-internals slice:
+- scorer-internal **temporal signal composition seam**: extract and harden a narrow scorer-internal contract around
+  temporal gaussian weighting + timestamp-quality attribution (without changing coefficients/objective semantics), so runtime
+  contract ownership stays stable while scorer-internal responsibilities become more explicit and test-isolated.
 
 Lower-priority scorer internals slices:
 - scorer objective component decomposition and detailed algorithmic reshaping.

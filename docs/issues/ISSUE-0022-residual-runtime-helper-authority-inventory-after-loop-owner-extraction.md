@@ -269,3 +269,9 @@ This addendum intentionally does not broaden implementation scope; it consolidat
 next highest-leverage extraction steps (retrieval policy-core first, rerank/temporal policy-core next) while
 adding explicit ideal-future-state synthesis so deferred items are tracked as a convergent re-ownership program
 rather than a queue of leftovers.
+
+Post-#697 scorer handoff clarification:
+- processed: residual temporal/scoring coupling ownership (`sigma` posture) at runtime control point;
+- remaining scorer-category debt: scorer-internal temporal/objective implementation seams and broader scorer redesign;
+- recommended next smallest scorer-internals slice: temporal signal composition seam (gaussian temporal weighting +
+  timestamp-quality attribution contract hardening) without objective semantics redesign.
