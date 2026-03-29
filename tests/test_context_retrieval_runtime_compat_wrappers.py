@@ -263,3 +263,80 @@ def test_stage_rerank_uses_runtime_invocation_policy_assembly(monkeypatch) -> No
     assert observed["rerank_kwargs"]["exclude_source_ids"] == {"assembled-source"}
     assert observed["rerank_kwargs"]["top_k"] == 7
     assert observed["rerank_kwargs"]["near_tie_delta"] == 0.33
+
+
+def test_stage_rerank_uses_runtime_threshold_profile_policy_assembly(monkeypatch) -> None:
+    now = arrow.get("2026-03-10T12:00:00+00:00")
+    state = PipelineState(user_input="who am i?", confidence_decision={})
+    docs_and_scores = [(Document(id="doc-1", page_content="candidate", metadata={"doc_id": "doc-1"}), 0.9)]
+    observed: dict[str, object] = {}
+
+    class _Clock:
+        def now(self):
+            return now
+
+    monkeypatch.setattr(
+        runtime.context_retrieval_runtime_service,
+        "resolve_temporal_anaphora_bridge",
+        lambda *, utterance, docs_and_scores, now: {
+            "anaphora_detected": False,
+            "anchor_candidates": [],
+            "selected_anchor_doc_id": "",
+            "selected_anchor_ts": "",
+            "target_override_ts": "",
+            "delta_seconds_raw": None,
+            "delta_humanized": "",
+            "time_window": "",
+            "window_start": "",
+            "window_end": "",
+        },
+    )
+    monkeypatch.setattr(runtime.context_retrieval_runtime_service, "filter_documents_for_temporal_window", lambda *, docs_and_scores, bridge: docs_and_scores)
+    monkeypatch.setattr(runtime.context_retrieval_runtime_service, "resolve_rerank_target_time", lambda *, utterance, bridge, now: now)
+    monkeypatch.setattr(
+        runtime.context_retrieval_runtime_service,
+        "assemble_rerank_invocation_policy",
+        lambda **kwargs: runtime.context_retrieval_runtime_service.RerankInvocationPolicy(
+            sigma_seconds=600.0,
+            exclude_doc_ids={"user-doc", "reflection-doc"},
+            exclude_source_ids={"user-doc"},
+            top_k=4,
+            near_tie_delta=0.1,
+        ),
+    )
+
+    def _fake_threshold_policy():
+        observed["threshold_policy_called"] = True
+        return runtime.context_retrieval_runtime_service.RerankThresholdProfilePolicy(
+            top_final_score_min=0.77,
+            min_margin_to_second=0.11,
+            allow_ambiguity_override=True,
+            ambiguity_override_top_final_score_min=0.93,
+        )
+
+    monkeypatch.setattr(
+        runtime.context_retrieval_runtime_service,
+        "assemble_rerank_threshold_profile_policy",
+        _fake_threshold_policy,
+    )
+    monkeypatch.setattr(
+        runtime,
+        "rerank_docs_with_time_and_type_outcome",
+        lambda *args, **kwargs: RerankOutcome(docs=[], scored_candidates=[], ambiguity_detected=False, near_tie_candidates=[]),
+    )
+
+    updated_state, _ = runtime.stage_rerank(
+        state,
+        docs_and_scores,
+        utterance="who am i?",
+        user_doc_id="user-doc",
+        user_reflection_doc_id="reflection-doc",
+        near_tie_delta=0.1,
+        clock=_Clock(),
+    )
+
+    assert observed["threshold_policy_called"] is True
+    assert updated_state.confidence_decision["top_final_score_min"] == 0.77
+    assert updated_state.confidence_decision["min_margin_to_second"] == 0.11
+    assert updated_state.confidence_decision["allow_ambiguity_override"] is True
+    assert updated_state.confidence_decision["ambiguity_override_top_final_score_min"] == 0.93

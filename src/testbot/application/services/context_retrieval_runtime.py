@@ -22,6 +22,7 @@ from testbot.context_resolution import resolve as _resolve_context_from_domain
 from testbot.evidence_retrieval import RetrievalInputRecord
 from testbot.pipeline_state import PipelineState
 from testbot.ports import MemorySearchQuery, MemoryStorePort
+from testbot.rerank import ContextConfidenceThresholds, rerank_confidence_thresholds
 from testbot.time_parse import parse_target_time
 from testbot.domain import Clock
 
@@ -147,6 +148,14 @@ class RerankInvocationPolicy:
     near_tie_delta: float
 
 
+@dataclass(frozen=True)
+class RerankThresholdProfilePolicy:
+    top_final_score_min: float
+    min_margin_to_second: float
+    allow_ambiguity_override: bool
+    ambiguity_override_top_final_score_min: float
+
+
 def normalize_retrieval_filter_scope(
     *,
     exclude_doc_ids: set[str] | None = None,
@@ -178,6 +187,19 @@ def assemble_rerank_invocation_policy(
         exclude_source_ids={value for value in {user_doc_id} if value},
         top_k=int(top_k),
         near_tie_delta=float(near_tie_delta),
+    )
+
+
+def assemble_rerank_threshold_profile_policy(
+    *,
+    rerank_confidence_thresholds_fn: Callable[[], ContextConfidenceThresholds] = rerank_confidence_thresholds,
+) -> RerankThresholdProfilePolicy:
+    thresholds = rerank_confidence_thresholds_fn()
+    return RerankThresholdProfilePolicy(
+        top_final_score_min=float(thresholds.top_final_score_min),
+        min_margin_to_second=float(thresholds.min_margin_to_second),
+        allow_ambiguity_override=bool(thresholds.allow_ambiguity_override),
+        ambiguity_override_top_final_score_min=float(thresholds.ambiguity_override_top_final_score_min),
     )
 
 
@@ -385,7 +407,9 @@ def resolve_rerank_target_time(
 
 __all__ = [
     "RerankInvocationPolicy",
+    "RerankThresholdProfilePolicy",
     "assemble_rerank_invocation_policy",
+    "assemble_rerank_threshold_profile_policy",
     "filter_documents_for_temporal_window",
     "document_from_retrieval_input",
     "normalize_retrieval_filter_scope",

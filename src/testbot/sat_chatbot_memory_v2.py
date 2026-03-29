@@ -47,7 +47,6 @@ from testbot.promotion_policy import persist_promoted_context
 from testbot.reflection_policy import CapabilityStatus, decide_fallback_action, fallback_reason as derive_fallback_reason
 from testbot.answer_policy import AnswerPolicyInput, AnswerRoutingDecision, resolve_answer_mode, resolve_answer_routing
 from testbot.rerank import (
-    rerank_confidence_thresholds,
     adaptive_sigma_fractional,
     has_sufficient_context_confidence_from_objective,
     mix_source_evidence_with_memory_cards,
@@ -721,6 +720,7 @@ def stage_rerank(
         rerank_outcome.scored_candidates,
         ambiguity_detected=rerank_outcome.ambiguity_detected,
     )
+    threshold_profile_policy = context_retrieval_runtime_service.assemble_rerank_threshold_profile_policy()
     confidence_decision = {
         **state.confidence_decision,
         "context_confident": has_context,
@@ -736,10 +736,10 @@ def stage_rerank(
         "memory_hit_count": len(hits),
         "objective": rerank_outcome.scored_candidates[0].get("objective", "") if rerank_outcome.scored_candidates else "",
         "objective_version": rerank_outcome.scored_candidates[0].get("objective_version", "") if rerank_outcome.scored_candidates else "",
-        "top_final_score_min": rerank_confidence_thresholds().top_final_score_min,
-        "min_margin_to_second": rerank_confidence_thresholds().min_margin_to_second,
-        "allow_ambiguity_override": rerank_confidence_thresholds().allow_ambiguity_override,
-        "ambiguity_override_top_final_score_min": rerank_confidence_thresholds().ambiguity_override_top_final_score_min,
+        "top_final_score_min": threshold_profile_policy.top_final_score_min,
+        "min_margin_to_second": threshold_profile_policy.min_margin_to_second,
+        "allow_ambiguity_override": threshold_profile_policy.allow_ambiguity_override,
+        "ambiguity_override_top_final_score_min": threshold_profile_policy.ambiguity_override_top_final_score_min,
         "now_ts": now.isoformat(),
         "target_ts": target.isoformat(),
         "sigma_seconds": sigma,

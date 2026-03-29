@@ -141,3 +141,15 @@ Ideal future state for this slice: canonical runtime execution computes rerank i
   calling `rerank_docs_with_time_and_type_outcome(...)`.
 - Remaining deferred rerank slices after this move: threshold/profile policy surface, confidence-decision projection /
   telemetry shaping, and wrapper retirement posture.
+
+## 2026-03-29 execution update — bounded rerank threshold/profile policy slice processed
+
+- Processed deferred row: **Rank 2 rerank residual — threshold/profile policy surface**.
+- Bounded delta: extracted threshold/profile policy assembly into canonical runtime-owned
+  `testbot.application.services.context_retrieval_runtime.assemble_rerank_threshold_profile_policy(...)` with
+  normalized outputs for `top_final_score_min`, `min_margin_to_second`, `allow_ambiguity_override`, and
+  `ambiguity_override_top_final_score_min`.
+- Canonical runtime path impact: `sat_chatbot_memory_v2.stage_rerank(...)` now delegates threshold/profile policy
+  assembly through the runtime-facing seam owner before writing those values into `confidence_decision`.
+- Remaining deferred rerank slices after this move: confidence-decision projection / telemetry shaping and residual
+  wrapper retirement posture.
