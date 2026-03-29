@@ -31,6 +31,16 @@ class RerankOutcome:
     scored_candidates: list[dict[str, float | str]]
 
 
+TimestampQuality = Literal["valid", "missing", "invalid"]
+
+
+@dataclass(frozen=True)
+class TemporalSignalComposition:
+    temporal_gaussian_weight: float
+    timestamp_quality: TimestampQuality
+    temporal_blend: float
+
+
 DEFAULT_RERANK_OBJECTIVE_CONFIG_PATH = Path("config/rerank_objective.json")
 RERANK_OBJECTIVE_CONFIG_ENV = "TESTBOT_RERANK_OBJECTIVE_CONFIG"
 
@@ -447,7 +457,7 @@ def _temporal_weight_and_quality(
     target: arrow.Arrow,
     sigma_seconds: float,
     neutral_temporal_prior: float,
-) -> tuple[float, str]:
+) -> tuple[float, TimestampQuality]:
     raw_ts = str(doc_ts_iso or "").strip()
     if not raw_ts:
         return float(neutral_temporal_prior), "missing"
@@ -461,13 +471,38 @@ def _temporal_weight_and_quality(
     return math.exp(-(dt * dt) / (2.0 * sigma_seconds * sigma_seconds)), "valid"
 
 
-def time_weight(doc_ts_iso: str, target: arrow.Arrow, sigma_seconds: float) -> float:
-    return _temporal_weight_and_quality(
+def compute_temporal_signal_composition(
+    *,
+    doc_ts_iso: str,
+    target: arrow.Arrow,
+    sigma_seconds: float,
+    neutral_temporal_prior: float,
+    base_temporal_blend: float,
+    gaussian_temporal_blend: float,
+) -> TemporalSignalComposition:
+    temporal_gaussian_weight, timestamp_quality = _temporal_weight_and_quality(
         doc_ts_iso,
         target=target,
         sigma_seconds=sigma_seconds,
+        neutral_temporal_prior=neutral_temporal_prior,
+    )
+    temporal_blend = base_temporal_blend + (gaussian_temporal_blend * temporal_gaussian_weight)
+    return TemporalSignalComposition(
+        temporal_gaussian_weight=float(temporal_gaussian_weight),
+        timestamp_quality=timestamp_quality,
+        temporal_blend=float(temporal_blend),
+    )
+
+
+def time_weight(doc_ts_iso: str, target: arrow.Arrow, sigma_seconds: float) -> float:
+    return compute_temporal_signal_composition(
+        doc_ts_iso=doc_ts_iso,
+        target=target,
+        sigma_seconds=sigma_seconds,
         neutral_temporal_prior=DEFAULT_RERANK_COEFFICIENTS.neutral_temporal_prior,
-    )[0]
+        base_temporal_blend=0.0,
+        gaussian_temporal_blend=1.0,
+    ).temporal_gaussian_weight
 
 
 def similarity_with_time_and_type_score(
@@ -499,11 +534,13 @@ def rerank_objective_score_components(
 ) -> dict[str, float | str]:
     active_config = objective_config or load_rerank_objective_config()
     effective_coefficients = coefficients or active_config.coefficients
-    temporal_gaussian_weight, timestamp_quality = _temporal_weight_and_quality(
-        doc_ts_iso,
+    temporal_signal = compute_temporal_signal_composition(
+        doc_ts_iso=doc_ts_iso,
         target=target,
         sigma_seconds=sigma_seconds,
         neutral_temporal_prior=effective_coefficients.neutral_temporal_prior,
+        base_temporal_blend=effective_coefficients.base_temporal_blend,
+        gaussian_temporal_blend=effective_coefficients.gaussian_temporal_blend,
     )
     inferred_lane = _normalize_lane_name(doc_type)
     type_prior = (
@@ -511,20 +548,17 @@ def rerank_objective_score_components(
     )
     lane_coefficients = effective_coefficients.lane_coefficients or DEFAULT_LANE_COEFFICIENTS
     lane_prior = lane_coefficients.get(inferred_lane, 1.0)
-    temporal_blend = (
-        effective_coefficients.base_temporal_blend
-        + (effective_coefficients.gaussian_temporal_blend * temporal_gaussian_weight)
-    )
+    temporal_blend = temporal_signal.temporal_blend
     final_score = type_prior * lane_prior * float(sim_score) * temporal_blend
     return {
         "objective": _objective_label(active_config),
         "objective_version": active_config.objective_version,
         "semantic_score": float(sim_score),
         "semantic_similarity": float(sim_score),
-        "temporal_gaussian_weight": float(temporal_gaussian_weight),
-        "time_decay_freshness": float(temporal_gaussian_weight),
+        "temporal_gaussian_weight": float(temporal_signal.temporal_gaussian_weight),
+        "time_decay_freshness": float(temporal_signal.temporal_gaussian_weight),
         "temporal_blend": float(temporal_blend),
-        "timestamp_quality": timestamp_quality,
+        "timestamp_quality": temporal_signal.timestamp_quality,
         "type_prior": float(type_prior),
         "lane_prior": float(lane_prior),
         "lane": inferred_lane,

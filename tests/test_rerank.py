@@ -7,6 +7,8 @@ from langchain_core.documents import Document
 from testbot.rerank import (
     ContextConfidenceThresholds,
     DEFAULT_RERANK_OBJECTIVE_CONFIG,
+    DEFAULT_RERANK_COEFFICIENTS,
+    compute_temporal_signal_composition,
     has_sufficient_context_confidence_from_objective,
     load_rerank_objective_config,
     mix_source_evidence_with_memory_cards,
@@ -168,6 +170,46 @@ def test_invalid_timestamp_is_auditable_and_treated_as_neutral_temporal_signal()
 
     assert invalid["timestamp_quality"] == "invalid"
     assert float(invalid["temporal_gaussian_weight"]) == 0.5
+
+
+def test_temporal_signal_composition_surfaces_weight_blend_and_timestamp_quality() -> None:
+    target = arrow.get("2026-03-10T12:00:00+00:00")
+
+    composition = compute_temporal_signal_composition(
+        doc_ts_iso="2026-03-10T12:00:00+00:00",
+        target=target,
+        sigma_seconds=3600.0,
+        neutral_temporal_prior=DEFAULT_RERANK_COEFFICIENTS.neutral_temporal_prior,
+        base_temporal_blend=DEFAULT_RERANK_COEFFICIENTS.base_temporal_blend,
+        gaussian_temporal_blend=DEFAULT_RERANK_COEFFICIENTS.gaussian_temporal_blend,
+    )
+
+    assert composition.timestamp_quality == "valid"
+    assert composition.temporal_gaussian_weight == 1.0
+    assert composition.temporal_blend == 1.0
+
+
+def test_temporal_signal_composition_matches_objective_temporal_fields_for_invalid_timestamp() -> None:
+    target = arrow.get("2026-03-10T12:00:00+00:00")
+    composition = compute_temporal_signal_composition(
+        doc_ts_iso="not-a-timestamp",
+        target=target,
+        sigma_seconds=3600.0,
+        neutral_temporal_prior=DEFAULT_RERANK_COEFFICIENTS.neutral_temporal_prior,
+        base_temporal_blend=DEFAULT_RERANK_COEFFICIENTS.base_temporal_blend,
+        gaussian_temporal_blend=DEFAULT_RERANK_COEFFICIENTS.gaussian_temporal_blend,
+    )
+    components = rerank_objective_score_components(
+        sim_score=0.8,
+        doc_type="memory",
+        doc_ts_iso="not-a-timestamp",
+        target=target,
+        sigma_seconds=3600.0,
+    )
+
+    assert components["timestamp_quality"] == composition.timestamp_quality
+    assert float(components["temporal_gaussian_weight"]) == composition.temporal_gaussian_weight
+    assert float(components["temporal_blend"]) == composition.temporal_blend
 
 
 def test_objective_components_apply_reflection_type_prior() -> None:
