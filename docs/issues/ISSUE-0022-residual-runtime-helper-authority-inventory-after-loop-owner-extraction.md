@@ -288,3 +288,9 @@ Post-#698 scorer handoff clarification:
 - remaining scorer-category debt: broader scorer final-score component composition internals and objective/fusion redesign;
 - recommended next smallest scorer-internals slice: bounded final-score component composition seam hardening
   (type/lane/temporal component assembly) without coefficient/objective redesign.
+
+Post-#698 merge-note tightening (explicit):
+- processed unit type: category-debt execution slice;
+- processed seam: temporal signal composition (gaussian temporal weighting + timestamp-quality attribution);
+- deferred debt: final-score composition internals and broader scorer redesign remain out of scope;
+- recommended next bounded unit: scorer-internal final-score component composition seam hardening.

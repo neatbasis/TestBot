@@ -55,6 +55,16 @@ Runtime control-point evidence:
 
 ## Remaining scorer-category debt after this slice
 
+Processed seam (explicit handoff contract):
+- scorer-internal temporal signal composition seam only:
+  - `TemporalSignalComposition`
+  - `compute_temporal_signal_composition(...)`
+  - bounded propagation to `time_weight(...)` and `rerank_objective_score_components(...)`.
+
+Remaining scorer-category debt (explicit):
+- final-score component composition internals beyond this temporal seam;
+- broader scorer objective/fusion internals redesign.
+
 Recommended next slice:
 - bounded final-score component composition seam hardening inside scorer internals (type/lane/temporal component assembly), preserving objective semantics.
 
@@ -63,3 +73,9 @@ Lower-priority slices:
 
 Still out-of-scope broad redesign:
 - broad scorer objective reformulation, coefficient redesign, and global fusion strategy redesign.
+
+## Strongest bounded claim
+
+- **Processed unit type:** category-debt execution slice.
+- **Processed slice:** scorer-internal temporal signal composition seam hardening (gaussian weighting + timestamp-quality attribution contract).
+- **Still deferred:** scorer-category debt beyond this seam (final-score component composition and broader internals redesign).
