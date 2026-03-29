@@ -4,6 +4,9 @@ Ownership:
 - This module is the canonical owner for runtime-loop hook wiring around
   context resolution and retrieval-stage adapter surfaces.
 - Compatibility façades may delegate here while legacy seams are retired.
+- Scope note: this module owns the runtime-facing hook seam/control point, not
+  the deeper retrieval/rerank policy-core semantics, which remain intentionally
+  deferred in monolith policy-stage helpers for now.
 """
 
 from __future__ import annotations

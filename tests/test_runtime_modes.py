@@ -318,6 +318,20 @@ def test_runtime_loop_context_retrieval_residual_monolith_touchpoints_are_explic
     assert "_legacy_runtime._document_from_retrieval_input" not in source
 
 
+def test_runtime_loop_binds_migrated_context_retrieval_hook_surfaces_via_canonical_service() -> None:
+    from testbot.entrypoints import runtime_loop
+
+    source = Path(runtime_loop.__file__).read_text()
+    assert (
+        "should_force_memory_retrieval_for_identity_recall="
+        "context_retrieval_runtime_service.should_force_memory_retrieval_for_identity_recall"
+    ) in source
+    assert "resolve_context_fn=context_retrieval_runtime_service.resolve_context" in source
+    assert "context_retrieval_runtime_service.stage_retrieve_for_turn_service(" in source
+    assert "context_retrieval_runtime_service.stage_rerank_for_turn_service(" in source
+    assert "document_from_retrieval_input=context_retrieval_runtime_service.document_from_retrieval_input" in source
+
+
 def test_sat_cli_is_transitional_wrapper_to_canonical_cli() -> None:
     source = Path(sat_cli.__file__).read_text()
     assert "compatibility-only" in source

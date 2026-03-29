@@ -243,6 +243,7 @@ Done vs Deferred:
 
 - **Done:** context/retrieval hook wiring authority on the canonical runtime path moved to
   `application/services/context_retrieval_runtime.py`; runtime-loop monolith touchpoints narrowed.
+  This is a runtime-facing seam/control-point extraction (wiring authority), not full retrieval/rerank policy-core semantic extraction.
 - **Deferred (explicit residual seam elements):**
   - monolith `stage_retrieve(...)` policy/core retrieval implementation;
   - monolith `stage_rerank(...)` policy/core rerank + temporal-bridge implementation;
