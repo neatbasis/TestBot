@@ -1,16 +1,14 @@
 ## Change type
 
-- [ ] Extraction row move (bounded authority slice)
-- [ ] Evidence-only row (finishability / readiness proof)
-- [ ] Docs/process update
-- [ ] Bug fix
-- [ ] Other (describe)
+- [ ] Wrapper retirement row
+- [ ] Compatibility retirement row
+- [ ] Retirement readiness evidence-only PR
 
 ## Issue link
 
 Issue: ISSUE-XXXX
 
-## Selected row
+## Selected retirement row
 
 - **Selected row:**
 - **Why this row now (leverage consumed):**
@@ -24,40 +22,48 @@ Issue: ISSUE-XXXX
 
 ## Ideal future state
 
-- **Target owner/path:**
+- **Target owner/path after retirement:**
 - **What canonical path should no longer depend on:**
 - **Outside scope in this PR:**
+
+## Retirement-specific evidence requirements
+
+### Caller census
+
+- Evidence (in-repo callers + any known external compatibility callers):
+- Claim supported by this evidence and why:
+- Stronger claim not yet supported and why not:
+
+### Semantic ownership census
+
+- Evidence (who currently owns behavior semantics vs forwarding mechanics):
+- Claim supported by this evidence and why:
+- Stronger claim not yet supported and why not:
+
+### Removal criteria checklist
+
+- [ ] Canonical runtime path ownership is explicit for the behavior being retired.
+- [ ] Compatibility delegation is explicitly bounded.
+- [ ] Caller census supports retirement posture claimed.
+- [ ] Anti-backslide guard exists (test/assertion/checklist) for the retired surface.
+- [ ] Deferred category debt (if any) is explicitly named.
+
+### Runtime equivalence or control-point proof
+
+- Evidence (equivalence test, invariant check, or control-point assertions):
+- Claim supported by this evidence and why:
+- Stronger claim not yet supported and why not:
+
+### Explicit retirement-finishability statement
+
+- **Is retirement directly finishable now?**
+- **If no, what specifically blocks retirement?**
+- **What smallest change/evidence would make retirement directly finishable?**
 
 ## Implemented change
 
 - **What was changed in this PR:**
-- **Why this is a bounded move (not a broad rewrite):**
-
-## Evidence
-
-### Grounded behavior
-
-- Evidence:
-- Claim supported by this evidence and why:
-- Stronger claim not yet supported and why not:
-
-### Compatibility delegation
-
-- Evidence:
-- Claim supported by this evidence and why:
-- Stronger claim not yet supported and why not:
-
-### Ownership / anti-backslide posture
-
-- Evidence:
-- Claim supported by this evidence and why:
-- Stronger claim not yet supported and why not:
-
-### Runtime control-point evidence
-
-- Evidence:
-- Claim supported by this evidence and why:
-- Stronger claim not yet supported and why not:
+- **Why this is a bounded retirement move (not broader redesign):**
 
 ## Strongest justified claim
 
@@ -72,12 +78,6 @@ Issue: ISSUE-XXXX
 ### Category debt remaining
 
 - 
-
-## Finishability assessment
-
-- **Is the next remaining row directly finishable now?**
-- **If no, what blocks finishability?**
-- **What smallest evidence or change removes that block?**
 
 ## Options opened by this PR
 
@@ -100,9 +100,9 @@ For each option include:
 
 ## PR-ready summary
 
-- **Selected row processed:**
+- **Selected retirement row processed:**
 - **Leverage consumed:**
-- **Bounded authority moved (or evidence hardened):**
+- **Bounded authority moved (or readiness evidence hardened):**
 - **Rows remaining + category debt remaining:**
 - **Recommended next move:**
 
