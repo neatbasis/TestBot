@@ -14,6 +14,7 @@ from testbot.answer_policy import AnswerRoutingDecision, resolve_answer_mode
 from testbot.answer_stage_semantics import (
     DEFAULT_ANSWER_STAGE_SEMANTIC_CONTRACT,
     AnswerStageSemanticContract,
+    build_partial_memory_clarifier as build_partial_memory_clarifier_from_semantics,
 )
 from testbot.clock import Clock, SystemClock
 from testbot.history_packer import pack_chat_history, render_packed_history
@@ -93,13 +94,8 @@ def answer_assemble_for_turn_service(
     document_from_retrieval_input,
     render_context,
     answer_prompt,
-    build_partial_memory_clarifier,
     append_session_log,
-    deny_answer: str,
-    route_to_ask_answer: str,
-    assist_alternatives_answer: str,
-    fallback_answer: str,
-    non_knowledge_uncertainty_answer: str,
+    semantic_contract: AnswerStageSemanticContract = DEFAULT_ANSWER_STAGE_SEMANTIC_CONTRACT,
 ) -> AnswerAssembleResult:
     docs = [document_from_retrieval_input(record) for record in hits]
     return answer_assemble(
@@ -114,13 +110,16 @@ def answer_assemble_for_turn_service(
         timezone="Europe/Helsinki",
         render_context=render_context,
         answer_prompt=answer_prompt,
-        build_partial_memory_clarifier=build_partial_memory_clarifier,
+        build_partial_memory_clarifier=lambda assemble_hits: build_partial_memory_clarifier_from_semantics(
+            assemble_hits,
+            semantic_contract=semantic_contract,
+        ),
         append_session_log=append_session_log,
-        deny_answer=deny_answer,
-        route_to_ask_answer=route_to_ask_answer,
-        assist_alternatives_answer=assist_alternatives_answer,
-        fallback_answer=fallback_answer,
-        non_knowledge_uncertainty_answer=non_knowledge_uncertainty_answer,
+        deny_answer=semantic_contract.deny_answer,
+        route_to_ask_answer=semantic_contract.route_to_ask_answer,
+        assist_alternatives_answer=semantic_contract.assist_alternatives_answer,
+        fallback_answer=semantic_contract.fallback_answer,
+        non_knowledge_uncertainty_answer=semantic_contract.non_knowledge_uncertainty_answer,
     )
 
 

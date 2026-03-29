@@ -200,13 +200,7 @@ def run_chat_loop(
                     document_from_retrieval_input=context_retrieval_runtime_service.document_from_retrieval_input,
                     render_context=getattr(_legacy_runtime, "render_context"),
                     answer_prompt=getattr(_legacy_runtime, "ANSWER_PROMPT"),
-                    build_partial_memory_clarifier=getattr(_legacy_runtime, "build_partial_memory_clarifier"),
                     append_session_log=_legacy_runtime.append_session_log,
-                    deny_answer=getattr(_legacy_runtime, "DENY_ANSWER"),
-                    route_to_ask_answer=getattr(_legacy_runtime, "ROUTE_TO_ASK_ANSWER"),
-                    assist_alternatives_answer=getattr(_legacy_runtime, "ASSIST_ALTERNATIVES_ANSWER"),
-                    fallback_answer=getattr(_legacy_runtime, "FALLBACK_ANSWER"),
-                    non_knowledge_uncertainty_answer=getattr(_legacy_runtime, "NON_KNOWLEDGE_UNCERTAINTY_ANSWER"),
                 ),
                 answer_validate=lambda *args, **kwargs: answer_stage_runtime_service.answer_validate_for_turn_service(
                     *args,

@@ -756,13 +756,7 @@ def _answer_assemble_for_turn_service(
         document_from_retrieval_input=_document_from_retrieval_input,
         render_context=render_context,
         answer_prompt=ANSWER_PROMPT,
-        build_partial_memory_clarifier=build_partial_memory_clarifier,
         append_session_log=append_session_log,
-        deny_answer=DENY_ANSWER,
-        route_to_ask_answer=ROUTE_TO_ASK_ANSWER,
-        assist_alternatives_answer=ASSIST_ALTERNATIVES_ANSWER,
-        fallback_answer=FALLBACK_ANSWER,
-        non_knowledge_uncertainty_answer=NON_KNOWLEDGE_UNCERTAINTY_ANSWER,
     )
 
 
