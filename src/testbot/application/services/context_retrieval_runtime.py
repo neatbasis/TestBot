@@ -156,6 +156,12 @@ class RerankThresholdProfilePolicy:
     ambiguity_override_top_final_score_min: float
 
 
+@dataclass(frozen=True)
+class RerankDecisionPolicy:
+    invocation_policy: RerankInvocationPolicy
+    threshold_profile_policy: RerankThresholdProfilePolicy
+
+
 def normalize_retrieval_filter_scope(
     *,
     exclude_doc_ids: set[str] | None = None,
@@ -200,6 +206,29 @@ def assemble_rerank_threshold_profile_policy(
         min_margin_to_second=float(thresholds.min_margin_to_second),
         allow_ambiguity_override=bool(thresholds.allow_ambiguity_override),
         ambiguity_override_top_final_score_min=float(thresholds.ambiguity_override_top_final_score_min),
+    )
+
+
+def assemble_rerank_decision_policy(
+    *,
+    sigma_seconds: float,
+    user_doc_id: str,
+    user_reflection_doc_id: str,
+    near_tie_delta: float,
+    top_k: int = 4,
+    rerank_confidence_thresholds_fn: Callable[[], ContextConfidenceThresholds] = rerank_confidence_thresholds,
+) -> RerankDecisionPolicy:
+    return RerankDecisionPolicy(
+        invocation_policy=assemble_rerank_invocation_policy(
+            sigma_seconds=sigma_seconds,
+            user_doc_id=user_doc_id,
+            user_reflection_doc_id=user_reflection_doc_id,
+            near_tie_delta=near_tie_delta,
+            top_k=top_k,
+        ),
+        threshold_profile_policy=assemble_rerank_threshold_profile_policy(
+            rerank_confidence_thresholds_fn=rerank_confidence_thresholds_fn
+        ),
     )
 
 
@@ -406,8 +435,10 @@ def resolve_rerank_target_time(
 
 
 __all__ = [
+    "RerankDecisionPolicy",
     "RerankInvocationPolicy",
     "RerankThresholdProfilePolicy",
+    "assemble_rerank_decision_policy",
     "assemble_rerank_invocation_policy",
     "assemble_rerank_threshold_profile_policy",
     "filter_documents_for_temporal_window",

@@ -697,12 +697,13 @@ def stage_rerank(
         bridge=temporal_bridge,
         now=now,
     )
-    invocation_policy = context_retrieval_runtime_service.assemble_rerank_invocation_policy(
+    decision_policy = context_retrieval_runtime_service.assemble_rerank_decision_policy(
         sigma_seconds=adaptive_sigma_fractional(now=now, target=target, frac=0.25),
         user_doc_id=user_doc_id,
         user_reflection_doc_id=user_reflection_doc_id,
         near_tie_delta=near_tie_delta,
     )
+    invocation_policy = decision_policy.invocation_policy
     sigma = invocation_policy.sigma_seconds
     rerank_outcome = rerank_docs_with_time_and_type_outcome(
         filtered_docs_and_scores,
@@ -720,7 +721,7 @@ def stage_rerank(
         rerank_outcome.scored_candidates,
         ambiguity_detected=rerank_outcome.ambiguity_detected,
     )
-    threshold_profile_policy = context_retrieval_runtime_service.assemble_rerank_threshold_profile_policy()
+    threshold_profile_policy = decision_policy.threshold_profile_policy
     confidence_decision = {
         **state.confidence_decision,
         "context_confident": has_context,
