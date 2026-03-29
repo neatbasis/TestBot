@@ -153,3 +153,9 @@ Ideal future state for this slice: canonical runtime execution computes rerank i
   assembly through the runtime-facing seam owner before writing those values into `confidence_decision`.
 - Remaining deferred rerank slices after this move: confidence-decision projection / telemetry shaping and residual
   wrapper retirement posture.
+
+## 2026-03-29 handoff checkpoint — residual rank clarity after #687
+
+- **Processed in #687:** rerank invocation-policy assembly.
+- **Now residual rank 1:** threshold/profile policy.
+- **Still deferred:** confidence projection, wrapper retirement, scorer internals.

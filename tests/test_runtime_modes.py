@@ -410,6 +410,149 @@ def test_runtime_loop_runtime_hooks_resolve_context_retrieval_control_point_at_r
     assert sent[0] == "ok"
 
 
+def test_runtime_loop_canonical_stage_rerank_path_consumes_runtime_invocation_policy_assembly(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from dataclasses import replace
+
+    import arrow
+    from langchain_core.documents import Document
+
+    from testbot.application.services import context_retrieval_runtime as context_retrieval_runtime_service
+    from testbot.entrypoints import runtime_loop
+    from testbot.rerank import RerankOutcome
+
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr(runtime_loop, "poll_pending_ingestion_obligations", lambda **_kwargs: None)
+    monkeypatch.setattr(runtime_loop, "process_background_ingestion_completion", lambda **_kwargs: ("", None, False))
+    monkeypatch.setattr(runtime_loop, "emit_runtime_turn_telemetry", lambda **_kwargs: None)
+    monkeypatch.setattr(runtime_loop, "persist_answer_commit", lambda **_kwargs: None)
+
+    def _fake_turn_pipeline(**kwargs):
+        captured["hooks"] = kwargs["hooks"]
+        state = kwargs["state"]
+        return replace(state, final_answer="ok", commit_receipt={"pending_ingestion_request_id": ""}), []
+
+    monkeypatch.setattr(runtime_loop, "run_runtime_turn_pipeline", _fake_turn_pipeline)
+
+    utterances = iter(["hello", "stop"])
+    runtime_loop.run_chat_loop(
+        runtime={},
+        llm=object(),
+        store=object(),
+        chat_history=deque(),
+        near_tie_delta=0.1,
+        io_channel="cli",
+        capability_status="ask_unavailable",
+        capability_snapshot=object(),
+        read_user_utterance=lambda: next(utterances, None),
+        send_assistant_text=lambda _text: None,
+        clock=runtime.SystemClock(),
+    )
+
+    hooks = captured["hooks"]
+    observed: dict[str, object] = {}
+    now = arrow.get("2026-03-10T12:00:00+00:00")
+
+    def _proxy_stage_rerank_for_turn_service(
+        state,
+        retrieval_candidates,
+        *,
+        stage_rerank_fn,
+        utterance,
+        user_doc_id,
+        user_reflection_doc_id,
+        near_tie_delta,
+        clock,
+        io_channel="cli",
+    ):
+        del retrieval_candidates, io_channel
+        updated_state, hits = stage_rerank_fn(
+            state,
+            [(Document(id="doc-1", page_content="candidate", metadata={"doc_id": "doc-1"}), 0.9)],
+            utterance=utterance,
+            user_doc_id=user_doc_id,
+            user_reflection_doc_id=user_reflection_doc_id,
+            near_tie_delta=near_tie_delta,
+            clock=clock,
+        )
+        return updated_state, [runtime.RetrievalInputRecord(ref_id=str(doc.id), score=1.0, content=doc.page_content, metadata=doc.metadata) for doc in hits]
+
+    monkeypatch.setattr(context_retrieval_runtime_service, "stage_rerank_for_turn_service", _proxy_stage_rerank_for_turn_service)
+    monkeypatch.setattr(
+        context_retrieval_runtime_service,
+        "resolve_temporal_anaphora_bridge",
+        lambda *, utterance, docs_and_scores, now: {
+            "anaphora_detected": False,
+            "anchor_candidates": [],
+            "selected_anchor_doc_id": "",
+            "selected_anchor_ts": "",
+            "target_override_ts": "",
+            "delta_seconds_raw": None,
+            "delta_humanized": "",
+            "time_window": "",
+            "window_start": "",
+            "window_end": "",
+        },
+    )
+    monkeypatch.setattr(context_retrieval_runtime_service, "filter_documents_for_temporal_window", lambda *, docs_and_scores, bridge: docs_and_scores)
+    monkeypatch.setattr(context_retrieval_runtime_service, "resolve_rerank_target_time", lambda *, utterance, bridge, now: now)
+
+    def _fake_assemble_invocation_policy(*, sigma_seconds, user_doc_id, user_reflection_doc_id, near_tie_delta, top_k=4):
+        observed["assembled"] = {
+            "sigma_seconds": sigma_seconds,
+            "user_doc_id": user_doc_id,
+            "user_reflection_doc_id": user_reflection_doc_id,
+            "near_tie_delta": near_tie_delta,
+            "top_k": top_k,
+        }
+        return context_retrieval_runtime_service.RerankInvocationPolicy(
+            sigma_seconds=77.0,
+            exclude_doc_ids={"policy-doc"},
+            exclude_source_ids={"policy-source"},
+            top_k=3,
+            near_tie_delta=0.27,
+        )
+
+    monkeypatch.setattr(context_retrieval_runtime_service, "assemble_rerank_invocation_policy", _fake_assemble_invocation_policy)
+    monkeypatch.setattr(
+        runtime,
+        "rerank_docs_with_time_and_type_outcome",
+        lambda *args, **kwargs: (
+            observed.setdefault("rerank_kwargs", kwargs),
+            RerankOutcome(docs=[], scored_candidates=[], ambiguity_detected=False, near_tie_candidates=[]),
+        )[1],
+    )
+
+    class _Clock:
+        def now(self):
+            return now
+
+    hooks.stage_rerank(
+        runtime.PipelineState(user_input="probe", rewritten_query="probe", confidence_decision={}),
+        [runtime.RetrievalInputRecord(ref_id="seed", score=0.5, content="seed", metadata={"doc_id": "seed"})],
+        utterance="probe",
+        user_doc_id="user-doc",
+        user_reflection_doc_id="reflection-doc",
+        near_tie_delta=0.1,
+        clock=_Clock(),
+    )
+
+    assert observed["assembled"] == {
+        "sigma_seconds": 600.0,
+        "user_doc_id": "user-doc",
+        "user_reflection_doc_id": "reflection-doc",
+        "near_tie_delta": 0.1,
+        "top_k": 4,
+    }
+    assert observed["rerank_kwargs"]["sigma_seconds"] == 77.0
+    assert observed["rerank_kwargs"]["exclude_doc_ids"] == {"policy-doc"}
+    assert observed["rerank_kwargs"]["exclude_source_ids"] == {"policy-source"}
+    assert observed["rerank_kwargs"]["top_k"] == 3
+    assert observed["rerank_kwargs"]["near_tie_delta"] == 0.27
+
+
 def test_sat_cli_is_transitional_wrapper_to_canonical_cli() -> None:
     source = Path(sat_cli.__file__).read_text()
     assert "compatibility-only" in source
