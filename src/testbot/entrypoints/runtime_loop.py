@@ -35,6 +35,7 @@ from testbot.entrypoints.runtime_commit_persistence import (
 )
 from testbot.application.services import answer_stage_runtime as answer_stage_runtime_service
 from testbot.application.services import context_retrieval_runtime as context_retrieval_runtime_service
+from testbot.application.services import answer_stage_presentation as answer_stage_presentation_service
 from testbot import sat_chatbot_memory_v2 as _legacy_runtime
 from testbot.domain import Clock
 from testbot.ports import MemoryStorePort
@@ -198,8 +199,8 @@ def run_chat_loop(
                     *args,
                     **kwargs,
                     document_from_retrieval_input=context_retrieval_runtime_service.document_from_retrieval_input,
-                    render_context=getattr(_legacy_runtime, "render_context"),
-                    answer_prompt=getattr(_legacy_runtime, "ANSWER_PROMPT"),
+                    render_context=answer_stage_presentation_service.render_context,
+                    answer_prompt=answer_stage_presentation_service.ANSWER_PROMPT,
                     append_session_log=_legacy_runtime.append_session_log,
                 ),
                 answer_validate=lambda *args, **kwargs: answer_stage_runtime_service.answer_validate_for_turn_service(

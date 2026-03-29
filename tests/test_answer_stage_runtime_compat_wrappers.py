@@ -6,6 +6,7 @@ from langchain_core.documents import Document
 
 from testbot.pipeline_state import PipelineState
 from testbot import sat_chatbot_memory_v2 as runtime
+from testbot.application.services import answer_stage_presentation as canonical_presentation
 
 
 def test_answer_assemble_wrapper_delegates_to_answer_stage_runtime(monkeypatch) -> None:
@@ -207,3 +208,13 @@ def test_detect_capability_offer_wrapper_delegates_to_answer_stage_runtime(monke
 
     assert runtime._detect_capability_offer("I can look up") == "capability_offer"
     assert observed["text"] == "I can look up"
+
+
+def test_answer_prompt_compat_reexport_matches_canonical_owner() -> None:
+    assert runtime.ANSWER_PROMPT is canonical_presentation.ANSWER_PROMPT
+
+
+def test_render_context_compat_wrapper_matches_canonical_owner() -> None:
+    docs = [Document(page_content="x", metadata={"doc_id": "d1", "ts": "t1", "type": "memory"})]
+
+    assert runtime.render_context(docs, limit_chars=5000) == canonical_presentation.render_context(docs, limit_chars=5000)
