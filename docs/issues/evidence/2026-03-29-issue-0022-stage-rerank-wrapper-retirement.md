@@ -95,6 +95,17 @@ Issue: ISSUE-0022
 
 - Scorer internals/category decomposition and related policy-shaping design debt.
 
+## 2026-03-29 category-debt decomposition update (post-wrapper rows)
+
+- Decomposition artifact added: `docs/issues/evidence/2026-03-29-pr-693-scorer-category-debt-decomposition.md`.
+- Unit type processed: scorer **category debt decomposition** (not another deferred row), because wrapper-retirement rows are complete.
+- Ranked next-step options now explicitly separate scorer contract/boundary slices from scorer implementation/internals slices.
+- Recommended next bounded slice: runtime-owned scorer execution contract/boundary extraction (keep scorer internals redesign out of scope).
+- Explicit merge-note status:
+  - **Rows remaining:** none for the rerank wrapper-retirement row program.
+  - **Category debt remaining:** scorer-category debt.
+  - **Recommended next unit:** scorer execution contract/boundary slice, not broad scorer internals redesign.
+
 ## Options opened by this PR
 
 For each option include:
