@@ -243,6 +243,7 @@ def test_runtime_loop_owner_uses_canonical_turn_pipeline_helper_not_monolith_tur
     assert "from testbot.entrypoints.runtime_turn_pipeline import RuntimeTurnPipelineHooks, run_runtime_turn_pipeline" in source
     assert "from testbot.entrypoints.runtime_turn_telemetry import RuntimeTurnTelemetryDependencies, emit_runtime_turn_telemetry" in source
     assert "from testbot.application.services import answer_stage_runtime as answer_stage_runtime_service" in source
+    assert "from testbot.application.services import context_retrieval_runtime as context_retrieval_runtime_service" in source
     assert "_poll_pending_ingestion_obligations(" not in source
     assert "_process_background_ingestion_completion(" not in source
     assert "_run_canonical_turn_pipeline(" not in source
@@ -253,6 +254,11 @@ def test_runtime_loop_owner_uses_canonical_turn_pipeline_helper_not_monolith_tur
     assert "_answer_assemble_for_turn_service" not in source
     assert "_answer_validate_for_turn_service" not in source
     assert "_detect_capability_offer" not in source
+    assert "_should_force_memory_retrieval_for_identity_recall" not in source
+    assert "_stage_retrieve_for_turn_service" not in source
+    assert "_stage_rerank_for_turn_service" not in source
+    assert "_document_from_retrieval_input" not in source
+    assert "_legacy_runtime.resolve_context" not in source
     assert "run_canonical_turn_pipeline(" not in source
     assert "_legacy_runtime.answer_commit_persistence(" not in source
     assert "TurnPipelineDependencies(" not in source
@@ -273,7 +279,6 @@ def test_runtime_loop_monolith_touchpoints_are_allowlisted_for_deliberate_shrink
         "_ambiguity_score",
         "_build_debug_turn_payload",
         "_build_source_connector",
-        "_document_from_retrieval_input",
         "_emit_obligation_transition",
         "_format_debug_turn_trace_payload",
         "_intent_classifier_confidence",
@@ -283,9 +288,6 @@ def test_runtime_loop_monolith_touchpoints_are_allowlisted_for_deliberate_shrink
         "_optional_string",
         "_run_canonical_turn_pipeline",
         "_selected_decision_from_confidence",
-        "_should_force_memory_retrieval_for_identity_recall",
-        "_stage_rerank_for_turn_service",
-        "_stage_retrieve_for_turn_service",
         "_user_followup_signal_proxy",
         "_utc_now_iso",
         "_validate_and_log_transition",
@@ -295,7 +297,8 @@ def test_runtime_loop_monolith_touchpoints_are_allowlisted_for_deliberate_shrink
         "generate_reflection_yaml",
         "is_clarification_answer",
         "replace",
-        "resolve_context",
+        "stage_rerank",
+        "stage_retrieve",
         "stage_rewrite_query",
         "store_doc",
     }
