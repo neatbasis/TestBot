@@ -332,6 +332,84 @@ def test_runtime_loop_binds_migrated_context_retrieval_hook_surfaces_via_canonic
     assert "document_from_retrieval_input=context_retrieval_runtime_service.document_from_retrieval_input" in source
 
 
+def test_runtime_loop_runtime_hooks_resolve_context_retrieval_control_point_at_runtime(monkeypatch: pytest.MonkeyPatch) -> None:
+    from dataclasses import replace
+
+    from testbot.application.services import context_retrieval_runtime as context_retrieval_runtime_service
+    from testbot.entrypoints import runtime_loop
+
+    captured: dict[str, object] = {}
+    sent: list[str] = []
+
+    monkeypatch.setattr(runtime_loop, "poll_pending_ingestion_obligations", lambda **_kwargs: None)
+    monkeypatch.setattr(runtime_loop, "process_background_ingestion_completion", lambda **_kwargs: ("", None, False))
+    monkeypatch.setattr(runtime_loop, "emit_runtime_turn_telemetry", lambda **_kwargs: None)
+    monkeypatch.setattr(runtime_loop, "persist_answer_commit", lambda **_kwargs: None)
+
+    def _fake_turn_pipeline(**kwargs):
+        captured["hooks"] = kwargs["hooks"]
+        state = kwargs["state"]
+        return (
+            replace(
+                state,
+                final_answer="ok",
+                commit_receipt={"pending_ingestion_request_id": ""},
+            ),
+            [],
+        )
+
+    monkeypatch.setattr(runtime_loop, "run_runtime_turn_pipeline", _fake_turn_pipeline)
+
+    utterances = iter(["hello", "stop"])
+    runtime_loop.run_chat_loop(
+        runtime={},
+        llm=object(),
+        store=object(),
+        chat_history=deque(),
+        near_tie_delta=0.1,
+        io_channel="cli",
+        capability_status="ask_unavailable",
+        capability_snapshot=object(),
+        read_user_utterance=lambda: next(utterances, None),
+        send_assistant_text=lambda text: sent.append(text),
+        clock=runtime.SystemClock(),
+    )
+
+    hooks = captured["hooks"]
+    assert hooks.should_force_memory_retrieval_for_identity_recall is context_retrieval_runtime_service.should_force_memory_retrieval_for_identity_recall
+    assert hooks.resolve_context_fn is context_retrieval_runtime_service.resolve_context
+    assert hooks.document_from_retrieval_input is context_retrieval_runtime_service.document_from_retrieval_input
+
+    observed: dict[str, object] = {}
+
+    def _fake_stage_retrieve_for_turn_service(*args, **kwargs):
+        observed["retrieve_kwargs"] = kwargs
+        return args[1], []
+
+    def _fake_stage_rerank_for_turn_service(*args, **kwargs):
+        observed["rerank_kwargs"] = kwargs
+        return args[0], []
+
+    monkeypatch.setattr(context_retrieval_runtime_service, "stage_retrieve_for_turn_service", _fake_stage_retrieve_for_turn_service)
+    monkeypatch.setattr(context_retrieval_runtime_service, "stage_rerank_for_turn_service", _fake_stage_rerank_for_turn_service)
+
+    probe_state = runtime.PipelineState(user_input="probe", rewritten_query="probe")
+    hooks.stage_retrieve(object(), probe_state)
+    hooks.stage_rerank(
+        probe_state,
+        [],
+        utterance="probe",
+        user_doc_id="user-doc",
+        user_reflection_doc_id="reflection-doc",
+        near_tie_delta=0.1,
+        clock=runtime.SystemClock(),
+    )
+
+    assert observed["retrieve_kwargs"]["stage_retrieve_fn"] is runtime.stage_retrieve
+    assert observed["rerank_kwargs"]["stage_rerank_fn"] is runtime.stage_rerank
+    assert sent[0] == "ok"
+
+
 def test_sat_cli_is_transitional_wrapper_to_canonical_cli() -> None:
     source = Path(sat_cli.__file__).read_text()
     assert "compatibility-only" in source
