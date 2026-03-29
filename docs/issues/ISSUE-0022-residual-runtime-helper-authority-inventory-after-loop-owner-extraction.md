@@ -250,3 +250,13 @@ Done vs Deferred:
   - supporting rerank-temporal helper internals coupled to that policy core.
   These remain intentionally deferred because this increment is scoped to runtime wiring/adapters and compatibility-surface
   ownership, not retrieval/rerank policy-core redesign.
+
+## 2026-03-29 post-merge inventory addendum — PR #682 deferred scope + leverage
+
+A structured post-merge inventory note for PR #682 has been added to preserve explicit deferred surfaces and
+next-step leverage framing:
+
+- `docs/issues/evidence/2026-03-29-pr-682-deferred-inventory-and-leverage.md`
+
+This addendum intentionally does not broaden implementation scope; it consolidates planning evidence for the
+next highest-leverage extraction steps (retrieval policy-core first, rerank/temporal policy-core next).
