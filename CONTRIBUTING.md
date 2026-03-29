@@ -36,6 +36,15 @@ python scripts/validate_issue_links.py --all-issue-files --base-ref origin/main
 ```
 
 
+## Pull request templates
+
+Canonical PR template posture:
+
+- Default/canonical template for normal extraction, evidence, and docs/process PRs: `.github/PULL_REQUEST_TEMPLATE.md`.
+- Specialized template for wrapper-retirement or compatibility-retirement rows: `.github/PULL_REQUEST_TEMPLATE/retirement.md`.
+
+Use the retirement template when a PR claims retirement readiness or executes retirement of a compatibility/wrapper surface; otherwise use the canonical default template.
+
 ## Required before merge
 
 Run this required governance check (same command used by CI):
