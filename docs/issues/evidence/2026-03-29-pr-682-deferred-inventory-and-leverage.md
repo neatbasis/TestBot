@@ -70,3 +70,15 @@ This is the **idealized planning end-state** for convergence, not a requirement 
   `testbot.application.services.context_retrieval_runtime`.
 - Remaining deferred within the same row: retrieval candidate mixing/ranking semantics and broader retrieval policy
   decisions still remain compatibility-owned in `sat_chatbot_memory_v2` pending additional bounded extractions.
+
+## 2026-03-29 execution update — bounded rerank/temporal policy-core slice processed
+
+- Processed deferred row: **Rerank / temporal policy-core**.
+- Bounded delta: extracted temporal anaphora-bridge construction and temporal-window filtering authority from
+  `sat_chatbot_memory_v2.stage_rerank` into canonical runtime-owned
+  `testbot.application.services.context_retrieval_runtime`
+  (`resolve_temporal_anaphora_bridge`, `filter_documents_for_temporal_window`), with monolith stage-rerank now
+  delegating through the canonical seam owner.
+- Remaining deferred within the same row: rerank scoring objective/threshold policy, time-target parsing policy,
+  and broader temporal decision semantics still remain compatibility-owned in `sat_chatbot_memory_v2` pending
+  deeper bounded extractions.
