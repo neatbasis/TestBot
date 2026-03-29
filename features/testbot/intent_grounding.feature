@@ -377,7 +377,7 @@ Feature: Intent-specific grounding and provenance behavior
   Scenario: memory-write utterance preserves direct-answer assist contract
     Given an intent response harness
     When memory-write utterance contract probe is resolved through canonical decisioning
-    Then the canonical contract should resolve intent "meta_conversation" retrieval branch "direct_answer" decision class "answer_general_knowledge_labeled" fallback action "ANSWER_GENERAL_KNOWLEDGE" and answer mode "assist"
+    Then the canonical contract should resolve intent "knowledge_question" retrieval branch "direct_answer" decision class "answer_general_knowledge_labeled" fallback action "ANSWER_GENERAL_KNOWLEDGE" and answer mode "assist"
 
   @ISSUE-0008 @AC-0008-41
   Scenario: intent-heavy routing waits for stabilization outputs before authority finalization
