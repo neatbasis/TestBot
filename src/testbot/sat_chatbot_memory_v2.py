@@ -50,7 +50,6 @@ from testbot.rerank import (
     adaptive_sigma_fractional,
     has_sufficient_context_confidence_from_objective,
     mix_source_evidence_with_memory_cards,
-    rerank_docs_with_time_and_type_outcome,
 )
 from testbot.stage_transitions import (
     append_transition_validation_log,
@@ -705,8 +704,8 @@ def stage_rerank(
     )
     invocation_policy = decision_policy.invocation_policy
     sigma = invocation_policy.sigma_seconds
-    rerank_outcome = rerank_docs_with_time_and_type_outcome(
-        filtered_docs_and_scores,
+    scorer_request = context_retrieval_runtime_service.ScorerExecutionRequest(
+        docs_and_scores=filtered_docs_and_scores,
         now=now,
         target=target,
         sigma_seconds=sigma,
@@ -715,6 +714,8 @@ def stage_rerank(
         top_k=invocation_policy.top_k,
         near_tie_delta=invocation_policy.near_tie_delta,
     )
+    scorer_result = context_retrieval_runtime_service.execute_rerank_scorer_contract(scorer_request)
+    rerank_outcome = scorer_result.rerank_outcome
     hits = rerank_outcome.docs
     reranked_hits = [doc_to_candidate_hit(doc, score=0.0) for doc in hits]
     has_context = has_sufficient_context_confidence(
