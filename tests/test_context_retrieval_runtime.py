@@ -424,6 +424,7 @@ def test_execute_rerank_scorer_contract_delegates_invocation_and_returns_outcome
         exclude_source_ids={"source-doc"},
         top_k=3,
         near_tie_delta=0.05,
+        scorer_config=context_retrieval_runtime.load_rerank_objective_config(),
     )
     result = context_retrieval_runtime.execute_rerank_scorer_contract(request, scorer_fn=_fake_scorer)
 
@@ -436,8 +437,56 @@ def test_execute_rerank_scorer_contract_delegates_invocation_and_returns_outcome
         "exclude_source_ids": {"source-doc"},
         "top_k": 3,
         "near_tie_delta": 0.05,
+        "scorer_config": context_retrieval_runtime.load_rerank_objective_config(),
     }
     assert result.rerank_outcome is expected_outcome
+
+
+def test_materialize_rerank_scorer_config_delegates_to_objective_loader() -> None:
+    observed: dict[str, object] = {}
+
+    def _fake_loader():
+        observed["called"] = True
+        return context_retrieval_runtime.load_rerank_objective_config()
+
+    materialized = context_retrieval_runtime.materialize_rerank_scorer_config(
+        load_rerank_objective_config_fn=_fake_loader
+    )
+
+    assert observed["called"] is True
+    assert materialized.objective_config is context_retrieval_runtime.load_rerank_objective_config()
+
+
+def test_normalize_scorer_execution_request_materializes_runtime_owned_shape() -> None:
+    now = arrow.get("2026-03-10T12:00:00+00:00")
+    target = arrow.get("2026-03-10T11:30:00+00:00")
+    docs_and_scores = [(Document(id="doc-1", page_content="candidate", metadata={"doc_id": "doc-1"}), 0.7)]
+    invocation_policy = context_retrieval_runtime.RerankInvocationPolicy(
+        sigma_seconds=123.0,
+        exclude_doc_ids={"user-doc", ""},
+        exclude_source_ids={"source-doc", ""},
+        top_k=3,
+        near_tie_delta=0.05,
+    )
+    scorer_config = context_retrieval_runtime.ScorerExecutionConfig(
+        objective_config=context_retrieval_runtime.load_rerank_objective_config()
+    )
+
+    request = context_retrieval_runtime.normalize_scorer_execution_request(
+        docs_and_scores=docs_and_scores,
+        now=now,
+        target=target,
+        invocation_policy=invocation_policy,
+        scorer_config=scorer_config,
+    )
+
+    assert request.docs_and_scores == docs_and_scores
+    assert request.sigma_seconds == 123.0
+    assert request.exclude_doc_ids == {"user-doc"}
+    assert request.exclude_source_ids == {"source-doc"}
+    assert request.top_k == 3
+    assert request.near_tie_delta == 0.05
+    assert request.scorer_config is context_retrieval_runtime.load_rerank_objective_config()
 
 
 def test_interpret_rerank_scorer_result_normalizes_hits_and_context_signal() -> None:

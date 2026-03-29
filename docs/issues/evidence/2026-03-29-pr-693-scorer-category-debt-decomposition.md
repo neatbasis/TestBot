@@ -186,3 +186,20 @@ This PR decomposes the remaining scorer-category debt (post-wrapper-retirement) 
 - **Recommended next smallest scorer-internals slice:** scorer input normalization/config materialization
   contract hardening, because it is adjacent to the newly explicit execution + interpretation seam and can be
   moved without reopening objective semantics.
+
+### Post-#696 handoff (explicit next-decision surface)
+
+- **Processed unit type:** category-debt execution slice.
+- **Processed slice in #696:** scorer input normalization/config materialization contract hardening behind runtime seam.
+- **Bounded authority movement recorded:**
+  - runtime seam now materializes scorer objective config through `materialize_rerank_scorer_config(...)`;
+  - runtime seam now owns scorer request normalization through `normalize_scorer_execution_request(...)`;
+  - scorer execution contract now carries explicit `scorer_config` materialized at runtime control-point.
+- **`sigma` ownership posture in this slice:** left separate on purpose; `sigma` computation remains in stage policy flow
+  (`adaptive_sigma_fractional(...)` in `stage_rerank`) so temporal-coupling ownership can be handled as its own bounded
+  scorer-category slice.
+- **Remaining scorer-category debt (explicit):**
+  1. residual temporal/scoring coupling ownership (`sigma` ownership posture);
+  2. broader scorer internals redesign (objective/fusion/ambiguity semantics), still intentionally out of scope.
+- **Recommended next smallest scorer-category slice:** residual temporal/scoring coupling ownership (`sigma`) behind the
+  same runtime seam, now that scorer config materialization is explicit and runtime-owned.

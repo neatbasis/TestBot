@@ -702,18 +702,16 @@ def stage_rerank(
         user_reflection_doc_id=user_reflection_doc_id,
         near_tie_delta=near_tie_delta,
     )
+    scorer_config = context_retrieval_runtime_service.materialize_rerank_scorer_config()
     invocation_policy = decision_policy.invocation_policy
-    sigma = invocation_policy.sigma_seconds
-    scorer_request = context_retrieval_runtime_service.ScorerExecutionRequest(
+    scorer_request = context_retrieval_runtime_service.normalize_scorer_execution_request(
         docs_and_scores=filtered_docs_and_scores,
         now=now,
         target=target,
-        sigma_seconds=sigma,
-        exclude_doc_ids=invocation_policy.exclude_doc_ids,
-        exclude_source_ids=invocation_policy.exclude_source_ids,
-        top_k=invocation_policy.top_k,
-        near_tie_delta=invocation_policy.near_tie_delta,
+        invocation_policy=invocation_policy,
+        scorer_config=scorer_config,
     )
+    sigma = scorer_request.sigma_seconds
     scorer_result = context_retrieval_runtime_service.execute_rerank_scorer_contract(scorer_request)
     scorer_interpretation = context_retrieval_runtime_service.interpret_rerank_scorer_result(scorer_result)
     rerank_outcome = scorer_result.rerank_outcome
