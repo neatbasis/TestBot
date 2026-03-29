@@ -73,34 +73,8 @@ def test_stage_retrieve_for_turn_service_wrapper_delegates_to_context_retrieval_
     assert observed["stage_retrieve_fn"] is runtime.stage_retrieve
 
 
-def test_stage_rerank_for_turn_service_wrapper_delegates_to_context_retrieval_runtime(monkeypatch) -> None:
-    observed: dict[str, object] = {}
-    expected_state = PipelineState(user_input="q")
-    retrieval_hit = runtime.RetrievalInputRecord(ref_id="doc-1", score=1.0, content="x", metadata={"doc_id": "doc-1"})
-
-    def _fake_stage_rerank_for_turn_service(*args, **kwargs):
-        observed.update(kwargs)
-        return expected_state, [retrieval_hit]
-
-    monkeypatch.setattr(
-        runtime.context_retrieval_runtime_service,
-        "stage_rerank_for_turn_service",
-        _fake_stage_rerank_for_turn_service,
-    )
-
-    actual_state, actual_hits = runtime._stage_rerank_for_turn_service(
-        state=expected_state,
-        retrieval_candidates=[retrieval_hit],
-        utterance="who am i?",
-        user_doc_id="user-doc",
-        user_reflection_doc_id="reflection-doc",
-        near_tie_delta=0.1,
-        clock=runtime.SystemClock(),
-    )
-
-    assert actual_state is expected_state
-    assert actual_hits == [retrieval_hit]
-    assert observed["stage_rerank_fn"] is runtime.stage_rerank
+def test_stage_rerank_for_turn_service_wrapper_is_retired() -> None:
+    assert not hasattr(runtime, "_stage_rerank_for_turn_service")
 
 
 def test_document_conversion_wrappers_delegate_to_context_retrieval_runtime(monkeypatch) -> None:
