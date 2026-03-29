@@ -28,3 +28,12 @@
   - tie/ambiguity projection shaping and threshold attribution pathways remain co-located.
 - Out-of-scope broad redesign:
   - objective semantics redesign, coefficient redesign, full scorer algorithm redesign.
+
+## Post-#700 handoff (explicit)
+
+- Processed seam (this PR): scorer-internal **lane/type prior determination** (`inferred_lane`, `type_prior`, `lane_prior`) as a named seam consumed by objective component composition.
+- Remaining scorer-category debt (still entangled):
+  - scorer candidate-output composition/projection shaping in `rerank_docs_with_time_and_type_outcome(...)` (threshold fields, provenance-citation factor, and scored-candidate payload assembly remain co-located);
+  - tie/ambiguity projection shaping (`near_tie_candidates`, unresolved ambiguity flags) remains in the same scorer path.
+- Recommended next bounded scorer-internal seam:
+  - extract scorer candidate-output composition/projection as one explicit seam upstream of confidence gating and downstream of final-score assembly.
