@@ -4,6 +4,7 @@ import uuid
 from dataclasses import asdict, dataclass, field
 
 from testbot.candidate_encoding import DialogueStateCandidate, EncodedTurnCandidates, FactCandidate, RepairCandidate, SpeechActCandidate
+from testbot.continuity_read_model import continuity_read_model_from_pipeline_state
 from typing import Callable
 
 from testbot.memory_cards import make_reflection_card, make_utterance_card, store_doc
@@ -76,14 +77,16 @@ def build_stabilization_plan(
     dialogue_state_doc_id: str | None = None,
 ) -> StabilizationPlan:
     """Build pure stabilization decisions without touching storage adapters."""
+    continuity_read_model = continuity_read_model_from_pipeline_state(state)
+
     def _carried_pending_clarification() -> PendingClarification | None:
-        prior = state.pending_clarification
-        if not prior.required:
+        prior = continuity_read_model.pending_clarification if continuity_read_model is not None else None
+        if prior is None:
             return None
-        question = str(prior.question or "")
-        source_anchor = str(prior.get("source_anchor") or "commit.pending_clarification")
-        focus = str(prior.get("focus") or "")
-        durable_id = str(prior.get("obligation_id") or f"{source_anchor}:{observation.turn_id}")
+        question = prior.question
+        source_anchor = prior.source_anchor or "commit.pending_clarification"
+        focus = prior.focus
+        durable_id = prior.obligation_id or f"{source_anchor}:{observation.turn_id}"
         return PendingClarification(
             obligation_id=durable_id,
             question=question,
@@ -93,13 +96,14 @@ def build_stabilization_plan(
         )
 
     def _carried_pending_repair() -> PendingRepair | None:
-        prior = state.commit_receipt.pending_repair_state
-        if not (isinstance(prior, dict) and bool(prior.get("repair_offered_to_user"))):
+        committed_turn = continuity_read_model.committed_turn if continuity_read_model is not None else None
+        prior = committed_turn.pending_repair_state if committed_turn is not None else None
+        if prior is None or not prior.repair_offered_to_user:
             return None
-        reason = str(prior.get("reason") or "repair_offer_rendered")
-        route = str(prior.get("followup_route") or "")
+        reason = prior.reason or "repair_offer_rendered"
+        route = prior.followup_route
         source_anchor = "commit.pending_repair_state:repair_offered_to_user"
-        durable_id = str(prior.get("obligation_id") or f"{source_anchor}:{observation.turn_id}")
+        durable_id = prior.obligation_id or f"{source_anchor}:{observation.turn_id}"
         return PendingRepair(
             obligation_id=durable_id,
             reason=reason,

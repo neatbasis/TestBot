@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import StrEnum
 
+from testbot.continuity_read_model import continuity_read_model_from_pipeline_state, continuity_retrieval_anchors
 from testbot.pipeline_state import PipelineState
 from testbot.stabilization import StabilizedTurnState
 
@@ -82,45 +83,7 @@ class RetrievalInputRecord:
 
 def continuity_evidence_from_prior_state(prior_pipeline_state: PipelineState | None) -> tuple[str, ...]:
     """Extract deterministic retrieval continuity evidence from prior committed state."""
-
-    if prior_pipeline_state is None:
-        return ()
-
-    commit_receipt = prior_pipeline_state.commit_receipt
-    anchors: list[str] = []
-
-    for fact in commit_receipt.confirmed_user_facts:
-        normalized = str(fact).strip()
-        if normalized:
-            anchors.append(f"commit.confirmed_user_facts:{normalized}")
-
-    pending_ingestion_request_id = str(commit_receipt.pending_ingestion_request_id or "").strip()
-    if pending_ingestion_request_id:
-        anchors.append(f"commit.pending_ingestion_request_id:{pending_ingestion_request_id}")
-
-    for obligation in commit_receipt.remaining_obligations:
-        normalized = str(obligation).strip()
-        if normalized:
-            anchors.append(f"commit.remaining_obligations:{normalized}")
-
-    pending_repair_state = commit_receipt.pending_repair_state
-    if isinstance(pending_repair_state, dict) and pending_repair_state.get("repair_offered_to_user"):
-        anchors.append("commit.pending_repair_state:repair_offered_to_user")
-        obligation_id = str(pending_repair_state.get("obligation_id") or "").strip()
-        if obligation_id:
-            anchors.append(f"commit.pending_repair_state:obligation_id={obligation_id}")
-
-    pending_clarification = prior_pipeline_state.pending_clarification
-    if pending_clarification.required:
-        anchors.append("commit.pending_clarification:required")
-        obligation_id = str(pending_clarification.get("obligation_id") or "").strip()
-        focus = str(pending_clarification.get("focus") or "").strip()
-        if obligation_id:
-            anchors.append(f"commit.pending_clarification:obligation_id={obligation_id}")
-        if focus:
-            anchors.append(f"commit.pending_clarification:focus={focus}")
-
-    return tuple(dict.fromkeys(anchors))
+    return continuity_retrieval_anchors(continuity_read_model_from_pipeline_state(prior_pipeline_state))
 
 
 def build_evidence_bundle(
