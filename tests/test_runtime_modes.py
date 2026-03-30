@@ -296,9 +296,6 @@ def test_runtime_loop_monolith_touchpoints_are_allowlisted_for_deliberate_shrink
     observed_symbols = set(re.findall(r"_legacy_runtime\.([A-Za-z_][A-Za-z0-9_]*)", source))
     allowed_symbols = {
         "BACKGROUND_INGESTION_OBLIGATION_TIMEOUT_SECONDS",
-        "INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD",
-        "_intent_classifier_confidence",
-        "_minimal_confidence_decision_for_direct_answer",
         "_selected_decision_from_confidence",
         "_validate_and_log_transition",
         "append_pipeline_snapshot",
@@ -380,6 +377,79 @@ def test_runtime_loop_turn_policy_logic_hooks_use_canonical_logic_owner_not_mono
     assert hooks.optional_string is turn_policy_logic.optional_string
     assert hooks.ambiguity_score is turn_policy_logic.ambiguity_score
     assert observed_telemetry_ambiguity_helpers == [turn_policy_logic.ambiguity_score]
+
+
+def test_runtime_loop_turn_policy_policy_hooks_use_canonical_policy_owner_not_monolith(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from testbot.entrypoints import runtime_loop
+    from testbot.policies import turn_policy as turn_policy_policies
+
+    observed_hooks: dict[str, object] = {}
+
+    monkeypatch.setattr(runtime_loop, "poll_pending_ingestion_obligations", lambda **_kwargs: None)
+    monkeypatch.setattr(runtime_loop, "process_background_ingestion_completion", lambda **_kwargs: ("", None, False))
+    monkeypatch.setattr(runtime_loop, "emit_runtime_turn_telemetry", lambda **_kwargs: None)
+    monkeypatch.setattr(runtime_loop, "persist_answer_commit", lambda **_kwargs: None)
+    monkeypatch.setattr(
+        runtime,
+        "_intent_classifier_confidence",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("legacy _intent_classifier_confidence should not be used by canonical runtime-loop hook assembly")
+        ),
+    )
+    monkeypatch.setattr(
+        runtime,
+        "_minimal_confidence_decision_for_direct_answer",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError(
+                "legacy _minimal_confidence_decision_for_direct_answer should not be used by canonical runtime-loop hook assembly"
+            )
+        ),
+    )
+
+    def _capture_hooks_and_finish(**kwargs):
+        observed_hooks["hooks"] = kwargs["hooks"]
+        return runtime_loop.PipelineState(
+            user_input=kwargs["state"].user_input,
+            last_user_message_ts=kwargs["state"].last_user_message_ts,
+            classified_intent=kwargs["state"].classified_intent,
+            resolved_intent="knowledge_question",
+            prior_unresolved_intent=kwargs["state"].prior_unresolved_intent,
+            confidence_decision={},
+            final_answer="done",
+            commit_receipt={},
+        ), []
+
+    monkeypatch.setattr(runtime_loop, "run_runtime_turn_pipeline", _capture_hooks_and_finish)
+    monkeypatch.setattr(runtime_loop.continuity_runtime_service, "apply_unresolved_intent_carryover", lambda state: state)
+
+    utterances = iter(["hello", None])
+    runtime_loop.run_chat_loop(
+        runtime={},
+        llm=object(),
+        store=object(),
+        chat_history=deque(),
+        near_tie_delta=0.1,
+        io_channel="cli",
+        capability_status="ok",
+        capability_snapshot=SimpleNamespace(
+            runtime_capability_status=SimpleNamespace(debug_enabled=False, debug_verbose=False)
+        ),
+        read_user_utterance=lambda: next(utterances),
+        send_assistant_text=lambda _text: None,
+        clock=SimpleNamespace(now=lambda: runtime.arrow.get("2026-01-01T00:00:00+00:00")),
+    )
+
+    hooks = observed_hooks["hooks"]
+    assert hooks.intent_classifier_confidence.func is turn_policy_policies.intent_classifier_confidence
+    assert hooks.intent_classifier_confidence.keywords == {
+        "confidence_threshold": turn_policy_policies.INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD
+    }
+    assert hooks.minimal_confidence_decision_for_direct_answer.func is turn_policy_policies.minimal_confidence_decision_for_direct_answer
+    assert hooks.minimal_confidence_decision_for_direct_answer.keywords == {
+        "retrieval_score_threshold": turn_policy_policies.RETRIEVAL_SCORE_THRESHOLD
+    }
 
 
 def test_runtime_loop_background_ingestion_deps_use_canonical_append_session_log(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -623,7 +693,7 @@ def test_runtime_loop_pending_ingestion_created_transition_uses_canonical_runtim
     monkeypatch.setattr(runtime_loop, "process_background_ingestion_completion", lambda **_kwargs: ("", None, False))
     monkeypatch.setattr(runtime_loop, "emit_runtime_turn_telemetry", lambda **_kwargs: None)
     monkeypatch.setattr(runtime_loop.continuity_runtime_service, "apply_unresolved_intent_carryover", lambda state: state)
-    monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: events.append((event, payload)))
+    monkeypatch.setattr(runtime_loop, "append_runtime_session_log", lambda event, payload: events.append((event, payload)))
     monkeypatch.setattr(runtime_loop, "persist_answer_commit", lambda **_kwargs: None)
 
     def _pipeline(**kwargs):
@@ -3113,7 +3183,7 @@ def test_chat_loop_registers_pending_ingestion_context_by_request_id(monkeypatch
     from testbot.entrypoints import runtime_loop
 
     events: list[tuple[str, dict[str, object]]] = []
-    monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: events.append((event, payload)))
+    monkeypatch.setattr(runtime_loop, "append_runtime_session_log", lambda event, payload: events.append((event, payload)))
     monkeypatch.setattr(runtime, "store_doc", lambda *args, **kwargs: None)
     monkeypatch.setattr(runtime, "generate_reflection_yaml", lambda *args, **kwargs: "claims: []")
     monkeypatch.setattr(runtime, "persist_promoted_context", lambda *args, **kwargs: [])
@@ -3240,8 +3310,10 @@ def test_poll_pending_ingestion_obligations_times_out_and_dead_letters(monkeypat
 
 
 def test_chat_loop_polls_pending_ingestion_obligation_each_turn(monkeypatch) -> None:
+    from testbot.entrypoints import runtime_loop
+
     events: list[tuple[str, dict[str, object]]] = []
-    monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: events.append((event, payload)))
+    monkeypatch.setattr(runtime_loop, "append_runtime_session_log", lambda event, payload: events.append((event, payload)))
     monkeypatch.setattr(runtime, "_process_background_ingestion_completion", lambda **kwargs: ("", None, False))
 
     runtime._run_chat_loop(

@@ -129,7 +129,7 @@ from testbot.logic.provenance import (
     build_provenance_metadata as build_provenance_metadata_from_logic,
     collect_used_source_evidence_refs as collect_used_source_evidence_refs_from_logic,
 )
-from testbot.retrieval_routing import decide_retrieval_routing, is_definitional_query_form
+from testbot.retrieval_routing import decide_retrieval_routing
 from testbot.adapters.ask_gateway import AskGateway
 from testbot.adapters.ha_satellite_output import send_satellite_output
 from testbot.runtime_capability_service import (
@@ -175,6 +175,7 @@ from testbot.logic.decision_helpers import (
 )
 from testbot.logic.turn_policy import ambiguity_score as compute_turn_policy_ambiguity_score
 from testbot.logic.turn_policy import optional_string as coerce_optional_string
+from testbot.policies import turn_policy as turn_policy_policies
 from testbot.application.services import background_ingestion_runtime as background_ingestion_runtime_service
 from testbot.application.services import answer_stage_runtime as answer_stage_runtime_service
 from testbot.application.services import continuity_runtime as continuity_runtime_service
@@ -448,8 +449,8 @@ def _process_background_ingestion_completion(
         prior_pipeline_state=prior_pipeline_state,
         deps=_runtime_background_ingestion_deps(),
     )
-INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD = 0.75
-RETRIEVAL_SCORE_THRESHOLD = 0.0
+INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD = turn_policy_policies.INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD
+RETRIEVAL_SCORE_THRESHOLD = turn_policy_policies.RETRIEVAL_SCORE_THRESHOLD
 
 
 AnswerAssembleResult = answer_stage_runtime_service.AnswerAssembleResult
@@ -920,14 +921,11 @@ def _intent_label(intent: IntentType) -> str:
 
 
 def _intent_classifier_confidence(*, utterance: str, predicted_intent: IntentType) -> float:
-    normalized = (utterance or "").strip().lower()
-    if not normalized:
-        return INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD
-
-    if predicted_intent == IntentType.KNOWLEDGE_QUESTION and not is_definitional_query_form(normalized):
-        return 0.82
-
-    return 0.95
+    return turn_policy_policies.intent_classifier_confidence(
+        utterance=utterance,
+        predicted_intent=predicted_intent,
+        confidence_threshold=INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD,
+    )
 
 
 def _optional_string(value: object) -> str | None:
@@ -935,19 +933,11 @@ def _optional_string(value: object) -> str | None:
 
 
 def _minimal_confidence_decision_for_direct_answer(*, branch: str, base_confidence_decision: dict[str, object]) -> dict[str, object]:
-    return {
-        **base_confidence_decision,
-        "context_confident": False,
-        "ambiguity_detected": False,
-        "ambiguous_candidates": [],
-        "scored_candidates": [],
-        "objective": "",
-        "objective_version": "",
-        "retrieval_branch": branch,
-        "retrieval_candidates_considered": 0,
-        "retrieval_returned_top_k": 0,
-        "retrieval_threshold": RETRIEVAL_SCORE_THRESHOLD,
-    }
+    return turn_policy_policies.minimal_confidence_decision_for_direct_answer(
+        branch=branch,
+        base_confidence_decision=base_confidence_decision,
+        retrieval_score_threshold=RETRIEVAL_SCORE_THRESHOLD,
+    )
 
 
 def _ambiguity_score(confidence_decision: dict[str, object]) -> float:
