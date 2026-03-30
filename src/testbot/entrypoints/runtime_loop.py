@@ -117,26 +117,21 @@ def run_chat_loop(
         append_session_log=_legacy_runtime.append_session_log,
         generate_reflection_yaml=_legacy_runtime.generate_reflection_yaml,
     )
-    background_ingestion_deps = RuntimeBackgroundIngestionDependencies(
-        append_session_log=_legacy_runtime.append_session_log,
-        build_source_connector=lambda configured_runtime: build_source_connector(
-            runtime=configured_runtime,
-            append_session_log=_legacy_runtime.append_session_log,
-        ),
-        source_ingestor_cls=SourceIngestor,
-        answer_commit_persistence=lambda **kwargs: persist_answer_commit(
-            deps=commit_persistence_deps,
+
+    background_ingestion_deps_holder: dict[str, RuntimeBackgroundIngestionDependencies] = {}
+
+    def _poll_background_source_ingestion_for_turn_pipeline(**kwargs):
+        return poll_background_source_ingestion(
+            deps=background_ingestion_deps_holder["deps"],
             **kwargs,
-        ),
-        replay_background_completion_turn=(
-            replay_background_completion_turn
-            if replay_background_completion_turn is not None
-            else lambda request: _replay_background_completion_turn(
-                request=request,
-                hooks=runtime_turn_hooks,
-            )
-        ),
-    )
+        )
+
+    def _start_background_source_ingestion_for_turn_pipeline(**kwargs):
+        return start_background_source_ingestion(
+            deps=background_ingestion_deps_holder["deps"],
+            **kwargs,
+        )
+
     runtime_turn_hooks = RuntimeTurnPipelineHooks(
         append_session_log=_legacy_runtime.append_session_log,
         validate_and_log_transition=_legacy_runtime._validate_and_log_transition,
@@ -147,14 +142,8 @@ def run_chat_loop(
         should_force_memory_retrieval_for_identity_recall=context_retrieval_runtime_service.should_force_memory_retrieval_for_identity_recall,
         resolve_context_fn=context_retrieval_runtime_service.resolve_context,
         intent_telemetry_payload=intent_telemetry_payload,
-        poll_background_source_ingestion=lambda **kwargs: poll_background_source_ingestion(
-            deps=background_ingestion_deps,
-            **kwargs,
-        ),
-        start_background_source_ingestion=lambda **kwargs: start_background_source_ingestion(
-            deps=background_ingestion_deps,
-            **kwargs,
-        ),
+        poll_background_source_ingestion=_poll_background_source_ingestion_for_turn_pipeline,
+        start_background_source_ingestion=_start_background_source_ingestion_for_turn_pipeline,
         stage_retrieve=lambda *args, **kwargs: context_retrieval_runtime_service.stage_retrieve_for_turn_service(
             *args,
             stage_retrieve_fn=_legacy_runtime.stage_retrieve,
@@ -189,6 +178,28 @@ def run_chat_loop(
         intent_classifier_confidence_threshold=_legacy_runtime.INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD,
         document_from_retrieval_input=context_retrieval_runtime_service.document_from_retrieval_input,
     )
+    replay_background_completion_turn_callable = (
+        replay_background_completion_turn
+        if replay_background_completion_turn is not None
+        else lambda request: _replay_background_completion_turn(
+            request=request,
+            hooks=runtime_turn_hooks,
+        )
+    )
+    background_ingestion_deps = RuntimeBackgroundIngestionDependencies(
+        append_session_log=_legacy_runtime.append_session_log,
+        build_source_connector=lambda configured_runtime: build_source_connector(
+            runtime=configured_runtime,
+            append_session_log=_legacy_runtime.append_session_log,
+        ),
+        source_ingestor_cls=SourceIngestor,
+        answer_commit_persistence=lambda **kwargs: persist_answer_commit(
+            deps=commit_persistence_deps,
+            **kwargs,
+        ),
+        replay_background_completion_turn=replay_background_completion_turn_callable,
+    )
+    background_ingestion_deps_holder["deps"] = background_ingestion_deps
 
     while True:
         poll_pending_ingestion_obligations(runtime=runtime, deps=background_ingestion_deps)

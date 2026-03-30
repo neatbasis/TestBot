@@ -75,10 +75,12 @@ Bounded seam reduction for assemble-stage special-answer authority.
 ### What remains deferred inside background ingestion
 - `append_session_log` ownership remains deferred.
 - Continuity/unresolved-intent semantics remain intentionally untouched in this slice.
-- Compatibility façade replay wrappers in `sat_chatbot_memory_v2` still route through legacy symbols for backward compatibility only.
+- Canonical runtime-loop replay invocation no longer depends on legacy `_run_canonical_turn_pipeline`.
+- Compatibility replay remains monolith-hosted in `sat_chatbot_memory_v2` for legacy callers (`_replay_background_completion_turn_compat` still constructs replay `PipelineState`/`IntentType` via compatibility symbols).
 
 ### Highest-weight next seam after this slice
-- Remaining highest-weight seam is the **continuity + unresolved-intent semantic authority cluster** inside runtime-loop/background-completion interactions, plus deferred `append_session_log` ownership retirement.
+- **Next semantic seam:** continuity + unresolved-intent semantic authority cluster inside runtime-loop/background-completion interactions.
+- **Separate plumbing seam:** deferred `append_session_log` ownership retirement.
 
 ## Semantic authority moved/clarified in this PR
 - Moved assemble-stage clarifier wording/policy and special-answer constants from legacy per-call injection to canonical ownership in `testbot.answer_stage_semantics` via `AnswerStageSemanticContract`.

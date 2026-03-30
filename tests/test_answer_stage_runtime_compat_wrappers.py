@@ -4,6 +4,7 @@ from collections import deque
 
 from langchain_core.documents import Document
 
+from testbot.application.services.background_ingestion_runtime import BackgroundIngestionReplayRequest
 from testbot.pipeline_state import PipelineState
 from testbot import sat_chatbot_memory_v2 as runtime
 from testbot.application.services import answer_stage_presentation as canonical_presentation
@@ -218,3 +219,37 @@ def test_render_context_compat_wrapper_matches_canonical_owner() -> None:
     docs = [Document(page_content="x", metadata={"doc_id": "d1", "ts": "t1", "type": "memory"})]
 
     assert runtime.render_context(docs, limit_chars=5000) == canonical_presentation.render_context(docs, limit_chars=5000)
+
+
+def test_background_completion_replay_compat_wrapper_delegates_to_legacy_pipeline_runner(monkeypatch) -> None:
+    observed: dict[str, object] = {}
+    prior_state = PipelineState(user_input="previous", prior_unresolved_intent="needs-clarification")
+
+    def _fake_legacy_pipeline(**kwargs):
+        observed.update(kwargs)
+        return kwargs["state"], []
+
+    monkeypatch.setattr(runtime, "_run_canonical_turn_pipeline", _fake_legacy_pipeline)
+
+    replayed_state = runtime._replay_background_completion_turn_compat(
+        BackgroundIngestionReplayRequest(
+            runtime={"mode": "cli"},
+            llm=object(),
+            store=object(),
+            utterance="What changed?",
+            last_user_message_ts="2026-03-10T11:00:00+00:00",
+            prior_pipeline_state=prior_state,
+            near_tie_delta=0.05,
+            chat_history=deque(),
+            capability_status="ask_unavailable",
+            capability_snapshot={},
+            clock=object(),
+            io_channel="cli",
+            turn_id="turn-123",
+        )
+    )
+
+    assert replayed_state.user_input == "What changed?"
+    assert replayed_state.classified_intent == runtime.IntentType.KNOWLEDGE_QUESTION.value
+    assert replayed_state.prior_unresolved_intent == "needs-clarification"
+    assert observed["turn_id"] == "turn-123"
