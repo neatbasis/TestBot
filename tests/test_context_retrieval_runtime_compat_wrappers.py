@@ -77,6 +77,29 @@ def test_stage_rerank_for_turn_service_wrapper_is_retired() -> None:
     assert not hasattr(runtime, "_stage_rerank_for_turn_service")
 
 
+def test_rerank_threshold_profile_policy_wrapper_delegates_to_canonical_policy_owner(monkeypatch) -> None:
+    observed: dict[str, object] = {}
+    expected = runtime.context_retrieval_runtime_service.RerankThresholdProfilePolicy(
+        top_final_score_min=0.41,
+        min_margin_to_second=0.05,
+        allow_ambiguity_override=True,
+        ambiguity_override_top_final_score_min=0.72,
+    )
+
+    def _fake_policy():
+        observed["called"] = True
+        return expected
+
+    monkeypatch.setattr(
+        runtime.context_retrieval_runtime_service,
+        "assemble_rerank_threshold_profile_policy",
+        _fake_policy,
+    )
+
+    assert runtime._assemble_rerank_threshold_profile_policy() is expected
+    assert observed["called"] is True
+
+
 def test_document_conversion_wrappers_delegate_to_context_retrieval_runtime(monkeypatch) -> None:
     observed: dict[str, object] = {}
     expected_doc = Document(id="doc-1", page_content="hello", metadata={"doc_id": "doc-1"})

@@ -11,6 +11,7 @@ from testbot.evidence_retrieval import RetrievalInputRecord
 from testbot.ports import MemorySearchQuery, PortDocument, ScoredPortDocument
 from testbot.logic.retrieval_projection import RetrievalStageProjection
 from testbot.policies.retrieve_evidence_policy import RetrieveEvidenceExecutionPolicy
+from testbot.policies import rerank_evidence_policy
 
 
 def test_should_force_memory_retrieval_for_identity_recall_true_on_commit_anchor() -> None:
@@ -451,15 +452,13 @@ def test_assemble_rerank_invocation_policy_strips_empty_identifiers() -> None:
 
 
 def test_assemble_rerank_threshold_profile_policy_normalizes_threshold_fields() -> None:
-    thresholds = context_retrieval_runtime.ContextConfidenceThresholds(
-        top_final_score_min=0.6,
-        min_margin_to_second=0.07,
-        allow_ambiguity_override=True,
-        ambiguity_override_top_final_score_min=0.95,
-    )
-
     policy = context_retrieval_runtime.assemble_rerank_threshold_profile_policy(
-        rerank_confidence_thresholds_fn=lambda: thresholds
+        rerank_threshold_profile_policy_fn=lambda: rerank_evidence_policy.RerankThresholdProfilePolicy(
+            top_final_score_min=0.6,
+            min_margin_to_second=0.07,
+            allow_ambiguity_override=True,
+            ambiguity_override_top_final_score_min=0.95,
+        )
     )
 
     assert policy.top_final_score_min == 0.6
@@ -469,20 +468,18 @@ def test_assemble_rerank_threshold_profile_policy_normalizes_threshold_fields() 
 
 
 def test_assemble_rerank_decision_policy_combines_invocation_and_threshold_profile() -> None:
-    thresholds = context_retrieval_runtime.ContextConfidenceThresholds(
-        top_final_score_min=0.44,
-        min_margin_to_second=0.05,
-        allow_ambiguity_override=False,
-        ambiguity_override_top_final_score_min=0.88,
-    )
-
     policy = context_retrieval_runtime.assemble_rerank_decision_policy(
         sigma_seconds=42.0,
         user_doc_id="user-doc",
         user_reflection_doc_id="reflection-doc",
         near_tie_delta=0.09,
         top_k=5,
-        rerank_confidence_thresholds_fn=lambda: thresholds,
+        rerank_threshold_profile_policy_fn=lambda: rerank_evidence_policy.RerankThresholdProfilePolicy(
+            top_final_score_min=0.44,
+            min_margin_to_second=0.05,
+            allow_ambiguity_override=False,
+            ambiguity_override_top_final_score_min=0.88,
+        ),
     )
 
     assert policy.invocation_policy.sigma_seconds == 42.0
@@ -494,6 +491,27 @@ def test_assemble_rerank_decision_policy_combines_invocation_and_threshold_profi
     assert policy.threshold_profile_policy.min_margin_to_second == 0.05
     assert policy.threshold_profile_policy.allow_ambiguity_override is False
     assert policy.threshold_profile_policy.ambiguity_override_top_final_score_min == 0.88
+
+
+def test_assemble_rerank_threshold_profile_policy_service_delegates_to_policy_owner(monkeypatch) -> None:
+    observed: dict[str, object] = {}
+
+    def _fake_policy_owner(**kwargs):
+        observed.update(kwargs)
+        return rerank_evidence_policy.RerankThresholdProfilePolicy(
+            top_final_score_min=0.51,
+            min_margin_to_second=0.09,
+            allow_ambiguity_override=False,
+            ambiguity_override_top_final_score_min=0.83,
+        )
+
+    policy = context_retrieval_runtime.assemble_rerank_threshold_profile_policy(
+        rerank_threshold_profile_policy_fn=_fake_policy_owner,
+        marker="from-caller",
+    )
+
+    assert observed["marker"] == "from-caller"
+    assert policy.top_final_score_min == 0.51
 
 
 def test_execute_rerank_scorer_contract_delegates_invocation_and_returns_outcome() -> None:

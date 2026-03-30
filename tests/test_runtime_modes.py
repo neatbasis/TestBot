@@ -216,6 +216,20 @@ def test_canonical_retrieve_policy_path_is_independent_from_legacy_monolith_help
     )
 
 
+def test_canonical_rerank_threshold_policy_path_is_independent_from_legacy_monolith_helper(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def _legacy_sabotage(*_args, **_kwargs):
+        raise AssertionError("legacy helper must not be required for canonical rerank-threshold policy path")
+
+    monkeypatch.setattr(runtime, "_assemble_rerank_threshold_profile_policy", _legacy_sabotage)
+
+    policy = context_retrieval_runtime.assemble_rerank_threshold_profile_policy()
+
+    assert isinstance(policy.top_final_score_min, float)
+    assert isinstance(policy.min_margin_to_second, float)
+
+
 def test_legacy_runtime_main_warns_once_and_delegates_to_cli(monkeypatch: pytest.MonkeyPatch) -> None:
     forwarded: list[list[str] | None] = []
 
