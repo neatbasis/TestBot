@@ -297,10 +297,8 @@ def test_runtime_loop_monolith_touchpoints_are_allowlisted_for_deliberate_shrink
     allowed_symbols = {
         "BACKGROUND_INGESTION_OBLIGATION_TIMEOUT_SECONDS",
         "INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD",
-        "_ambiguity_score",
         "_intent_classifier_confidence",
         "_minimal_confidence_decision_for_direct_answer",
-        "_optional_string",
         "_selected_decision_from_confidence",
         "_validate_and_log_transition",
         "append_pipeline_snapshot",
@@ -311,6 +309,77 @@ def test_runtime_loop_monolith_touchpoints_are_allowlisted_for_deliberate_shrink
         "store_doc",
     }
     assert observed_symbols == allowed_symbols
+
+
+def test_runtime_loop_turn_policy_logic_hooks_use_canonical_logic_owner_not_monolith(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from testbot.entrypoints import runtime_loop
+    from testbot.logic import turn_policy as turn_policy_logic
+
+    observed_hooks: dict[str, object] = {}
+    observed_telemetry_ambiguity_helpers: list[object] = []
+
+    monkeypatch.setattr(runtime_loop, "poll_pending_ingestion_obligations", lambda **_kwargs: None)
+    monkeypatch.setattr(runtime_loop, "process_background_ingestion_completion", lambda **_kwargs: ("", None, False))
+    monkeypatch.setattr(runtime_loop, "persist_answer_commit", lambda **_kwargs: None)
+    monkeypatch.setattr(
+        runtime,
+        "_optional_string",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("legacy _optional_string should not be used by canonical runtime-loop hook assembly")
+        ),
+    )
+    monkeypatch.setattr(
+        runtime,
+        "_ambiguity_score",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("legacy _ambiguity_score should not be used by canonical runtime-loop hook/telemetry wiring")
+        ),
+    )
+
+    def _capture_hooks_and_finish(**kwargs):
+        observed_hooks["hooks"] = kwargs["hooks"]
+        return runtime_loop.PipelineState(
+            user_input=kwargs["state"].user_input,
+            last_user_message_ts=kwargs["state"].last_user_message_ts,
+            classified_intent=kwargs["state"].classified_intent,
+            resolved_intent="knowledge_question",
+            prior_unresolved_intent=kwargs["state"].prior_unresolved_intent,
+            confidence_decision={},
+            final_answer="done",
+            commit_receipt={},
+        ), []
+
+    monkeypatch.setattr(runtime_loop, "run_runtime_turn_pipeline", _capture_hooks_and_finish)
+    monkeypatch.setattr(runtime_loop.continuity_runtime_service, "apply_unresolved_intent_carryover", lambda state: state)
+    monkeypatch.setattr(
+        runtime_loop,
+        "emit_runtime_turn_telemetry",
+        lambda **kwargs: observed_telemetry_ambiguity_helpers.append(kwargs["deps"].ambiguity_score),
+    )
+
+    utterances = iter(["hello", None])
+    runtime_loop.run_chat_loop(
+        runtime={},
+        llm=object(),
+        store=object(),
+        chat_history=deque(),
+        near_tie_delta=0.1,
+        io_channel="cli",
+        capability_status="ok",
+        capability_snapshot=SimpleNamespace(
+            runtime_capability_status=SimpleNamespace(debug_enabled=False, debug_verbose=False)
+        ),
+        read_user_utterance=lambda: next(utterances),
+        send_assistant_text=lambda _text: None,
+        clock=SimpleNamespace(now=lambda: runtime.arrow.get("2026-01-01T00:00:00+00:00")),
+    )
+
+    hooks = observed_hooks["hooks"]
+    assert hooks.optional_string is turn_policy_logic.optional_string
+    assert hooks.ambiguity_score is turn_policy_logic.ambiguity_score
+    assert observed_telemetry_ambiguity_helpers == [turn_policy_logic.ambiguity_score]
 
 
 def test_runtime_loop_background_ingestion_deps_use_canonical_append_session_log(monkeypatch: pytest.MonkeyPatch) -> None:

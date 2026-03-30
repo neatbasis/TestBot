@@ -38,7 +38,6 @@ from testbot.memory_strata import (
 )
 from testbot.pipeline_state import (
     CandidateHit,
-    ConfidenceDecision,
     PipelineState,
     ProvenanceType,
     append_pipeline_snapshot,
@@ -174,6 +173,8 @@ from testbot.logic.decision_helpers import (
     resolve_answer_routing_from_decision_object as _resolve_answer_routing_from_decision_object_service,
     selected_decision_from_confidence as _selected_decision_from_confidence_service,
 )
+from testbot.logic.turn_policy import ambiguity_score as compute_turn_policy_ambiguity_score
+from testbot.logic.turn_policy import optional_string as coerce_optional_string
 from testbot.application.services import background_ingestion_runtime as background_ingestion_runtime_service
 from testbot.application.services import answer_stage_runtime as answer_stage_runtime_service
 from testbot.application.services import continuity_runtime as continuity_runtime_service
@@ -930,12 +931,7 @@ def _intent_classifier_confidence(*, utterance: str, predicted_intent: IntentTyp
 
 
 def _optional_string(value: object) -> str | None:
-    if value is None:
-        return None
-    as_string = str(value).strip()
-    if not as_string:
-        return None
-    return as_string
+    return coerce_optional_string(value)
 
 
 def _minimal_confidence_decision_for_direct_answer(*, branch: str, base_confidence_decision: dict[str, object]) -> dict[str, object]:
@@ -955,18 +951,7 @@ def _minimal_confidence_decision_for_direct_answer(*, branch: str, base_confiden
 
 
 def _ambiguity_score(confidence_decision: dict[str, object]) -> float:
-    typed_confidence = ConfidenceDecision.from_mapping(confidence_decision)
-    scored_candidates = typed_confidence.typed_scored_candidates()
-    if len(scored_candidates) < 2:
-        return 0.0
-    first = scored_candidates[0] if isinstance(scored_candidates[0], dict) else {}
-    second = scored_candidates[1] if isinstance(scored_candidates[1], dict) else {}
-    first_score = float(first.get("final_score", 0.0) or 0.0)
-    second_score = float(second.get("final_score", 0.0) or 0.0)
-    if first_score <= 0.0:
-        return 1.0
-    separation = max(0.0, first_score - second_score) / first_score
-    return round(max(0.0, min(1.0, 1.0 - separation)), 4)
+    return compute_turn_policy_ambiguity_score(confidence_decision)
 
 
 def _user_followup_signal_proxy(*, final_answer: str, fallback_action: str, ambiguity_score: float) -> float:

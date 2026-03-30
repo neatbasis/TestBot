@@ -424,3 +424,40 @@ This pass is intentionally a **decision artifact**, not a broad implementation r
 ### Decision checkpoint for follow-on PRs
 - Avoid “move as-is” extraction for mixed bundles.
 - Require each follow-on extraction PR to map moved functions to the target-home split above and preserve compatibility wrappers only as transitional façades.
+
+## 2026-03-30 follow-on update (post-#726 turn-policy logic sub-slice: `_optional_string` + `_ambiguity_score`)
+### Step 1 inventory (selected turn-policy sub-slice mapping)
+- **`logic/` candidates (selected in this PR):**
+  - `_optional_string`: deterministic normalization helper used when projecting optional classifier model/version metadata into `confidence_decision`.
+  - `_ambiguity_score`: deterministic decision-shape transform used by canonical turn-pipeline/telemetry paths to derive follow-up ambiguity signal.
+- **`policies/` (deferred in this PR):**
+  - `_intent_classifier_confidence`
+  - `_minimal_confidence_decision_for_direct_answer`
+- **`entrypoints/` + `observability/` transition seam (deferred in this PR):**
+  - `_validate_and_log_transition` remains a mixed invocation/logging boundary and was intentionally not selected while cleaner logic helpers were available.
+
+### Step 2 bounded sub-slice selected
+- Selected the **logic slice first**: `_optional_string` and `_ambiguity_score`.
+- This is the cleanest split-first move because both helpers are deterministic transforms with no ownership over lifecycle policy, runtime invocation, or logging sink decisions.
+
+### Step 3 canonical runtime dependency reduction
+- Added canonical logic owner: `testbot.logic.turn_policy` (`optional_string`, `ambiguity_score`).
+- `runtime_loop` now binds:
+  - `RuntimeTurnPipelineHooks.optional_string` from canonical logic owner.
+  - `RuntimeTurnPipelineHooks.ambiguity_score` from canonical logic owner.
+  - `RuntimeTurnTelemetryDependencies.ambiguity_score` from canonical logic owner.
+- Canonical runtime no longer depends on `sat_chatbot_memory_v2` for the selected logic sub-slice (`_optional_string`, `_ambiguity_score`).
+
+### Step 4 direct proof tests
+- Added runtime-loop proof that sabotages legacy `_optional_string` and `_ambiguity_score` and verifies canonical hook/telemetry wiring still uses `testbot.logic.turn_policy` owners.
+- Updated runtime-loop monolith-touchpoint allowlist to remove `_optional_string` and `_ambiguity_score`.
+- Added compatibility-wrapper proof that monolith `_optional_string` / `_ambiguity_score` wrappers still delegate and are compatibility-only.
+
+### Step 5 deferred turn-policy residue after this slice
+- **Moved in this PR:** logic sub-slice (`_optional_string`, `_ambiguity_score`) into canonical `logic/`.
+- **Still deferred in turn-policy helper bundle:**
+  - policy helpers: `_intent_classifier_confidence`, `_minimal_confidence_decision_for_direct_answer`,
+  - decision projection helper: `_selected_decision_from_confidence`,
+  - transition invocation/logging seam: `_validate_and_log_transition`.
+- **Compatibility posture:** wrappers for moved logic helpers remain in `sat_chatbot_memory_v2` as compatibility delegators only.
+- **Next best follow-on:** continue within the **turn-policy bundle** (policy helpers and/or transition split) before moving to retrieval/rerank policy-core extraction.
