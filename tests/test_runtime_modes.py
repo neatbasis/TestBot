@@ -420,7 +420,14 @@ def test_runtime_loop_turn_telemetry_deps_use_canonical_append_session_log(monke
     from testbot.observability import session_log as session_log_module
 
     observed_telemetry_loggers: list[object] = []
-    monkeypatch.setattr(runtime, "append_session_log", lambda *_args, **_kwargs: None)
+
+    def _legacy_logger_guard(event: str, payload: dict[str, object]) -> None:
+        del payload
+        if event == "user_utterance_ingest":
+            return
+        raise AssertionError("legacy append_session_log should not own turn-telemetry dependency logging")
+
+    monkeypatch.setattr(runtime, "append_session_log", _legacy_logger_guard)
     monkeypatch.setattr(runtime_loop, "poll_pending_ingestion_obligations", lambda **_kwargs: None)
     monkeypatch.setattr(runtime_loop, "process_background_ingestion_completion", lambda **_kwargs: ("", None, False))
     monkeypatch.setattr(
