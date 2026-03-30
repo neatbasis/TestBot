@@ -14,7 +14,36 @@ from typing import Callable
 
 from langchain_core.documents import Document
 
+from testbot.answer_contract_constants import CLARIFY_ANSWER, ROUTE_TO_ASK_ANSWER
 from testbot.pipeline_state import PipelineState
+
+
+def intent_telemetry_payload(
+    *,
+    state: PipelineState,
+    utterance: str | None = None,
+    extra: dict[str, object] | None = None,
+) -> dict[str, object]:
+    payload: dict[str, object] = {
+        "intent": state.resolved_intent,
+        "intent_classified": state.classified_intent,
+        "intent_resolved": state.resolved_intent,
+    }
+    if utterance is not None:
+        payload["utterance"] = utterance
+    if extra:
+        payload.update(extra)
+    return payload
+
+
+def user_followup_signal_proxy(*, final_answer: str, fallback_action: str, ambiguity_score: float) -> float:
+    if final_answer in {CLARIFY_ANSWER, ROUTE_TO_ASK_ANSWER}:
+        return 1.0
+    if fallback_action in {"ASK_CLARIFYING_QUESTION", "ROUTE_TO_ASK"}:
+        return 0.9
+    if fallback_action == "OFFER_CAPABILITY_ALTERNATIVES":
+        return round(max(0.2, ambiguity_score), 4)
+    return round(max(0.0, ambiguity_score * 0.5), 4)
 
 
 @dataclass(frozen=True)
@@ -111,4 +140,9 @@ def emit_runtime_turn_telemetry(
         send_assistant_text(debug_trace)
 
 
-__all__ = ["RuntimeTurnTelemetryDependencies", "emit_runtime_turn_telemetry"]
+__all__ = [
+    "RuntimeTurnTelemetryDependencies",
+    "emit_runtime_turn_telemetry",
+    "intent_telemetry_payload",
+    "user_followup_signal_proxy",
+]
