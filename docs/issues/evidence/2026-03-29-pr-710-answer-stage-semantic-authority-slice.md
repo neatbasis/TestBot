@@ -715,3 +715,55 @@ This pass is intentionally a **decision artifact**, not a broad implementation r
   - stage-level adapter/control wiring remains in service/runtime layers.
 - **Next intended follow-on:**
   - evaluate shared retrieval/rerank policy seam extraction only where it reduces mixed ownership without widening into wholesale `stage_rerank` relocation.
+
+## 2026-03-30 follow-on update (post-#732, purpose-derived P2 next slice: canonical rerank-stage orchestration ownership)
+### Purpose trace
+- **Affected canonical stage:** `retrieve.evidence` (canonical turn pipeline).
+- **Stage purpose:** produce evidence set `E` coherent with resolved intent/context, with retrieval/rerank branch behavior and telemetry/provenance shaped at this stage boundary.
+- **Most relevant invariant/contract:** retrieval-policy coherence and stage ownership separation (`retrieve.evidence` vs `policy.decide`) with typed stage boundaries preferred over monolithic mixed callables.
+- **Allowed ownership for this residue:** deterministic policy in `policies/`, deterministic transforms/projections in `logic/`, and stage orchestration adapters in `application/services` + runtime hook wiring in `entrypoints`.
+- **Misplaced ownership before this slice:** canonical runtime-loop rerank hook still delegated execution authority to monolith `sat_chatbot_memory_v2.stage_rerank`, leaving canonical `retrieve.evidence` orchestration authority mixed with compatibility façade ownership.
+
+### Candidate next slices (purpose-weighted comparison)
+1. **Slice A — canonicalize rerank-stage orchestration path in `context_retrieval_runtime.stage_rerank_for_turn_service` (selected)**
+   - Stage: `retrieve.evidence`
+   - Responsibility: application/service orchestration over already-extracted policy + deterministic transform helpers
+   - Target home: `src/testbot/application/services/context_retrieval_runtime.py`
+   - Boundedness/risk: bounded (existing helper graph already canonicalized); low-to-medium risk
+   - Leverage: removes largest remaining canonical runtime dependency on monolith rerank callable
+   - Clears next: isolates remaining residue to finer policy/logic seams instead of stage-authority ownership.
+2. **Slice B — extract temporal-anaphora bridge heuristics to dedicated `logic/` owner**
+   - Stage: `retrieve.evidence`
+   - Responsibility: deterministic transform/heuristics
+   - Target home: `logic/`
+   - Boundedness/risk: medium; risks widening because bridge + filtering + target-time projection are coupled in current service flow
+   - Leverage: moderate, but does not remove runtime-loop monolith stage authority directly.
+3. **Slice C — extract rerank invocation policy (`exclude_*`, near-tie, top-k) into `policies/`**
+   - Stage: `retrieve.evidence`
+   - Responsibility: policy
+   - Target home: `policies/`
+   - Boundedness/risk: low
+   - Leverage: incremental only; runtime-loop would still depend on monolith `stage_rerank` orchestration path.
+
+### Chosen slice and justification
+- **Chosen slice:** Slice A (canonical rerank-stage orchestration ownership).
+- **Why best bounded next move:** strongest canonical-contract fit (stage orchestration belongs in service/entrypoint, not compatibility façade), highest leverage in reducing monolith authority in canonical runtime, bounded by reusing existing canonical helper functions already used by monolith rerank flow.
+
+### Proof plan (declared before move)
+- **Sabotage target:** sabotage legacy `sat_chatbot_memory_v2.stage_rerank` and verify canonical rerank service path still runs.
+- **Canonical path exercised:** `context_retrieval_runtime.stage_rerank_for_turn_service(...)` with no legacy stage-function injection.
+- **Compatibility proof:** monolith `stage_rerank(...)` remains as wrapper and delegates to canonical service owner.
+- **Residual-map clarity update:** record that runtime-loop hook no longer binds `_legacy_runtime.stage_rerank`; remaining P2 residue now concerns finer policy/logic decomposition rather than stage-orchestration ownership.
+
+### What moved in this PR
+- `context_retrieval_runtime.stage_rerank_for_turn_service(...)` now has a canonical default path (no injected legacy callable required) and executes rerank-stage orchestration through canonical service-owned helper graph.
+- `runtime_loop` no longer injects `_legacy_runtime.stage_rerank` into `RuntimeTurnPipelineHooks.stage_rerank`; canonical rerank hook path now resolves fully in canonical service ownership.
+- `sat_chatbot_memory_v2.stage_rerank(...)` is reduced to compatibility delegation into canonical context-retrieval runtime service.
+
+### Evidence added
+- Runtime sabotage proof: canonical rerank path remains functional when monolith `stage_rerank` is sabotaged.
+- Compatibility proof: monolith `stage_rerank` wrapper delegates to canonical service owner.
+- Runtime-loop monolith touchpoint allowlist updated to remove `stage_rerank`.
+
+### Remaining residue after this slice
+- Remaining P2 residue is now more clearly scoped to finer-grained retrieval/rerank policy and deterministic transform seams (for example temporal bridge heuristics and invocation-policy decomposition), not canonical rerank stage-orchestration ownership.

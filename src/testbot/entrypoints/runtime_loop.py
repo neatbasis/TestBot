@@ -169,7 +169,6 @@ def run_chat_loop(
         ),
         stage_rerank=lambda *args, **kwargs: context_retrieval_runtime_service.stage_rerank_for_turn_service(
             *args,
-            stage_rerank_fn=_legacy_runtime.stage_rerank,
             **kwargs,
         ),
         selected_decision_from_confidence=project_selected_decision_from_confidence,

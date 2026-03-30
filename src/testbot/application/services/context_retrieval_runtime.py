@@ -20,7 +20,7 @@ from langchain_core.documents import Document
 
 from testbot.context_resolution import resolve as _resolve_context_from_domain
 from testbot.evidence_retrieval import RetrievalInputRecord
-from testbot.pipeline_state import PipelineState
+from testbot.pipeline_state import CandidateHit, PipelineState
 from testbot.ports import MemorySearchQuery, MemoryStorePort
 from testbot.rerank import (
     RerankObjectiveConfig,
@@ -78,6 +78,16 @@ def document_from_retrieval_input(record: RetrievalInputRecord) -> Document:
         id=str(record.ref_id or metadata.get("doc_id") or ""),
         page_content=str(record.content or ""),
         metadata=metadata,
+    )
+
+
+def doc_to_candidate_hit(doc: Document, score: float) -> CandidateHit:
+    metadata = doc.metadata if isinstance(doc.metadata, dict) else {}
+    return CandidateHit(
+        doc_id=str(doc.id or metadata.get("doc_id") or ""),
+        score=float(score),
+        ts=str(metadata.get("ts") or ""),
+        card_type=str(metadata.get("type") or ""),
     )
 
 
@@ -413,7 +423,7 @@ def stage_rerank_for_turn_service(
     state: PipelineState,
     retrieval_candidates: list[RetrievalInputRecord],
     *,
-    stage_rerank_fn: Callable[..., tuple[PipelineState, list[Document]]],
+    stage_rerank_fn: Callable[..., tuple[PipelineState, list[Document]]] | None = None,
     utterance: str,
     user_doc_id: str,
     user_reflection_doc_id: str,
@@ -423,15 +433,67 @@ def stage_rerank_for_turn_service(
 ) -> tuple[PipelineState, list[RetrievalInputRecord]]:
     del io_channel
     docs_and_scores = [(document_from_retrieval_input(record), float(record.score)) for record in retrieval_candidates]
-    updated_state, hits = stage_rerank_fn(
-        state,
-        docs_and_scores,
+    if stage_rerank_fn is not None:
+        updated_state, hits = stage_rerank_fn(
+            state,
+            docs_and_scores,
+            utterance=utterance,
+            user_doc_id=user_doc_id,
+            user_reflection_doc_id=user_reflection_doc_id,
+            near_tie_delta=near_tie_delta,
+            clock=clock,
+        )
+        return updated_state, [retrieval_input_from_document(doc, score=1.0) for doc in hits]
+
+    now = clock.now()
+    temporal_bridge = resolve_temporal_anaphora_bridge(
         utterance=utterance,
+        docs_and_scores=docs_and_scores,
+        now=now,
+    )
+    filtered_docs_and_scores = filter_documents_for_temporal_window(
+        docs_and_scores=docs_and_scores,
+        bridge=temporal_bridge,
+    )
+    target = resolve_rerank_target_time(
+        utterance=utterance,
+        bridge=temporal_bridge,
+        now=now,
+    )
+    sigma_seconds = resolve_rerank_sigma_seconds(now=now, target=target)
+    decision_policy = assemble_rerank_decision_policy(
+        sigma_seconds=sigma_seconds,
         user_doc_id=user_doc_id,
         user_reflection_doc_id=user_reflection_doc_id,
         near_tie_delta=near_tie_delta,
-        clock=clock,
     )
+    scorer_config = materialize_rerank_scorer_config()
+    invocation_policy = decision_policy.invocation_policy
+    scorer_request = normalize_scorer_execution_request(
+        docs_and_scores=filtered_docs_and_scores,
+        now=now,
+        target=target,
+        invocation_policy=invocation_policy,
+        scorer_config=scorer_config,
+    )
+    scorer_result = execute_rerank_scorer_contract(scorer_request)
+    scorer_interpretation = interpret_rerank_scorer_result(scorer_result)
+    rerank_outcome = scorer_result.rerank_outcome
+    hits = scorer_interpretation.hits
+    reranked_hits = [doc_to_candidate_hit(doc, score=0.0) for doc in hits]
+    has_context = scorer_interpretation.has_context
+    threshold_profile_policy = decision_policy.threshold_profile_policy
+    confidence_decision = project_rerank_confidence_decision(
+        prior_confidence_decision=dict(state.confidence_decision),
+        has_context=has_context,
+        rerank_outcome=rerank_outcome,
+        temporal_bridge=temporal_bridge,
+        threshold_profile_policy=threshold_profile_policy,
+        now=now,
+        target=target,
+        sigma_seconds=scorer_request.sigma_seconds,
+    )
+    updated_state = replace(state, reranked_hits=reranked_hits, confidence_decision=confidence_decision)
     return updated_state, [retrieval_input_from_document(doc, score=1.0) for doc in hits]
 
 
