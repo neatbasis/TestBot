@@ -578,3 +578,31 @@ This pass is intentionally a **decision artifact**, not a broad implementation r
 ### Remaining P1 residue
 - **Turn-policy P1 residue is now complete for this mapped helper bundle.**
 - Next work should proceed per prior map ordering (retrieval/rerank policy-core and later compatibility retirement), without reopening this seam as mixed ownership.
+
+## 2026-03-30 follow-on update (post-#729, P2 opening: retrieval-stage projection sub-slice)
+### Step 1 decomposition of `stage_retrieve` (before this slice)
+- **Policy responsibility (retained in service/runtime policy seams):** retrieval threshold/selection constraints (`retrieval_threshold` tracking, retrieval filter scope, and top-k/source-quota policy inputs).
+- **Logic responsibility (selected sub-slice for this PR):** deterministic projection of retrieved documents into canonical retrieval candidates and retrieval telemetry payload shape.
+- **Application/service orchestration responsibility:** invoking store search, normalizing retrieval filters, and returning `RetrievalInputRecord` outputs for runtime turn-service wiring.
+
+### Step 2 bounded P2 seam selected
+- Selected seam: **deterministic retrieval projection and telemetry shaping** from `stage_retrieve`.
+- Why this seam: it is the cleanest first P2 move that isolates pure transform logic without relocating the full retrieval/rerank callable bundle.
+
+### Step 3 ownership move in this PR
+- Added canonical logic owner: `testbot.logic.retrieval_projection.project_retrieval_stage_outputs(...)`.
+- Canonical retrieval service hook (`context_retrieval_runtime.stage_retrieve_for_turn_service`) now performs canonical retrieval search + projection pipeline directly, and accepts legacy stage-function injection only as an explicit compatibility path.
+- Canonical runtime-loop hook binding no longer injects `_legacy_runtime.stage_retrieve` for the selected projection sub-slice.
+
+### Step 4 compatibility posture
+- `sat_chatbot_memory_v2.stage_retrieve(...)` is retained as a compatibility surface and now delegates to canonical context-retrieval service ownership before adapting back to legacy `(Document, score)` output shape.
+- No wholesale move of `stage_retrieve`/`stage_rerank` was performed; `stage_rerank` remains unchanged in this opening slice.
+
+### Step 5 proof and remaining P2 residue
+- Added sabotage proof that canonical runtime-loop retrieval-hook wiring does not depend on legacy `stage_retrieve` for the selected sub-slice.
+- Added compatibility proof that monolith `stage_retrieve` delegates through canonical service ownership.
+- Remaining P2 residue after this slice:
+  - retrieval policy decision extraction (threshold/profile policy ownership beyond projection telemetry),
+  - retrieval/rerank shared policy seams,
+  - `stage_rerank` threshold/profile policy extraction and follow-on transform split.
+- Next intended P2 follow-on: extract rerank threshold/profile policy ownership into canonical `policies/` while keeping transform/orchestration boundaries split.

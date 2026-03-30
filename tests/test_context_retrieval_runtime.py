@@ -6,9 +6,10 @@ import arrow
 from langchain_core.documents import Document
 
 from testbot.application.services import context_retrieval_runtime
-from testbot.pipeline_state import CandidateFactsArtifact, PipelineState
+from testbot.pipeline_state import CandidateFactsArtifact, CandidateHit, PipelineState
 from testbot.evidence_retrieval import RetrievalInputRecord
 from testbot.ports import MemorySearchQuery, PortDocument, ScoredPortDocument
+from testbot.logic.retrieval_projection import RetrievalStageProjection
 
 
 def test_should_force_memory_retrieval_for_identity_recall_true_on_commit_anchor() -> None:
@@ -74,6 +75,40 @@ def test_stage_retrieve_for_turn_service_uses_injected_stage_function() -> None:
     assert observed["kwargs"]["exclude_doc_ids"] == {"a"}
     assert len(hits) == 1
     assert hits[0].ref_id == "doc-1"
+
+
+def test_stage_retrieve_for_turn_service_canonical_path_uses_retrieval_projection_owner(monkeypatch) -> None:
+    state = PipelineState(user_input="who am i?", rewritten_query="who am i?")
+    observed: dict[str, object] = {}
+
+    def _fake_search(store, *, rewritten_query, filter_scope, k=18):
+        observed["search"] = {"rewritten_query": rewritten_query, "k": k, "scope": filter_scope}
+        return [(Document(id="doc-7", page_content="hello", metadata={"doc_id": "doc-7"}), 0.73)]
+
+    def _fake_projection(**kwargs):
+        observed["projection"] = kwargs
+        return RetrievalStageProjection(
+            docs_and_scores=[(Document(id="doc-8", page_content="winner", metadata={"doc_id": "doc-8"}), 0.88)],
+            retrieval_candidates=[CandidateHit(doc_id="doc-8", score=0.88, ts="", card_type="")],
+            retrieval_telemetry={"retrieval_threshold": 0.15, "retrieval_returned_top_k": 1},
+        )
+
+
+    monkeypatch.setattr(context_retrieval_runtime, "search_memory_documents_for_retrieval", _fake_search)
+    monkeypatch.setattr(context_retrieval_runtime, "project_retrieval_stage_outputs", _fake_projection)
+
+    next_state, hits = context_retrieval_runtime.stage_retrieve_for_turn_service(
+        object(),
+        state,
+        retrieval_score_threshold=0.15,
+        exclude_doc_ids={"doc-x"},
+    )
+
+    assert observed["search"]["rewritten_query"] == "who am i?"
+    assert observed["projection"]["retrieval_score_threshold"] == 0.15
+    assert next_state.retrieval_candidates[0].doc_id == "doc-8"
+    assert next_state.confidence_decision["retrieval_returned_top_k"] == 1
+    assert hits[0].ref_id == "doc-8"
 
 
 def test_stage_rerank_for_turn_service_uses_injected_stage_function() -> None:
