@@ -760,6 +760,13 @@ def test_runtime_loop_turn_pipeline_hook_logging_bundle_uses_canonical_session_l
         def __init__(self, **kwargs) -> None:
             captured.update(kwargs)
 
+    def _legacy_append_session_log_guard(event: str, payload: dict[str, object]) -> None:
+        del payload
+        if event == "user_utterance_ingest":
+            return
+        raise AssertionError("selected turn-pipeline hook logging bundle should not use legacy append_session_log")
+
+    monkeypatch.setattr(runtime, "append_session_log", _legacy_append_session_log_guard)
     monkeypatch.setattr(runtime_loop, "RuntimeBackgroundIngestionDependencies", _CapturingDeps)
     monkeypatch.setattr(runtime_loop, "poll_pending_ingestion_obligations", lambda **_kwargs: None)
     monkeypatch.setattr(runtime_loop, "process_background_ingestion_completion", lambda **_kwargs: ("", None, False))

@@ -327,6 +327,7 @@ Bounded seam reduction for assemble-stage special-answer authority.
 
 ### Step 4 proof tests
 - Added focused runtime-loop proof that captures runtime turn-pipeline hook dependencies through background-completion replay wiring and verifies:
+  - legacy `sat_chatbot_memory_v2.append_session_log` is sabotaged for non-deferred events to prove selected hook-level independence from monolith logger ownership,
   - `hooks.append_session_log` is canonical `testbot.observability.session_log.append_session_log`,
   - answer-assemble injected logger argument is canonical when the hook callback is invoked.
 - Added explicit source-level ownership guard asserting the selected hook logging bundle no longer binds `_legacy_runtime.append_session_log`.
