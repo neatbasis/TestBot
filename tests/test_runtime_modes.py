@@ -279,8 +279,6 @@ def test_runtime_loop_monolith_touchpoints_are_allowlisted_for_deliberate_shrink
     allowed_symbols = {
         "BACKGROUND_INGESTION_OBLIGATION_TIMEOUT_SECONDS",
         "INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD",
-        "IntentType",
-        "PipelineState",
         "_ClockBackedSnapshotTimeProvider",
         "_ambiguity_score",
         "_emit_obligation_transition",
@@ -288,7 +286,6 @@ def test_runtime_loop_monolith_touchpoints_are_allowlisted_for_deliberate_shrink
         "_is_capabilities_help_answer",
         "_minimal_confidence_decision_for_direct_answer",
         "_optional_string",
-        "_run_canonical_turn_pipeline",
         "_selected_decision_from_confidence",
         "_utc_now_iso",
         "_validate_and_log_transition",
@@ -357,6 +354,101 @@ def test_runtime_loop_background_ingestion_connector_ingestor_dependencies_are_b
     assert callable(connector)
     assert connector(expected_runtime) is expected_connector
     assert captured["source_ingestor_cls"] is runtime_loop.SourceIngestor
+
+
+def test_runtime_loop_background_completion_replay_dependency_is_canonical_runtime_turn_pipeline(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from testbot.entrypoints import runtime_loop
+    from testbot.application.services.background_ingestion_runtime import BackgroundIngestionReplayRequest
+
+    captured: dict[str, object] = {}
+    expected_runtime: dict[str, object] = {}
+    fake_pipeline_state = runtime_loop.PipelineState(
+        user_input="x",
+        last_user_message_ts="",
+        classified_intent="knowledge_question",
+        resolved_intent="",
+        prior_unresolved_intent="",
+        confidence_decision={},
+    )
+
+    class _CapturingDeps:
+        def __init__(self, **kwargs) -> None:
+            captured.update(kwargs)
+
+    monkeypatch.setattr(runtime_loop, "RuntimeBackgroundIngestionDependencies", _CapturingDeps)
+    monkeypatch.setattr(runtime_loop, "poll_pending_ingestion_obligations", lambda **_kwargs: None)
+    monkeypatch.setattr(runtime_loop, "process_background_ingestion_completion", lambda **_kwargs: ("", None, False))
+    monkeypatch.setattr(
+        runtime_loop,
+        "run_runtime_turn_pipeline",
+        lambda **kwargs: (fake_pipeline_state, []),
+    )
+    monkeypatch.setattr(
+        runtime_loop,
+        "_legacy_runtime",
+        SimpleNamespace(
+            append_session_log=lambda *_args, **_kwargs: None,
+            _validate_and_log_transition=lambda *_args, **_kwargs: None,
+            stage_rewrite_query=lambda *_args, **_kwargs: "",
+            generate_reflection_yaml=lambda *_args, **_kwargs: "",
+            _intent_classifier_confidence=lambda *_args, **_kwargs: {},
+            _optional_string=lambda value: value if isinstance(value, str) else "",
+            stage_retrieve=lambda *_args, **_kwargs: [],
+            stage_rerank=lambda *_args, **_kwargs: [],
+            _selected_decision_from_confidence=lambda *_args, **_kwargs: {},
+            _minimal_confidence_decision_for_direct_answer=lambda *_args, **_kwargs: {},
+            _ambiguity_score=lambda *_args, **_kwargs: 0.0,
+            store_doc=lambda *_args, **_kwargs: None,
+            INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD=0.75,
+            append_pipeline_snapshot=lambda *_args, **_kwargs: None,
+            _ClockBackedSnapshotTimeProvider=lambda clock: clock,
+            is_clarification_answer=lambda _answer: False,
+            _is_capabilities_help_answer=lambda _answer: False,
+            replace=lambda state, **_kwargs: state,
+            arrow=runtime.arrow,
+            _utc_now_iso=lambda: "2026-01-01T00:00:00+00:00",
+            BACKGROUND_INGESTION_OBLIGATION_TIMEOUT_SECONDS=900,
+        ),
+    )
+
+    runtime_loop.run_chat_loop(
+        runtime=expected_runtime,
+        llm=object(),
+        store=object(),
+        chat_history=deque(),
+        near_tie_delta=0.1,
+        io_channel="cli",
+        capability_status="ok",
+        capability_snapshot=SimpleNamespace(
+            runtime_capability_status=SimpleNamespace(debug_enabled=False, debug_verbose=False)
+        ),
+        read_user_utterance=lambda: None,
+        send_assistant_text=lambda _text: None,
+        clock=SimpleNamespace(now=lambda: runtime.arrow.get("2026-01-01T00:00:00+00:00")),
+    )
+
+    replay = captured["replay_background_completion_turn"]
+    assert callable(replay)
+    replay_result = replay(
+        BackgroundIngestionReplayRequest(
+            runtime=expected_runtime,
+            llm=object(),
+            store=object(),
+            utterance="Need grounded update",
+            last_user_message_ts="2026-01-01T00:00:00+00:00",
+            prior_pipeline_state=None,
+            near_tie_delta=0.1,
+            chat_history=deque(),
+            capability_status="ok",
+            capability_snapshot={},
+            clock=object(),
+            io_channel="cli",
+            turn_id="turn-1",
+        )
+    )
+    assert replay_result is fake_pipeline_state
 
 
 def test_runtime_loop_context_retrieval_residual_monolith_touchpoints_are_explicit_policy_core_only() -> None:

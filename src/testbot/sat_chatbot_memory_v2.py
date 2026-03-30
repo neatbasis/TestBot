@@ -165,6 +165,7 @@ from testbot.entrypoints.runtime_commit_persistence import (
 )
 from testbot.entrypoints.runtime_turn_pipeline import RuntimeTurnPipelineHooks, run_runtime_turn_pipeline
 from testbot.application.services import context_retrieval_runtime as context_retrieval_runtime_service
+from testbot.application.services.background_ingestion_runtime import BackgroundIngestionReplayRequest
 from testbot.canonical_turn_orchestrator import CanonicalTurnOrchestrator as _CanonicalTurnOrchestrator
 from testbot.logic.decision_helpers import (
     decision_object_from_assembled as _decision_object_from_fallback_action,
@@ -227,10 +228,38 @@ def _runtime_background_ingestion_deps() -> RuntimeBackgroundIngestionDependenci
         build_source_connector=_build_source_connector,
         source_ingestor_cls=SourceIngestor,
         answer_commit_persistence=answer_commit_persistence,
-        run_canonical_turn_pipeline=_run_canonical_turn_pipeline,
-        pipeline_state_cls=PipelineState,
-        knowledge_question_intent=IntentType.KNOWLEDGE_QUESTION.value,
+        replay_background_completion_turn=_replay_background_completion_turn_compat,
     )
+
+
+def _replay_background_completion_turn_compat(request: BackgroundIngestionReplayRequest) -> PipelineState:
+    replay_state, _hits = _run_canonical_turn_pipeline(
+        runtime=request.runtime,
+        llm=request.llm,
+        store=request.store,
+        state=PipelineState(
+            user_input=request.utterance,
+            last_user_message_ts=request.last_user_message_ts,
+            classified_intent=IntentType.KNOWLEDGE_QUESTION.value,
+            resolved_intent="",
+            prior_unresolved_intent=(
+                request.prior_pipeline_state.prior_unresolved_intent
+                if isinstance(request.prior_pipeline_state, PipelineState)
+                else ""
+            ),
+            confidence_decision={},
+        ),
+        utterance=request.utterance,
+        prior_pipeline_state=request.prior_pipeline_state,
+        turn_id=request.turn_id,
+        near_tie_delta=request.near_tie_delta,
+        chat_history=request.chat_history,
+        capability_status=request.capability_status,
+        capability_snapshot=request.capability_snapshot,
+        clock=request.clock,
+        io_channel=request.io_channel,
+    )
+    return replay_state
 
 
 def _emit_obligation_transition(
@@ -1430,6 +1459,7 @@ def _run_chat_loop(
         read_user_utterance=read_user_utterance,
         send_assistant_text=send_assistant_text,
         clock=clock,
+        replay_background_completion_turn=_replay_background_completion_turn_compat,
     )
 
 
