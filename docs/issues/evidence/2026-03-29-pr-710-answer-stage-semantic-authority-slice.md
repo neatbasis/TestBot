@@ -302,3 +302,39 @@ Bounded seam reduction for assemble-stage special-answer authority.
   - compatibility façade `sat_chatbot_memory_v2.append_session_log` API exposure for legacy callers.
 - **Compatibility wrapper posture:** compatibility wrappers remain intentionally available, but canonical runtime-loop telemetry dependency wiring is no longer owned by the monolith logger path for this selected seam.
 - **Next highest-weight seam after this slice:** turn-pipeline hook logging ownership (including answer-assemble injected logger) as the remaining largest runtime-loop logging-plumbing bundle still bound to `_legacy_runtime.append_session_log`.
+
+## 2026-03-30 follow-on update (post-#722 turn-pipeline hook logging ownership sub-slice)
+### Step 1 inventory (before this slice)
+- **Hook-level runtime logging seam still legacy-routed:**
+  - `runtime_loop.run_chat_loop(...)` wired `RuntimeTurnPipelineHooks.append_session_log` from `_legacy_runtime.append_session_log`.
+  - The answer-stage assemble hook path injected logger ownership through `answer_assemble_for_turn_service(..., append_session_log=_legacy_runtime.append_session_log)`.
+- **Out-of-scope runtime logging (explicitly deferred in this PR):**
+  - direct runtime-loop user-ingest logging (`_legacy_runtime.append_session_log("user_utterance_ingest", ...)`),
+  - compatibility façade API surface `sat_chatbot_memory_v2.append_session_log` for legacy callers.
+- **Semantics boundary:**
+  - selected seam is hook dependency ownership/plumbing only; no answer-stage semantic contract changes were included.
+
+### Step 2 bounded sub-slice selected
+- Selected seam: **turn-pipeline hook logging ownership bundle**:
+  - `RuntimeTurnPipelineHooks.append_session_log`,
+  - answer-assemble injected logger inside runtime hook assembly.
+- Scope intentionally excluded generic hook redesign and broad runtime logging cleanup.
+
+### Step 3 runtime hook dependency reduction
+- `runtime_loop.run_chat_loop(...)` now binds `RuntimeTurnPipelineHooks.append_session_log` to canonical `testbot.observability.session_log.append_session_log`.
+- Runtime hook wiring for `answer_assemble_for_turn_service(...)` now injects canonical `testbot.observability.session_log.append_session_log`.
+- Canonical runtime-loop no longer sources this selected hook-level logger bundle from `_legacy_runtime.append_session_log`.
+
+### Step 4 proof tests
+- Added focused runtime-loop proof that captures runtime turn-pipeline hook dependencies through background-completion replay wiring and verifies:
+  - `hooks.append_session_log` is canonical `testbot.observability.session_log.append_session_log`,
+  - answer-assemble injected logger argument is canonical when the hook callback is invoked.
+- Added explicit source-level ownership guard asserting the selected hook logging bundle no longer binds `_legacy_runtime.append_session_log`.
+
+### Step 5 deferred scope after this slice
+- **Moved in this PR:** hook-level logging ownership for `RuntimeTurnPipelineHooks.append_session_log` and answer-assemble injected logger in canonical runtime-loop hook assembly.
+- **Still deferred intentionally:**
+  - direct runtime-loop user-ingest logging still calls `_legacy_runtime.append_session_log`,
+  - compatibility façade exposure of `sat_chatbot_memory_v2.append_session_log` remains for legacy callers.
+- **Compatibility wrapper posture:** wrappers remain compatibility-only; canonical runtime hook bundle no longer depends on legacy logger ownership for this selected slice.
+- **Next highest-weight seam after this slice:** direct runtime-loop user-ingest logging ownership retirement (with compatibility façade exposure still intentionally separate).
