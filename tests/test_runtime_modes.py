@@ -296,7 +296,6 @@ def test_runtime_loop_monolith_touchpoints_are_allowlisted_for_deliberate_shrink
     allowed_symbols = {
         "BACKGROUND_INGESTION_OBLIGATION_TIMEOUT_SECONDS",
         "INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD",
-        "_ClockBackedSnapshotTimeProvider",
         "_ambiguity_score",
         "_intent_classifier_confidence",
         "_minimal_confidence_decision_for_direct_answer",
@@ -314,6 +313,65 @@ def test_runtime_loop_monolith_touchpoints_are_allowlisted_for_deliberate_shrink
         "store_doc",
     }
     assert observed_symbols == allowed_symbols
+
+
+def test_runtime_loop_ingest_snapshot_time_provider_is_canonical_not_legacy(monkeypatch: pytest.MonkeyPatch) -> None:
+    from testbot.entrypoints import runtime_loop
+
+    observed_time_provider_types: list[str] = []
+    pipeline_called = {"value": False}
+
+    def _capture_snapshot(stage, state, *, time_provider):
+        observed_time_provider_types.append(type(time_provider).__name__)
+
+    def _run_pipeline(**kwargs):
+        pipeline_called["value"] = True
+        state = kwargs["state"]
+        return (
+            runtime_loop.PipelineState(
+                user_input=state.user_input,
+                last_user_message_ts=state.last_user_message_ts,
+                classified_intent=state.classified_intent,
+                resolved_intent=state.resolved_intent,
+                prior_unresolved_intent=state.prior_unresolved_intent,
+                confidence_decision={},
+                final_answer="ok",
+                commit_receipt={},
+            ),
+            [],
+        )
+
+    monkeypatch.setattr(
+        runtime,
+        "_ClockBackedSnapshotTimeProvider",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("legacy snapshot provider should not be used")),
+    )
+    monkeypatch.setattr(runtime, "append_pipeline_snapshot", _capture_snapshot)
+    monkeypatch.setattr(runtime_loop, "poll_pending_ingestion_obligations", lambda **_kwargs: None)
+    monkeypatch.setattr(runtime_loop, "process_background_ingestion_completion", lambda **_kwargs: ("", None, False))
+    monkeypatch.setattr(runtime_loop, "emit_runtime_turn_telemetry", lambda **_kwargs: None)
+    monkeypatch.setattr(runtime_loop.continuity_runtime_service, "apply_unresolved_intent_carryover", lambda state: state)
+    monkeypatch.setattr(runtime_loop, "persist_answer_commit", lambda **_kwargs: None)
+    monkeypatch.setattr(runtime_loop, "run_runtime_turn_pipeline", _run_pipeline)
+
+    runtime_loop.run_chat_loop(
+        runtime={},
+        llm=object(),
+        store=object(),
+        chat_history=deque(),
+        near_tie_delta=0.1,
+        io_channel="cli",
+        capability_status="ok",
+        capability_snapshot=SimpleNamespace(
+            runtime_capability_status=SimpleNamespace(debug_enabled=False, debug_verbose=False)
+        ),
+        read_user_utterance=iter(["Need update", "stop"]).__next__,
+        send_assistant_text=lambda _text: None,
+        clock=SimpleNamespace(now=lambda: runtime.arrow.get("2026-03-10T11:00:00+00:00")),
+    )
+
+    assert pipeline_called["value"] is True
+    assert observed_time_provider_types == ["RuntimeClockBackedSnapshotTimeProvider"]
 
 
 def test_runtime_loop_pending_ingestion_created_transition_uses_canonical_runtime_background_ingestion_owner(
@@ -482,7 +540,6 @@ def test_runtime_loop_background_completion_replay_dependency_is_canonical_runti
             store_doc=lambda *_args, **_kwargs: None,
             INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD=0.75,
             append_pipeline_snapshot=lambda *_args, **_kwargs: None,
-            _ClockBackedSnapshotTimeProvider=lambda clock: clock,
             is_clarification_answer=lambda _answer: False,
             _is_capabilities_help_answer=lambda _answer: False,
             replace=lambda state, **_kwargs: state,

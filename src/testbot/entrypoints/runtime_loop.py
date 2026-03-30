@@ -39,6 +39,7 @@ from testbot.entrypoints.runtime_commit_persistence import (
     RuntimeCommitPersistenceDependencies,
     answer_commit_persistence as persist_answer_commit,
 )
+from testbot.entrypoints.runtime_snapshot_support import runtime_clock_snapshot_time_provider
 from testbot.application.services import answer_stage_runtime as answer_stage_runtime_service
 from testbot.application.services import context_retrieval_runtime as context_retrieval_runtime_service
 from testbot.application.services import answer_stage_presentation as answer_stage_presentation_service
@@ -258,7 +259,7 @@ def run_chat_loop(
         _legacy_runtime.append_pipeline_snapshot(
             "ingest",
             state,
-            time_provider=_legacy_runtime._ClockBackedSnapshotTimeProvider(clock=clock),
+            time_provider=runtime_clock_snapshot_time_provider(clock=clock),
         )
         turn_id = str(uuid.uuid4())
 
