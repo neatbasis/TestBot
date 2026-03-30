@@ -281,10 +281,8 @@ def test_runtime_loop_monolith_touchpoints_are_allowlisted_for_deliberate_shrink
         "INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD",
         "IntentType",
         "PipelineState",
-        "SourceIngestor",
         "_ClockBackedSnapshotTimeProvider",
         "_ambiguity_score",
-        "_build_source_connector",
         "_emit_obligation_transition",
         "_intent_classifier_confidence",
         "_is_capabilities_help_answer",
@@ -306,6 +304,59 @@ def test_runtime_loop_monolith_touchpoints_are_allowlisted_for_deliberate_shrink
         "store_doc",
     }
     assert observed_symbols == allowed_symbols
+
+
+def test_runtime_loop_background_ingestion_connector_ingestor_dependencies_are_bound_to_canonical_owners(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from testbot.entrypoints import runtime_loop
+
+    captured: dict[str, object] = {}
+    expected_connector = object()
+    expected_runtime: dict[str, object] = {}
+
+    class _CapturingDeps:
+        def __init__(self, **kwargs) -> None:
+            captured.update(kwargs)
+
+    def _legacy_connector_should_not_be_used(_runtime):
+        raise AssertionError("legacy background-ingestion connector should not be used")
+
+    class _LegacyIngestorShouldNotBeUsed:
+        def __init__(self, **_kwargs) -> None:
+            raise AssertionError("legacy background-ingestion ingestor class should not be used")
+
+    monkeypatch.setattr(runtime, "_build_source_connector", _legacy_connector_should_not_be_used)
+    monkeypatch.setattr(runtime, "SourceIngestor", _LegacyIngestorShouldNotBeUsed)
+    monkeypatch.setattr(runtime_loop, "RuntimeBackgroundIngestionDependencies", _CapturingDeps)
+    monkeypatch.setattr(runtime_loop, "poll_pending_ingestion_obligations", lambda **_kwargs: None)
+    monkeypatch.setattr(runtime_loop, "process_background_ingestion_completion", lambda **_kwargs: ("", None, False))
+    monkeypatch.setattr(
+        runtime_loop,
+        "build_source_connector",
+        lambda *, runtime, append_session_log: expected_connector if runtime is expected_runtime else None,
+    )
+
+    runtime_loop.run_chat_loop(
+        runtime=expected_runtime,
+        llm=object(),
+        store=object(),
+        chat_history=deque(),
+        near_tie_delta=0.1,
+        io_channel="cli",
+        capability_status="ok",
+        capability_snapshot=SimpleNamespace(
+            runtime_capability_status=SimpleNamespace(debug_enabled=False, debug_verbose=False)
+        ),
+        read_user_utterance=lambda: None,
+        send_assistant_text=lambda _text: None,
+        clock=SimpleNamespace(now=lambda: runtime.arrow.get("2026-01-01T00:00:00+00:00")),
+    )
+
+    connector = captured["build_source_connector"]
+    assert callable(connector)
+    assert connector(expected_runtime) is expected_connector
+    assert captured["source_ingestor_cls"] is runtime_loop.SourceIngestor
 
 
 def test_runtime_loop_context_retrieval_residual_monolith_touchpoints_are_explicit_policy_core_only() -> None:
