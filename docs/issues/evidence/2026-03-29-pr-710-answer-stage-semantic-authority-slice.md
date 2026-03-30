@@ -30,6 +30,31 @@ Bounded seam reduction for assemble-stage special-answer authority.
 - `sat_chatbot_memory_v2` retains compatibility wrappers for `_intent_telemetry_payload` and `_user_followup_signal_proxy`, but these wrappers now delegate to canonical runtime telemetry owners.
 - Runtime-loop telemetry/debug authority is no longer semantically owned by `_legacy_runtime` for payload projection/follow-up projection/debug trace formatting.
 
+## 2026-03-30 follow-on update (post-#713 background-ingestion dependency ownership slice)
+### Step 1 inventory (before this slice)
+- **Infrastructure / adapter ownership (deferred cluster target):**
+  - `_build_source_connector`
+  - `SourceIngestor`
+  - `append_session_log` (still deferred separately)
+- **Orchestration / control-flow ownership (still deferred in this PR):**
+  - `_run_canonical_turn_pipeline`
+- **Semantic / state authority (explicitly deferred in this PR):**
+  - `PipelineState`
+  - `IntentType.KNOWLEDGE_QUESTION.value`
+  - unresolved-intent/continuity behavior around background-completion replay.
+
+### Bounded sub-slice selected
+- Canonicalized **source connector / ingestor dependency ownership** for runtime-loop background ingestion assembly.
+- `runtime_loop` now binds background ingestion connector construction to canonical `testbot.source_ingestion_startup.build_source_connector` and ingestor class ownership to canonical `testbot.source_ingest.SourceIngestor`, rather than sourcing either collaborator from `sat_chatbot_memory_v2`.
+
+### What remains deferred inside background ingestion
+- Background completion replay still routes pipeline invocation through `_run_canonical_turn_pipeline`.
+- Background completion replay state/intention contract remains legacy-routed (`PipelineState`, `IntentType` value).
+- `append_session_log` ownership remains deferred and intentionally unchanged in this slice.
+
+### Highest-weight next seam after this slice
+- Remaining highest-weight background-ingestion seam is now the **pipeline invocation + state/intention contract cluster** (`_run_canonical_turn_pipeline`, `PipelineState`, `IntentType`), with state continuity/unresolved-intent and deferred logging ownership still outside this bounded slice.
+
 ## Semantic authority moved/clarified in this PR
 - Moved assemble-stage clarifier wording/policy and special-answer constants from legacy per-call injection to canonical ownership in `testbot.answer_stage_semantics` via `AnswerStageSemanticContract`.
 - Runtime loop is less responsible for answer-stage semantic composition because it no longer injects those semantic collaborators.

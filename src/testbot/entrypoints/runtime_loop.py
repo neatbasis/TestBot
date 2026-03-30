@@ -41,6 +41,8 @@ from testbot.entrypoints.runtime_commit_persistence import (
 from testbot.application.services import answer_stage_runtime as answer_stage_runtime_service
 from testbot.application.services import context_retrieval_runtime as context_retrieval_runtime_service
 from testbot.application.services import answer_stage_presentation as answer_stage_presentation_service
+from testbot.source_ingest import SourceIngestor
+from testbot.source_ingestion_startup import build_source_connector
 from testbot import sat_chatbot_memory_v2 as _legacy_runtime
 from testbot.domain import Clock
 from testbot.ports import MemoryStorePort
@@ -78,8 +80,11 @@ def run_chat_loop(
     )
     background_ingestion_deps = RuntimeBackgroundIngestionDependencies(
         append_session_log=_legacy_runtime.append_session_log,
-        build_source_connector=_legacy_runtime._build_source_connector,
-        source_ingestor_cls=_legacy_runtime.SourceIngestor,
+        build_source_connector=lambda configured_runtime: build_source_connector(
+            runtime=configured_runtime,
+            append_session_log=_legacy_runtime.append_session_log,
+        ),
+        source_ingestor_cls=SourceIngestor,
         answer_commit_persistence=lambda **kwargs: persist_answer_commit(
             deps=commit_persistence_deps,
             **kwargs,
