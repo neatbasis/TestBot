@@ -40,3 +40,52 @@ def test_run_canonical_turn_pipeline_delegates_to_runtime_turn_pipeline_helper(m
     assert isinstance(hooks, RuntimeTurnPipelineHooks)
     assert hooks.append_session_log is runtime.append_session_log
     assert hooks.intent_classifier_confidence_threshold == runtime.INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD
+
+
+def test_legacy_intent_classifier_confidence_delegates_to_canonical_policy_owner(monkeypatch):
+    from testbot.policies import turn_policy as turn_policy_policies
+
+    captured: dict[str, object] = {}
+
+    def _canonical_stub(**kwargs):
+        captured.update(kwargs)
+        return 0.88
+
+    monkeypatch.setattr(turn_policy_policies, "intent_classifier_confidence", _canonical_stub)
+
+    result = runtime._intent_classifier_confidence(
+        utterance="what time is it",
+        predicted_intent=runtime.IntentType.KNOWLEDGE_QUESTION,
+    )
+
+    assert result == 0.88
+    assert captured == {
+        "utterance": "what time is it",
+        "predicted_intent": runtime.IntentType.KNOWLEDGE_QUESTION,
+        "confidence_threshold": runtime.INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD,
+    }
+
+
+def test_legacy_minimal_confidence_decision_delegates_to_canonical_policy_owner(monkeypatch):
+    from testbot.policies import turn_policy as turn_policy_policies
+
+    captured: dict[str, object] = {}
+
+    def _canonical_stub(**kwargs):
+        captured.update(kwargs)
+        return {"ok": True}
+
+    monkeypatch.setattr(turn_policy_policies, "minimal_confidence_decision_for_direct_answer", _canonical_stub)
+
+    base_confidence_decision = {"x": 1}
+    result = runtime._minimal_confidence_decision_for_direct_answer(
+        branch="direct_answer",
+        base_confidence_decision=base_confidence_decision,
+    )
+
+    assert result == {"ok": True}
+    assert captured == {
+        "branch": "direct_answer",
+        "base_confidence_decision": base_confidence_decision,
+        "retrieval_score_threshold": runtime.RETRIEVAL_SCORE_THRESHOLD,
+    }

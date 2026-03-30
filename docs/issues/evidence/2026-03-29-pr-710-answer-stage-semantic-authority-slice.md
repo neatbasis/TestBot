@@ -473,3 +473,35 @@ This pass is intentionally a **decision artifact**, not a broad implementation r
 | `stage_rerank` | `runtime_loop` hook adapter (`stage_rerank_for_turn_service`) | retrieval/rerank policy-core | `policies/` + `logic/` + `application/services/` | Extract rerank threshold/profile policy separately from transform logic; avoid moving full callable bundle intact. | P2 |
 | `append_pipeline_snapshot` | `runtime_loop` ingest call-site | snapshot emission ownership | `observability/` + `entrypoints/` | Move emission schema/payload construction to observability; keep entrypoint responsible only for invocation timing. | P3 |
 | Compatibility façades (`run_chat_loop`, `append_session_log`, `_replay_background_completion_turn_compat`, presentation re-exports) | Legacy import paths and compatibility coverage | compatibility-only | compatibility-only wrappers | Freeze as wrappers; retire only after canonical blockers above are removed and cutoff policy is approved. | P4 (last) |
+
+## 2026-03-30 follow-on update (post-#726 turn-policy policy sub-slice: `_intent_classifier_confidence` + `_minimal_confidence_decision_for_direct_answer`)
+### Selected policy seam
+- Selected helper pair:
+  - `_intent_classifier_confidence`
+  - `_minimal_confidence_decision_for_direct_answer`
+
+### Why this seam
+- This is the highest-priority remaining bounded turn-policy extraction inside **P1** after the prior logic helper split (`_optional_string`, `_ambiguity_score`).
+- Both helpers are deterministic policy transforms and cleanly map to canonical `policies/` ownership without mixing transition-lifecycle or observability formatting responsibilities.
+
+### What moved in this PR
+- Added canonical owner module: `testbot.policies.turn_policy`.
+  - `intent_classifier_confidence(...)`
+  - `minimal_confidence_decision_for_direct_answer(...)`
+  - canonical thresholds: `INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD`, `RETRIEVAL_SCORE_THRESHOLD`
+- Rebound canonical runtime hook wiring in `entrypoints/runtime_loop.py` to use canonical policy owner callables for:
+  - `RuntimeTurnPipelineHooks.intent_classifier_confidence`
+  - `RuntimeTurnPipelineHooks.minimal_confidence_decision_for_direct_answer`
+  - `RuntimeTurnPipelineHooks.intent_classifier_confidence_threshold`
+- Reduced monolith helpers in `sat_chatbot_memory_v2.py` to compatibility delegators into canonical policy owner.
+
+### Direct proof and boundedness
+- Added direct runtime-loop hook proof that sabotages legacy policy helpers and verifies canonical runtime hook assembly uses canonical `policies/` owner callables.
+- Added compatibility-wrapper delegation proof for both retained monolith helper wrappers.
+- Updated runtime-loop legacy touchpoint allowlist expectations to remove the extracted helper pair from canonical runtime dependencies.
+
+### Deferred turn-policy residue after this PR
+- **Still deferred inside turn-policy bundle (P1):**
+  - `_selected_decision_from_confidence`
+  - `_validate_and_log_transition`
+- **P1 sequencing remains:** finish turn-policy split before opening retrieval/rerank policy-core bundle work (P2).

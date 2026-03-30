@@ -14,6 +14,7 @@ Ownership:
 from __future__ import annotations
 
 from collections import deque
+from functools import partial
 import uuid
 
 from homeassistant_api import Client
@@ -56,6 +57,12 @@ from testbot.observability.turn_debug_payload import build_debug_turn_payload, f
 from testbot.observability.session_log import append_session_log as append_runtime_session_log
 from testbot.logic.turn_policy import ambiguity_score as compute_turn_policy_ambiguity_score
 from testbot.logic.turn_policy import optional_string as coerce_optional_string
+from testbot.policies.turn_policy import (
+    INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD,
+    RETRIEVAL_SCORE_THRESHOLD,
+    intent_classifier_confidence as compute_intent_classifier_confidence,
+    minimal_confidence_decision_for_direct_answer as build_minimal_confidence_decision_for_direct_answer,
+)
 
 ChatMsg = dict[str, str]
 
@@ -143,7 +150,10 @@ def run_chat_loop(
         validate_and_log_transition=_legacy_runtime._validate_and_log_transition,
         stage_rewrite_query=_legacy_runtime.stage_rewrite_query,
         generate_reflection_yaml=_legacy_runtime.generate_reflection_yaml,
-        intent_classifier_confidence=_legacy_runtime._intent_classifier_confidence,
+        intent_classifier_confidence=partial(
+            compute_intent_classifier_confidence,
+            confidence_threshold=INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD,
+        ),
         optional_string=coerce_optional_string,
         should_force_memory_retrieval_for_identity_recall=context_retrieval_runtime_service.should_force_memory_retrieval_for_identity_recall,
         resolve_context_fn=context_retrieval_runtime_service.resolve_context,
@@ -161,8 +171,9 @@ def run_chat_loop(
             **kwargs,
         ),
         selected_decision_from_confidence=_legacy_runtime._selected_decision_from_confidence,
-        minimal_confidence_decision_for_direct_answer=(
-            _legacy_runtime._minimal_confidence_decision_for_direct_answer
+        minimal_confidence_decision_for_direct_answer=partial(
+            build_minimal_confidence_decision_for_direct_answer,
+            retrieval_score_threshold=RETRIEVAL_SCORE_THRESHOLD,
         ),
         resolve_answer_routing_for_stage=answer_stage_runtime_service.resolve_answer_routing_for_stage,
         answer_assemble=lambda *args, **kwargs: answer_stage_runtime_service.answer_assemble_for_turn_service(
@@ -181,7 +192,7 @@ def run_chat_loop(
         detect_capability_offer=answer_stage_runtime_service.detect_capability_offer,
         ambiguity_score=compute_turn_policy_ambiguity_score,
         store_doc_fn=_legacy_runtime.store_doc,
-        intent_classifier_confidence_threshold=_legacy_runtime.INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD,
+        intent_classifier_confidence_threshold=INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD,
         document_from_retrieval_input=context_retrieval_runtime_service.document_from_retrieval_input,
     )
     replay_background_completion_turn_callable = (
