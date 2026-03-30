@@ -362,6 +362,59 @@ def test_runtime_loop_background_ingestion_deps_use_canonical_append_session_log
     assert observed_connector_loggers == [session_log_module.append_session_log]
 
 
+def test_runtime_loop_commit_persistence_deps_use_canonical_append_session_log(monkeypatch: pytest.MonkeyPatch) -> None:
+    from testbot.entrypoints import runtime_loop
+    from testbot.observability import session_log as session_log_module
+
+    observed_commit_loggers: list[object] = []
+
+    monkeypatch.setattr(
+        runtime,
+        "append_session_log",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("legacy append_session_log should not own commit-persistence dependency logging")
+        ),
+    )
+
+    monkeypatch.setattr(
+        runtime_loop,
+        "persist_answer_commit",
+        lambda **kwargs: observed_commit_loggers.append(kwargs["deps"].append_session_log),
+    )
+
+    def _completion_with_commit_probe(**kwargs):
+        kwargs["deps"].answer_commit_persistence(
+            llm=object(),
+            store=object(),
+            state=runtime_loop.PipelineState(user_input="background replay", final_answer="done"),
+            io_channel="cli",
+            clock=SimpleNamespace(now=lambda: runtime.arrow.get("2026-01-01T00:00:00+00:00")),
+        )
+        return "", None, False
+
+    monkeypatch.setattr(runtime_loop, "poll_pending_ingestion_obligations", lambda **_kwargs: None)
+    monkeypatch.setattr(runtime_loop, "process_background_ingestion_completion", _completion_with_commit_probe)
+
+    runtime_loop.run_chat_loop(
+        runtime={},
+        llm=object(),
+        store=object(),
+        chat_history=deque(),
+        near_tie_delta=0.1,
+        io_channel="cli",
+        capability_status="ok",
+        capability_snapshot=SimpleNamespace(
+            runtime_capability_status=SimpleNamespace(debug_enabled=False, debug_verbose=False)
+        ),
+        read_user_utterance=lambda: None,
+        send_assistant_text=lambda _text: None,
+        clock=SimpleNamespace(now=lambda: runtime.arrow.get("2026-01-01T00:00:00+00:00")),
+    )
+
+    assert observed_commit_loggers == [session_log_module.append_session_log]
+    observed_commit_loggers[0]("runtime_loop_commit_persistence_logger_proof", {})
+
+
 def test_runtime_loop_ingest_snapshot_time_provider_is_canonical_not_legacy(monkeypatch: pytest.MonkeyPatch) -> None:
     from testbot.entrypoints import runtime_loop
 

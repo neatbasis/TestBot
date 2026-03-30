@@ -227,3 +227,40 @@ Bounded seam reduction for assemble-stage special-answer authority.
   - other runtime-loop logging call sites that are outside this bounded background-ingestion dependency slice,
   - compatibility façade exposure of `sat_chatbot_memory_v2.append_session_log` for legacy callers.
 - **Next highest-weight seam after this slice:** remaining runtime-loop/commit-persistence logging-plumbing authority still sourced from legacy append-session logging paths.
+
+## 2026-03-30 follow-on update (post-#720 runtime commit-persistence logging ownership sub-slice)
+### Step 1 inventory (before this slice)
+- **Runtime-loop logging ownership (still legacy-routed and deferred in this PR):**
+  - direct runtime-loop user-ingest logging (`_legacy_runtime.append_session_log("user_utterance_ingest", ...)`),
+  - runtime turn-telemetry dependency wiring (`RuntimeTurnTelemetryDependencies(append_session_log=_legacy_runtime.append_session_log, ...)`),
+  - turn-pipeline hook wiring (`RuntimeTurnPipelineHooks(append_session_log=_legacy_runtime.append_session_log, ...)` and answer-assemble injected logger).
+- **Commit-persistence logging ownership (selected seam):**
+  - `RuntimeCommitPersistenceDependencies` in `runtime_loop` still sourced `append_session_log` from `_legacy_runtime.append_session_log`, making canonical commit persistence logging authority legacy-owned for promoted-context commit logs.
+- **Compatibility-only façade logging (explicitly unchanged):**
+  - `sat_chatbot_memory_v2.append_session_log` remains a compatibility wrapper API for legacy callers.
+- **Already-canonical telemetry/debug ownership (unchanged in this PR):**
+  - runtime telemetry payload/build-format owners are already canonicalized from prior slices; this PR does not revisit that ownership.
+- **Pure plumbing vs semantic coupling:**
+  - selected seam is logger dependency wiring only (`append_session_log` function ownership for commit persistence), not answer semantics or continuity semantics.
+
+### Step 2 bounded sub-slice selected
+- Selected first-priority seam: **commit-persistence logging ownership** for `RuntimeCommitPersistenceDependencies`.
+- Scope intentionally limited to commit-persistence dependency assembly in canonical runtime loop ownership.
+
+### Step 3 runtime/commit-persistence dependency reduction
+- `runtime_loop.run_chat_loop(...)` now binds `RuntimeCommitPersistenceDependencies.append_session_log` to canonical `testbot.observability.session_log.append_session_log`.
+- Canonical runtime commit persistence no longer sources this selected logging path from `_legacy_runtime.append_session_log`.
+
+### Step 4 proof tests
+- Added focused runtime-loop proof that:
+  - sabotages legacy `sat_chatbot_memory_v2.append_session_log`,
+  - exercises commit-persistence dependency wiring through runtime background-completion path,
+  - verifies commit-persistence dependency logger ownership is canonical (`testbot.observability.session_log.append_session_log`).
+
+### Step 5 deferred scope after this slice
+- **Moved in this PR:** commit-persistence logging dependency ownership for canonical runtime loop assembly (`RuntimeCommitPersistenceDependencies.append_session_log`).
+- **Still deferred intentionally:**
+  - runtime-loop logging callsites that still bind `_legacy_runtime.append_session_log` (user-ingest, telemetry dependency wiring, turn-pipeline hook logging),
+  - compatibility façade `sat_chatbot_memory_v2.append_session_log` exposure for legacy callers.
+- **Compatibility wrapper posture:** wrappers remain compatibility-only; canonical commit-persistence logging no longer depends on wrapper ownership for this selected slice.
+- **Next highest-weight seam after this slice:** remaining runtime-loop logging-plumbing dependency bundle(s) still binding canonical runtime loop logging to `_legacy_runtime.append_session_log` (outside commit persistence).

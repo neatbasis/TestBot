@@ -118,7 +118,7 @@ def run_chat_loop(
     last_user_message_ts = ""
     prior_pipeline_state = None
     commit_persistence_deps = RuntimeCommitPersistenceDependencies(
-        append_session_log=_legacy_runtime.append_session_log,
+        append_session_log=append_runtime_session_log,
         generate_reflection_yaml=_legacy_runtime.generate_reflection_yaml,
     )
 
