@@ -18,6 +18,7 @@ from langchain_ollama import ChatOllama
 from testbot.application.services import background_ingestion_runtime as background_ingestion_runtime_service
 from testbot.application.services import continuity_runtime as continuity_runtime_service
 from testbot.application.services.background_ingestion_runtime import BackgroundIngestionReplayRequest
+from testbot.continuity_read_model import ContinuityReadModel
 from testbot.pipeline_state import PipelineState
 from testbot.ports import MemoryStorePort
 
@@ -120,6 +121,7 @@ def register_pending_ingestion_obligation(
     prior_pipeline_state: PipelineState | None,
     deps: RuntimeBackgroundIngestionDependencies,
     obligation_timeout_seconds: int = BACKGROUND_INGESTION_OBLIGATION_TIMEOUT_SECONDS,
+    prior_continuity: ContinuityReadModel | None = None,
 ) -> bool:
     pending_registry = runtime.setdefault("pending_ingestion_registry", {})
     if not isinstance(pending_registry, dict):
@@ -136,6 +138,7 @@ def register_pending_ingestion_obligation(
             "same_turn_exclusion_doc_ids": list(state.same_turn_exclusion.get("excluded_doc_ids", [])),
         },
         "prior_pipeline_state": prior_pipeline_state,
+        "prior_continuity": prior_continuity,
         "created_at": now_iso,
         "last_polled_at": now_iso,
         "attempt_count": 0,

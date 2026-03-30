@@ -47,6 +47,7 @@ from testbot.application.services import context_retrieval_runtime as context_re
 from testbot.application.services import answer_stage_presentation as answer_stage_presentation_service
 from testbot.application.services.background_ingestion_runtime import BackgroundIngestionReplayRequest
 from testbot.application.services import continuity_runtime as continuity_runtime_service
+from testbot.continuity_read_model import continuity_prior_intent_hint, continuity_read_model_from_pipeline_state
 from testbot.intent_router import IntentType
 from testbot.pipeline_state import PipelineState
 from testbot.source_ingest import SourceIngestor
@@ -74,6 +75,7 @@ def _replay_background_completion_turn(
     request: BackgroundIngestionReplayRequest,
     hooks: RuntimeTurnPipelineHooks,
 ) -> PipelineState:
+    prior_continuity = request.prior_continuity or continuity_read_model_from_pipeline_state(request.prior_pipeline_state)
     replay_state, _hits = run_runtime_turn_pipeline(
         runtime=request.runtime,
         llm=request.llm,
@@ -83,15 +85,12 @@ def _replay_background_completion_turn(
             last_user_message_ts=request.last_user_message_ts,
             classified_intent=IntentType.KNOWLEDGE_QUESTION.value,
             resolved_intent="",
-            prior_unresolved_intent=(
-                request.prior_pipeline_state.prior_unresolved_intent
-                if isinstance(request.prior_pipeline_state, PipelineState)
-                else ""
-            ),
+            prior_unresolved_intent=continuity_prior_intent_hint(prior_continuity),
             confidence_decision={},
         ),
         utterance=request.utterance,
         prior_pipeline_state=request.prior_pipeline_state,
+        prior_continuity=prior_continuity,
         turn_id=request.turn_id,
         near_tie_delta=request.near_tie_delta,
         chat_history=request.chat_history,
@@ -259,16 +258,13 @@ def run_chat_loop(
             send_assistant_text("Stopping. Bye.")
             break
 
+        prior_continuity = continuity_read_model_from_pipeline_state(prior_pipeline_state)
         state = PipelineState(
             user_input=utterance,
             last_user_message_ts=last_user_message_ts,
             classified_intent=IntentType.KNOWLEDGE_QUESTION.value,
             resolved_intent="",
-            prior_unresolved_intent=(
-                prior_pipeline_state.prior_unresolved_intent
-                if prior_pipeline_state is not None
-                else ""
-            ),
+            prior_unresolved_intent=continuity_prior_intent_hint(prior_continuity),
             confidence_decision={},
         )
         _legacy_runtime.append_pipeline_snapshot(
@@ -285,6 +281,7 @@ def run_chat_loop(
             state=state,
             utterance=utterance,
             prior_pipeline_state=prior_pipeline_state,
+            prior_continuity=prior_continuity,
             turn_id=turn_id,
             near_tie_delta=near_tie_delta,
             chat_history=chat_history,
@@ -329,6 +326,7 @@ def run_chat_loop(
                 turn_id=turn_id,
                 state=state,
                 prior_pipeline_state=prior_pipeline_state,
+                prior_continuity=prior_continuity,
                 deps=background_ingestion_deps,
                 obligation_timeout_seconds=_legacy_runtime.BACKGROUND_INGESTION_OBLIGATION_TIMEOUT_SECONDS,
             )

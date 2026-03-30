@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import StrEnum
 
-from testbot.continuity_read_model import continuity_read_model_from_pipeline_state, continuity_retrieval_anchors
+from testbot.continuity_read_model import ContinuityReadModel, continuity_read_model_from_pipeline_state, continuity_retrieval_anchors
 from testbot.pipeline_state import PipelineState
 from testbot.stabilization import StabilizedTurnState
 
@@ -81,9 +81,14 @@ class RetrievalInputRecord:
     metadata: dict[str, object] = field(default_factory=dict)
 
 
-def continuity_evidence_from_prior_state(prior_pipeline_state: PipelineState | None) -> tuple[str, ...]:
+def continuity_evidence_from_prior_state(
+    prior_pipeline_state: PipelineState | None,
+    *,
+    prior_continuity: ContinuityReadModel | None = None,
+) -> tuple[str, ...]:
     """Extract deterministic retrieval continuity evidence from prior committed state."""
-    return continuity_retrieval_anchors(continuity_read_model_from_pipeline_state(prior_pipeline_state))
+    continuity = prior_continuity or continuity_read_model_from_pipeline_state(prior_pipeline_state)
+    return continuity_retrieval_anchors(continuity)
 
 
 def build_evidence_bundle(

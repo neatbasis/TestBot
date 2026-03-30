@@ -9,6 +9,8 @@ import uuid
 
 import arrow
 
+from testbot.continuity_read_model import ContinuityReadModel, continuity_read_model_from_pipeline_state
+
 
 _BACKGROUND_SOURCE_INGEST_EXECUTOR = ThreadPoolExecutor(max_workers=1, thread_name_prefix="source-ingest")
 _BACKGROUND_SOURCE_INGEST_LOCK = Lock()
@@ -29,6 +31,7 @@ class BackgroundIngestionReplayRequest:
     clock: Any
     io_channel: str
     turn_id: str
+    prior_continuity: ContinuityReadModel | None = None
 
 
 def emit_obligation_transition(
@@ -290,9 +293,12 @@ def process_background_ingestion_completion(
 
     original_utterance = str(pending_context.get("utterance") or "")
     original_prior_state = pending_context.get("prior_pipeline_state")
+    original_prior_continuity = pending_context.get("prior_continuity")
     if original_prior_state is not None and prior_pipeline_state is not None:
         if not isinstance(original_prior_state, prior_pipeline_state.__class__):
             original_prior_state = prior_pipeline_state
+    if original_prior_continuity is None:
+        original_prior_continuity = continuity_read_model_from_pipeline_state(original_prior_state)
 
     append_session_log(
         "source_ingest_completion_event_emitted",
@@ -325,6 +331,7 @@ def process_background_ingestion_completion(
             utterance=original_utterance,
             last_user_message_ts=last_user_message_ts,
             prior_pipeline_state=original_prior_state,
+            prior_continuity=original_prior_continuity,
             near_tie_delta=near_tie_delta,
             chat_history=chat_history,
             capability_status=capability_status,

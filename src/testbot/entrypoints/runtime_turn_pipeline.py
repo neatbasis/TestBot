@@ -17,6 +17,7 @@ from langchain_ollama import ChatOllama
 
 from testbot.application.services.canonical_turn_runtime import run_canonical_turn_pipeline
 from testbot.application.services.turn_service import TurnPipelineDependencies
+from testbot.continuity_read_model import ContinuityReadModel
 from testbot.domain import Clock
 from testbot.pipeline_state import PipelineState
 from testbot.ports import MemoryStorePort
@@ -68,6 +69,7 @@ def run_runtime_turn_pipeline(
     clock: Clock,
     io_channel: str = "cli",
     hooks: RuntimeTurnPipelineHooks,
+    prior_continuity: ContinuityReadModel | None = None,
 ) -> tuple[PipelineState, list[Document]]:
     deps = TurnPipelineDependencies(
         append_session_log=hooks.append_session_log,
@@ -100,6 +102,7 @@ def run_runtime_turn_pipeline(
         state=state,
         utterance=utterance,
         prior_pipeline_state=prior_pipeline_state,
+        prior_continuity=prior_continuity,
         turn_id=turn_id,
         near_tie_delta=near_tie_delta,
         chat_history=chat_history,

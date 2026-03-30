@@ -5,6 +5,11 @@ from dataclasses import dataclass, replace
 from typing import Any, Callable
 
 from testbot.canonical_turn_orchestrator import CanonicalStage, CanonicalTurnContext, CanonicalTurnOrchestrator
+from testbot.continuity_read_model import (
+    ContinuityReadModel,
+    continuity_pending_ingestion_request_id,
+    continuity_read_model_from_pipeline_state,
+)
 from testbot.domain.turn_pipeline import (
     AnswerCommitService,
     Clock,
@@ -119,6 +124,7 @@ class TurnPipelineStageRuntime:
     store: MemoryStorePort
     utterance: str
     prior_pipeline_state: PipelineState | None
+    prior_continuity: ContinuityReadModel | None
     near_tie_delta: float
     chat_history: deque[dict[str, str]]
     capability_status: CapabilityStatus
@@ -272,8 +278,13 @@ def context_resolve_stage(ctx: CanonicalTurnContext, stage: TurnPipelineStageRun
     context_resolution = stage.deps.resolve_context_fn(
         utterance=stabilized_utterance or stage.utterance,
         prior_pipeline_state=stage.prior_pipeline_state,
+        prior_continuity=stage.prior_continuity,
     )
-    continuity_evidence = continuity_evidence_from_prior_state(stage.prior_pipeline_state)
+    continuity_evidence = continuity_evidence_from_prior_state(
+        stage.prior_pipeline_state,
+        prior_continuity=stage.prior_continuity,
+    )
+    ctx.artifacts["prior_continuity"] = stage.prior_continuity
     ctx.artifacts["resolved_context"] = context_resolution
     ctx.artifacts["retrieval_continuity_evidence"] = continuity_evidence
     ctx.state = replace(
@@ -649,6 +660,12 @@ def answer_commit_stage(ctx: CanonicalTurnContext, stage: TurnPipelineStageRunti
     append_pipeline_snapshot("answer", ctx.state, time_provider=stage.snapshot_time_provider)
     ambiguity_score = stage.deps.ambiguity_score(ctx.state.confidence_decision)
     ctx.artifacts["ambiguity_score"] = ambiguity_score
+    committed_turn_state = ctx.artifacts["committed_turn_state"]
+    pending_repair_state = getattr(committed_turn_state, "pending_repair_state", {})
+    if hasattr(pending_repair_state, "as_mapping"):
+        pending_repair_payload = pending_repair_state.as_mapping()
+    else:
+        pending_repair_payload = dict(pending_repair_state)
     stage.deps.append_session_log(
         "intent_classified",
         stage.deps.intent_telemetry_payload(
@@ -661,13 +678,13 @@ def answer_commit_stage(ctx: CanonicalTurnContext, stage: TurnPipelineStageRunti
         "commit_stage_recorded",
         {
             "stage": "answer.commit",
-            "commit_stage": ctx.state.commit_receipt.commit_stage or "answer.commit",
+            "commit_stage": committed_turn_state.commit_stage or "answer.commit",
             "pipeline_state_snapshot": ctx.state.commit_receipt.pipeline_state_snapshot or "recorded",
-            "pending_repair_state": dict(ctx.state.commit_receipt.pending_repair_state),
-            "resolved_obligations": list(ctx.state.commit_receipt.resolved_obligations),
-            "remaining_obligations": list(ctx.state.commit_receipt.remaining_obligations),
-            "confirmed_user_facts": list(ctx.state.commit_receipt.confirmed_user_facts),
-            "pending_ingestion_request_id": ctx.state.commit_receipt.pending_ingestion_request_id,
+            "pending_repair_state": pending_repair_payload,
+            "resolved_obligations": list(committed_turn_state.resolved_obligations),
+            "remaining_obligations": list(committed_turn_state.remaining_obligations),
+            "confirmed_user_facts": list(committed_turn_state.confirmed_user_facts),
+            "pending_ingestion_request_id": committed_turn_state.pending_ingestion_request_id,
             "retrieval_continuity_evidence": list(ctx.artifacts.get("retrieval_continuity_evidence", ())),
         },
     )
@@ -688,7 +705,7 @@ def answer_commit_stage(ctx: CanonicalTurnContext, stage: TurnPipelineStageRunti
             "source_evidence_attribution": ctx.state.source_evidence_attribution,
             "basis_statement": ctx.state.basis_statement,
             "stage_audit_trail": stage_audit_trail,
-            "commit_stage": ctx.state.commit_receipt.commit_stage or "answer.commit",
+            "commit_stage": committed_turn_state.commit_stage or "answer.commit",
         },
     )
     append_pipeline_snapshot("answer.commit", ctx.state, time_provider=stage.snapshot_time_provider)
@@ -711,12 +728,12 @@ def run_canonical_turn_pipeline_service(
     clock: Clock,
     io_channel: str,
     deps: TurnPipelineDependencies,
+    prior_continuity: ContinuityReadModel | None = None,
 ) -> tuple[PipelineState, list[RetrievalInputRecord]]:
     runtime = runtime or {}
     snapshot_time_provider = _ClockSnapshotTimeProvider(clock=clock)
-    prior_pending_ingestion_request_id = ""
-    if prior_pipeline_state is not None:
-        prior_pending_ingestion_request_id = prior_pipeline_state.commit_receipt.pending_ingestion_request_id
+    prior_continuity = prior_continuity or continuity_read_model_from_pipeline_state(prior_pipeline_state)
+    prior_pending_ingestion_request_id = continuity_pending_ingestion_request_id(prior_continuity)
 
     context = CanonicalTurnContext(
         state=state,
@@ -724,6 +741,7 @@ def run_canonical_turn_pipeline_service(
             "utterance": utterance,
             "policy_decision": None,
             "turn_id": turn_id,
+            "prior_continuity": prior_continuity,
             "pending_ingestion_request_id": prior_pending_ingestion_request_id,
             "docs_and_scores": [],
             "hits": [],
@@ -737,6 +755,7 @@ def run_canonical_turn_pipeline_service(
         store=store,
         utterance=utterance,
         prior_pipeline_state=prior_pipeline_state,
+        prior_continuity=prior_continuity,
         near_tie_delta=near_tie_delta,
         chat_history=chat_history,
         capability_status=capability_status,

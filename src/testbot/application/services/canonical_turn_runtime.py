@@ -4,6 +4,7 @@ from collections import deque
 
 from testbot.application.services.turn_service import TurnPipelineDependencies, run_canonical_turn_pipeline_service
 from testbot.clock import Clock
+from testbot.continuity_read_model import ContinuityReadModel
 from testbot.evidence_retrieval import RetrievalInputRecord
 from testbot.memory_cards import store_doc
 from testbot.pipeline_state import PipelineState
@@ -27,6 +28,7 @@ def run_canonical_turn_pipeline(
     clock: Clock,
     io_channel: str,
     deps: TurnPipelineDependencies,
+    prior_continuity: ContinuityReadModel | None = None,
 ) -> tuple[PipelineState, list[RetrievalInputRecord]]:
     return run_canonical_turn_pipeline_service(
         runtime=runtime,
@@ -35,6 +37,7 @@ def run_canonical_turn_pipeline(
         state=state,
         utterance=utterance,
         prior_pipeline_state=prior_pipeline_state,
+        prior_continuity=prior_continuity,
         turn_id=turn_id,
         near_tie_delta=near_tie_delta,
         chat_history=chat_history,

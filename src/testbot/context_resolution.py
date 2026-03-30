@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 from testbot.continuity_read_model import (
+    ContinuityReadModel,
     continuity_context_anchors,
     continuity_prior_intent_hint,
     continuity_read_model_from_pipeline_state,
@@ -40,8 +41,13 @@ def _is_clarification_or_capability_confirmation_answer(text: str) -> bool:
     )
 
 
-def _parse_prior_intent(prior_pipeline_state: PipelineState | None) -> IntentType | None:
-    prior_intent_raw = continuity_prior_intent_hint(continuity_read_model_from_pipeline_state(prior_pipeline_state)).strip()
+def _parse_prior_intent(
+    prior_pipeline_state: PipelineState | None,
+    *,
+    prior_continuity: ContinuityReadModel | None = None,
+) -> IntentType | None:
+    continuity = prior_continuity or continuity_read_model_from_pipeline_state(prior_pipeline_state)
+    prior_intent_raw = continuity_prior_intent_hint(continuity).strip()
     if not prior_intent_raw:
         return None
     try:
@@ -50,19 +56,29 @@ def _parse_prior_intent(prior_pipeline_state: PipelineState | None) -> IntentTyp
         return None
 
 
-def _commit_continuity_anchors(prior_pipeline_state: PipelineState | None) -> tuple[str, ...]:
-    return continuity_context_anchors(continuity_read_model_from_pipeline_state(prior_pipeline_state))
+def _commit_continuity_anchors(
+    prior_pipeline_state: PipelineState | None,
+    *,
+    prior_continuity: ContinuityReadModel | None = None,
+) -> tuple[str, ...]:
+    continuity = prior_continuity or continuity_read_model_from_pipeline_state(prior_pipeline_state)
+    return continuity_context_anchors(continuity)
 
 
-def resolve(*, utterance: str, prior_pipeline_state: PipelineState | None) -> ResolvedContext:
-    prior_intent = _parse_prior_intent(prior_pipeline_state)
+def resolve(
+    *,
+    utterance: str,
+    prior_pipeline_state: PipelineState | None,
+    prior_continuity: ContinuityReadModel | None = None,
+) -> ResolvedContext:
+    prior_intent = _parse_prior_intent(prior_pipeline_state, prior_continuity=prior_continuity)
     anchors: list[str] = []
     flags: list[str] = []
 
     if prior_intent is not None:
         anchors.append(f"prior_intent:{prior_intent.value}")
 
-    anchors.extend(_commit_continuity_anchors(prior_pipeline_state))
+    anchors.extend(_commit_continuity_anchors(prior_pipeline_state, prior_continuity=prior_continuity))
 
     if _is_short_affirmation(utterance):
         flags.append("short_affirmation")

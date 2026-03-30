@@ -62,6 +62,7 @@ Canonical stage contracts are authoritative in code under:
 
 - `src/testbot/domain/canonical_dtos.py` for stage DTOs (`TurnObservation`, `IntentResolution`, `AnswerCandidate`, `CommittedTurnState`, and supporting typed contracts).
 - `src/testbot/logic/stage_artifacts.py` for typed stage artifact accessors used at orchestration boundaries.
+- Cross-turn continuity authority must enter through the continuity read family (or its canonical typed constituents such as committed continuity, carried clarification, and policy-owned unresolved-intent carryover), not by adding new semantic authority to `PipelineState`. `PipelineState` may retain compatibility projections during migration, but it is not the default owner for new cross-turn semantics.
 
 When prose and implementation diverge, these typed contracts govern runtime behavior and tests.
 
