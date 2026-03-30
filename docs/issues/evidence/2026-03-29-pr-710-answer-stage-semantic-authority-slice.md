@@ -101,11 +101,13 @@ Bounded seam reduction for assemble-stage special-answer authority.
 ### Bounded sub-slice selected
 - Selected first-priority seam: **unresolved-intent carryover authority**.
 - Canonicalized continuity semantics by introducing a runtime-owned continuity policy helper (`testbot.application.services.continuity_runtime`) that classifies continuity-preserving answers and applies unresolved-intent carryover updates.
+- Capabilities-help continuity classification now prefers canonical structured intent (`resolved_intent == capabilities_help`) and keeps a text-shape check only as an explicitly transitional compatibility heuristic when structured intent is missing.
 
 ### What moved in this PR
 - Runtime user-turn unresolved-intent carryover in `runtime_loop` no longer calls legacy `is_clarification_answer(...)` / `_is_capabilities_help_answer(...)`; it now uses canonical `apply_unresolved_intent_carryover(...)`.
 - Background-completion replay completion processing now applies the same canonical unresolved-intent carryover policy before emitting/committing replayed answers.
 - Legacy compatibility wrappers remain, but canonical runtime/background-completion continuity behavior no longer depends on `_legacy_runtime` for this selected semantic decision.
+- Legacy `_is_capabilities_help_answer(...)` remains compatibility-only and now delegates to canonical continuity owner logic.
 
 ### What remains deferred inside the continuity cluster
 - Timestamp/snapshot continuity-support helpers (`_ClockBackedSnapshotTimeProvider`, `_utc_now_iso`) are intentionally left untouched in this bounded slice.

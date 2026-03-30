@@ -234,6 +234,19 @@ def test_cli_uses_runtime_bootstrap_owner_and_limits_legacy_bridge_imports() -> 
     assert "from testbot.sat_chatbot_memory_v2 import" not in source
 
 
+
+
+def test_legacy_capabilities_help_answer_helper_delegates_to_canonical_continuity_owner() -> None:
+    from testbot.application.services import continuity_runtime
+
+    samples = [
+        "Runtime mode: cli\nMemory recall: available\nHome Assistant: unavailable",
+        "not a capabilities payload",
+    ]
+
+    for text in samples:
+        assert runtime._is_capabilities_help_answer(text) is continuity_runtime.is_capabilities_help_answer(text)
+
 def test_runtime_loop_owner_uses_canonical_turn_pipeline_helper_not_monolith_turn_pipeline_helper() -> None:
     from testbot.entrypoints import runtime_loop
 
