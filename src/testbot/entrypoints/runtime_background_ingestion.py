@@ -16,6 +16,7 @@ import arrow
 from langchain_ollama import ChatOllama
 
 from testbot.application.services import background_ingestion_runtime as background_ingestion_runtime_service
+from testbot.application.services.background_ingestion_runtime import BackgroundIngestionReplayRequest
 from testbot.pipeline_state import PipelineState
 from testbot.ports import MemoryStorePort
 
@@ -35,9 +36,7 @@ class RuntimeBackgroundIngestionDependencies:
     build_source_connector: Callable[[dict[str, object]], object | None]
     source_ingestor_cls: object
     answer_commit_persistence: Callable[..., None]
-    run_canonical_turn_pipeline: Callable[..., tuple[PipelineState, list[object]]]
-    pipeline_state_cls: type[PipelineState]
-    knowledge_question_intent: str
+    replay_background_completion_turn: Callable[[BackgroundIngestionReplayRequest], PipelineState]
 
 
 def execute_source_ingestion(
@@ -165,9 +164,7 @@ def process_background_ingestion_completion(
         utc_now_iso=lambda: arrow.utcnow().isoformat(),
         append_session_log=deps.append_session_log,
         format_background_ingestion_completion_message=format_background_ingestion_completion_message,
-        run_canonical_turn_pipeline=deps.run_canonical_turn_pipeline,
-        pipeline_state_cls=deps.pipeline_state_cls,
-        knowledge_question_intent=deps.knowledge_question_intent,
+        replay_background_completion_turn=deps.replay_background_completion_turn,
         answer_commit_persistence=deps.answer_commit_persistence,
     )
 

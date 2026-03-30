@@ -41,6 +41,9 @@ from testbot.entrypoints.runtime_commit_persistence import (
 from testbot.application.services import answer_stage_runtime as answer_stage_runtime_service
 from testbot.application.services import context_retrieval_runtime as context_retrieval_runtime_service
 from testbot.application.services import answer_stage_presentation as answer_stage_presentation_service
+from testbot.application.services.background_ingestion_runtime import BackgroundIngestionReplayRequest
+from testbot.intent_router import IntentType
+from testbot.pipeline_state import PipelineState
 from testbot.source_ingest import SourceIngestor
 from testbot.source_ingestion_startup import build_source_connector
 from testbot import sat_chatbot_memory_v2 as _legacy_runtime
@@ -49,6 +52,41 @@ from testbot.ports import MemoryStorePort
 from testbot.observability.turn_debug_payload import build_debug_turn_payload, format_debug_turn_trace_payload
 
 ChatMsg = dict[str, str]
+
+
+def _replay_background_completion_turn(
+    *,
+    request: BackgroundIngestionReplayRequest,
+    hooks: RuntimeTurnPipelineHooks,
+) -> PipelineState:
+    replay_state, _hits = run_runtime_turn_pipeline(
+        runtime=request.runtime,
+        llm=request.llm,
+        store=request.store,
+        state=PipelineState(
+            user_input=request.utterance,
+            last_user_message_ts=request.last_user_message_ts,
+            classified_intent=IntentType.KNOWLEDGE_QUESTION.value,
+            resolved_intent="",
+            prior_unresolved_intent=(
+                request.prior_pipeline_state.prior_unresolved_intent
+                if isinstance(request.prior_pipeline_state, PipelineState)
+                else ""
+            ),
+            confidence_decision={},
+        ),
+        utterance=request.utterance,
+        prior_pipeline_state=request.prior_pipeline_state,
+        turn_id=request.turn_id,
+        near_tie_delta=request.near_tie_delta,
+        chat_history=request.chat_history,
+        capability_status=request.capability_status,
+        capability_snapshot=request.capability_snapshot,
+        clock=request.clock,
+        io_channel=request.io_channel,
+        hooks=hooks,
+    )
+    return replay_state
 
 
 def run_chat_loop(
@@ -64,6 +102,7 @@ def run_chat_loop(
     read_user_utterance,
     send_assistant_text,
     clock: Clock,
+    replay_background_completion_turn=None,
 ) -> None:
     runtime = runtime or {}
     runtime.setdefault("source_ingest_background_future", None)
@@ -89,9 +128,66 @@ def run_chat_loop(
             deps=commit_persistence_deps,
             **kwargs,
         ),
-        run_canonical_turn_pipeline=_legacy_runtime._run_canonical_turn_pipeline,
-        pipeline_state_cls=_legacy_runtime.PipelineState,
-        knowledge_question_intent=_legacy_runtime.IntentType.KNOWLEDGE_QUESTION.value,
+        replay_background_completion_turn=(
+            replay_background_completion_turn
+            if replay_background_completion_turn is not None
+            else lambda request: _replay_background_completion_turn(
+                request=request,
+                hooks=runtime_turn_hooks,
+            )
+        ),
+    )
+    runtime_turn_hooks = RuntimeTurnPipelineHooks(
+        append_session_log=_legacy_runtime.append_session_log,
+        validate_and_log_transition=_legacy_runtime._validate_and_log_transition,
+        stage_rewrite_query=_legacy_runtime.stage_rewrite_query,
+        generate_reflection_yaml=_legacy_runtime.generate_reflection_yaml,
+        intent_classifier_confidence=_legacy_runtime._intent_classifier_confidence,
+        optional_string=_legacy_runtime._optional_string,
+        should_force_memory_retrieval_for_identity_recall=context_retrieval_runtime_service.should_force_memory_retrieval_for_identity_recall,
+        resolve_context_fn=context_retrieval_runtime_service.resolve_context,
+        intent_telemetry_payload=intent_telemetry_payload,
+        poll_background_source_ingestion=lambda **kwargs: poll_background_source_ingestion(
+            deps=background_ingestion_deps,
+            **kwargs,
+        ),
+        start_background_source_ingestion=lambda **kwargs: start_background_source_ingestion(
+            deps=background_ingestion_deps,
+            **kwargs,
+        ),
+        stage_retrieve=lambda *args, **kwargs: context_retrieval_runtime_service.stage_retrieve_for_turn_service(
+            *args,
+            stage_retrieve_fn=_legacy_runtime.stage_retrieve,
+            **kwargs,
+        ),
+        stage_rerank=lambda *args, **kwargs: context_retrieval_runtime_service.stage_rerank_for_turn_service(
+            *args,
+            stage_rerank_fn=_legacy_runtime.stage_rerank,
+            **kwargs,
+        ),
+        selected_decision_from_confidence=_legacy_runtime._selected_decision_from_confidence,
+        minimal_confidence_decision_for_direct_answer=(
+            _legacy_runtime._minimal_confidence_decision_for_direct_answer
+        ),
+        resolve_answer_routing_for_stage=answer_stage_runtime_service.resolve_answer_routing_for_stage,
+        answer_assemble=lambda *args, **kwargs: answer_stage_runtime_service.answer_assemble_for_turn_service(
+            *args,
+            **kwargs,
+            document_from_retrieval_input=context_retrieval_runtime_service.document_from_retrieval_input,
+            render_context=answer_stage_presentation_service.render_context,
+            answer_prompt=answer_stage_presentation_service.ANSWER_PROMPT,
+            append_session_log=_legacy_runtime.append_session_log,
+        ),
+        answer_validate=lambda *args, **kwargs: answer_stage_runtime_service.answer_validate_for_turn_service(
+            *args,
+            **kwargs,
+            document_from_retrieval_input=context_retrieval_runtime_service.document_from_retrieval_input,
+        ),
+        detect_capability_offer=answer_stage_runtime_service.detect_capability_offer,
+        ambiguity_score=_legacy_runtime._ambiguity_score,
+        store_doc_fn=_legacy_runtime.store_doc,
+        intent_classifier_confidence_threshold=_legacy_runtime.INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD,
+        document_from_retrieval_input=context_retrieval_runtime_service.document_from_retrieval_input,
     )
 
     while True:
@@ -134,10 +230,10 @@ def run_chat_loop(
             send_assistant_text("Stopping. Bye.")
             break
 
-        state = _legacy_runtime.PipelineState(
+        state = PipelineState(
             user_input=utterance,
             last_user_message_ts=last_user_message_ts,
-            classified_intent=_legacy_runtime.IntentType.KNOWLEDGE_QUESTION.value,
+            classified_intent=IntentType.KNOWLEDGE_QUESTION.value,
             resolved_intent="",
             prior_unresolved_intent=(
                 prior_pipeline_state.prior_unresolved_intent
@@ -173,58 +269,7 @@ def run_chat_loop(
             # - stage_retrieve_for_turn_service (adapter; policy-core deferred)
             # - stage_rerank_for_turn_service (adapter; policy-core deferred)
             # - document_from_retrieval_input
-            hooks=RuntimeTurnPipelineHooks(
-                append_session_log=_legacy_runtime.append_session_log,
-                validate_and_log_transition=_legacy_runtime._validate_and_log_transition,
-                stage_rewrite_query=_legacy_runtime.stage_rewrite_query,
-                generate_reflection_yaml=_legacy_runtime.generate_reflection_yaml,
-                intent_classifier_confidence=_legacy_runtime._intent_classifier_confidence,
-                optional_string=_legacy_runtime._optional_string,
-                should_force_memory_retrieval_for_identity_recall=context_retrieval_runtime_service.should_force_memory_retrieval_for_identity_recall,
-                resolve_context_fn=context_retrieval_runtime_service.resolve_context,
-                intent_telemetry_payload=intent_telemetry_payload,
-                poll_background_source_ingestion=lambda **kwargs: poll_background_source_ingestion(
-                    deps=background_ingestion_deps,
-                    **kwargs,
-                ),
-                start_background_source_ingestion=lambda **kwargs: start_background_source_ingestion(
-                    deps=background_ingestion_deps,
-                    **kwargs,
-                ),
-                stage_retrieve=lambda *args, **kwargs: context_retrieval_runtime_service.stage_retrieve_for_turn_service(
-                    *args,
-                    stage_retrieve_fn=_legacy_runtime.stage_retrieve,
-                    **kwargs,
-                ),
-                stage_rerank=lambda *args, **kwargs: context_retrieval_runtime_service.stage_rerank_for_turn_service(
-                    *args,
-                    stage_rerank_fn=_legacy_runtime.stage_rerank,
-                    **kwargs,
-                ),
-                selected_decision_from_confidence=_legacy_runtime._selected_decision_from_confidence,
-                minimal_confidence_decision_for_direct_answer=(
-                    _legacy_runtime._minimal_confidence_decision_for_direct_answer
-                ),
-                resolve_answer_routing_for_stage=answer_stage_runtime_service.resolve_answer_routing_for_stage,
-                answer_assemble=lambda *args, **kwargs: answer_stage_runtime_service.answer_assemble_for_turn_service(
-                    *args,
-                    **kwargs,
-                    document_from_retrieval_input=context_retrieval_runtime_service.document_from_retrieval_input,
-                    render_context=answer_stage_presentation_service.render_context,
-                    answer_prompt=answer_stage_presentation_service.ANSWER_PROMPT,
-                    append_session_log=_legacy_runtime.append_session_log,
-                ),
-                answer_validate=lambda *args, **kwargs: answer_stage_runtime_service.answer_validate_for_turn_service(
-                    *args,
-                    **kwargs,
-                    document_from_retrieval_input=context_retrieval_runtime_service.document_from_retrieval_input,
-                ),
-                detect_capability_offer=answer_stage_runtime_service.detect_capability_offer,
-                ambiguity_score=_legacy_runtime._ambiguity_score,
-                store_doc_fn=_legacy_runtime.store_doc,
-                intent_classifier_confidence_threshold=_legacy_runtime.INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD,
-                document_from_retrieval_input=context_retrieval_runtime_service.document_from_retrieval_input,
-            ),
+            hooks=runtime_turn_hooks,
         )
 
         emit_runtime_turn_telemetry(

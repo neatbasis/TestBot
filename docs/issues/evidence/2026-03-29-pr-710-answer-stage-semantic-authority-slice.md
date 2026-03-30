@@ -55,6 +55,31 @@ Bounded seam reduction for assemble-stage special-answer authority.
 ### Highest-weight next seam after this slice
 - Remaining highest-weight background-ingestion seam is now the **pipeline invocation + state/intention contract cluster** (`_run_canonical_turn_pipeline`, `PipelineState`, `IntentType`), with state continuity/unresolved-intent and deferred logging ownership still outside this bounded slice.
 
+## 2026-03-30 follow-on update (post-#714 replay/invocation authority slice)
+### Step 1 inventory (before this slice)
+- **Orchestration / invocation authority:**
+  - background completion replay invoked `_run_canonical_turn_pipeline` through background-ingestion dependencies.
+- **State construction / contract authority:**
+  - background completion replay depended on injected `PipelineState` and `IntentType.KNOWLEDGE_QUESTION.value` to assemble replay input.
+- **Semantic continuity authority (intentionally out of scope for this slice):**
+  - unresolved-intent carryover and continuity behavior remained legacy-routed (`is_clarification_answer`, `_is_capabilities_help_answer`, `_ClockBackedSnapshotTimeProvider`, `_utc_now_iso`).
+
+### Bounded sub-slice selected
+- Canonicalized **background-completion replay invocation ownership** by introducing a canonical replay request contract (`BackgroundIngestionReplayRequest`) plus a single replay callable boundary (`replay_background_completion_turn`) for background-ingestion completion handling.
+- Runtime-loop background-ingestion assembly now binds replay through canonical `run_runtime_turn_pipeline` ownership, with compatibility-only replay wrappers retained in `sat_chatbot_memory_v2`.
+
+### What moved in this PR
+- `process_background_ingestion_completion(...)` no longer owns turn-state construction/pipeline invocation wiring directly (`run_canonical_turn_pipeline`, `PipelineState`, `IntentType` inputs were removed from the dependency contract).
+- Runtime/background-ingestion now consumes a narrower canonical replay callable contract, reducing direct dependency on `_legacy_runtime._run_canonical_turn_pipeline` in canonical runtime-loop assembly.
+
+### What remains deferred inside background ingestion
+- `append_session_log` ownership remains deferred.
+- Continuity/unresolved-intent semantics remain intentionally untouched in this slice.
+- Compatibility façade replay wrappers in `sat_chatbot_memory_v2` still route through legacy symbols for backward compatibility only.
+
+### Highest-weight next seam after this slice
+- Remaining highest-weight seam is the **continuity + unresolved-intent semantic authority cluster** inside runtime-loop/background-completion interactions, plus deferred `append_session_log` ownership retirement.
+
 ## Semantic authority moved/clarified in this PR
 - Moved assemble-stage clarifier wording/policy and special-answer constants from legacy per-call injection to canonical ownership in `testbot.answer_stage_semantics` via `AnswerStageSemanticContract`.
 - Runtime loop is less responsible for answer-stage semantic composition because it no longer injects those semantic collaborators.

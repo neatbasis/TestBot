@@ -94,18 +94,20 @@ def test_process_background_ingestion_completion_regenerates_answer() -> None:
         }
     }
 
-    def _pipeline(**kwargs):
-        del kwargs
+    replay_requests: list[runtime.BackgroundIngestionReplayRequest] = []
+
+    def _replay(request: runtime.BackgroundIngestionReplayRequest) -> _DummyState:
+        replay_requests.append(request)
         return _DummyState(
-            user_input="What changed?",
-            last_user_message_ts="2026-03-10T10:00:00+00:00",
+            user_input=request.utterance,
+            last_user_message_ts=request.last_user_message_ts,
             classified_intent="knowledge_question",
             resolved_intent="",
             prior_unresolved_intent="",
             confidence_decision={},
             final_answer="Grounded answer.",
             used_source_evidence_refs=["src-1"],
-        ), []
+        )
 
     _last_ts, state, processed = runtime.process_background_ingestion_completion(
         runtime=rt,
@@ -129,9 +131,7 @@ def test_process_background_ingestion_completion_regenerates_answer() -> None:
         utc_now_iso=lambda: "2026-03-10T11:00:00+00:00",
         append_session_log=lambda event, payload: events.append((event, payload)),
         format_background_ingestion_completion_message=lambda **_: "Background done",
-        run_canonical_turn_pipeline=_pipeline,
-        pipeline_state_cls=_DummyState,
-        knowledge_question_intent="knowledge_question",
+        replay_background_completion_turn=_replay,
         answer_commit_persistence=lambda **_: persisted.append("yes"),
     )
 
@@ -139,6 +139,7 @@ def test_process_background_ingestion_completion_regenerates_answer() -> None:
     assert state is not None
     assert sent_text == ["Background done", "Grounded answer."]
     assert persisted == ["yes"]
+    assert replay_requests and replay_requests[0].utterance == "What changed?"
     assert any(event == "transition" and payload["status"] == "resolved" for event, payload in events)
 
 

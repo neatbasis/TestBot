@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections import deque
 from concurrent.futures import Future, ThreadPoolExecutor
+from dataclasses import dataclass
 from threading import Lock
 from typing import Any, Callable
 import uuid
@@ -11,6 +12,23 @@ import arrow
 
 _BACKGROUND_SOURCE_INGEST_EXECUTOR = ThreadPoolExecutor(max_workers=1, thread_name_prefix="source-ingest")
 _BACKGROUND_SOURCE_INGEST_LOCK = Lock()
+
+
+@dataclass(frozen=True)
+class BackgroundIngestionReplayRequest:
+    runtime: dict[str, object]
+    llm: Any
+    store: Any
+    utterance: str
+    last_user_message_ts: str
+    prior_pipeline_state: Any
+    near_tie_delta: float
+    chat_history: deque[dict[str, str]]
+    capability_status: Any
+    capability_snapshot: Any
+    clock: Any
+    io_channel: str
+    turn_id: str
 
 
 def emit_obligation_transition(
@@ -242,9 +260,7 @@ def process_background_ingestion_completion(
     utc_now_iso: Callable[[], str],
     append_session_log: Callable[[str, dict[str, object]], None],
     format_background_ingestion_completion_message: Callable[..., str],
-    run_canonical_turn_pipeline: Callable[..., tuple[Any, list[Any]]],
-    pipeline_state_cls: type,
-    knowledge_question_intent: str,
+    replay_background_completion_turn: Callable[[BackgroundIngestionReplayRequest], Any],
     answer_commit_persistence: Callable[..., None],
 ) -> tuple[str, Any, bool]:
     poll_result = poll_background_source_ingestion(runtime=runtime)
@@ -273,8 +289,9 @@ def process_background_ingestion_completion(
 
     original_utterance = str(pending_context.get("utterance") or "")
     original_prior_state = pending_context.get("prior_pipeline_state")
-    if original_prior_state is not None and not isinstance(original_prior_state, pipeline_state_cls):
-        original_prior_state = prior_pipeline_state
+    if original_prior_state is not None and prior_pipeline_state is not None:
+        if not isinstance(original_prior_state, prior_pipeline_state.__class__):
+            original_prior_state = prior_pipeline_state
 
     append_session_log(
         "source_ingest_completion_event_emitted",
@@ -299,31 +316,22 @@ def process_background_ingestion_completion(
     )
 
     continuation_turn_id = str(uuid.uuid4())
-    regenerated_state, _hits = run_canonical_turn_pipeline(
-        runtime=runtime,
-        llm=llm,
-        store=store,
-        state=pipeline_state_cls(
-            user_input=original_utterance,
+    regenerated_state = replay_background_completion_turn(
+        BackgroundIngestionReplayRequest(
+            runtime=runtime,
+            llm=llm,
+            store=store,
+            utterance=original_utterance,
             last_user_message_ts=last_user_message_ts,
-            classified_intent=knowledge_question_intent,
-            resolved_intent="",
-            prior_unresolved_intent=(
-                original_prior_state.prior_unresolved_intent
-                if isinstance(original_prior_state, pipeline_state_cls)
-                else ""
-            ),
-            confidence_decision={},
-        ),
-        utterance=original_utterance,
-        prior_pipeline_state=original_prior_state,
-        turn_id=continuation_turn_id,
-        near_tie_delta=near_tie_delta,
-        chat_history=chat_history,
-        capability_status=capability_status,
-        capability_snapshot=capability_snapshot,
-        clock=clock,
-        io_channel=io_channel,
+            prior_pipeline_state=original_prior_state,
+            near_tie_delta=near_tie_delta,
+            chat_history=chat_history,
+            capability_status=capability_status,
+            capability_snapshot=capability_snapshot,
+            clock=clock,
+            io_channel=io_channel,
+            turn_id=continuation_turn_id,
+        )
     )
     send_assistant_text(regenerated_state.final_answer)
     append_session_log(
