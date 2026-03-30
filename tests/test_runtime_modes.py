@@ -415,6 +415,59 @@ def test_runtime_loop_commit_persistence_deps_use_canonical_append_session_log(m
     observed_commit_loggers[0]("runtime_loop_commit_persistence_logger_proof", {})
 
 
+def test_runtime_loop_turn_telemetry_deps_use_canonical_append_session_log(monkeypatch: pytest.MonkeyPatch) -> None:
+    from testbot.entrypoints import runtime_loop
+    from testbot.observability import session_log as session_log_module
+
+    observed_telemetry_loggers: list[object] = []
+    monkeypatch.setattr(runtime, "append_session_log", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(runtime_loop, "poll_pending_ingestion_obligations", lambda **_kwargs: None)
+    monkeypatch.setattr(runtime_loop, "process_background_ingestion_completion", lambda **_kwargs: ("", None, False))
+    monkeypatch.setattr(
+        runtime_loop,
+        "run_runtime_turn_pipeline",
+        lambda **kwargs: (
+            runtime_loop.PipelineState(
+                user_input=kwargs["state"].user_input,
+                last_user_message_ts=kwargs["state"].last_user_message_ts,
+                classified_intent=kwargs["state"].classified_intent,
+                resolved_intent="knowledge_question",
+                prior_unresolved_intent=kwargs["state"].prior_unresolved_intent,
+                confidence_decision={},
+                final_answer="ok",
+                commit_receipt={},
+            ),
+            [],
+        ),
+    )
+    monkeypatch.setattr(runtime_loop.continuity_runtime_service, "apply_unresolved_intent_carryover", lambda state: state)
+    monkeypatch.setattr(runtime_loop, "persist_answer_commit", lambda **_kwargs: None)
+    monkeypatch.setattr(
+        runtime_loop,
+        "emit_runtime_turn_telemetry",
+        lambda **kwargs: observed_telemetry_loggers.append(kwargs["deps"].append_session_log),
+    )
+
+    runtime_loop.run_chat_loop(
+        runtime={},
+        llm=object(),
+        store=object(),
+        chat_history=deque(),
+        near_tie_delta=0.1,
+        io_channel="cli",
+        capability_status="ok",
+        capability_snapshot=SimpleNamespace(
+            runtime_capability_status=SimpleNamespace(debug_enabled=False, debug_verbose=False)
+        ),
+        read_user_utterance=iter(["Need telemetry proof", "stop"]).__next__,
+        send_assistant_text=lambda _text: None,
+        clock=SimpleNamespace(now=lambda: runtime.arrow.get("2026-01-01T00:00:00+00:00")),
+    )
+
+    assert observed_telemetry_loggers == [session_log_module.append_session_log]
+    observed_telemetry_loggers[0]("runtime_loop_turn_telemetry_logger_proof", {})
+
+
 def test_runtime_loop_ingest_snapshot_time_provider_is_canonical_not_legacy(monkeypatch: pytest.MonkeyPatch) -> None:
     from testbot.entrypoints import runtime_loop
 

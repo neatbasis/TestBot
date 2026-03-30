@@ -264,3 +264,41 @@ Bounded seam reduction for assemble-stage special-answer authority.
   - compatibility façade `sat_chatbot_memory_v2.append_session_log` exposure for legacy callers.
 - **Compatibility wrapper posture:** wrappers remain compatibility-only; canonical commit-persistence logging no longer depends on wrapper ownership for this selected slice.
 - **Next highest-weight seam after this slice:** remaining runtime-loop logging-plumbing dependency bundle(s) still binding canonical runtime loop logging to `_legacy_runtime.append_session_log` (outside commit persistence).
+
+## 2026-03-30 follow-on update (post-#721 runtime turn-telemetry logging ownership sub-slice)
+### Step 1 inventory (before this slice)
+- **Telemetry dependency logger ownership seam (selected in this PR):**
+  - `runtime_loop.run_chat_loop(...)` wired `RuntimeTurnTelemetryDependencies(append_session_log=_legacy_runtime.append_session_log, ...)`, so canonical runtime-loop telemetry emission depended on monolith logger ownership for that dependency bundle.
+- **Telemetry payload/build-format ownership (already canonicalized, unchanged here):**
+  - `intent_telemetry_payload(...)`, `user_followup_signal_proxy(...)`, debug payload builder wiring, and telemetry emission sequencing remain under canonical runtime entrypoint/observability ownership and were not semantically changed in this slice.
+- **Compatibility-only façade logging (explicitly unchanged):**
+  - `sat_chatbot_memory_v2.append_session_log` remains a compatibility API surface for legacy callers.
+- **Pure plumbing vs semantics distinction:**
+  - this seam is dependency-function ownership only (`append_session_log` binding inside `RuntimeTurnTelemetryDependencies`), not telemetry payload meaning, turn-policy semantics, or debug trace format semantics.
+
+### Step 2 bounded sub-slice selected
+- Selected seam: **`RuntimeTurnTelemetryDependencies.append_session_log` ownership in canonical runtime-loop telemetry wiring**.
+- Scope intentionally excluded:
+  - direct runtime-loop user-ingest logging,
+  - turn-pipeline hook logging and answer-assemble injected logger,
+  - broad observability/logging cleanup.
+
+### Step 3 runtime telemetry dependency reduction
+- `runtime_loop.run_chat_loop(...)` now binds `RuntimeTurnTelemetryDependencies.append_session_log` to canonical `testbot.observability.session_log.append_session_log`.
+- Canonical runtime-loop telemetry emission no longer sources this selected dependency logger from `_legacy_runtime.append_session_log`.
+
+### Step 4 proof tests
+- Added focused runtime-loop proof covering telemetry dependency ownership:
+  - sabotages legacy `sat_chatbot_memory_v2.append_session_log`,
+  - captures the telemetry dependency bundle passed from runtime loop into `emit_runtime_turn_telemetry(...)`,
+  - verifies the embedded logger is canonical `testbot.observability.session_log.append_session_log`,
+  - confirms the selected logger remains callable for compatibility-parity shape.
+
+### Step 5 deferred scope after this slice
+- **Moved in this PR:** telemetry dependency logger ownership for canonical runtime-loop telemetry wiring (`RuntimeTurnTelemetryDependencies.append_session_log`).
+- **Still deferred intentionally:**
+  - direct runtime-loop user-ingest logging path still calling `_legacy_runtime.append_session_log`,
+  - turn-pipeline hook logging ownership (`RuntimeTurnPipelineHooks.append_session_log` and answer-assemble injected logger),
+  - compatibility façade `sat_chatbot_memory_v2.append_session_log` API exposure for legacy callers.
+- **Compatibility wrapper posture:** compatibility wrappers remain intentionally available, but canonical runtime-loop telemetry dependency wiring is no longer owned by the monolith logger path for this selected seam.
+- **Next highest-weight seam after this slice:** turn-pipeline hook logging ownership (including answer-assemble injected logger) as the remaining largest runtime-loop logging-plumbing bundle still bound to `_legacy_runtime.append_session_log`.

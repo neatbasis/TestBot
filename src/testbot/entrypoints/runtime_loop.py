@@ -294,7 +294,7 @@ def run_chat_loop(
             capability_snapshot=capability_snapshot,
             send_assistant_text=send_assistant_text,
             deps=RuntimeTurnTelemetryDependencies(
-                append_session_log=_legacy_runtime.append_session_log,
+                append_session_log=append_runtime_session_log,
                 intent_telemetry_payload=intent_telemetry_payload,
                 ambiguity_score=_legacy_runtime._ambiguity_score,
                 user_followup_signal_proxy=user_followup_signal_proxy,
