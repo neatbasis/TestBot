@@ -8,7 +8,13 @@ from testbot.entrypoints.runtime_turn_telemetry import (
     intent_telemetry_payload,
     user_followup_signal_proxy,
 )
+from testbot.observability.turn_debug_payload import build_debug_turn_payload, format_debug_turn_trace_payload
+from testbot.pipeline_state import PipelineState
 from testbot.sat_chatbot_memory_v2 import _intent_telemetry_payload, _user_followup_signal_proxy
+from testbot.sat_chatbot_memory_v2 import (
+    build_debug_turn_payload as build_debug_turn_payload_compat,
+    format_debug_turn_trace_payload as format_debug_turn_trace_payload_compat,
+)
 
 
 class _AlignmentDecisionStub:
@@ -131,3 +137,39 @@ def test_sat_runtime_followup_wrapper_matches_runtime_telemetry_owner() -> None:
     }
 
     assert _user_followup_signal_proxy(**kwargs) == user_followup_signal_proxy(**kwargs)
+
+
+def _debug_payload_state() -> PipelineState:
+    return PipelineState(
+        user_input="what did i say",
+        rewritten_query="what did i say",
+        classified_intent="memory_recall",
+        resolved_intent="memory_recall",
+        confidence_decision={
+            "context_confident": False,
+            "ambiguity_detected": True,
+            "retrieval_branch": "memory_retrieval",
+            "scored_candidates": [{"final_score": 0.71}, {"final_score": 0.69}],
+        },
+        invariant_decisions={"answer_mode": "clarify", "fallback_action": "ASK_CLARIFYING_QUESTION"},
+    )
+
+
+def test_debug_payload_owner_builds_and_formats_trace_for_runtime_telemetry_path() -> None:
+    payload = build_debug_turn_payload(state=_debug_payload_state(), intent_label="memory_recall", hits=[])
+    trace = format_debug_turn_trace_payload(payload=payload, verbose=False)
+
+    assert payload["debug.intent"]["resolved"] == "memory_recall"
+    assert payload["debug.policy"]["fallback_action"] == "ASK_CLARIFYING_QUESTION"
+    assert trace.startswith("[debug] intent=memory_recall;")
+
+
+def test_debug_payload_compatibility_wrappers_match_canonical_debug_payload_owner() -> None:
+    canonical_payload = build_debug_turn_payload(state=_debug_payload_state(), intent_label="memory_recall", hits=[])
+    compat_payload = build_debug_turn_payload_compat(state=_debug_payload_state(), intent_label="memory_recall", hits=[])
+
+    assert compat_payload == canonical_payload
+    assert format_debug_turn_trace_payload_compat(payload=compat_payload, verbose=False) == format_debug_turn_trace_payload(
+        payload=canonical_payload,
+        verbose=False,
+    )
