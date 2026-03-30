@@ -77,6 +77,36 @@ def test_stage_rerank_for_turn_service_wrapper_is_retired() -> None:
     assert not hasattr(runtime, "_stage_rerank_for_turn_service")
 
 
+def test_stage_rerank_wrapper_delegates_to_context_retrieval_runtime(monkeypatch) -> None:
+    observed: dict[str, object] = {}
+
+    def _fake_stage_rerank_for_turn_service(*args, **kwargs):
+        observed["args"] = args
+        observed["kwargs"] = kwargs
+        return args[0], [runtime.RetrievalInputRecord(ref_id="doc-2", score=1.0, content="winner", metadata={"doc_id": "doc-2"})]
+
+    monkeypatch.setattr(
+        runtime.context_retrieval_runtime_service,
+        "stage_rerank_for_turn_service",
+        _fake_stage_rerank_for_turn_service,
+    )
+
+    state = PipelineState(user_input="who am i?", confidence_decision={})
+    next_state, hits = runtime.stage_rerank(
+        state,
+        [(Document(id="doc-1", page_content="candidate", metadata={"doc_id": "doc-1"}), 0.8)],
+        utterance="who am i?",
+        user_doc_id="user-doc",
+        user_reflection_doc_id="reflection-doc",
+        near_tie_delta=0.1,
+        clock=type("_Clock", (), {"now": lambda self: arrow.get("2026-03-10T12:00:00+00:00")})(),
+    )
+
+    assert next_state is state
+    assert [doc.id for doc in hits] == ["doc-2"]
+    assert observed["kwargs"]["utterance"] == "who am i?"
+
+
 def test_rerank_threshold_profile_policy_wrapper_delegates_to_canonical_policy_owner(monkeypatch) -> None:
     observed: dict[str, object] = {}
     expected = runtime.context_retrieval_runtime_service.RerankThresholdProfilePolicy(

@@ -230,6 +230,42 @@ def test_canonical_rerank_threshold_policy_path_is_independent_from_legacy_monol
     assert isinstance(policy.min_margin_to_second, float)
 
 
+def test_canonical_stage_rerank_path_is_independent_from_legacy_monolith_helper(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def _legacy_sabotage(*_args, **_kwargs):
+        raise AssertionError("legacy stage_rerank must not be required for canonical rerank path")
+
+    monkeypatch.setattr(runtime, "stage_rerank", _legacy_sabotage)
+
+    state = runtime.PipelineState(user_input="who am i?", confidence_decision={})
+    candidates = [
+        context_retrieval_runtime.RetrievalInputRecord(
+            ref_id="doc-1",
+            score=0.9,
+            content="candidate",
+            metadata={"doc_id": "doc-1", "ts": "2026-03-10T11:30:00+00:00"},
+        )
+    ]
+
+    class _Clock:
+        def now(self):
+            return runtime.arrow.get("2026-03-10T12:00:00+00:00")
+
+    next_state, hits = context_retrieval_runtime.stage_rerank_for_turn_service(
+        state,
+        candidates,
+        utterance="who am i?",
+        user_doc_id="user-doc",
+        user_reflection_doc_id="reflection-doc",
+        near_tie_delta=0.1,
+        clock=_Clock(),
+    )
+
+    assert isinstance(next_state, runtime.PipelineState)
+    assert isinstance(hits, list)
+
+
 def test_legacy_runtime_main_warns_once_and_delegates_to_cli(monkeypatch: pytest.MonkeyPatch) -> None:
     forwarded: list[list[str] | None] = []
 
@@ -327,7 +363,6 @@ def test_runtime_loop_monolith_touchpoints_are_allowlisted_for_deliberate_shrink
         "BACKGROUND_INGESTION_OBLIGATION_TIMEOUT_SECONDS",
         "append_pipeline_snapshot",
         "generate_reflection_yaml",
-        "stage_rerank",
         "stage_rewrite_query",
         "store_doc",
     }
@@ -1014,7 +1049,7 @@ def test_runtime_loop_context_retrieval_residual_monolith_touchpoints_are_explic
 
     source = Path(runtime_loop.__file__).read_text()
     assert "_legacy_runtime.stage_retrieve" not in source
-    assert "_legacy_runtime.stage_rerank" in source
+    assert "_legacy_runtime.stage_rerank" not in source
     assert "_legacy_runtime.resolve_context" not in source
     assert "_legacy_runtime._should_force_memory_retrieval_for_identity_recall" not in source
     assert "_legacy_runtime._stage_retrieve_for_turn_service" not in source
@@ -1120,7 +1155,7 @@ def test_runtime_loop_runtime_hooks_resolve_context_retrieval_control_point_at_r
 
     assert observed["retrieve_kwargs"]["retrieval_score_threshold"] == runtime.RETRIEVAL_SCORE_THRESHOLD
     assert "stage_retrieve_fn" not in observed["retrieve_kwargs"]
-    assert observed["rerank_kwargs"]["stage_rerank_fn"] is runtime.stage_rerank
+    assert "stage_rerank_fn" not in observed["rerank_kwargs"]
     assert sent[0] == "ok"
 
 
@@ -1168,12 +1203,13 @@ def test_runtime_loop_canonical_stage_rerank_path_consumes_runtime_decision_poli
     hooks = captured["hooks"]
     observed: dict[str, object] = {}
     now = arrow.get("2026-03-10T12:00:00+00:00")
+    original_stage_rerank_for_turn_service = context_retrieval_runtime_service.stage_rerank_for_turn_service
 
     def _proxy_stage_rerank_for_turn_service(
         state,
         retrieval_candidates,
         *,
-        stage_rerank_fn,
+        stage_rerank_fn=None,
         utterance,
         user_doc_id,
         user_reflection_doc_id,
@@ -1182,15 +1218,26 @@ def test_runtime_loop_canonical_stage_rerank_path_consumes_runtime_decision_poli
         io_channel="cli",
     ):
         del retrieval_candidates, io_channel
-        updated_state, hits = stage_rerank_fn(
-            state,
-            [(Document(id="doc-1", page_content="candidate", metadata={"doc_id": "doc-1"}), 0.9)],
-            utterance=utterance,
-            user_doc_id=user_doc_id,
-            user_reflection_doc_id=user_reflection_doc_id,
-            near_tie_delta=near_tie_delta,
-            clock=clock,
-        )
+        if stage_rerank_fn is None:
+            updated_state, hits = original_stage_rerank_for_turn_service(
+                state,
+                [runtime.RetrievalInputRecord(ref_id="doc-1", score=0.9, content="candidate", metadata={"doc_id": "doc-1"})],
+                utterance=utterance,
+                user_doc_id=user_doc_id,
+                user_reflection_doc_id=user_reflection_doc_id,
+                near_tie_delta=near_tie_delta,
+                clock=clock,
+            )
+        else:
+            updated_state, hits = stage_rerank_fn(
+                state,
+                [(Document(id="doc-1", page_content="candidate", metadata={"doc_id": "doc-1"}), 0.9)],
+                utterance=utterance,
+                user_doc_id=user_doc_id,
+                user_reflection_doc_id=user_reflection_doc_id,
+                near_tie_delta=near_tie_delta,
+                clock=clock,
+            )
         return updated_state, [runtime.RetrievalInputRecord(ref_id=str(doc.id), score=1.0, content=doc.page_content, metadata=doc.metadata) for doc in hits]
 
     monkeypatch.setattr(context_retrieval_runtime_service, "stage_rerank_for_turn_service", _proxy_stage_rerank_for_turn_service)

@@ -698,56 +698,17 @@ def stage_rerank(
     clock: Clock,
     io_channel: str = "cli",
 ) -> tuple[PipelineState, list[Document]]:
-    now = clock.now()
-    temporal_bridge = context_retrieval_runtime_service.resolve_temporal_anaphora_bridge(
+    updated_state, reranked_records = context_retrieval_runtime_service.stage_rerank_for_turn_service(
+        state,
+        [_retrieval_input_from_document(doc, score=score) for doc, score in docs_and_scores],
         utterance=utterance,
-        docs_and_scores=docs_and_scores,
-        now=now,
-    )
-    filtered_docs_and_scores = context_retrieval_runtime_service.filter_documents_for_temporal_window(
-        docs_and_scores=docs_and_scores,
-        bridge=temporal_bridge,
-    )
-    target = context_retrieval_runtime_service.resolve_rerank_target_time(
-        utterance=utterance,
-        bridge=temporal_bridge,
-        now=now,
-    )
-    sigma_seconds = context_retrieval_runtime_service.resolve_rerank_sigma_seconds(now=now, target=target)
-    decision_policy = context_retrieval_runtime_service.assemble_rerank_decision_policy(
-        sigma_seconds=sigma_seconds,
         user_doc_id=user_doc_id,
         user_reflection_doc_id=user_reflection_doc_id,
         near_tie_delta=near_tie_delta,
+        clock=clock,
+        io_channel=io_channel,
     )
-    scorer_config = context_retrieval_runtime_service.materialize_rerank_scorer_config()
-    invocation_policy = decision_policy.invocation_policy
-    scorer_request = context_retrieval_runtime_service.normalize_scorer_execution_request(
-        docs_and_scores=filtered_docs_and_scores,
-        now=now,
-        target=target,
-        invocation_policy=invocation_policy,
-        scorer_config=scorer_config,
-    )
-    sigma = scorer_request.sigma_seconds
-    scorer_result = context_retrieval_runtime_service.execute_rerank_scorer_contract(scorer_request)
-    scorer_interpretation = context_retrieval_runtime_service.interpret_rerank_scorer_result(scorer_result)
-    rerank_outcome = scorer_result.rerank_outcome
-    hits = scorer_interpretation.hits
-    reranked_hits = [doc_to_candidate_hit(doc, score=0.0) for doc in hits]
-    has_context = scorer_interpretation.has_context
-    threshold_profile_policy = decision_policy.threshold_profile_policy
-    confidence_decision = context_retrieval_runtime_service.project_rerank_confidence_decision(
-        prior_confidence_decision=dict(state.confidence_decision),
-        has_context=has_context,
-        rerank_outcome=rerank_outcome,
-        temporal_bridge=temporal_bridge,
-        threshold_profile_policy=threshold_profile_policy,
-        now=now,
-        target=target,
-        sigma_seconds=sigma,
-    )
-    return replace(state, reranked_hits=reranked_hits, confidence_decision=confidence_decision), hits
+    return updated_state, [_document_from_retrieval_input(record) for record in reranked_records]
 
 
 def _answer_assemble_for_turn_service(
