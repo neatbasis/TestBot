@@ -132,6 +132,7 @@ def test_process_background_ingestion_completion_regenerates_answer() -> None:
         append_session_log=lambda event, payload: events.append((event, payload)),
         format_background_ingestion_completion_message=lambda **_: "Background done",
         replay_background_completion_turn=_replay,
+        apply_unresolved_intent_carryover=lambda state: state,
         answer_commit_persistence=lambda **_: persisted.append("yes"),
     )
 
@@ -157,3 +158,64 @@ def test_poll_background_source_ingestion_running_state() -> None:
 
     assert result == {"status": "running", "ingestion_request_id": "req-5"}
     assert rt["source_ingest_background_in_progress"] is True
+
+
+def test_process_background_ingestion_completion_applies_canonical_unresolved_intent_carryover() -> None:
+    rt = {
+        "pending_ingestion_registry": {
+            "req-2": {
+                "utterance": "Can you continue?",
+                "prior_pipeline_state": None,
+                "attempt_count": 0,
+                "created_at": "2026-03-10T10:00:00+00:00",
+                "deadline_at": "2026-03-10T10:30:00+00:00",
+            }
+        }
+    }
+
+    def _replay(_request: runtime.BackgroundIngestionReplayRequest) -> _DummyState:
+        return _DummyState(
+            user_input="Can you continue?",
+            last_user_message_ts="2026-03-10T11:00:00+00:00",
+            classified_intent="knowledge_question",
+            resolved_intent="memory_recall",
+            prior_unresolved_intent="",
+            confidence_decision={},
+            final_answer="Need a bit more context.",
+            used_source_evidence_refs=[],
+        )
+
+    def _apply(state: _DummyState) -> _DummyState:
+        state.prior_unresolved_intent = state.resolved_intent
+        return state
+
+    _last_ts, state, processed = runtime.process_background_ingestion_completion(
+        runtime=rt,
+        llm=object(),
+        store=object(),
+        chat_history=deque(),
+        near_tie_delta=0.05,
+        capability_status="ask_unavailable",
+        capability_snapshot={},
+        clock=object(),
+        io_channel="cli",
+        send_assistant_text=lambda _text: None,
+        last_user_message_ts="2026-03-10T11:00:00+00:00",
+        prior_pipeline_state=None,
+        poll_background_source_ingestion=lambda **_: {
+            "ok": True,
+            "status": "completed",
+            "payload": {"ingestion_request_id": "req-2"},
+        },
+        emit_obligation_transition=lambda **_kwargs: None,
+        utc_now_iso=lambda: "2026-03-10T11:00:00+00:00",
+        append_session_log=lambda *_: None,
+        format_background_ingestion_completion_message=lambda **_: "Background done",
+        replay_background_completion_turn=_replay,
+        apply_unresolved_intent_carryover=_apply,
+        answer_commit_persistence=lambda **_: None,
+    )
+
+    assert processed is True
+    assert state is not None
+    assert state.prior_unresolved_intent == "memory_recall"

@@ -42,6 +42,7 @@ from testbot.application.services import answer_stage_runtime as answer_stage_ru
 from testbot.application.services import context_retrieval_runtime as context_retrieval_runtime_service
 from testbot.application.services import answer_stage_presentation as answer_stage_presentation_service
 from testbot.application.services.background_ingestion_runtime import BackgroundIngestionReplayRequest
+from testbot.application.services import continuity_runtime as continuity_runtime_service
 from testbot.intent_router import IntentType
 from testbot.pipeline_state import PipelineState
 from testbot.source_ingest import SourceIngestor
@@ -299,13 +300,7 @@ def run_chat_loop(
             ),
         )
 
-        unresolved_intent = (
-            state.resolved_intent
-            if _legacy_runtime.is_clarification_answer(state.final_answer)
-            or _legacy_runtime._is_capabilities_help_answer(state.final_answer)
-            else ""
-        )
-        state = _legacy_runtime.replace(state, prior_unresolved_intent=unresolved_intent)
+        state = continuity_runtime_service.apply_unresolved_intent_carryover(state)
         send_assistant_text(state.final_answer)
 
         pending_request_id = state.commit_receipt.pending_ingestion_request_id

@@ -245,6 +245,7 @@ def test_runtime_loop_owner_uses_canonical_turn_pipeline_helper_not_monolith_tur
     assert "RuntimeTurnTelemetryDependencies" in source
     assert "emit_runtime_turn_telemetry" in source
     assert "from testbot.application.services import answer_stage_runtime as answer_stage_runtime_service" in source
+    assert "from testbot.application.services import continuity_runtime as continuity_runtime_service" in source
     assert "from testbot.application.services import answer_stage_presentation as answer_stage_presentation_service" in source
     assert "from testbot.application.services import context_retrieval_runtime as context_retrieval_runtime_service" in source
     assert "_poll_pending_ingestion_obligations(" not in source
@@ -268,6 +269,9 @@ def test_runtime_loop_owner_uses_canonical_turn_pipeline_helper_not_monolith_tur
     assert "_legacy_runtime.resolve_context" not in source
     assert "run_canonical_turn_pipeline(" not in source
     assert "_legacy_runtime.answer_commit_persistence(" not in source
+    assert "_legacy_runtime.is_clarification_answer" not in source
+    assert "_legacy_runtime._is_capabilities_help_answer" not in source
+    assert "continuity_runtime_service.apply_unresolved_intent_carryover(state)" in source
     assert "TurnPipelineDependencies(" not in source
 
 
@@ -283,7 +287,6 @@ def test_runtime_loop_monolith_touchpoints_are_allowlisted_for_deliberate_shrink
         "_ambiguity_score",
         "_emit_obligation_transition",
         "_intent_classifier_confidence",
-        "_is_capabilities_help_answer",
         "_minimal_confidence_decision_for_direct_answer",
         "_optional_string",
         "_selected_decision_from_confidence",
@@ -293,8 +296,6 @@ def test_runtime_loop_monolith_touchpoints_are_allowlisted_for_deliberate_shrink
         "append_session_log",
         "arrow",
         "generate_reflection_yaml",
-        "is_clarification_answer",
-        "replace",
         "stage_rerank",
         "stage_retrieve",
         "stage_rewrite_query",
