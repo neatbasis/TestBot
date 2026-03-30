@@ -23,24 +23,24 @@ from testbot.evidence_retrieval import RetrievalInputRecord
 from testbot.pipeline_state import PipelineState
 from testbot.ports import MemorySearchQuery, MemoryStorePort
 from testbot.rerank import (
-    ContextConfidenceThresholds,
     RerankObjectiveConfig,
     RerankOutcome,
     adaptive_sigma_fractional,
     has_sufficient_context_confidence_from_objective,
     load_rerank_objective_config,
-    rerank_confidence_thresholds,
     rerank_docs_with_time_and_type_outcome,
 )
 from testbot.time_parse import parse_target_time
 from testbot.domain import Clock
 from testbot.logic.retrieval_projection import project_retrieval_stage_outputs
-from testbot.policies import retrieve_evidence_policy
+from testbot.policies import retrieve_evidence_policy, rerank_evidence_policy
 
 _ANAPHORA_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"\b(it|that|this|those|them)\b", re.IGNORECASE),
     re.compile(r"\b(he|she|they|him|her)\b", re.IGNORECASE),
 )
+
+RerankThresholdProfilePolicy = rerank_evidence_policy.RerankThresholdProfilePolicy
 
 
 def should_force_memory_retrieval_for_identity_recall(
@@ -158,17 +158,9 @@ class RerankInvocationPolicy:
 
 
 @dataclass(frozen=True)
-class RerankThresholdProfilePolicy:
-    top_final_score_min: float
-    min_margin_to_second: float
-    allow_ambiguity_override: bool
-    ambiguity_override_top_final_score_min: float
-
-
-@dataclass(frozen=True)
 class RerankDecisionPolicy:
     invocation_policy: RerankInvocationPolicy
-    threshold_profile_policy: RerankThresholdProfilePolicy
+    threshold_profile_policy: rerank_evidence_policy.RerankThresholdProfilePolicy
 
 
 @dataclass(frozen=True)
@@ -270,7 +262,7 @@ def project_rerank_confidence_decision(
     has_context: bool,
     rerank_outcome: RerankOutcome,
     temporal_bridge: dict[str, object],
-    threshold_profile_policy: RerankThresholdProfilePolicy,
+    threshold_profile_policy: rerank_evidence_policy.RerankThresholdProfilePolicy,
     now: arrow.Arrow,
     target: arrow.Arrow,
     sigma_seconds: float,
@@ -342,15 +334,12 @@ def assemble_rerank_invocation_policy(
 
 def assemble_rerank_threshold_profile_policy(
     *,
-    rerank_confidence_thresholds_fn: Callable[[], ContextConfidenceThresholds] = rerank_confidence_thresholds,
-) -> RerankThresholdProfilePolicy:
-    thresholds = rerank_confidence_thresholds_fn()
-    return RerankThresholdProfilePolicy(
-        top_final_score_min=float(thresholds.top_final_score_min),
-        min_margin_to_second=float(thresholds.min_margin_to_second),
-        allow_ambiguity_override=bool(thresholds.allow_ambiguity_override),
-        ambiguity_override_top_final_score_min=float(thresholds.ambiguity_override_top_final_score_min),
-    )
+    rerank_threshold_profile_policy_fn: Callable[
+        ..., rerank_evidence_policy.RerankThresholdProfilePolicy
+    ] = rerank_evidence_policy.default_rerank_threshold_profile_policy,
+    **kwargs,
+) -> rerank_evidence_policy.RerankThresholdProfilePolicy:
+    return rerank_threshold_profile_policy_fn(**kwargs)
 
 
 def assemble_rerank_decision_policy(
@@ -360,7 +349,10 @@ def assemble_rerank_decision_policy(
     user_reflection_doc_id: str,
     near_tie_delta: float,
     top_k: int = 4,
-    rerank_confidence_thresholds_fn: Callable[[], ContextConfidenceThresholds] = rerank_confidence_thresholds,
+    rerank_threshold_profile_policy_fn: Callable[
+        ..., rerank_evidence_policy.RerankThresholdProfilePolicy
+    ] = rerank_evidence_policy.default_rerank_threshold_profile_policy,
+    **kwargs,
 ) -> RerankDecisionPolicy:
     return RerankDecisionPolicy(
         invocation_policy=assemble_rerank_invocation_policy(
@@ -371,7 +363,8 @@ def assemble_rerank_decision_policy(
             top_k=top_k,
         ),
         threshold_profile_policy=assemble_rerank_threshold_profile_policy(
-            rerank_confidence_thresholds_fn=rerank_confidence_thresholds_fn
+            rerank_threshold_profile_policy_fn=rerank_threshold_profile_policy_fn,
+            **kwargs,
         ),
     )
 

@@ -11,11 +11,17 @@ from testbot.policies.retrieve_evidence_policy import (
     default_retrieve_evidence_execution_policy,
     should_force_memory_retrieval_for_identity_recall,
 )
+from testbot.policies.rerank_evidence_policy import (
+    RerankThresholdProfilePolicy,
+    default_rerank_threshold_profile_policy,
+)
 
 __all__ = [
     "INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD",
     "RETRIEVAL_SCORE_THRESHOLD",
+    "RerankThresholdProfilePolicy",
     "RetrieveEvidenceExecutionPolicy",
+    "default_rerank_threshold_profile_policy",
     "default_retrieve_evidence_execution_policy",
     "intent_classifier_confidence",
     "minimal_confidence_decision_for_direct_answer",

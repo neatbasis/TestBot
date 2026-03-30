@@ -660,3 +660,58 @@ This pass is intentionally a **decision artifact**, not a broad implementation r
   - retrieval/rerank shared policy seams,
   - `stage_rerank` threshold/profile policy extraction and follow-on transform split.
 - Next intended P2 follow-on: extract rerank threshold/profile policy ownership into canonical `policies/` while keeping transform/orchestration boundaries split.
+
+## 2026-03-30 follow-on update (post-#731, P2 rerank threshold/profile policy ownership slice)
+### Step 1 contextualized residue map (before this PR)
+- **Rerank-only policy**
+  - threshold/profile policy ownership (`top_final_score_min`, `min_margin_to_second`, ambiguity override policy fields).
+- **Shared retrieval/rerank policy**
+  - cross-stage exclusion seam coherence (`exclude_doc_ids`, `exclude_source_ids`, turn-scoped exclusions) remains shared and intentionally deferred.
+- **Deterministic rerank transform/projection**
+  - scorer execution request normalization, scorer interpretation, and confidence-decision projection shaping remain deterministic transform helpers in canonical service/logic seams.
+- **Service orchestration**
+  - runtime hook assembly and stage adapter glue remain in `entrypoints/runtime_loop.py` + `application/services/context_retrieval_runtime.py`.
+
+### Selected rerank-policy seam
+- **Selected seam:** rerank threshold/profile policy ownership for confidence thresholds and ambiguity-override profile values.
+
+### Why this seam
+- This is the largest bounded rerank-only policy residue left after prior P2 retrieve-policy extraction.
+- It can move cleanly to `policies/` without relocating deterministic rerank transforms or broad stage orchestration.
+- It matches the split-first residue guidance for `stage_rerank`: move policy ownership first, keep transform/projection and service orchestration separate.
+
+### Canonical-contract justification
+- Under canonical turn-pipeline contract, this seam is policy selection/configuration under `retrieve.evidence`, not deterministic transform execution.
+- Therefore the owner belongs in `policies/`:
+  - canonical owner: `testbot.policies.rerank_evidence_policy`,
+  - deterministic transform helpers remain in service/logic seams,
+  - runtime-loop orchestration remains in `application/services` + `entrypoints`.
+
+### What moved in this PR
+- Added canonical rerank policy owner:
+  - `testbot.policies.rerank_evidence_policy.RerankThresholdProfilePolicy`,
+  - `testbot.policies.rerank_evidence_policy.default_rerank_threshold_profile_policy(...)`.
+- Rebound canonical context-retrieval service threshold/profile assembly to delegate to policy owner:
+  - `context_retrieval_runtime.assemble_rerank_threshold_profile_policy(...)` now delegates policy construction.
+- Kept compatibility façade posture:
+  - monolith `_assemble_rerank_threshold_profile_policy(...)` wrapper retained as delegator only (no duplicate threshold logic).
+
+### Canonical-path independence proof (selected seam)
+- Added canonical-path sabotage proof:
+  - sabotage legacy monolith `_assemble_rerank_threshold_profile_policy` and verify canonical service policy path still resolves threshold profile via canonical policy owner.
+- Added compatibility proof:
+  - monolith threshold-profile wrapper delegates to canonical context-retrieval service owner.
+- Added service delegation proof:
+  - context-retrieval runtime threshold/profile assembly delegates to injected policy owner callable (deterministic policy boundary).
+
+### Remaining P2 residue after this slice
+- **Rerank-only policy (remaining):**
+  - any additional rerank-only policy seams beyond threshold/profile (for example explicit near-tie/ambiguity policy seams if separated further from current profile surface).
+- **Shared retrieval/rerank policy:**
+  - explicit shared exclusion policy ownership seam (if extraction is still needed beyond normalized adapters).
+- **Deterministic rerank transform/projection residue:**
+  - scorer input normalization/interpretation and confidence payload shaping remain intentionally separate from policy ownership.
+- **Service orchestration residue:**
+  - stage-level adapter/control wiring remains in service/runtime layers.
+- **Next intended follow-on:**
+  - evaluate shared retrieval/rerank policy seam extraction only where it reduces mixed ownership without widening into wholesale `stage_rerank` relocation.

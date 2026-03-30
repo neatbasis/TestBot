@@ -661,6 +661,10 @@ def _document_from_retrieval_input(record: RetrievalInputRecord) -> Document:
     return context_retrieval_runtime_service.document_from_retrieval_input(record)
 
 
+def _assemble_rerank_threshold_profile_policy():
+    return context_retrieval_runtime_service.assemble_rerank_threshold_profile_policy()
+
+
 def _stage_retrieve_for_turn_service(
     store: MemoryStorePort,
     state: PipelineState,
