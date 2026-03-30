@@ -22,9 +22,9 @@ from langchain_ollama import ChatOllama
 from testbot.adapters.ha_satellite_output import send_satellite_output
 from testbot.entrypoints.runtime_background_ingestion import (
     RuntimeBackgroundIngestionDependencies,
-    emit_obligation_transition,
     poll_pending_ingestion_obligations,
     process_background_ingestion_completion,
+    register_pending_ingestion_obligation,
     start_background_source_ingestion,
     poll_background_source_ingestion,
 )
@@ -307,36 +307,16 @@ def run_chat_loop(
 
         pending_request_id = state.commit_receipt.pending_ingestion_request_id
         if pending_request_id:
-            pending_registry = runtime.setdefault("pending_ingestion_registry", {})
-            if isinstance(pending_registry, dict):
-                now_iso = _legacy_runtime._utc_now_iso()
-                deadline_at = _legacy_runtime.arrow.get(now_iso).shift(
-                    seconds=_legacy_runtime.BACKGROUND_INGESTION_OBLIGATION_TIMEOUT_SECONDS
-                ).isoformat()
-                pending_registry[pending_request_id] = {
-                    "ingestion_request_id": pending_request_id,
-                    "utterance": utterance,
-                    "turn_id": turn_id,
-                    "source_context": {
-                        "utterance_doc_id": str(state.candidate_facts.turn_id or ""),
-                        "same_turn_exclusion_doc_ids": list(state.same_turn_exclusion.get("excluded_doc_ids", [])),
-                    },
-                    "prior_pipeline_state": prior_pipeline_state,
-                    "created_at": now_iso,
-                    "last_polled_at": now_iso,
-                    "attempt_count": 0,
-                    "deadline_at": deadline_at,
-                    "status": "pending",
-                }
-                emit_obligation_transition(
-                    deps=background_ingestion_deps,
-                    ingestion_request_id=pending_request_id,
-                    status="created",
-                    created_at=now_iso,
-                    last_polled_at=now_iso,
-                    attempt_count=0,
-                    deadline_at=deadline_at,
-                )
+            register_pending_ingestion_obligation(
+                runtime=runtime,
+                pending_request_id=pending_request_id,
+                utterance=utterance,
+                turn_id=turn_id,
+                state=state,
+                prior_pipeline_state=prior_pipeline_state,
+                deps=background_ingestion_deps,
+                obligation_timeout_seconds=_legacy_runtime.BACKGROUND_INGESTION_OBLIGATION_TIMEOUT_SECONDS,
+            )
 
         last_user_message_ts = clock.now().isoformat()
         chat_history.append({"role": "user", "content": utterance})

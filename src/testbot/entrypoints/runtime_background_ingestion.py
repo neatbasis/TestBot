@@ -110,6 +110,50 @@ def emit_obligation_transition(
     )
 
 
+def register_pending_ingestion_obligation(
+    *,
+    runtime: dict[str, object],
+    pending_request_id: str,
+    utterance: str,
+    turn_id: str,
+    state: PipelineState,
+    prior_pipeline_state: PipelineState | None,
+    deps: RuntimeBackgroundIngestionDependencies,
+    obligation_timeout_seconds: int = BACKGROUND_INGESTION_OBLIGATION_TIMEOUT_SECONDS,
+) -> bool:
+    pending_registry = runtime.setdefault("pending_ingestion_registry", {})
+    if not isinstance(pending_registry, dict):
+        return False
+
+    now_iso = arrow.utcnow().isoformat()
+    deadline_at = arrow.get(now_iso).shift(seconds=obligation_timeout_seconds).isoformat()
+    pending_registry[pending_request_id] = {
+        "ingestion_request_id": pending_request_id,
+        "utterance": utterance,
+        "turn_id": turn_id,
+        "source_context": {
+            "utterance_doc_id": str(state.candidate_facts.turn_id or ""),
+            "same_turn_exclusion_doc_ids": list(state.same_turn_exclusion.get("excluded_doc_ids", [])),
+        },
+        "prior_pipeline_state": prior_pipeline_state,
+        "created_at": now_iso,
+        "last_polled_at": now_iso,
+        "attempt_count": 0,
+        "deadline_at": deadline_at,
+        "status": "pending",
+    }
+    emit_obligation_transition(
+        deps=deps,
+        ingestion_request_id=pending_request_id,
+        status="created",
+        created_at=now_iso,
+        last_polled_at=now_iso,
+        attempt_count=0,
+        deadline_at=deadline_at,
+    )
+    return True
+
+
 def poll_pending_ingestion_obligations(
     *,
     runtime: dict[str, object],
@@ -179,5 +223,6 @@ __all__ = [
     "poll_background_source_ingestion",
     "poll_pending_ingestion_obligations",
     "process_background_ingestion_completion",
+    "register_pending_ingestion_obligation",
     "start_background_source_ingestion",
 ]
