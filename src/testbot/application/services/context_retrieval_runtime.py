@@ -11,11 +11,11 @@ Ownership:
 
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass, replace
 from typing import Callable
 
 import arrow
+import re
 from langchain_core.documents import Document
 
 from testbot.context_resolution import resolve as _resolve_context_from_domain
@@ -35,49 +35,12 @@ from testbot.rerank import (
 from testbot.time_parse import parse_target_time
 from testbot.domain import Clock
 from testbot.logic.retrieval_projection import project_retrieval_stage_outputs
-
-_SELF_REFERENTIAL_IDENTITY_RECALL_PATTERNS: tuple[re.Pattern[str], ...] = (
-    re.compile(r"^\s*who\s+am\s+i\b", re.IGNORECASE),
-    re.compile(r"^\s*what(?:\s+is|'s)\s+my\s+name\b", re.IGNORECASE),
-    re.compile(r"\bremind\s+me\s+(?:what\s+)?my\s+name\s+is\b", re.IGNORECASE),
-)
-
-_PRIOR_IDENTITY_CANDIDATE_PATTERNS: tuple[re.Pattern[str], ...] = (
-    re.compile(r"\bi\s*(?:am|'m|’m)\s+[\w'-]+", re.IGNORECASE),
-    re.compile(r"\bmy\s+name\s+is\s+[\w'-]+", re.IGNORECASE),
-)
+from testbot.policies import retrieve_evidence_policy
 
 _ANAPHORA_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"\b(it|that|this|those|them)\b", re.IGNORECASE),
     re.compile(r"\b(he|she|they|him|her)\b", re.IGNORECASE),
 )
-
-
-def _is_self_referential_identity_recall_query(utterance: str) -> bool:
-    return any(pattern.search(utterance or "") is not None for pattern in _SELF_REFERENTIAL_IDENTITY_RECALL_PATTERNS)
-
-
-def _has_prior_identity_candidates_or_continuity_markers(
-    *,
-    prior_state: PipelineState | None,
-    continuity_evidence: tuple[str, ...],
-    context_history_anchors: tuple[str, ...],
-) -> bool:
-    if any(anchor.startswith("commit.confirmed_user_facts:") for anchor in continuity_evidence):
-        return True
-    if any(anchor.startswith("commit.confirmed_user_facts:") for anchor in context_history_anchors):
-        return True
-    if prior_state is None:
-        return False
-
-    for fact in prior_state.candidate_facts.facts:
-        if not isinstance(fact, dict):
-            continue
-        if str(fact.get("key") or "").strip() == "user_name":
-            return True
-
-    prior_utterance = str(prior_state.user_input or "")
-    return any(pattern.search(prior_utterance) is not None for pattern in _PRIOR_IDENTITY_CANDIDATE_PATTERNS)
 
 
 def should_force_memory_retrieval_for_identity_recall(
@@ -87,7 +50,8 @@ def should_force_memory_retrieval_for_identity_recall(
     continuity_evidence: tuple[str, ...],
     context_history_anchors: tuple[str, ...],
 ) -> bool:
-    return _is_self_referential_identity_recall_query(utterance) and _has_prior_identity_candidates_or_continuity_markers(
+    return retrieve_evidence_policy.should_force_memory_retrieval_for_identity_recall(
+        utterance=utterance,
         prior_state=prior_state,
         continuity_evidence=continuity_evidence,
         context_history_anchors=context_history_anchors,
@@ -129,6 +93,7 @@ def stage_retrieve_for_turn_service(
     segment_ids: set[str] | None = None,
     segment_types: set[str] | None = None,
 ) -> tuple[PipelineState, list[RetrievalInputRecord]]:
+    execution_policy = retrieve_evidence_policy.default_retrieve_evidence_execution_policy()
     filter_scope = normalize_retrieval_filter_scope(
         exclude_doc_ids=exclude_doc_ids,
         exclude_source_ids=exclude_source_ids,
@@ -153,7 +118,7 @@ def stage_retrieve_for_turn_service(
         store,
         rewritten_query=state.rewritten_query,
         filter_scope=filter_scope,
-        k=18,
+        k=execution_policy.search_top_k,
     )
     projection = project_retrieval_stage_outputs(
         raw_docs_and_scores=raw_docs_and_scores,
@@ -163,6 +128,8 @@ def stage_retrieve_for_turn_service(
         exclude_turn_scoped_ids=filter_scope.exclude_turn_scoped_ids,
         segment_ids=filter_scope.segment_ids,
         segment_types=filter_scope.segment_types,
+        top_k=execution_policy.projection_top_k,
+        source_quota=execution_policy.projection_source_quota,
     )
     updated_state = replace(
         state,
