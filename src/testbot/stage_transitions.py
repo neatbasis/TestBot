@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-import json
 import warnings
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Callable
 
-from testbot.memory_cards import utc_now_iso
+from testbot.observability.transition_validation import (
+    TRANSITION_VALIDATION_SCHEMA_VERSION,
+    append_transition_validation_log,
+)
 from testbot.answer_contract_constants import (
     ASSIST_ALTERNATIVES_ANSWER,
     BACKGROUND_INGESTION_PROGRESS_ANSWER,
@@ -19,8 +20,6 @@ from testbot.answer_contract_constants import (
 from testbot.answer_stage_semantics import expected_alignment_decisions_for_final_answer
 from testbot.pipeline_state import CandidateHit, PipelineState, ProvenanceType, StageArtifact
 
-
-TRANSITION_VALIDATION_SCHEMA_VERSION = 4
 
 # One-release migration bridge for downstream telemetry consumers that still
 # normalize historical stage transition events keyed by legacy INV-* IDs.
@@ -773,18 +772,3 @@ def validate_answer_commit_pre(
         state=state,
     )
 
-
-def append_transition_validation_log(
-    result: TransitionCheckResult,
-    *,
-    log_path: Path = Path("./logs/session.jsonl"),
-) -> None:
-    log_path.parent.mkdir(parents=True, exist_ok=True)
-    row = {
-        "ts": utc_now_iso(),
-        "event": "stage_transition_validation",
-        "schema_version": TRANSITION_VALIDATION_SCHEMA_VERSION,
-        **result.to_dict(),
-    }
-    with log_path.open("a", encoding="utf-8") as f:
-        f.write(json.dumps(row, ensure_ascii=False) + "\n")

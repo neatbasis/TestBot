@@ -51,7 +51,6 @@ from testbot.rerank import (
     rerank_docs_with_time_and_type_outcome,
 )
 from testbot.stage_transitions import (
-    append_transition_validation_log,
     validate_answer_assemble_pre,
     validate_answer_commit_post,
     validate_answer_commit_pre,
@@ -164,6 +163,9 @@ from testbot.entrypoints.runtime_commit_persistence import (
 )
 from testbot.entrypoints.runtime_snapshot_support import RuntimeClockBackedSnapshotTimeProvider
 from testbot.entrypoints.runtime_turn_pipeline import RuntimeTurnPipelineHooks, run_runtime_turn_pipeline
+from testbot.entrypoints.runtime_transition_validation import (
+    validate_and_log_transition as validate_and_log_runtime_transition,
+)
 from testbot.application.services import context_retrieval_runtime as context_retrieval_runtime_service
 from testbot.application.services.background_ingestion_runtime import BackgroundIngestionReplayRequest
 from testbot.canonical_turn_orchestrator import CanonicalTurnOrchestrator as _CanonicalTurnOrchestrator
@@ -1206,10 +1208,7 @@ def answer_commit_persistence(
     )
 
 def _validate_and_log_transition(result) -> None:
-    append_transition_validation_log(result)
-    if not result.passed:
-        failures = ", ".join(result.failures)
-        raise AssertionError(f"Stage transition validation failed at {result.stage}.{result.boundary}: {failures}")
+    validate_and_log_runtime_transition(result)
 
 
 # ---------------------------

@@ -30,6 +30,7 @@ from testbot.entrypoints.runtime_background_ingestion import (
     poll_background_source_ingestion,
 )
 from testbot.entrypoints.runtime_turn_pipeline import RuntimeTurnPipelineHooks, run_runtime_turn_pipeline
+from testbot.entrypoints.runtime_transition_validation import validate_and_log_transition
 from testbot.entrypoints.runtime_turn_telemetry import (
     RuntimeTurnTelemetryDependencies,
     emit_runtime_turn_telemetry,
@@ -148,7 +149,7 @@ def run_chat_loop(
 
     runtime_turn_hooks = RuntimeTurnPipelineHooks(
         append_session_log=append_runtime_session_log,
-        validate_and_log_transition=_legacy_runtime._validate_and_log_transition,
+        validate_and_log_transition=validate_and_log_transition,
         stage_rewrite_query=_legacy_runtime.stage_rewrite_query,
         generate_reflection_yaml=_legacy_runtime.generate_reflection_yaml,
         intent_classifier_confidence=partial(

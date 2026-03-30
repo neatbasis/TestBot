@@ -536,3 +536,45 @@ This pass is intentionally a **decision artifact**, not a broad implementation r
 ### Deferred P1 residue after this PR
 - **Primary remaining turn-policy residue:** `_validate_and_log_transition`.
 - P1 remains active until that mixed invocation/logging seam is split across `entrypoints/` + `observability/` (or equivalent repo-consistent ownership split).
+
+## 2026-03-30 follow-on update (post-#728 transition validation seam split: `_validate_and_log_transition`)
+### Selected transition-validation seam
+- Selected helper: `_validate_and_log_transition`.
+- Responsibility decomposition from inspection:
+  - **Invocation/assertion boundary (lifecycle control):** call transition validation sink and fail fast on invariant break.
+  - **Transition-event/log payload shaping + emission:** build canonical stage-transition log row and append JSONL event.
+  - **Pure transition validation/comparison logic:** no new comparison core was present in `_validate_and_log_transition`; deterministic transition pass/fail computation already lives in `stage_transitions` validators (`validate_*` functions returning `TransitionCheckResult`).
+
+### Why this seam
+- After the previous turn-policy extractions (`_optional_string`, `_ambiguity_score`, `_intent_classifier_confidence`, `_minimal_confidence_decision_for_direct_answer`, `_selected_decision_from_confidence`), this was the remaining major **P1** mixed seam still binding canonical runtime hook wiring to monolith ownership.
+- The helper was explicitly mixed lifecycle + observability-adjacent, matching the placement map guidance to split across `entrypoints/` + `observability/` rather than relocating as one lump.
+
+### Ownership split implemented
+- **`logic/`:**
+  - No new logic module introduced for this seam because `_validate_and_log_transition` did not contain separable transition comparison logic; transition checks remain canonical in `stage_transitions.validate_*`.
+- **`observability/`:**
+  - Added canonical owner `testbot.observability.transition_validation` for transition-validation event row shaping and log emission:
+    - `build_transition_validation_log_row(...)`
+    - `append_transition_validation_log(...)`
+    - `TRANSITION_VALIDATION_SCHEMA_VERSION`
+  - `stage_transitions.append_transition_validation_log` is now sourced from this canonical observability owner (compat import path preserved).
+- **`entrypoints/`:**
+  - Added canonical runtime invocation/assertion boundary owner `testbot.entrypoints.runtime_transition_validation`:
+    - `validate_and_log_transition(...)`
+    - `transition_validation_failure_message(...)`
+  - `runtime_loop` hook wiring now binds `RuntimeTurnPipelineHooks.validate_and_log_transition` to the canonical entrypoint owner, not `_legacy_runtime._validate_and_log_transition`.
+
+### Compatibility posture
+- `sat_chatbot_memory_v2._validate_and_log_transition(...)` remains for compatibility callers but now delegates directly to canonical runtime entrypoint transition validation owner.
+- Mixed logic is no longer duplicated in monolith and canonical runtime paths.
+
+### Evidence and direct proof
+- Added direct tests proving:
+  - canonical runtime transition-validation hook wiring no longer references legacy `_validate_and_log_transition`,
+  - observability row shaping is owned/tested in the new `observability` module,
+  - runtime assertion behavior is owned/tested in the new `entrypoints` module,
+  - monolith helper is delegator-only.
+
+### Remaining P1 residue
+- **Turn-policy P1 residue is now complete for this mapped helper bundle.**
+- Next work should proceed per prior map ordering (retrieval/rerank policy-core and later compatibility retirement), without reopening this seam as mixed ownership.
