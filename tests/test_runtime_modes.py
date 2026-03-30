@@ -284,6 +284,7 @@ def test_runtime_loop_owner_uses_canonical_turn_pipeline_helper_not_monolith_tur
     assert "_legacy_runtime.answer_commit_persistence(" not in source
     assert "_legacy_runtime.is_clarification_answer" not in source
     assert "_legacy_runtime._is_capabilities_help_answer" not in source
+    assert "_legacy_runtime.append_session_log(" not in source
     assert "continuity_runtime_service.apply_unresolved_intent_carryover(state)" in source
     assert "TurnPipelineDependencies(" not in source
 
@@ -303,7 +304,6 @@ def test_runtime_loop_monolith_touchpoints_are_allowlisted_for_deliberate_shrink
         "_selected_decision_from_confidence",
         "_validate_and_log_transition",
         "append_pipeline_snapshot",
-        "append_session_log",
         "generate_reflection_yaml",
         "stage_rerank",
         "stage_retrieve",
@@ -422,10 +422,8 @@ def test_runtime_loop_turn_telemetry_deps_use_canonical_append_session_log(monke
     observed_telemetry_loggers: list[object] = []
 
     def _legacy_logger_guard(event: str, payload: dict[str, object]) -> None:
-        del payload
-        if event == "user_utterance_ingest":
-            return
-        raise AssertionError("legacy append_session_log should not own turn-telemetry dependency logging")
+        del event, payload
+        raise AssertionError("legacy append_session_log should not own runtime-loop telemetry or ingest logging")
 
     monkeypatch.setattr(runtime, "append_session_log", _legacy_logger_guard)
     monkeypatch.setattr(runtime_loop, "poll_pending_ingestion_obligations", lambda **_kwargs: None)
@@ -761,9 +759,7 @@ def test_runtime_loop_turn_pipeline_hook_logging_bundle_uses_canonical_session_l
             captured.update(kwargs)
 
     def _legacy_append_session_log_guard(event: str, payload: dict[str, object]) -> None:
-        del payload
-        if event == "user_utterance_ingest":
-            return
+        del event, payload
         raise AssertionError("selected turn-pipeline hook logging bundle should not use legacy append_session_log")
 
     monkeypatch.setattr(runtime, "append_session_log", _legacy_append_session_log_guard)
