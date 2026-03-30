@@ -373,3 +373,54 @@ Bounded seam reduction for assemble-stage special-answer authority.
 
 ### Closeness-to-deletion status
 - After this PR, `sat_chatbot_memory_v2` is closer to disposable status: canonical runtime-loop logging ownership no longer depends on monolith `append_session_log`, and remaining runtime dependencies are concentrated into a shorter explicit policy/snapshot helper list plus compatibility façades.
+
+## 2026-03-30 follow-on update (post-#724 residue placement + extraction-shape pass)
+
+### Placement pass intent
+This pass is intentionally a **decision artifact**, not a broad implementation rewrite. It classifies the remaining `sat_chatbot_memory_v2` residue by ownership type, canonical destination, extraction shape, and sequencing so the next extraction PRs improve ownership instead of relocating mixed bundles.
+
+### Residue placement table
+| Residue item | Current use site(s) | Residue class | Nature of responsibility | Recommended canonical target home | Extraction shape | Why | Suggested sequencing priority | Backlog-worthy? |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Retrieval/rerank policy-core bundle (`stage_retrieve`, `stage_rerank`) | `runtime_loop` binds `RuntimeTurnPipelineHooks.stage_retrieve/stage_rerank` through service adapters that still inject `_legacy_runtime.stage_retrieve/_legacy_runtime.stage_rerank`. | canonical-runtime blocker | policy + logic + orchestration | Split across `policies/` (decision policy + thresholds), `logic/` (scoring/projection transforms), and `application/services/` (runtime orchestration adapter glue). | split first | Current bundle mixes retrieval policy decisions, scorer invocation orchestration, and confidence projection in one monolith-owned callable pair; moving as one lump would preserve mixed ownership. | P2 | yes |
+| Turn-policy helper bundle (`_validate_and_log_transition`, `_intent_classifier_confidence`, `_selected_decision_from_confidence`, `_minimal_confidence_decision_for_direct_answer`, `_optional_string`, `_ambiguity_score`) | `runtime_loop` binds these directly into `RuntimeTurnPipelineHooks`; telemetry path uses monolith `_ambiguity_score`. | canonical-runtime blocker | policy + logic + observability | Split across `policies/` (intent-confidence + direct-answer decision floor), `logic/` (ambiguity score + typed projection helpers), `entrypoints/` (thin transition assertion invocation), and `observability/` (transition log emission formatting). | split first | Helpers are not one cohesive capability: transition validation is lifecycle/observability-adjacent, confidence/decision floor are policy, ambiguity computation is reusable logic. | P1 | yes |
+| Snapshot emission helper (`append_pipeline_snapshot`) | `runtime_loop` still calls `_legacy_runtime.append_pipeline_snapshot("ingest", ...)`. | canonical-runtime blocker | observability + orchestration | `observability/` for snapshot emission/payload schema + `entrypoints/` for call timing only. | split first | The emission function includes representational/logging behavior while runtime loop should only own when to emit; this should become explicit owner split. | P3 | yes |
+| Compatibility `run_chat_loop` façade in monolith | External/legacy callers importing `testbot.sat_chatbot_memory_v2.run_chat_loop`; compat tests keep coverage. | compatibility-only residue | compatibility | compatibility-only | freeze as wrapper | Already delegates to canonical runtime loop owner; deleting now would be caller-breaking without cutoff policy. | P5 | no |
+| Compatibility `append_session_log` façade in monolith | Legacy imports and compatibility tests; canonical runtime paths already bind `testbot.observability.session_log.append_session_log`. | compatibility-only residue | compatibility | compatibility-only | freeze as wrapper | Canonical ownership already moved; wrapper is now import-path compatibility only. | P6 | no |
+| Compatibility replay wrapper (`_replay_background_completion_turn_compat`) | Used by monolith compatibility `run_chat_loop` dependency assembly to preserve legacy replay surface. | compatibility-only residue | compatibility + orchestration | compatibility-only | freeze as wrapper | Replay invocation for canonical runtime is already owned by runtime entrypoints; this wrapper is retained only for monolith compatibility path parity. | P7 | no |
+| Compatibility presentation re-exports (`ANSWER_PROMPT`, `render_context`) | Monolith compatibility imports/re-exports; canonical runtime uses `answer_stage_presentation` directly. | compatibility-only residue | compatibility | compatibility-only | freeze as wrapper | No longer canonical authority; these are migration shims for legacy importers. | P8 | no |
+
+### Split-first detail (explicit)
+1. **Turn-policy helper bundle must be split first (do not move as a single unit).**
+   - `policies/`: intent confidence thresholding and direct-answer minimal decision policy (`_intent_classifier_confidence`, `_minimal_confidence_decision_for_direct_answer`).
+   - `logic/`: ambiguity/decision-shape helpers (`_ambiguity_score`, `_optional_string`, decision-object conversion helpers where still needed).
+   - `entrypoints/` + `observability/`: transition validation invocation + transition-failure logging responsibilities (`_validate_and_log_transition`).
+2. **Retrieval/rerank bundle must be split first.**
+   - `policies/`: retrieval/rerank threshold + target/branch decision policy.
+   - `logic/`: scoring interpretation, confidence projection transforms.
+   - `application/services/`: orchestration wrappers that adapt policy/logic to runtime hook signatures.
+3. **Snapshot emission should be split between emission owner and invocation owner.**
+   - `observability/`: snapshot payload contract + append sink.
+   - `entrypoints/`: invocation timing in loop (`ingest` stage call site only).
+
+### Canonical-runtime blockers vs compatibility residue
+- **Canonical-runtime blockers (must be extracted for monolith independence):**
+  1. retrieval/rerank policy-core bundle,
+  2. turn-policy helper bundle,
+  3. snapshot emission helper.
+- **Compatibility-only residue (does not block canonical runtime independence):**
+  - monolith `run_chat_loop` wrapper,
+  - monolith `append_session_log` wrapper,
+  - monolith replay wrapper,
+  - monolith presentation re-exports (`ANSWER_PROMPT`, `render_context`).
+- **Dead weight currently identified:** none yet; current remaining compatibility exports are still serving explicit backward-compatibility contract coverage and should not be deleted without a formal cutoff decision.
+
+### Recommended next implementation order
+1. **Turn-policy helper bundle split/extraction first** (highest leverage; currently touches both turn pipeline and telemetry dependencies).
+2. **Retrieval/rerank policy-core split/extraction second** (largest remaining policy-core bundle after turn-policy split removes mixed helper coupling).
+3. **Snapshot emission ownership split third** (smaller, cleaner seam once turn-policy/retrieval shapes are stabilized).
+4. **Compatibility retirement slice last** (delete/finalize wrappers only after above blockers are removed and explicit compatibility cutoff is approved).
+
+### Decision checkpoint for follow-on PRs
+- Avoid “move as-is” extraction for mixed bundles.
+- Require each follow-on extraction PR to map moved functions to the target-home split above and preserve compatibility wrappers only as transitional façades.
