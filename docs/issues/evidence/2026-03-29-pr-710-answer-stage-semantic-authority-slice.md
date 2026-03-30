@@ -116,3 +116,27 @@ Bounded seam reduction for assemble-stage special-answer authority.
 
 ### Highest-weight next seam after this slice
 - Remaining highest-weight continuity-adjacent seam is **timestamp/snapshot continuity-support authority + obligation-transition helper ownership** (while keeping deferred `append_session_log` retirement separate unless inseparable).
+
+## 2026-03-30 follow-on update (post-#716 timestamp/snapshot + obligation helper cluster reduction)
+### Step 1 inventory (before this slice)
+- **Timestamp generation authority (support/control):** runtime-loop pending-obligation creation still sourced `now_iso` from legacy `_utc_now_iso`.
+- **Snapshot time-provider authority (support/control):** runtime-loop ingest snapshots still used legacy `_ClockBackedSnapshotTimeProvider`.
+- **Obligation-transition emission authority (support/control):** runtime-loop pending-obligation creation still emitted `"created"` transitions through legacy `_emit_obligation_transition(...)`.
+- **Pure plumbing (separate deferred seam):** `append_session_log` ownership remained deferred and intentionally separate from this support/control slice.
+
+### Step 2 bounded sub-slice selected
+- Selected first-priority seam: **obligation-transition helper ownership**.
+- Canonicalized runtime-loop pending-obligation `"created"` transition emission to use canonical runtime background-ingestion owner (`testbot.entrypoints.runtime_background_ingestion.emit_obligation_transition`) instead of legacy `_emit_obligation_transition(...)`.
+
+### Step 3 runtime/background-ingestion dependency reduction
+- `runtime_loop.run_chat_loop(...)` now emits pending-obligation creation transitions through canonical `emit_obligation_transition(..., deps=RuntimeBackgroundIngestionDependencies(...))`.
+- This removes the selected runtime path's direct dependence on `_legacy_runtime._emit_obligation_transition` while preserving compatibility logging behavior through the same deferred `append_session_log` dependency contract.
+
+### Step 4 proof tests
+- Added direct runtime-loop proof that sabotages legacy `_emit_obligation_transition` and still observes `"created"` obligation transitions via canonical runtime background-ingestion helper wiring.
+- Updated runtime-loop monolith touchpoint allowlist to confirm `_emit_obligation_transition` is no longer a runtime-loop-owned dependency touchpoint.
+
+### Step 5 deferred scope after this slice
+- **Still deferred in this continuity-support cluster:** timestamp/snapshot support ownership (`_utc_now_iso`, `_ClockBackedSnapshotTimeProvider`) remains legacy-routed.
+- **Still deferred as separate plumbing seam:** `append_session_log` ownership retirement remains intentionally untouched.
+- **Next highest-weight seam after this slice:** timestamp/snapshot continuity-support authority (`_utc_now_iso` and `_ClockBackedSnapshotTimeProvider`) for runtime/background-completion support flows.
