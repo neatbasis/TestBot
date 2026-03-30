@@ -328,7 +328,11 @@ def test_runtime_loop_background_ingestion_deps_use_canonical_append_session_log
         ),
     )
 
-    monkeypatch.setattr(runtime_loop, "poll_pending_ingestion_obligations", lambda *, runtime, deps: observed_background_loggers.append(deps.append_session_log))
+    def _poll_with_connector_probe(*, runtime, deps):
+        observed_background_loggers.append(deps.append_session_log)
+        deps.build_source_connector({"source_connector_type": "none"})
+
+    monkeypatch.setattr(runtime_loop, "poll_pending_ingestion_obligations", _poll_with_connector_probe)
     monkeypatch.setattr(runtime_loop, "process_background_ingestion_completion", lambda **_kwargs: ("", None, False))
     monkeypatch.setattr(
         runtime_loop,
@@ -355,7 +359,7 @@ def test_runtime_loop_background_ingestion_deps_use_canonical_append_session_log
     assert observed_background_loggers == [session_log_module.append_session_log]
     observed_background_loggers[0]("runtime_loop_background_ingestion_logger_proof", {})
 
-    assert observed_connector_loggers == []
+    assert observed_connector_loggers == [session_log_module.append_session_log]
 
 
 def test_runtime_loop_ingest_snapshot_time_provider_is_canonical_not_legacy(monkeypatch: pytest.MonkeyPatch) -> None:
