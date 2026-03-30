@@ -340,3 +340,22 @@ def test_stage_rerank_uses_runtime_threshold_profile_policy_assembly(monkeypatch
     assert updated_state.confidence_decision["min_margin_to_second"] == 0.11
     assert updated_state.confidence_decision["allow_ambiguity_override"] is True
     assert updated_state.confidence_decision["ambiguity_override_top_final_score_min"] == 0.93
+
+
+def test_stage_retrieve_compat_function_delegates_to_canonical_context_service(monkeypatch) -> None:
+    observed: dict[str, object] = {}
+    expected_state = PipelineState(user_input="q", rewritten_query="q")
+
+    def _fake_stage_retrieve_for_turn_service(*args, **kwargs):
+        observed["args"] = args
+        observed["kwargs"] = kwargs
+        return expected_state, [runtime.RetrievalInputRecord(ref_id="doc-2", score=0.75, content="hello", metadata={"doc_id": "doc-2"})]
+
+    monkeypatch.setattr(runtime.context_retrieval_runtime_service, "stage_retrieve_for_turn_service", _fake_stage_retrieve_for_turn_service)
+
+    actual_state, actual_docs_and_scores = runtime.stage_retrieve(store=object(), state=expected_state)
+
+    assert actual_state is expected_state
+    assert observed["kwargs"]["retrieval_score_threshold"] == runtime.RETRIEVAL_SCORE_THRESHOLD
+    assert observed["kwargs"]["exclude_doc_ids"] is None
+    assert [(doc.id, score) for doc, score in actual_docs_and_scores] == [("doc-2", 0.75)]

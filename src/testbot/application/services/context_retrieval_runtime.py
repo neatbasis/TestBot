@@ -12,7 +12,7 @@ Ownership:
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Callable
 
 import arrow
@@ -34,6 +34,7 @@ from testbot.rerank import (
 )
 from testbot.time_parse import parse_target_time
 from testbot.domain import Clock
+from testbot.logic.retrieval_projection import project_retrieval_stage_outputs
 
 _SELF_REFERENTIAL_IDENTITY_RECALL_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"^\s*who\s+am\s+i\b", re.IGNORECASE),
@@ -120,23 +121,55 @@ def stage_retrieve_for_turn_service(
     store: MemoryStorePort,
     state: PipelineState,
     *,
-    stage_retrieve_fn: Callable[..., tuple[PipelineState, list[tuple[Document, float]]]],
+    retrieval_score_threshold: float | None = None,
+    stage_retrieve_fn: Callable[..., tuple[PipelineState, list[tuple[Document, float]]]] | None = None,
     exclude_doc_ids: set[str] | None = None,
     exclude_source_ids: set[str] | None = None,
     exclude_turn_scoped_ids: set[str] | None = None,
     segment_ids: set[str] | None = None,
     segment_types: set[str] | None = None,
 ) -> tuple[PipelineState, list[RetrievalInputRecord]]:
-    updated_state, docs_and_scores = stage_retrieve_fn(
-        store,
-        state,
+    filter_scope = normalize_retrieval_filter_scope(
         exclude_doc_ids=exclude_doc_ids,
         exclude_source_ids=exclude_source_ids,
         exclude_turn_scoped_ids=exclude_turn_scoped_ids,
         segment_ids=segment_ids,
         segment_types=segment_types,
     )
-    return updated_state, [retrieval_input_from_document(doc, score=score) for doc, score in docs_and_scores]
+
+    if stage_retrieve_fn is not None:
+        updated_state, docs_and_scores = stage_retrieve_fn(
+            store,
+            state,
+            exclude_doc_ids=exclude_doc_ids,
+            exclude_source_ids=exclude_source_ids,
+            exclude_turn_scoped_ids=exclude_turn_scoped_ids,
+            segment_ids=segment_ids,
+            segment_types=segment_types,
+        )
+        return updated_state, [retrieval_input_from_document(doc, score=score) for doc, score in docs_and_scores]
+
+    raw_docs_and_scores = search_memory_documents_for_retrieval(
+        store,
+        rewritten_query=state.rewritten_query,
+        filter_scope=filter_scope,
+        k=18,
+    )
+    projection = project_retrieval_stage_outputs(
+        raw_docs_and_scores=raw_docs_and_scores,
+        retrieval_score_threshold=float(retrieval_score_threshold or 0.0),
+        exclude_doc_ids=filter_scope.exclude_doc_ids,
+        exclude_source_ids=filter_scope.exclude_source_ids,
+        exclude_turn_scoped_ids=filter_scope.exclude_turn_scoped_ids,
+        segment_ids=filter_scope.segment_ids,
+        segment_types=filter_scope.segment_types,
+    )
+    updated_state = replace(
+        state,
+        retrieval_candidates=projection.retrieval_candidates,
+        confidence_decision={**state.confidence_decision, **projection.retrieval_telemetry},
+    )
+    return updated_state, [retrieval_input_from_document(doc, score=score) for doc, score in projection.docs_and_scores]
 
 
 @dataclass(frozen=True)

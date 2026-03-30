@@ -299,7 +299,6 @@ def test_runtime_loop_monolith_touchpoints_are_allowlisted_for_deliberate_shrink
         "append_pipeline_snapshot",
         "generate_reflection_yaml",
         "stage_rerank",
-        "stage_retrieve",
         "stage_rewrite_query",
         "store_doc",
     }
@@ -985,7 +984,7 @@ def test_runtime_loop_context_retrieval_residual_monolith_touchpoints_are_explic
     from testbot.entrypoints import runtime_loop
 
     source = Path(runtime_loop.__file__).read_text()
-    assert "_legacy_runtime.stage_retrieve" in source
+    assert "_legacy_runtime.stage_retrieve" not in source
     assert "_legacy_runtime.stage_rerank" in source
     assert "_legacy_runtime.resolve_context" not in source
     assert "_legacy_runtime._should_force_memory_retrieval_for_identity_recall" not in source
@@ -1090,7 +1089,8 @@ def test_runtime_loop_runtime_hooks_resolve_context_retrieval_control_point_at_r
         clock=runtime.SystemClock(),
     )
 
-    assert observed["retrieve_kwargs"]["stage_retrieve_fn"] is runtime.stage_retrieve
+    assert observed["retrieve_kwargs"]["retrieval_score_threshold"] == runtime.RETRIEVAL_SCORE_THRESHOLD
+    assert "stage_retrieve_fn" not in observed["retrieve_kwargs"]
     assert observed["rerank_kwargs"]["stage_rerank_fn"] is runtime.stage_rerank
     assert sent[0] == "ok"
 
@@ -3520,3 +3520,74 @@ def test_cli_mode_proactively_emits_completion_without_extra_prompt(monkeypatch)
     assert replies[0].startswith("Background ingestion completed for request turn-123")
     assert replies[1] == "Grounded answer after ingestion."
     assert replies[-1] == "Stopping. Bye."
+
+
+def test_runtime_loop_stage_retrieve_canonical_path_does_not_depend_on_legacy_stage_retrieve(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from dataclasses import replace
+
+    from testbot.application.services import context_retrieval_runtime as context_retrieval_runtime_service
+    from testbot.entrypoints import runtime_loop
+
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr(runtime_loop, "poll_pending_ingestion_obligations", lambda **_kwargs: None)
+    monkeypatch.setattr(runtime_loop, "process_background_ingestion_completion", lambda **_kwargs: ("", None, False))
+    monkeypatch.setattr(runtime_loop, "emit_runtime_turn_telemetry", lambda **_kwargs: None)
+    monkeypatch.setattr(runtime_loop, "persist_answer_commit", lambda **_kwargs: None)
+
+    def _fake_turn_pipeline(**kwargs):
+        captured["hooks"] = kwargs["hooks"]
+        state = kwargs["state"]
+        return (
+            replace(
+                state,
+                final_answer="ok",
+                commit_receipt={"pending_ingestion_request_id": ""},
+            ),
+            [],
+        )
+
+    monkeypatch.setattr(runtime_loop, "run_runtime_turn_pipeline", _fake_turn_pipeline)
+    monkeypatch.setattr(
+        runtime,
+        "stage_retrieve",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("legacy stage_retrieve should not be used by canonical runtime-loop retrieval hook")
+        ),
+    )
+
+    observed: dict[str, object] = {}
+
+    def _fake_stage_retrieve_for_turn_service(*args, **kwargs):
+        observed["kwargs"] = kwargs
+        return args[1], []
+
+    monkeypatch.setattr(
+        context_retrieval_runtime_service,
+        "stage_retrieve_for_turn_service",
+        _fake_stage_retrieve_for_turn_service,
+    )
+
+    utterances = iter(["hello", "stop"])
+    runtime_loop.run_chat_loop(
+        runtime={},
+        llm=object(),
+        store=object(),
+        chat_history=deque(),
+        near_tie_delta=0.1,
+        io_channel="cli",
+        capability_status="ask_unavailable",
+        capability_snapshot=object(),
+        read_user_utterance=lambda: next(utterances, None),
+        send_assistant_text=lambda _text: None,
+        clock=runtime.SystemClock(),
+    )
+
+    hooks = captured["hooks"]
+    probe_state = runtime.PipelineState(user_input="probe", rewritten_query="probe")
+    hooks.stage_retrieve(object(), probe_state)
+
+    assert observed["kwargs"]["retrieval_score_threshold"] == runtime.RETRIEVAL_SCORE_THRESHOLD
+    assert "stage_retrieve_fn" not in observed["kwargs"]

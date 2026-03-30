@@ -47,7 +47,6 @@ from testbot.reflection_policy import CapabilityStatus, decide_fallback_action, 
 from testbot.answer_policy import AnswerPolicyInput, AnswerRoutingDecision, resolve_answer_mode, resolve_answer_routing
 from testbot.rerank import (
     has_sufficient_context_confidence_from_objective,
-    mix_source_evidence_with_memory_cards,
     rerank_docs_with_time_and_type_outcome,
 )
 from testbot.stage_transitions import (
@@ -638,37 +637,20 @@ def stage_retrieve(
     segment_ids: set[str] | None = None,
     segment_types: set[str] | None = None,
 ) -> tuple[PipelineState, list[tuple[Document, float]]]:
-    filter_scope = context_retrieval_runtime_service.normalize_retrieval_filter_scope(
+    updated_state, retrieval_candidates = context_retrieval_runtime_service.stage_retrieve_for_turn_service(
+        store,
+        state,
+        retrieval_score_threshold=RETRIEVAL_SCORE_THRESHOLD,
         exclude_doc_ids=exclude_doc_ids,
         exclude_source_ids=exclude_source_ids,
         exclude_turn_scoped_ids=exclude_turn_scoped_ids,
         segment_ids=segment_ids,
         segment_types=segment_types,
     )
-    raw_docs_and_scores = context_retrieval_runtime_service.search_memory_documents_for_retrieval(
-        store,
-        rewritten_query=state.rewritten_query,
-        filter_scope=filter_scope,
-        k=18,
-    )
-    docs_and_scores = mix_source_evidence_with_memory_cards(raw_docs_and_scores, top_k=12, source_quota=3)
-    retrieval_candidates = [doc_to_candidate_hit(doc, score) for doc, score in docs_and_scores]
-    retrieval_telemetry = {
-        "retrieval_candidates_considered": len(raw_docs_and_scores),
-        "retrieval_returned_top_k": len(docs_and_scores),
-        "retrieval_threshold": RETRIEVAL_SCORE_THRESHOLD,
-        "retrieval_exclude_doc_ids": sorted(filter_scope.exclude_doc_ids),
-        "retrieval_exclude_source_ids": sorted(filter_scope.exclude_source_ids),
-        "retrieval_exclude_turn_scoped_ids": sorted(filter_scope.exclude_turn_scoped_ids),
-        "retrieval_exclusion_invariant": "retrieve_stage_primary",
-        "retrieval_segment_ids": sorted(filter_scope.segment_ids),
-        "retrieval_segment_types": sorted(filter_scope.segment_types),
-    }
-    return replace(
-        state,
-        retrieval_candidates=retrieval_candidates,
-        confidence_decision={**state.confidence_decision, **retrieval_telemetry},
-    ), docs_and_scores
+    return updated_state, [
+        (context_retrieval_runtime_service.document_from_retrieval_input(record), float(record.score))
+        for record in retrieval_candidates
+    ]
 
 
 def _retrieval_input_from_document(doc: Document, *, score: float) -> RetrievalInputRecord:

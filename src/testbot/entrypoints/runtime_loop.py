@@ -164,7 +164,7 @@ def run_chat_loop(
         start_background_source_ingestion=_start_background_source_ingestion_for_turn_pipeline,
         stage_retrieve=lambda *args, **kwargs: context_retrieval_runtime_service.stage_retrieve_for_turn_service(
             *args,
-            stage_retrieve_fn=_legacy_runtime.stage_retrieve,
+            retrieval_score_threshold=RETRIEVAL_SCORE_THRESHOLD,
             **kwargs,
         ),
         stage_rerank=lambda *args, **kwargs: context_retrieval_runtime_service.stage_rerank_for_turn_service(
