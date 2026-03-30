@@ -301,11 +301,9 @@ def test_runtime_loop_monolith_touchpoints_are_allowlisted_for_deliberate_shrink
         "_minimal_confidence_decision_for_direct_answer",
         "_optional_string",
         "_selected_decision_from_confidence",
-        "_utc_now_iso",
         "_validate_and_log_transition",
         "append_pipeline_snapshot",
         "append_session_log",
-        "arrow",
         "generate_reflection_yaml",
         "stage_rerank",
         "stage_retrieve",
@@ -379,18 +377,19 @@ def test_runtime_loop_pending_ingestion_created_transition_uses_canonical_runtim
 ) -> None:
     from testbot.entrypoints import runtime_loop
 
-    transitions: list[dict[str, object]] = []
+    registrations: list[dict[str, object]] = []
     events: list[tuple[str, dict[str, object]]] = []
 
-    def _emit_transition(**kwargs):
-        transitions.append(kwargs)
+    def _register_pending(**kwargs):
+        registrations.append(kwargs)
+        return True
 
     monkeypatch.setattr(
         runtime,
         "_emit_obligation_transition",
         lambda **_kwargs: (_ for _ in ()).throw(AssertionError("legacy transition helper should not be called")),
     )
-    monkeypatch.setattr(runtime_loop, "emit_obligation_transition", _emit_transition)
+    monkeypatch.setattr(runtime_loop, "register_pending_ingestion_obligation", _register_pending)
     monkeypatch.setattr(runtime_loop, "poll_pending_ingestion_obligations", lambda **_kwargs: None)
     monkeypatch.setattr(runtime_loop, "process_background_ingestion_completion", lambda **_kwargs: ("", None, False))
     monkeypatch.setattr(runtime_loop, "emit_runtime_turn_telemetry", lambda **_kwargs: None)
@@ -434,9 +433,8 @@ def test_runtime_loop_pending_ingestion_created_transition_uses_canonical_runtim
         clock=SimpleNamespace(now=lambda: runtime.arrow.get("2026-03-10T11:00:00+00:00")),
     )
 
-    assert transitions
-    assert transitions[-1]["ingestion_request_id"] == "ingest-req-123"
-    assert transitions[-1]["status"] == "created"
+    assert registrations
+    assert registrations[-1]["pending_request_id"] == "ingest-req-123"
     assert events
 
 
@@ -2794,6 +2792,11 @@ def test_chat_loop_registers_pending_ingestion_context_by_request_id(monkeypatch
     monkeypatch.setattr(runtime, "generate_reflection_yaml", lambda *args, **kwargs: "claims: []")
     monkeypatch.setattr(runtime, "persist_promoted_context", lambda *args, **kwargs: [])
     monkeypatch.setattr(runtime_loop, "persist_answer_commit", lambda **kwargs: None)
+    monkeypatch.setattr(
+        runtime,
+        "_utc_now_iso",
+        lambda: (_ for _ in ()).throw(AssertionError("legacy _utc_now_iso should not be used for pending obligations")),
+    )
 
     def _pipeline(**kwargs):
         state = kwargs["state"]

@@ -169,3 +169,28 @@ Bounded seam reduction for assemble-stage special-answer authority.
 - **Still deferred in timestamp/snapshot cluster:** `_utc_now_iso` ownership for pending-obligation creation timestamps.
 - **Still deferred as separate plumbing seam:** `append_session_log` ownership retirement remains intentionally untouched.
 - **Next highest-weight seam after this slice:** `_utc_now_iso` current-time ISO helper authority for runtime/background-ingestion continuity-support paths.
+
+## 2026-03-30 follow-on update (post-#718 `_utc_now_iso` continuity-support sub-slice)
+### Step 1 inventory (before this slice)
+- **Runtime/background-ingestion support/control timing:** pending-ingestion obligation creation in `runtime_loop` still sourced `now_iso` from legacy `_legacy_runtime._utc_now_iso` and computed `deadline_at` through legacy-routed arrow access.
+- **Obligation bookkeeping timestamps:** `"created"` transitions for pending-ingestion obligations reused that legacy-generated timestamp pair (`created_at`, `last_polled_at`, `deadline_at`) for continuity bookkeeping.
+- **Support/control-only vs meaning-bearing semantics:** this seam was support/control timestamp authority (obligation tracking), not user-answer semantic meaning.
+
+### Step 2 bounded sub-slice selected
+- Selected first-priority seam: **pending-ingestion obligation creation current-time ISO helper ownership** for runtime/background-ingestion continuity support.
+- Canonicalized this into `testbot.entrypoints.runtime_background_ingestion.register_pending_ingestion_obligation(...)` so runtime-loop obligation creation no longer owns/requests `_utc_now_iso`.
+
+### Step 3 runtime/background-ingestion dependency reduction
+- `runtime_loop.run_chat_loop(...)` now delegates pending-ingestion registry creation + `"created"` transition emission to canonical runtime background-ingestion owner.
+- Canonical runtime/background-ingestion path no longer depends on `_legacy_runtime._utc_now_iso` (nor legacy arrow access) for this selected obligation-timestamp support path.
+- `append_session_log` ownership was intentionally left as-is through the existing dependency contract (separate plumbing seam).
+
+### Step 4 proof tests
+- Added direct canonical-owner test for `register_pending_ingestion_obligation(...)` proving canonical timestamp generation and transition emission behavior.
+- Strengthened runtime-loop proof by sabotaging legacy `_utc_now_iso` in the compatibility façade while verifying pending-ingestion context creation still succeeds through canonical runtime/background-ingestion ownership.
+- Updated runtime-loop monolith touchpoint allowlist to show `_utc_now_iso` and legacy `arrow` are no longer required runtime-loop dependencies.
+
+### Step 5 deferred scope after this slice
+- **Moved in this PR:** `_utc_now_iso` authority for runtime-loop pending-ingestion obligation timestamp creation (support/control seam).
+- **Still deferred in continuity-support/plumbing:** compatibility wrapper `_utc_now_iso` remains in monolith for legacy callers; `append_session_log` ownership retirement remains intentionally separate and untouched.
+- **Next highest-weight seam after this slice:** compatibility-retirement/plumbing seams around runtime background-ingestion logging ownership (with `append_session_log` still explicitly deferred unless inseparable).
