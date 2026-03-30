@@ -296,7 +296,6 @@ def test_runtime_loop_monolith_touchpoints_are_allowlisted_for_deliberate_shrink
     observed_symbols = set(re.findall(r"_legacy_runtime\.([A-Za-z_][A-Za-z0-9_]*)", source))
     allowed_symbols = {
         "BACKGROUND_INGESTION_OBLIGATION_TIMEOUT_SECONDS",
-        "_selected_decision_from_confidence",
         "_validate_and_log_transition",
         "append_pipeline_snapshot",
         "generate_reflection_yaml",
@@ -332,6 +331,15 @@ def test_runtime_loop_turn_policy_logic_hooks_use_canonical_logic_owner_not_mono
         "_ambiguity_score",
         lambda *_args, **_kwargs: (_ for _ in ()).throw(
             AssertionError("legacy _ambiguity_score should not be used by canonical runtime-loop hook/telemetry wiring")
+        ),
+    )
+    monkeypatch.setattr(
+        runtime,
+        "_selected_decision_from_confidence",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError(
+                "legacy _selected_decision_from_confidence should not be used by canonical runtime-loop hook assembly"
+            )
         ),
     )
 
@@ -376,6 +384,7 @@ def test_runtime_loop_turn_policy_logic_hooks_use_canonical_logic_owner_not_mono
     hooks = observed_hooks["hooks"]
     assert hooks.optional_string is turn_policy_logic.optional_string
     assert hooks.ambiguity_score is turn_policy_logic.ambiguity_score
+    assert hooks.selected_decision_from_confidence is turn_policy_logic.selected_decision_from_confidence
     assert observed_telemetry_ambiguity_helpers == [turn_policy_logic.ambiguity_score]
 
 

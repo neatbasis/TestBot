@@ -57,6 +57,7 @@ from testbot.observability.turn_debug_payload import build_debug_turn_payload, f
 from testbot.observability.session_log import append_session_log as append_runtime_session_log
 from testbot.logic.turn_policy import ambiguity_score as compute_turn_policy_ambiguity_score
 from testbot.logic.turn_policy import optional_string as coerce_optional_string
+from testbot.logic.turn_policy import selected_decision_from_confidence as project_selected_decision_from_confidence
 from testbot.policies.turn_policy import (
     INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD,
     RETRIEVAL_SCORE_THRESHOLD,
@@ -170,7 +171,7 @@ def run_chat_loop(
             stage_rerank_fn=_legacy_runtime.stage_rerank,
             **kwargs,
         ),
-        selected_decision_from_confidence=_legacy_runtime._selected_decision_from_confidence,
+        selected_decision_from_confidence=project_selected_decision_from_confidence,
         minimal_confidence_decision_for_direct_answer=partial(
             build_minimal_confidence_decision_for_direct_answer,
             retrieval_score_threshold=RETRIEVAL_SCORE_THRESHOLD,

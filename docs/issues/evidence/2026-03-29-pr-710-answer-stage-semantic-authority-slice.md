@@ -505,3 +505,34 @@ This pass is intentionally a **decision artifact**, not a broad implementation r
   - `_selected_decision_from_confidence`
   - `_validate_and_log_transition`
 - **P1 sequencing remains:** finish turn-policy split before opening retrieval/rerank policy-core bundle work (P2).
+
+## 2026-03-30 follow-on update (post-#727 selected decision projection extraction: `_selected_decision_from_confidence`)
+### Selected decision-projection seam
+- Selected helper: `_selected_decision_from_confidence`.
+- Responsibility validated as **turn-policy decision projection**:
+  - deterministic conversion from confidence payload metadata into typed `DecisionObject`,
+  - no lifecycle sequencing ownership,
+  - no logging sink ownership,
+  - no threshold-policy ownership beyond existing payload gate fields.
+
+### Why this seam
+- After #727, this was the smallest remaining clean P1 turn-policy residue ahead of `_validate_and_log_transition`, which remains a mixed invocation/logging seam.
+- The placement map already targeted this helper to `logic/` (or tiny adapter only if needed); inspection confirmed `logic/` alone is sufficient.
+
+### What changed
+- Canonical owner added in `testbot.logic.turn_policy`:
+  - `selected_decision_from_confidence(...)`.
+- Canonical runtime hook rebinding in `entrypoints/runtime_loop.py`:
+  - `RuntimeTurnPipelineHooks.selected_decision_from_confidence` now binds canonical logic owner directly.
+- Monolith compatibility helper retained as delegator only:
+  - `sat_chatbot_memory_v2._selected_decision_from_confidence(...)` now delegates to canonical logic owner (no duplicated logic).
+- `logic.decision_helpers.selected_decision_from_confidence(...)` now delegates to canonical `logic.turn_policy` owner to preserve import compatibility while consolidating authority.
+
+### Direct evidence
+- Runtime sabotage proof: legacy `_selected_decision_from_confidence` is forced to fail, yet canonical runtime hook assembly still succeeds by binding `logic.turn_policy.selected_decision_from_confidence`.
+- Compatibility proof: monolith `_selected_decision_from_confidence` wrapper delegates to canonical `logic.turn_policy` owner.
+- Runtime-loop monolith touchpoint allowlist updated to remove `_selected_decision_from_confidence` from canonical runtime dependencies.
+
+### Deferred P1 residue after this PR
+- **Primary remaining turn-policy residue:** `_validate_and_log_transition`.
+- P1 remains active until that mixed invocation/logging seam is split across `entrypoints/` + `observability/` (or equivalent repo-consistent ownership split).

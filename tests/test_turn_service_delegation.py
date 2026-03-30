@@ -89,3 +89,26 @@ def test_legacy_minimal_confidence_decision_delegates_to_canonical_policy_owner(
         "base_confidence_decision": base_confidence_decision,
         "retrieval_score_threshold": runtime.RETRIEVAL_SCORE_THRESHOLD,
     }
+
+
+def test_legacy_selected_decision_from_confidence_delegates_to_canonical_logic_owner(monkeypatch):
+    captured: dict[str, object] = {}
+
+    def _canonical_stub(payload):
+        captured["payload"] = payload
+        return {"delegated": True}
+
+    monkeypatch.setattr(runtime, "project_selected_decision_from_confidence", _canonical_stub)
+
+    payload = {
+        "allow_selected_decision_override": True,
+        "selected_decision_authority_stage": "policy",
+        "selected_decision_object": {
+            "decision_class": "ANSWER_FROM_MEMORY",
+            "retrieval_branch": "memory_retrieval",
+        },
+    }
+    result = runtime._selected_decision_from_confidence(payload)
+
+    assert result == {"delegated": True}
+    assert captured["payload"] is payload
