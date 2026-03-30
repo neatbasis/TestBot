@@ -424,3 +424,52 @@ This pass is intentionally a **decision artifact**, not a broad implementation r
 ### Decision checkpoint for follow-on PRs
 - Avoid “move as-is” extraction for mixed bundles.
 - Require each follow-on extraction PR to map moved functions to the target-home split above and preserve compatibility wrappers only as transitional façades.
+
+## 2026-03-30 follow-on update (post-#726 turn-policy logic sub-slice: `_optional_string` + `_ambiguity_score`)
+### Step 1 inventory (selected turn-policy sub-slice mapping)
+- **`logic/` candidates (selected in this PR):**
+  - `_optional_string`: deterministic normalization helper used when projecting optional classifier model/version metadata into `confidence_decision`.
+  - `_ambiguity_score`: deterministic decision-shape transform used by canonical turn-pipeline/telemetry paths to derive follow-up ambiguity signal.
+- **`policies/` (deferred in this PR):**
+  - `_intent_classifier_confidence`
+  - `_minimal_confidence_decision_for_direct_answer`
+- **`entrypoints/` + `observability/` transition seam (deferred in this PR):**
+  - `_validate_and_log_transition` remains a mixed invocation/logging boundary and was intentionally not selected while cleaner logic helpers were available.
+
+### Step 2 bounded sub-slice selected
+- Selected the **logic slice first**: `_optional_string` and `_ambiguity_score`.
+- This is the cleanest split-first move because both helpers are deterministic transforms with no ownership over lifecycle policy, runtime invocation, or logging sink decisions.
+
+### Step 3 canonical runtime dependency reduction
+- Added canonical logic owner: `testbot.logic.turn_policy` (`optional_string`, `ambiguity_score`).
+- `runtime_loop` now binds:
+  - `RuntimeTurnPipelineHooks.optional_string` from canonical logic owner.
+  - `RuntimeTurnPipelineHooks.ambiguity_score` from canonical logic owner.
+  - `RuntimeTurnTelemetryDependencies.ambiguity_score` from canonical logic owner.
+- Canonical runtime no longer depends on `sat_chatbot_memory_v2` for the selected logic sub-slice (`_optional_string`, `_ambiguity_score`).
+
+### Step 4 direct proof tests
+- Added runtime-loop proof that sabotages legacy `_optional_string` and `_ambiguity_score` and verifies canonical hook/telemetry wiring still uses `testbot.logic.turn_policy` owners.
+- Updated runtime-loop monolith-touchpoint allowlist to remove `_optional_string` and `_ambiguity_score`.
+- Added compatibility-wrapper proof that monolith `_optional_string` / `_ambiguity_score` wrappers still delegate and are compatibility-only.
+
+### Step 5 deferred turn-policy residue after this slice
+- **Moved in this PR:** logic sub-slice (`_optional_string`, `_ambiguity_score`) into canonical `logic/`.
+- **Still deferred in turn-policy helper bundle:**
+  - policy helpers: `_intent_classifier_confidence`, `_minimal_confidence_decision_for_direct_answer`,
+  - decision projection helper: `_selected_decision_from_confidence`,
+  - transition invocation/logging seam: `_validate_and_log_transition`.
+- **Compatibility posture:** wrappers for moved logic helpers remain in `sat_chatbot_memory_v2` as compatibility delegators only.
+- **Next best follow-on:** continue within the **turn-policy bundle** (policy helpers and/or transition split) before moving to retrieval/rerank policy-core extraction.
+
+### Compact remaining residue placement map (decision-first checkpoint after this logic slice)
+| Remaining residue item | Current canonical use site(s) | Responsibility class | Canonical destination (target owner) | Extraction shape guidance | Sequence priority |
+| --- | --- | --- | --- | --- | --- |
+| `_intent_classifier_confidence` | `runtime_loop` → `RuntimeTurnPipelineHooks.intent_classifier_confidence` | turn-policy | `policies/` | Extract as policy threshold/confidence helper; keep deterministic inputs/outputs and avoid mixing telemetry formatting. | P1 (inside turn-policy bundle) |
+| `_minimal_confidence_decision_for_direct_answer` | `runtime_loop` → `RuntimeTurnPipelineHooks.minimal_confidence_decision_for_direct_answer` | turn-policy | `policies/` | Extract with direct-answer floor semantics as policy-only owner; keep payload contract stable for current callers. | P1 (inside turn-policy bundle) |
+| `_selected_decision_from_confidence` | `runtime_loop` → `RuntimeTurnPipelineHooks.selected_decision_from_confidence` | turn-policy decision projection | `logic/` (or policy-core adapter if needed) | Isolate typed decision projection/conversion logic from runtime assembly; keep orchestration call signatures unchanged. | P1/P2 (finish turn-policy split before retrieval) |
+| `_validate_and_log_transition` | `runtime_loop` → `RuntimeTurnPipelineHooks.validate_and_log_transition` | lifecycle + observability-adjacent | `entrypoints/` + `observability/` split | Split invocation/assertion boundary from logging/emission formatting; do not relocate as one mixed helper. | P1 (turn-policy split) |
+| `stage_retrieve` | `runtime_loop` hook adapter (`stage_retrieve_for_turn_service`) | retrieval/rerank policy-core | `policies/` + `logic/` + `application/services/` | Split retrieval policy decisions from scoring/projection transforms; keep service wrapper as orchestration adapter only. | P2 |
+| `stage_rerank` | `runtime_loop` hook adapter (`stage_rerank_for_turn_service`) | retrieval/rerank policy-core | `policies/` + `logic/` + `application/services/` | Extract rerank threshold/profile policy separately from transform logic; avoid moving full callable bundle intact. | P2 |
+| `append_pipeline_snapshot` | `runtime_loop` ingest call-site | snapshot emission ownership | `observability/` + `entrypoints/` | Move emission schema/payload construction to observability; keep entrypoint responsible only for invocation timing. | P3 |
+| Compatibility façades (`run_chat_loop`, `append_session_log`, `_replay_background_completion_turn_compat`, presentation re-exports) | Legacy import paths and compatibility coverage | compatibility-only | compatibility-only wrappers | Freeze as wrappers; retire only after canonical blockers above are removed and cutoff policy is approved. | P4 (last) |

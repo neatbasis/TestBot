@@ -54,6 +54,8 @@ from testbot.domain import Clock
 from testbot.ports import MemoryStorePort
 from testbot.observability.turn_debug_payload import build_debug_turn_payload, format_debug_turn_trace_payload
 from testbot.observability.session_log import append_session_log as append_runtime_session_log
+from testbot.logic.turn_policy import ambiguity_score as compute_turn_policy_ambiguity_score
+from testbot.logic.turn_policy import optional_string as coerce_optional_string
 
 ChatMsg = dict[str, str]
 
@@ -142,7 +144,7 @@ def run_chat_loop(
         stage_rewrite_query=_legacy_runtime.stage_rewrite_query,
         generate_reflection_yaml=_legacy_runtime.generate_reflection_yaml,
         intent_classifier_confidence=_legacy_runtime._intent_classifier_confidence,
-        optional_string=_legacy_runtime._optional_string,
+        optional_string=coerce_optional_string,
         should_force_memory_retrieval_for_identity_recall=context_retrieval_runtime_service.should_force_memory_retrieval_for_identity_recall,
         resolve_context_fn=context_retrieval_runtime_service.resolve_context,
         intent_telemetry_payload=intent_telemetry_payload,
@@ -177,7 +179,7 @@ def run_chat_loop(
             document_from_retrieval_input=context_retrieval_runtime_service.document_from_retrieval_input,
         ),
         detect_capability_offer=answer_stage_runtime_service.detect_capability_offer,
-        ambiguity_score=_legacy_runtime._ambiguity_score,
+        ambiguity_score=compute_turn_policy_ambiguity_score,
         store_doc_fn=_legacy_runtime.store_doc,
         intent_classifier_confidence_threshold=_legacy_runtime.INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD,
         document_from_retrieval_input=context_retrieval_runtime_service.document_from_retrieval_input,
@@ -296,7 +298,7 @@ def run_chat_loop(
             deps=RuntimeTurnTelemetryDependencies(
                 append_session_log=append_runtime_session_log,
                 intent_telemetry_payload=intent_telemetry_payload,
-                ambiguity_score=_legacy_runtime._ambiguity_score,
+                ambiguity_score=compute_turn_policy_ambiguity_score,
                 user_followup_signal_proxy=user_followup_signal_proxy,
                 build_debug_turn_payload=build_debug_turn_payload,
                 format_debug_turn_trace_payload=format_debug_turn_trace_payload,
