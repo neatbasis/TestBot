@@ -2,7 +2,13 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from testbot.entrypoints.runtime_turn_telemetry import RuntimeTurnTelemetryDependencies, emit_runtime_turn_telemetry
+from testbot.entrypoints.runtime_turn_telemetry import (
+    RuntimeTurnTelemetryDependencies,
+    emit_runtime_turn_telemetry,
+    intent_telemetry_payload,
+    user_followup_signal_proxy,
+)
+from testbot.sat_chatbot_memory_v2 import _intent_telemetry_payload, _user_followup_signal_proxy
 
 
 class _AlignmentDecisionStub:
@@ -43,6 +49,7 @@ def _state() -> object:
         basis_statement="memory evidence",
         alignment_decision=_AlignmentDecisionStub(),
         resolved_intent="knowledge_question",
+        classified_intent="knowledge_question",
     )
 
 
@@ -86,3 +93,41 @@ def test_emit_runtime_turn_telemetry_emits_debug_trace_when_enabled() -> None:
 
     assert [event for event, _payload in events][-1] == "debug_turn_trace"
     assert sent == ["trace:True:True"]
+
+
+def test_intent_telemetry_payload_is_canonical_for_runtime_turn_telemetry() -> None:
+    state = _state()
+
+    payload = intent_telemetry_payload(
+        state=state,
+        utterance="What changed?",
+        extra={"ambiguity_score": 0.42},
+    )
+
+    assert payload == {
+        "intent": "knowledge_question",
+        "intent_classified": "knowledge_question",
+        "intent_resolved": "knowledge_question",
+        "utterance": "What changed?",
+        "ambiguity_score": 0.42,
+    }
+
+
+def test_sat_runtime_intent_payload_wrapper_matches_runtime_telemetry_owner() -> None:
+    state = _state()
+
+    assert _intent_telemetry_payload(state=state, utterance="U", extra={"x": 1}) == intent_telemetry_payload(
+        state=state,
+        utterance="U",
+        extra={"x": 1},
+    )
+
+
+def test_sat_runtime_followup_wrapper_matches_runtime_telemetry_owner() -> None:
+    kwargs = {
+        "final_answer": "I can disambiguate this with a quick follow-up question.",
+        "fallback_action": "NONE",
+        "ambiguity_score": 0.3,
+    }
+
+    assert _user_followup_signal_proxy(**kwargs) == user_followup_signal_proxy(**kwargs)

@@ -241,7 +241,9 @@ def test_runtime_loop_owner_uses_canonical_turn_pipeline_helper_not_monolith_tur
     assert "from testbot.entrypoints.runtime_background_ingestion import (" in source
     assert "from testbot.entrypoints.runtime_commit_persistence import (" in source
     assert "from testbot.entrypoints.runtime_turn_pipeline import RuntimeTurnPipelineHooks, run_runtime_turn_pipeline" in source
-    assert "from testbot.entrypoints.runtime_turn_telemetry import RuntimeTurnTelemetryDependencies, emit_runtime_turn_telemetry" in source
+    assert "from testbot.entrypoints.runtime_turn_telemetry import (" in source
+    assert "RuntimeTurnTelemetryDependencies" in source
+    assert "emit_runtime_turn_telemetry" in source
     assert "from testbot.application.services import answer_stage_runtime as answer_stage_runtime_service" in source
     assert "from testbot.application.services import answer_stage_presentation as answer_stage_presentation_service" in source
     assert "from testbot.application.services import context_retrieval_runtime as context_retrieval_runtime_service" in source
@@ -282,18 +284,14 @@ def test_runtime_loop_monolith_touchpoints_are_allowlisted_for_deliberate_shrink
         "SourceIngestor",
         "_ClockBackedSnapshotTimeProvider",
         "_ambiguity_score",
-        "_build_debug_turn_payload",
         "_build_source_connector",
         "_emit_obligation_transition",
-        "_format_debug_turn_trace_payload",
         "_intent_classifier_confidence",
-        "_intent_telemetry_payload",
         "_is_capabilities_help_answer",
         "_minimal_confidence_decision_for_direct_answer",
         "_optional_string",
         "_run_canonical_turn_pipeline",
         "_selected_decision_from_confidence",
-        "_user_followup_signal_proxy",
         "_utc_now_iso",
         "_validate_and_log_transition",
         "append_pipeline_snapshot",

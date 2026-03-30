@@ -28,7 +28,12 @@ from testbot.entrypoints.runtime_background_ingestion import (
     poll_background_source_ingestion,
 )
 from testbot.entrypoints.runtime_turn_pipeline import RuntimeTurnPipelineHooks, run_runtime_turn_pipeline
-from testbot.entrypoints.runtime_turn_telemetry import RuntimeTurnTelemetryDependencies, emit_runtime_turn_telemetry
+from testbot.entrypoints.runtime_turn_telemetry import (
+    RuntimeTurnTelemetryDependencies,
+    emit_runtime_turn_telemetry,
+    intent_telemetry_payload,
+    user_followup_signal_proxy,
+)
 from testbot.entrypoints.runtime_commit_persistence import (
     RuntimeCommitPersistenceDependencies,
     answer_commit_persistence as persist_answer_commit,
@@ -39,6 +44,7 @@ from testbot.application.services import answer_stage_presentation as answer_sta
 from testbot import sat_chatbot_memory_v2 as _legacy_runtime
 from testbot.domain import Clock
 from testbot.ports import MemoryStorePort
+from testbot.observability.turn_debug_payload import build_debug_turn_payload, format_debug_turn_trace_payload
 
 ChatMsg = dict[str, str]
 
@@ -171,7 +177,7 @@ def run_chat_loop(
                 optional_string=_legacy_runtime._optional_string,
                 should_force_memory_retrieval_for_identity_recall=context_retrieval_runtime_service.should_force_memory_retrieval_for_identity_recall,
                 resolve_context_fn=context_retrieval_runtime_service.resolve_context,
-                intent_telemetry_payload=_legacy_runtime._intent_telemetry_payload,
+                intent_telemetry_payload=intent_telemetry_payload,
                 poll_background_source_ingestion=lambda **kwargs: poll_background_source_ingestion(
                     deps=background_ingestion_deps,
                     **kwargs,
@@ -224,11 +230,11 @@ def run_chat_loop(
             send_assistant_text=send_assistant_text,
             deps=RuntimeTurnTelemetryDependencies(
                 append_session_log=_legacy_runtime.append_session_log,
-                intent_telemetry_payload=_legacy_runtime._intent_telemetry_payload,
+                intent_telemetry_payload=intent_telemetry_payload,
                 ambiguity_score=_legacy_runtime._ambiguity_score,
-                user_followup_signal_proxy=_legacy_runtime._user_followup_signal_proxy,
-                build_debug_turn_payload=_legacy_runtime._build_debug_turn_payload,
-                format_debug_turn_trace_payload=_legacy_runtime._format_debug_turn_trace_payload,
+                user_followup_signal_proxy=user_followup_signal_proxy,
+                build_debug_turn_payload=build_debug_turn_payload,
+                format_debug_turn_trace_payload=format_debug_turn_trace_payload,
             ),
         )
 

@@ -516,16 +516,11 @@ def _intent_telemetry_payload(
     utterance: str | None = None,
     extra: dict[str, object] | None = None,
 ) -> dict[str, object]:
-    payload: dict[str, object] = {
-        "intent": state.resolved_intent,
-        "intent_classified": state.classified_intent,
-        "intent_resolved": state.resolved_intent,
-    }
-    if utterance is not None:
-        payload["utterance"] = utterance
-    if extra:
-        payload.update(extra)
-    return payload
+    """Compatibility wrapper; canonical owner is runtime_turn_telemetry.intent_telemetry_payload."""
+
+    from testbot.entrypoints.runtime_turn_telemetry import intent_telemetry_payload as _intent_telemetry_payload_owner
+
+    return _intent_telemetry_payload_owner(state=state, utterance=utterance, extra=extra)
 
 
 def doc_to_candidate_hit(doc: Document, score: float) -> CandidateHit:
@@ -948,13 +943,15 @@ def _ambiguity_score(confidence_decision: dict[str, object]) -> float:
 
 
 def _user_followup_signal_proxy(*, final_answer: str, fallback_action: str, ambiguity_score: float) -> float:
-    if final_answer in {CLARIFY_ANSWER, ROUTE_TO_ASK_ANSWER}:
-        return 1.0
-    if fallback_action in {"ASK_CLARIFYING_QUESTION", "ROUTE_TO_ASK"}:
-        return 0.9
-    if fallback_action == "OFFER_CAPABILITY_ALTERNATIVES":
-        return round(max(0.2, ambiguity_score), 4)
-    return round(max(0.0, ambiguity_score * 0.5), 4)
+    """Compatibility wrapper; canonical owner is runtime_turn_telemetry.user_followup_signal_proxy."""
+
+    from testbot.entrypoints.runtime_turn_telemetry import user_followup_signal_proxy as _user_followup_signal_proxy_owner
+
+    return _user_followup_signal_proxy_owner(
+        final_answer=final_answer,
+        fallback_action=fallback_action,
+        ambiguity_score=ambiguity_score,
+    )
 
 
 def _derive_response_blocker_reason(
