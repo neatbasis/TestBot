@@ -232,7 +232,7 @@ def run_chat_loop(
             send_assistant_text("I heard silence. Try again.")
             continue
 
-        _legacy_runtime.append_session_log(
+        append_runtime_session_log(
             "user_utterance_ingest",
             {
                 "channel": io_channel,

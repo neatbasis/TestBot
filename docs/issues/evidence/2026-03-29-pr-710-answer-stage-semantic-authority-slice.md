@@ -339,3 +339,37 @@ Bounded seam reduction for assemble-stage special-answer authority.
   - compatibility façade exposure of `sat_chatbot_memory_v2.append_session_log` remains for legacy callers.
 - **Compatibility wrapper posture:** wrappers remain compatibility-only; canonical runtime hook bundle no longer depends on legacy logger ownership for this selected slice.
 - **Next highest-weight seam after this slice:** direct runtime-loop user-ingest logging ownership retirement (with compatibility façade exposure still intentionally separate).
+
+## 2026-03-30 follow-on update (post-#723 `sat_chatbot_memory_v2` retirement inventory + reduction pass)
+### Retirement inventory
+| Surface from `sat_chatbot_memory_v2` | Current use site(s) | Classification | Canonical replacement | Recommended action | Blocker | Removed in this PR |
+| --- | --- | --- | --- | --- | --- | --- |
+| `append_session_log` (direct user-ingest call) | `runtime_loop.run_chat_loop` user utterance ingest event | canonical runtime (before this PR) | `testbot.observability.session_log.append_session_log` | retire now | none | yes |
+| `append_session_log` (compatibility export) | legacy imports (`testbot.sat_chatbot_memory_v2.append_session_log`) + compat tests | compatibility-only | `testbot.observability.session_log.append_session_log` | compatibility-only retain | external callers may still import legacy path | no |
+| `_replay_background_completion_turn_compat` | compatibility façade background-ingestion dependency bundle inside `sat_chatbot_memory_v2` | compatibility-only | `runtime_loop._replay_background_completion_turn` + `run_runtime_turn_pipeline` | compatibility-only retain (short term) | still used by monolith compatibility `run_chat_loop` wrapper path | no |
+| `run_chat_loop` (monolith export) | legacy compatibility entrypoint usage/tests | compatibility-only | `testbot.entrypoints.runtime_loop.run_chat_loop` | compatibility-only retain | external imports + compatibility contract tests | no |
+| Retrieval/rerank policy helpers (`stage_retrieve`, `stage_rerank`) | canonical runtime loop hook wiring delegates through context-retrieval service | canonical runtime | no full canonical policy-core owner yet (service adapter exists) | backlog-worthy missing canonical capability owner | policy-core extraction not complete | no |
+| Turn-policy helpers (`_validate_and_log_transition`, `_intent_classifier_confidence`, `_selected_decision_from_confidence`, `_minimal_confidence_decision_for_direct_answer`, `_optional_string`, `_ambiguity_score`) | canonical runtime loop hook/telemetry wiring | canonical runtime | partial canonical owners exist, but this bundle still monolith-hosted | backlog-worthy missing canonical capability owner | policy/control helper extraction incomplete | no |
+| `append_pipeline_snapshot` | canonical runtime loop ingest snapshot emission | canonical runtime | no dedicated canonical snapshot-emission owner yet | backlog-worthy missing canonical capability owner | snapshot emission function still monolith-hosted | no |
+
+### What was retired in this PR
+- Canonical runtime-loop user-ingest logging no longer calls `_legacy_runtime.append_session_log(...)`; it now calls canonical `testbot.observability.session_log.append_session_log` directly.
+- This removes the final runtime-loop logger callsite that still sourced selected canonical runtime logging authority from monolith `append_session_log`.
+
+### What remains compatibility-only
+- `sat_chatbot_memory_v2.append_session_log` remains as a compatibility façade for legacy importers.
+- `sat_chatbot_memory_v2.run_chat_loop` and `_replay_background_completion_turn_compat` remain compatibility-only wrappers delegating to canonical runtime owners.
+
+### What still has unique value (backlog-worthy)
+- **Context retrieval/rerank policy-core extraction:** canonical runtime currently delegates to monolith `stage_retrieve`/`stage_rerank` callables via canonical adapters, so a dedicated canonical policy-core owner is still needed.
+- **Turn-policy decision helper extraction:** runtime hook + telemetry still rely on monolith helpers for transition validation and confidence/ambiguity helper bundle.
+- **Snapshot emission helper extraction:** `append_pipeline_snapshot` still carries runtime snapshot event emission behavior not yet relocated to a canonical owner.
+
+### Residual blocker list (for deleting `sat_chatbot_memory_v2`)
+1. Canonical runtime still imports the retrieval/rerank policy-core bundle (`stage_retrieve`, `stage_rerank`).
+2. Canonical runtime still imports the turn-policy helper bundle (`_validate_and_log_transition`, confidence/decision helpers, `_ambiguity_score`).
+3. Canonical runtime still imports snapshot emission helper `append_pipeline_snapshot`.
+4. Compatibility façades (`run_chat_loop`, `append_session_log`, replay wrapper) are still intentionally exposed for legacy callers.
+
+### Closeness-to-deletion status
+- After this PR, `sat_chatbot_memory_v2` is closer to disposable status: canonical runtime-loop logging ownership no longer depends on monolith `append_session_log`, and remaining runtime dependencies are concentrated into a shorter explicit policy/snapshot helper list plus compatibility façades.
