@@ -90,3 +90,29 @@ Bounded seam reduction for assemble-stage special-answer authority.
 - **Reduced in this PR:** runtime-loop telemetry payload/follow-up proxy/debug payload routing no longer depends on `_legacy_runtime` semantic ownership.
 - **Still deferred in telemetry/logging cluster:** canonicalization of runtime-loop `append_session_log` ownership remains separate from this slice.
 - **Next remaining cluster after this slice:** background-ingestion dependency authority (`_build_source_connector`, `SourceIngestor`, `_run_canonical_turn_pipeline`, `PipelineState`, `IntentType`) and state-continuity/unresolved-intent authority.
+
+## 2026-03-30 follow-on update (post-#715 continuity/unresolved-intent semantic authority slice)
+### Step 1 inventory (before this slice)
+- **Answer-category interpretation authority (semantic):** runtime loop unresolved-intent carryover still depended on legacy answer-category helpers (`is_clarification_answer`, `_is_capabilities_help_answer`) to decide whether to preserve prior unresolved intent.
+- **Unresolved-intent carryover authority (semantic):** user-turn and replay-turn continuity outcomes were shaped by legacy-routed answer classification semantics rather than a canonical continuity policy owner.
+- **Timestamp/snapshot continuity support (deferred for this slice):** `_ClockBackedSnapshotTimeProvider` and `_utc_now_iso` remained legacy-routed helpers supporting snapshot/obligation timestamps.
+- **Pure plumbing (separate deferred seam):** `append_session_log` ownership remained deferred and intentionally outside this semantic slice.
+
+### Bounded sub-slice selected
+- Selected first-priority seam: **unresolved-intent carryover authority**.
+- Canonicalized continuity semantics by introducing a runtime-owned continuity policy helper (`testbot.application.services.continuity_runtime`) that classifies continuity-preserving answers and applies unresolved-intent carryover updates.
+- Capabilities-help continuity classification now prefers canonical structured intent (`resolved_intent == capabilities_help`) and keeps a text-shape check only as an explicitly transitional compatibility heuristic when structured intent is missing.
+
+### What moved in this PR
+- Runtime user-turn unresolved-intent carryover in `runtime_loop` no longer calls legacy `is_clarification_answer(...)` / `_is_capabilities_help_answer(...)`; it now uses canonical `apply_unresolved_intent_carryover(...)`.
+- Background-completion replay completion processing now applies the same canonical unresolved-intent carryover policy before emitting/committing replayed answers.
+- Legacy compatibility wrappers remain, but canonical runtime/background-completion continuity behavior no longer depends on `_legacy_runtime` for this selected semantic decision.
+- Legacy `_is_capabilities_help_answer(...)` remains compatibility-only and now delegates to canonical continuity owner logic.
+
+### What remains deferred inside the continuity cluster
+- Timestamp/snapshot continuity-support helpers (`_ClockBackedSnapshotTimeProvider`, `_utc_now_iso`) are intentionally left untouched in this bounded slice.
+- Obligation transition emission helper wiring remains transitional around runtime-loop assembly.
+- `append_session_log` ownership retirement remains a separate plumbing seam and was not mixed into this semantic slice.
+
+### Highest-weight next seam after this slice
+- Remaining highest-weight continuity-adjacent seam is **timestamp/snapshot continuity-support authority + obligation-transition helper ownership** (while keeping deferred `append_session_log` retirement separate unless inseparable).

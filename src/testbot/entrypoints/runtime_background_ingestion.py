@@ -16,6 +16,7 @@ import arrow
 from langchain_ollama import ChatOllama
 
 from testbot.application.services import background_ingestion_runtime as background_ingestion_runtime_service
+from testbot.application.services import continuity_runtime as continuity_runtime_service
 from testbot.application.services.background_ingestion_runtime import BackgroundIngestionReplayRequest
 from testbot.pipeline_state import PipelineState
 from testbot.ports import MemoryStorePort
@@ -165,6 +166,7 @@ def process_background_ingestion_completion(
         append_session_log=deps.append_session_log,
         format_background_ingestion_completion_message=format_background_ingestion_completion_message,
         replay_background_completion_turn=deps.replay_background_completion_turn,
+        apply_unresolved_intent_carryover=continuity_runtime_service.apply_unresolved_intent_carryover,
         answer_commit_persistence=deps.answer_commit_persistence,
     )
 

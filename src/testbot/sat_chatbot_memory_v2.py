@@ -175,6 +175,7 @@ from testbot.logic.decision_helpers import (
 )
 from testbot.application.services import background_ingestion_runtime as background_ingestion_runtime_service
 from testbot.application.services import answer_stage_runtime as answer_stage_runtime_service
+from testbot.application.services import continuity_runtime as continuity_runtime_service
 from testbot.answer_contract_constants import (
     ASSIST_ALTERNATIVES_ANSWER,
     CLARIFY_ANSWER,
@@ -908,8 +909,7 @@ def _is_capabilities_help_request(intent: IntentType) -> bool:
 
 
 def _is_capabilities_help_answer(text: str) -> bool:
-    normalized = (text or "").strip().lower()
-    return normalized.startswith("runtime mode:") and "memory recall:" in normalized and "home assistant" in normalized
+    return continuity_runtime_service.is_capabilities_help_answer(text)
 
 
 def _detect_capability_offer(text: str) -> str:

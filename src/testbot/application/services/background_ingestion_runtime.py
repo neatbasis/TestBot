@@ -261,6 +261,7 @@ def process_background_ingestion_completion(
     append_session_log: Callable[[str, dict[str, object]], None],
     format_background_ingestion_completion_message: Callable[..., str],
     replay_background_completion_turn: Callable[[BackgroundIngestionReplayRequest], Any],
+    apply_unresolved_intent_carryover: Callable[[Any], Any],
     answer_commit_persistence: Callable[..., None],
 ) -> tuple[str, Any, bool]:
     poll_result = poll_background_source_ingestion(runtime=runtime)
@@ -333,6 +334,7 @@ def process_background_ingestion_completion(
             turn_id=continuation_turn_id,
         )
     )
+    regenerated_state = apply_unresolved_intent_carryover(regenerated_state)
     send_assistant_text(regenerated_state.final_answer)
     append_session_log(
         "source_ingest_completion_answer_emitted",
