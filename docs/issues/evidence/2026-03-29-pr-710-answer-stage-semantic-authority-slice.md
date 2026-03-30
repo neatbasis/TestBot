@@ -318,6 +318,60 @@ Bounded seam reduction for assemble-stage special-answer authority.
 - Selected seam: **turn-pipeline hook logging ownership bundle**:
   - `RuntimeTurnPipelineHooks.append_session_log`,
   - answer-assemble injected logger inside runtime hook assembly.
+
+## 2026-03-30 follow-on update (post-#730, P2 contextualization + first retrieve-policy extraction)
+### Selected P2 seam
+- Selected retrieve-policy sub-slice: **identity-recall retrieval-branch coherence policy + retrieve execution profile policy materialization** for `retrieve.evidence`.
+- Concrete ownership move:
+  - identity-recall forced-memory retrieval decision moved to canonical `policies/retrieve_evidence_policy.py`,
+  - retrieval execution profile constants (`search_top_k`, projection `top_k`, projection `source_quota`) moved behind canonical retrieve-policy construction.
+
+### Why this seam
+- This seam is the highest-confidence bounded retrieve-policy extraction remaining in `stage_retrieve` residue after #730 because it directly controls retrieve-branch behavior under discourse continuity signals (identity recall) and retrieve-stage selection profile, while staying independent of rerank scorer internals.
+- It advances P2 without broad-moving `stage_retrieve`/`stage_rerank` bundles and keeps deterministic projection and orchestration separated per the residue-map guidance.
+
+### P2 context classification (post-#730 inspection before this slice)
+- **Retrieve-only policy**
+  - identity-recall forced-memory retrieval branch selection coherence (`who am i`/`what is my name` + continuity anchors),
+  - retrieval execution profile values controlling retrieve-stage candidate breadth (`search_top_k`) and projection policy (`top_k`, `source_quota`).
+- **Rerank-only policy**
+  - rerank threshold profile policy (`top_final_score_min`, margin policy, ambiguity override flags),
+  - rerank invocation profile policy (`sigma_seconds`, rerank `top_k`, near-tie delta, exclusion policy).
+- **Shared retrieval/rerank policy**
+  - candidate exclusion boundary policy across retrieve/rerank surfaces (`exclude_doc_ids`, `exclude_source_ids`, turn-scoped exclusions),
+  - confidence-policy seam alignment between retrieve-branch selection and rerank confidence interpretation.
+- **Deterministic transform/projection**
+  - retrieve deterministic projection/telemetry shaping in `logic.retrieval_projection.project_retrieval_stage_outputs(...)`,
+  - rerank scorer-request normalization and confidence projection payload shaping helpers in `context_retrieval_runtime` (deterministic structuring, not policy selection).
+- **Application/service orchestration**
+  - runtime hook wiring and collaborator invocation sequencing in `runtime_loop` + `runtime_turn_pipeline`,
+  - retrieve/rerank service wrappers adapting between `Document` and `RetrievalInputRecord` contracts.
+
+### What changed in this slice
+- Added canonical retrieve-policy owner module `testbot.policies.retrieve_evidence_policy`:
+  - `should_force_memory_retrieval_for_identity_recall(...)`,
+  - `RetrieveEvidenceExecutionPolicy`,
+  - `default_retrieve_evidence_execution_policy(...)`.
+- Rewired `context_retrieval_runtime.should_force_memory_retrieval_for_identity_recall(...)` to delegate policy decisions to the new canonical retrieve-policy owner.
+- Rewired `context_retrieval_runtime.stage_retrieve_for_turn_service(...)` canonical path to source retrieve execution-profile values from the new policy owner (search breadth + projection selection profile), while keeping deterministic projection in `logic`.
+- Retained compatibility wrappers in `sat_chatbot_memory_v2` (delegator posture unchanged).
+
+### Proof (sabotage + compatibility + contextualization evidence)
+- Added canonical-path policy-owner test proving context-retrieval service delegates identity-recall policy decisions to `policies.retrieve_evidence_policy`.
+- Added canonical retrieve service test proving retrieve execution profile (`search_top_k`, projection `top_k`, `source_quota`) is policy-owned and consumed by canonical service/runtime path.
+- Added sabotage proof: sabotaging legacy monolith `_should_force_memory_retrieval_for_identity_recall` does not break canonical retrieve-policy execution path.
+- Compatibility proof remains explicit: monolith `_should_force_memory_retrieval_for_identity_recall` wrapper still delegates to canonical context-retrieval service owner.
+- This evidence note section now classifies remaining P2 residue by responsibility class to guide next slices.
+
+### Remaining P2 residue after this slice
+- **Retrieve-only policy residue**
+  - deeper retrieval filter-scope policy decomposition from orchestration normalization where needed.
+- **Shared retrieval/rerank policy residue**
+  - explicit shared exclusion-policy owner seam (if extraction is required beyond current normalized scope adapter).
+- **Rerank-only policy residue (largest)**
+  - threshold/profile policy extraction completion and follow-on deterministic transform split in `stage_rerank` path.
+- **Next intended P2 follow-on**
+  - extract rerank threshold/profile policy ownership into canonical `policies/` as the next bounded seam while keeping scorer transforms deterministic and orchestration-only wrappers in services.
 - Scope intentionally excluded generic hook redesign and broad runtime logging cleanup.
 
 ### Step 3 runtime hook dependency reduction

@@ -10,6 +10,7 @@ from testbot.pipeline_state import CandidateFactsArtifact, CandidateHit, Pipelin
 from testbot.evidence_retrieval import RetrievalInputRecord
 from testbot.ports import MemorySearchQuery, PortDocument, ScoredPortDocument
 from testbot.logic.retrieval_projection import RetrievalStageProjection
+from testbot.policies.retrieve_evidence_policy import RetrieveEvidenceExecutionPolicy
 
 
 def test_should_force_memory_retrieval_for_identity_recall_true_on_commit_anchor() -> None:
@@ -38,6 +39,28 @@ def test_should_force_memory_retrieval_for_identity_recall_false_for_non_recall_
         continuity_evidence=(),
         context_history_anchors=(),
     )
+
+
+def test_should_force_memory_retrieval_for_identity_recall_service_delegates_to_policy_owner(monkeypatch) -> None:
+    observed: dict[str, object] = {}
+
+    def _fake_policy(**kwargs):
+        observed.update(kwargs)
+        return True
+
+    monkeypatch.setattr(
+        context_retrieval_runtime.retrieve_evidence_policy,
+        "should_force_memory_retrieval_for_identity_recall",
+        _fake_policy,
+    )
+
+    assert context_retrieval_runtime.should_force_memory_retrieval_for_identity_recall(
+        utterance="who am i?",
+        prior_state=None,
+        continuity_evidence=("commit.confirmed_user_facts:user_name",),
+        context_history_anchors=(),
+    )
+    assert observed["utterance"] == "who am i?"
 
 
 def test_retrieval_input_document_conversion_round_trip() -> None:
@@ -96,6 +119,11 @@ def test_stage_retrieve_for_turn_service_canonical_path_uses_retrieval_projectio
 
     monkeypatch.setattr(context_retrieval_runtime, "search_memory_documents_for_retrieval", _fake_search)
     monkeypatch.setattr(context_retrieval_runtime, "project_retrieval_stage_outputs", _fake_projection)
+    monkeypatch.setattr(
+        context_retrieval_runtime.retrieve_evidence_policy,
+        "default_retrieve_evidence_execution_policy",
+        lambda: RetrieveEvidenceExecutionPolicy(search_top_k=22, projection_top_k=9, projection_source_quota=2),
+    )
 
     next_state, hits = context_retrieval_runtime.stage_retrieve_for_turn_service(
         object(),
@@ -105,7 +133,10 @@ def test_stage_retrieve_for_turn_service_canonical_path_uses_retrieval_projectio
     )
 
     assert observed["search"]["rewritten_query"] == "who am i?"
+    assert observed["search"]["k"] == 22
     assert observed["projection"]["retrieval_score_threshold"] == 0.15
+    assert observed["projection"]["top_k"] == 9
+    assert observed["projection"]["source_quota"] == 2
     assert next_state.retrieval_candidates[0].doc_id == "doc-8"
     assert next_state.confidence_decision["retrieval_returned_top_k"] == 1
     assert hits[0].ref_id == "doc-8"

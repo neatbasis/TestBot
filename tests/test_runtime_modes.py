@@ -20,6 +20,7 @@ from testbot.interaction_standards import InteractionRequirements
 from testbot.entrypoints import sat_runtime_modes
 from testbot.runtime_capability_service import resolve_mode
 from testbot.runtime_cli_args import parse_args
+from testbot.application.services import context_retrieval_runtime
 from testbot.sat_chatbot_memory_v2 import CLARIFY_ANSWER, resolve_turn_intent
 from testbot import sat_chatbot_memory_v2 as runtime
 import testbot.runtime_capability_service as runtime_capability_service
@@ -199,6 +200,20 @@ def test_monolith_run_chat_loop_delegates_to_runtime_loop_owner(monkeypatch: pyt
 
     assert captured["io_channel"] == "cli"
     assert captured["near_tie_delta"] == 0.3
+
+
+def test_canonical_retrieve_policy_path_is_independent_from_legacy_monolith_helper(monkeypatch: pytest.MonkeyPatch) -> None:
+    def _legacy_sabotage(*_args, **_kwargs):
+        raise AssertionError("legacy helper must not be required for canonical retrieve-policy path")
+
+    monkeypatch.setattr(runtime, "_should_force_memory_retrieval_for_identity_recall", _legacy_sabotage)
+
+    assert context_retrieval_runtime.should_force_memory_retrieval_for_identity_recall(
+        utterance="who am i?",
+        prior_state=runtime.PipelineState(user_input="my name is sam"),
+        continuity_evidence=("commit.confirmed_user_facts:user_name",),
+        context_history_anchors=(),
+    )
 
 
 def test_legacy_runtime_main_warns_once_and_delegates_to_cli(monkeypatch: pytest.MonkeyPatch) -> None:
