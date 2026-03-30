@@ -171,10 +171,10 @@ from testbot.logic.decision_helpers import (
     decision_object_from_assembled as _decision_object_from_fallback_action,
     resolve_answer_routing_for_stage as _resolve_answer_routing_for_stage_service,
     resolve_answer_routing_from_decision_object as _resolve_answer_routing_from_decision_object_service,
-    selected_decision_from_confidence as _selected_decision_from_confidence_service,
 )
 from testbot.logic.turn_policy import ambiguity_score as compute_turn_policy_ambiguity_score
 from testbot.logic.turn_policy import optional_string as coerce_optional_string
+from testbot.logic.turn_policy import selected_decision_from_confidence as project_selected_decision_from_confidence
 from testbot.policies import turn_policy as turn_policy_policies
 from testbot.application.services import background_ingestion_runtime as background_ingestion_runtime_service
 from testbot.application.services import answer_stage_runtime as answer_stage_runtime_service
@@ -1111,7 +1111,7 @@ def _resolve_answer_routing_from_decision_object(
 
 
 def _selected_decision_from_confidence(confidence_decision: dict[str, object]) -> DecisionObject | None:
-    return _selected_decision_from_confidence_service(confidence_decision)
+    return project_selected_decision_from_confidence(confidence_decision)
 
 def _resolve_answer_routing_for_stage(
     state: PipelineState,

@@ -5,6 +5,7 @@ from typing import Mapping
 
 from testbot.answer_policy import AnswerPolicyInput, AnswerRoutingDecision, resolve_answer_routing
 from testbot.intent_router import IntentType, classify_intent
+from testbot.logic.turn_policy import selected_decision_from_confidence as project_selected_decision_from_confidence
 from testbot.pipeline_state import PipelineState
 from testbot.policy_decision import DecisionClass, DecisionObject, DecisionReasoning
 from testbot.reflection_policy import CapabilityStatus
@@ -21,46 +22,7 @@ def _authority_rank(stage: str) -> int:
 
 
 def selected_decision_from_confidence(confidence_decision: Mapping[str, object]) -> DecisionObject | None:
-    """Return a policy-stage DecisionObject only when explicit override gating is enabled.
-
-    Authority precedence is canonical and monotonic: policy -> assemble -> validate -> commit.
-    Confidence payloads are pre-policy hints and MUST NOT silently override routing once any
-    authoritative stage decision exists. This helper therefore requires explicit gating:
-
-    * `allow_selected_decision_override` must be True
-    * `selected_decision_authority_stage` must be "policy"
-
-    Without both controls, the payload is treated as non-authoritative and ignored.
-    """
-
-    allow_override = bool(confidence_decision.get("allow_selected_decision_override", False))
-    authority_stage = str(confidence_decision.get("selected_decision_authority_stage") or "").strip().lower()
-    if not allow_override or authority_stage != "policy":
-        return None
-
-    raw = confidence_decision.get("selected_decision_object")
-    if not isinstance(raw, dict):
-        return None
-    decision_class_value = str(raw.get("decision_class") or "").strip()
-    retrieval_branch = str(raw.get("retrieval_branch") or "").strip()
-    if not decision_class_value or not retrieval_branch:
-        return None
-    try:
-        decision_class = DecisionClass(decision_class_value)
-    except ValueError:
-        return None
-    reasoning = raw.get("reasoning")
-    if not isinstance(reasoning, Mapping):
-        reasoning = {}
-    normalized_reasoning = DecisionReasoning.from_mapping({str(key): value for key, value in reasoning.items()}).to_dict()
-    normalized_reasoning["authority_stage"] = "policy"
-    normalized_reasoning["authority_source"] = "confidence_payload"
-    return DecisionObject(
-        decision_class=decision_class,
-        retrieval_branch=retrieval_branch,
-        rationale=str(raw.get("rationale") or "selected_decision_policy_override"),
-        reasoning=normalized_reasoning,
-    )
+    return project_selected_decision_from_confidence(confidence_decision)
 
 
 def resolve_answer_routing_from_decision_object(
