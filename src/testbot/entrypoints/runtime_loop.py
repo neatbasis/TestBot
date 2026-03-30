@@ -22,6 +22,7 @@ from langchain_ollama import ChatOllama
 from testbot.adapters.ha_satellite_output import send_satellite_output
 from testbot.entrypoints.runtime_background_ingestion import (
     RuntimeBackgroundIngestionDependencies,
+    emit_obligation_transition,
     poll_pending_ingestion_obligations,
     process_background_ingestion_completion,
     start_background_source_ingestion,
@@ -326,7 +327,8 @@ def run_chat_loop(
                     "deadline_at": deadline_at,
                     "status": "pending",
                 }
-                _legacy_runtime._emit_obligation_transition(
+                emit_obligation_transition(
+                    deps=background_ingestion_deps,
                     ingestion_request_id=pending_request_id,
                     status="created",
                     created_at=now_iso,

@@ -298,7 +298,6 @@ def test_runtime_loop_monolith_touchpoints_are_allowlisted_for_deliberate_shrink
         "INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD",
         "_ClockBackedSnapshotTimeProvider",
         "_ambiguity_score",
-        "_emit_obligation_transition",
         "_intent_classifier_confidence",
         "_minimal_confidence_decision_for_direct_answer",
         "_optional_string",
@@ -315,6 +314,72 @@ def test_runtime_loop_monolith_touchpoints_are_allowlisted_for_deliberate_shrink
         "store_doc",
     }
     assert observed_symbols == allowed_symbols
+
+
+def test_runtime_loop_pending_ingestion_created_transition_uses_canonical_runtime_background_ingestion_owner(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from testbot.entrypoints import runtime_loop
+
+    transitions: list[dict[str, object]] = []
+    events: list[tuple[str, dict[str, object]]] = []
+
+    def _emit_transition(**kwargs):
+        transitions.append(kwargs)
+
+    monkeypatch.setattr(
+        runtime,
+        "_emit_obligation_transition",
+        lambda **_kwargs: (_ for _ in ()).throw(AssertionError("legacy transition helper should not be called")),
+    )
+    monkeypatch.setattr(runtime_loop, "emit_obligation_transition", _emit_transition)
+    monkeypatch.setattr(runtime_loop, "poll_pending_ingestion_obligations", lambda **_kwargs: None)
+    monkeypatch.setattr(runtime_loop, "process_background_ingestion_completion", lambda **_kwargs: ("", None, False))
+    monkeypatch.setattr(runtime_loop, "emit_runtime_turn_telemetry", lambda **_kwargs: None)
+    monkeypatch.setattr(runtime_loop.continuity_runtime_service, "apply_unresolved_intent_carryover", lambda state: state)
+    monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: events.append((event, payload)))
+    monkeypatch.setattr(runtime_loop, "persist_answer_commit", lambda **_kwargs: None)
+
+    def _pipeline(**kwargs):
+        state = kwargs["state"]
+        return (
+            runtime_loop.PipelineState(
+                user_input=state.user_input,
+                last_user_message_ts=state.last_user_message_ts,
+                classified_intent=state.classified_intent,
+                resolved_intent=state.resolved_intent,
+                prior_unresolved_intent=state.prior_unresolved_intent,
+                confidence_decision={},
+                final_answer="pending",
+                candidate_facts={"turn_id": "turn-doc-123"},
+                same_turn_exclusion={"excluded_doc_ids": ["turn-doc-123"]},
+                commit_receipt={"pending_ingestion_request_id": "ingest-req-123"},
+            ),
+            [],
+        )
+
+    monkeypatch.setattr(runtime_loop, "run_runtime_turn_pipeline", _pipeline)
+
+    runtime_loop.run_chat_loop(
+        runtime={},
+        llm=object(),
+        store=object(),
+        chat_history=deque(),
+        near_tie_delta=0.1,
+        io_channel="cli",
+        capability_status="ok",
+        capability_snapshot=SimpleNamespace(
+            runtime_capability_status=SimpleNamespace(debug_enabled=False, debug_verbose=False)
+        ),
+        read_user_utterance=iter(["What changed?", "stop"]).__next__,
+        send_assistant_text=lambda _text: None,
+        clock=SimpleNamespace(now=lambda: runtime.arrow.get("2026-03-10T11:00:00+00:00")),
+    )
+
+    assert transitions
+    assert transitions[-1]["ingestion_request_id"] == "ingest-req-123"
+    assert transitions[-1]["status"] == "created"
+    assert events
 
 
 def test_runtime_loop_background_ingestion_connector_ingestor_dependencies_are_bound_to_canonical_owners(
