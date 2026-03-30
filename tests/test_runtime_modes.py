@@ -313,6 +313,55 @@ def test_runtime_loop_monolith_touchpoints_are_allowlisted_for_deliberate_shrink
     assert observed_symbols == allowed_symbols
 
 
+def test_runtime_loop_background_ingestion_deps_use_canonical_append_session_log(monkeypatch: pytest.MonkeyPatch) -> None:
+    from testbot.entrypoints import runtime_loop
+    from testbot.observability import session_log as session_log_module
+
+    observed_background_loggers: list[object] = []
+    observed_connector_loggers: list[object] = []
+
+    monkeypatch.setattr(
+        runtime,
+        "append_session_log",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("legacy append_session_log should not own background-ingestion dependency logging")
+        ),
+    )
+
+    def _poll_with_connector_probe(*, runtime, deps):
+        observed_background_loggers.append(deps.append_session_log)
+        deps.build_source_connector({"source_connector_type": "none"})
+
+    monkeypatch.setattr(runtime_loop, "poll_pending_ingestion_obligations", _poll_with_connector_probe)
+    monkeypatch.setattr(runtime_loop, "process_background_ingestion_completion", lambda **_kwargs: ("", None, False))
+    monkeypatch.setattr(
+        runtime_loop,
+        "build_source_connector",
+        lambda *, runtime, append_session_log: observed_connector_loggers.append(append_session_log) or None,
+    )
+
+    runtime_loop.run_chat_loop(
+        runtime={"source_connector_type": "none"},
+        llm=object(),
+        store=object(),
+        chat_history=deque(),
+        near_tie_delta=0.1,
+        io_channel="cli",
+        capability_status="ok",
+        capability_snapshot=SimpleNamespace(
+            runtime_capability_status=SimpleNamespace(debug_enabled=False, debug_verbose=False)
+        ),
+        read_user_utterance=lambda: None,
+        send_assistant_text=lambda _text: None,
+        clock=SimpleNamespace(now=lambda: runtime.arrow.get("2026-01-01T00:00:00+00:00")),
+    )
+
+    assert observed_background_loggers == [session_log_module.append_session_log]
+    observed_background_loggers[0]("runtime_loop_background_ingestion_logger_proof", {})
+
+    assert observed_connector_loggers == [session_log_module.append_session_log]
+
+
 def test_runtime_loop_ingest_snapshot_time_provider_is_canonical_not_legacy(monkeypatch: pytest.MonkeyPatch) -> None:
     from testbot.entrypoints import runtime_loop
 

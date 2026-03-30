@@ -53,6 +53,7 @@ from testbot import sat_chatbot_memory_v2 as _legacy_runtime
 from testbot.domain import Clock
 from testbot.ports import MemoryStorePort
 from testbot.observability.turn_debug_payload import build_debug_turn_payload, format_debug_turn_trace_payload
+from testbot.observability.session_log import append_session_log as append_runtime_session_log
 
 ChatMsg = dict[str, str]
 
@@ -190,10 +191,10 @@ def run_chat_loop(
         )
     )
     background_ingestion_deps = RuntimeBackgroundIngestionDependencies(
-        append_session_log=_legacy_runtime.append_session_log,
+        append_session_log=append_runtime_session_log,
         build_source_connector=lambda configured_runtime: build_source_connector(
             runtime=configured_runtime,
-            append_session_log=_legacy_runtime.append_session_log,
+            append_session_log=append_runtime_session_log,
         ),
         source_ingestor_cls=SourceIngestor,
         answer_commit_persistence=lambda **kwargs: persist_answer_commit(

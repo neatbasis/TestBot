@@ -194,3 +194,36 @@ Bounded seam reduction for assemble-stage special-answer authority.
 - **Moved in this PR:** `_utc_now_iso` authority for runtime-loop pending-ingestion obligation timestamp creation (support/control seam).
 - **Still deferred in continuity-support/plumbing:** compatibility wrapper `_utc_now_iso` remains in monolith for legacy callers; `append_session_log` ownership retirement remains intentionally separate and untouched.
 - **Next highest-weight seam after this slice:** compatibility-retirement/plumbing seams around runtime background-ingestion logging ownership (with `append_session_log` still explicitly deferred unless inseparable).
+
+## 2026-03-30 follow-on update (post-#719 runtime/background-ingestion logging ownership sub-slice)
+### Step 1 inventory (before this slice)
+- **Canonical runtime/background-ingestion logging ownership still legacy-routed:**
+  - `runtime_loop` assembled `RuntimeBackgroundIngestionDependencies(append_session_log=...)` from `_legacy_runtime.append_session_log`.
+  - `runtime_loop` also passed `_legacy_runtime.append_session_log` into canonical `build_source_connector(...)` for background-ingestion dependency wiring.
+- **Compatibility-only wrapper logging (explicitly not changed here):**
+  - `sat_chatbot_memory_v2.append_session_log` remains as compatibility façade API surface for legacy callers.
+- **Telemetry/debug payload generation (already handled elsewhere):**
+  - runtime telemetry/debug payload helpers were already canonicalized in prior slices and are not part of this plumbing slice.
+- **Pure plumbing vs semantics:**
+  - This seam was dependency-wiring authority only (which logger function canonical runtime/background-ingestion is bound to), not answer/continuity semantics.
+
+### Step 2 bounded sub-slice selected
+- Selected first-priority seam: **background-ingestion dependency logging ownership** for canonical runtime loop assembly.
+- Scope was intentionally limited to the `RuntimeBackgroundIngestionDependencies.append_session_log` path (including connector wiring used by that dependency bundle).
+
+### Step 3 runtime/background-ingestion dependency reduction
+- `runtime_loop.run_chat_loop(...)` now binds background-ingestion logging through canonical `testbot.observability.session_log.append_session_log`.
+- Canonical runtime/background-ingestion dependency assembly no longer sources this selected logging path from `_legacy_runtime.append_session_log`.
+
+### Step 4 proof tests
+- Added a focused runtime-loop proof that:
+  - sabotages legacy `sat_chatbot_memory_v2.append_session_log`,
+  - verifies the logger embedded in `RuntimeBackgroundIngestionDependencies` is canonical `testbot.observability.session_log.append_session_log`,
+  - confirms loop startup/background-ingestion polling path remains functional with that canonical logger ownership.
+
+### Step 5 deferred scope after this slice
+- **Moved in this PR:** canonical runtime/background-ingestion dependency logging ownership for the selected `append_session_log` dependency seam.
+- **Still deferred intentionally:**
+  - other runtime-loop logging call sites that are outside this bounded background-ingestion dependency slice,
+  - compatibility façade exposure of `sat_chatbot_memory_v2.append_session_log` for legacy callers.
+- **Next highest-weight seam after this slice:** remaining runtime-loop/commit-persistence logging-plumbing authority still sourced from legacy append-session logging paths.
