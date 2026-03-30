@@ -163,6 +163,7 @@ from testbot.entrypoints.runtime_commit_persistence import (
     RuntimeCommitPersistenceDependencies,
     answer_commit_persistence as persist_runtime_answer_commit,
 )
+from testbot.entrypoints.runtime_snapshot_support import RuntimeClockBackedSnapshotTimeProvider
 from testbot.entrypoints.runtime_turn_pipeline import RuntimeTurnPipelineHooks, run_runtime_turn_pipeline
 from testbot.application.services import context_retrieval_runtime as context_retrieval_runtime_service
 from testbot.application.services.background_ingestion_runtime import BackgroundIngestionReplayRequest
@@ -212,11 +213,8 @@ BACKGROUND_INGESTION_OBLIGATION_TIMEOUT_SECONDS = int(os.getenv("SOURCE_INGEST_O
 
 
 @dataclass(frozen=True)
-class _ClockBackedSnapshotTimeProvider:
-    clock: Clock
-
-    def now_iso(self) -> str:
-        return self.clock.now().isoformat()
+class _ClockBackedSnapshotTimeProvider(RuntimeClockBackedSnapshotTimeProvider):
+    """Compatibility alias; canonical owner is runtime_snapshot_support."""
 
 
 def _utc_now_iso() -> str:

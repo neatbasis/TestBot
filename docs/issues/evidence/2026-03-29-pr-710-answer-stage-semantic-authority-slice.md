@@ -140,3 +140,32 @@ Bounded seam reduction for assemble-stage special-answer authority.
 - **Still deferred in this continuity-support cluster:** timestamp/snapshot support ownership (`_utc_now_iso`, `_ClockBackedSnapshotTimeProvider`) remains legacy-routed.
 - **Still deferred as separate plumbing seam:** `append_session_log` ownership retirement remains intentionally untouched.
 - **Next highest-weight seam after this slice:** timestamp/snapshot continuity-support authority (`_utc_now_iso` and `_ClockBackedSnapshotTimeProvider`) for runtime/background-completion support flows.
+
+## 2026-03-30 follow-on update (post-#717 timestamp/snapshot continuity-support sub-slice)
+### Step 1 inventory (before this slice)
+- **Timestamp generation authority (support/control):** runtime-loop pending-obligation creation still sourced `now_iso` from legacy `_utc_now_iso`.
+- **Snapshot time-provider authority (support/control):** runtime-loop ingest snapshots still depended on legacy `_ClockBackedSnapshotTimeProvider`.
+- **Support/control-only usage vs meaning-bearing semantics:**
+  - `_ClockBackedSnapshotTimeProvider` usage was support/control-only (snapshot event timing), not unresolved-intent or answer semantics.
+  - `_utc_now_iso` in pending-obligation creation was support/control-only for continuity bookkeeping.
+- **Pure plumbing vs support ownership:**
+  - `append_session_log` remained a separate plumbing seam and was not required to move snapshot provider ownership.
+
+### Step 2 bounded sub-slice selected
+- Selected first-priority seam: **snapshot time-provider authority**.
+- Canonicalized runtime-loop ingest snapshot time-provider construction into canonical runtime owner (`testbot.entrypoints.runtime_snapshot_support`) and removed runtime-loop dependency on legacy `_ClockBackedSnapshotTimeProvider`.
+
+### Step 3 runtime/background-ingestion dependency reduction
+- `runtime_loop.run_chat_loop(...)` now injects ingest snapshot timestamps through canonical `runtime_clock_snapshot_time_provider(clock=...)` instead of `_legacy_runtime._ClockBackedSnapshotTimeProvider(...)`.
+- Runtime/background-completion support flow remains behaviorally equivalent because the canonical provider preserves the same `now_iso()` contract backed by runtime clock input.
+
+### Step 4 proof tests
+- Added a direct runtime-loop proof test that sabotages legacy `_ClockBackedSnapshotTimeProvider` and still executes ingest snapshot emission + turn pipeline.
+- Added a direct assertion that the injected provider type at snapshot time is canonical (`RuntimeClockBackedSnapshotTimeProvider`) rather than a legacy provider.
+- Updated monolith-touchpoint allowlist proof to show `_ClockBackedSnapshotTimeProvider` is no longer a runtime-loop `_legacy_runtime` dependency.
+
+### Step 5 deferred scope after this slice
+- **Moved in this PR:** runtime-loop snapshot time-provider authority for ingest snapshot timing.
+- **Still deferred in timestamp/snapshot cluster:** `_utc_now_iso` ownership for pending-obligation creation timestamps.
+- **Still deferred as separate plumbing seam:** `append_session_log` ownership retirement remains intentionally untouched.
+- **Next highest-weight seam after this slice:** `_utc_now_iso` current-time ISO helper authority for runtime/background-ingestion continuity-support paths.
