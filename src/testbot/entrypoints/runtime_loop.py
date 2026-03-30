@@ -137,7 +137,7 @@ def run_chat_loop(
         )
 
     runtime_turn_hooks = RuntimeTurnPipelineHooks(
-        append_session_log=_legacy_runtime.append_session_log,
+        append_session_log=append_runtime_session_log,
         validate_and_log_transition=_legacy_runtime._validate_and_log_transition,
         stage_rewrite_query=_legacy_runtime.stage_rewrite_query,
         generate_reflection_yaml=_legacy_runtime.generate_reflection_yaml,
@@ -169,7 +169,7 @@ def run_chat_loop(
             document_from_retrieval_input=context_retrieval_runtime_service.document_from_retrieval_input,
             render_context=answer_stage_presentation_service.render_context,
             answer_prompt=answer_stage_presentation_service.ANSWER_PROMPT,
-            append_session_log=_legacy_runtime.append_session_log,
+            append_session_log=append_runtime_session_log,
         ),
         answer_validate=lambda *args, **kwargs: answer_stage_runtime_service.answer_validate_for_turn_service(
             *args,

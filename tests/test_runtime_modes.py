@@ -747,6 +747,97 @@ def test_runtime_loop_background_completion_replay_dependency_is_canonical_runti
     assert replay_result is fake_pipeline_state
 
 
+def test_runtime_loop_turn_pipeline_hook_logging_bundle_uses_canonical_session_logger(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from testbot.entrypoints import runtime_loop
+    from testbot.application.services.background_ingestion_runtime import BackgroundIngestionReplayRequest
+    from testbot.observability.session_log import append_session_log as append_runtime_session_log
+
+    captured: dict[str, object] = {}
+
+    class _CapturingDeps:
+        def __init__(self, **kwargs) -> None:
+            captured.update(kwargs)
+
+    def _legacy_append_session_log_guard(event: str, payload: dict[str, object]) -> None:
+        del payload
+        if event == "user_utterance_ingest":
+            return
+        raise AssertionError("selected turn-pipeline hook logging bundle should not use legacy append_session_log")
+
+    monkeypatch.setattr(runtime, "append_session_log", _legacy_append_session_log_guard)
+    monkeypatch.setattr(runtime_loop, "RuntimeBackgroundIngestionDependencies", _CapturingDeps)
+    monkeypatch.setattr(runtime_loop, "poll_pending_ingestion_obligations", lambda **_kwargs: None)
+    monkeypatch.setattr(runtime_loop, "process_background_ingestion_completion", lambda **_kwargs: ("", None, False))
+    monkeypatch.setattr(
+        runtime_loop,
+        "run_runtime_turn_pipeline",
+        lambda **kwargs: (captured.setdefault("hooks", kwargs["hooks"]) and kwargs["state"], []),
+    )
+
+    runtime_loop.run_chat_loop(
+        runtime={},
+        llm=object(),
+        store=object(),
+        chat_history=deque(),
+        near_tie_delta=0.1,
+        io_channel="cli",
+        capability_status="ok",
+        capability_snapshot=SimpleNamespace(
+            runtime_capability_status=SimpleNamespace(debug_enabled=False, debug_verbose=False)
+        ),
+        read_user_utterance=lambda: None,
+        send_assistant_text=lambda _text: None,
+        clock=SimpleNamespace(now=lambda: runtime.arrow.get("2026-01-01T00:00:00+00:00")),
+    )
+
+    replay = captured["replay_background_completion_turn"]
+    replay(
+        BackgroundIngestionReplayRequest(
+            runtime={},
+            llm=object(),
+            store=object(),
+            utterance="Need grounded update",
+            last_user_message_ts="2026-01-01T00:00:00+00:00",
+            prior_pipeline_state=None,
+            near_tie_delta=0.1,
+            chat_history=deque(),
+            capability_status="ok",
+            capability_snapshot={},
+            clock=object(),
+            io_channel="cli",
+            turn_id="turn-1",
+        )
+    )
+
+    hooks = captured["hooks"]
+    assert hooks.append_session_log is append_runtime_session_log
+
+    observed: dict[str, object] = {}
+    monkeypatch.setattr(
+        runtime_loop.answer_stage_runtime_service,
+        "answer_assemble_for_turn_service",
+        lambda *_args, **kwargs: observed.update(kwargs) or object(),
+    )
+    hooks.answer_assemble(
+        object(),
+        runtime_loop.PipelineState(
+            user_input="probe",
+            last_user_message_ts="",
+            classified_intent="knowledge_question",
+            resolved_intent="",
+            prior_unresolved_intent="",
+            confidence_decision={},
+        ),
+        chat_history=deque(),
+        hits=[],
+        capability_status="ok",
+        answer_routing=object(),
+    )
+    assert observed["append_session_log"] is append_runtime_session_log
+
+
 def test_runtime_loop_context_retrieval_residual_monolith_touchpoints_are_explicit_policy_core_only() -> None:
     from testbot.entrypoints import runtime_loop
 
@@ -772,6 +863,14 @@ def test_runtime_loop_binds_migrated_context_retrieval_hook_surfaces_via_canonic
     assert "context_retrieval_runtime_service.stage_retrieve_for_turn_service(" in source
     assert "context_retrieval_runtime_service.stage_rerank_for_turn_service(" in source
     assert "document_from_retrieval_input=context_retrieval_runtime_service.document_from_retrieval_input" in source
+
+
+def test_runtime_loop_turn_pipeline_logging_residual_monolith_touchpoints_are_removed_from_selected_bundle() -> None:
+    from testbot.entrypoints import runtime_loop
+
+    source = Path(runtime_loop.__file__).read_text()
+    assert "RuntimeTurnPipelineHooks(\n        append_session_log=append_runtime_session_log," in source
+    assert "append_session_log=_legacy_runtime.append_session_log" not in source
 
 
 def test_runtime_loop_runtime_hooks_resolve_context_retrieval_control_point_at_runtime(monkeypatch: pytest.MonkeyPatch) -> None:
