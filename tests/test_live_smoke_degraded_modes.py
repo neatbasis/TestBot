@@ -118,7 +118,7 @@ def test_live_smoke_degraded_modes_runtime_contracts(
     expected_help_guidance: str,
 ) -> None:
     if ha_endpoint == "LIVE_HA":
-        ha_endpoint = _require_env("HA_API_URL")
+        ha_endpoint = _require_env("HA_BASE_URL")
         ha_secret = _require_env("HA_API_TOKEN")
         ha_entity_id = _require_env("HA_SATELLITE_ENTITY_ID")
 
@@ -128,7 +128,7 @@ def test_live_smoke_degraded_modes_runtime_contracts(
         _require_env("OLLAMA_EMBEDDING_MODEL")
         _require_env("X_OLLAMA_KEY")
 
-    monkeypatch.setenv("HA_API_URL", ha_endpoint)
+    monkeypatch.setenv("HA_BASE_URL", ha_endpoint)
     monkeypatch.setenv("HA_API_TOKEN", ha_secret)
     monkeypatch.setenv("HA_SATELLITE_ENTITY_ID", ha_entity_id)
     monkeypatch.setenv("OLLAMA_BASE_URL", ollama_endpoint)

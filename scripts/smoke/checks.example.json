@@ -2,7 +2,7 @@
   "checks": [
     {
       "name": "ha-api-health",
-      "target": "${HA_API_URL}/api/",
+      "target": "${HA_BASE_URL}/api/",
       "method": "GET",
       "expected_status": 200,
       "timeout_s": 5,
@@ -17,7 +17,7 @@
     },
     {
       "name": "ha-api-readiness",
-      "target": "${HA_API_URL}/api/config",
+      "target": "${HA_BASE_URL}/api/config",
       "method": "GET",
       "expected_status": 200,
       "timeout_s": 5,

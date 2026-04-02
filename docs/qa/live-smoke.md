@@ -18,7 +18,7 @@ Checklist for each smoke execution:
 
 Set these keys in the shell/session before running smoke checks:
 
-- `HA_API_URL` (full `http://` or `https://` URL)
+- `HA_BASE_URL` (full `http://` or `https://` base URL)
 - `HA_API_TOKEN` (non-empty Home Assistant bearer token)
 - `HA_SATELLITE_ENTITY_ID` (target satellite entity ID used by runtime/control tests)
 - `OLLAMA_BASE_URL` (full `http://` or `https://` URL)
@@ -31,7 +31,7 @@ Set these keys in the shell/session before running smoke checks:
 Example:
 
 ```dotenv
-HA_API_URL=http://homeassistant.local:8123
+HA_BASE_URL=http://homeassistant.local:8123
 HA_API_TOKEN=replace-with-long-ha-token
 HA_SATELLITE_ENTITY_ID=assist_satellite.kitchen
 OLLAMA_BASE_URL=http://localhost:11434

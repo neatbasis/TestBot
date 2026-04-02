@@ -2307,7 +2307,7 @@ def test_runtime_env_loads_ollama_values_from_process_env(monkeypatch) -> None:
 
 
 def test_runtime_and_live_smoke_resolve_ollama_env_from_same_process_env(monkeypatch) -> None:
-    monkeypatch.setenv("HA_API_URL", "http://127.0.0.1:8123")
+    monkeypatch.setenv("HA_BASE_URL", "http://127.0.0.1:8123")
     monkeypatch.setenv("HA_API_TOKEN", "ha-test-supersecret-token")
     monkeypatch.setenv("HA_SATELLITE_ENTITY_ID", "assist_satellite.test")
     monkeypatch.setenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434")

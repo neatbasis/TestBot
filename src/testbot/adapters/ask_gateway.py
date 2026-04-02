@@ -59,8 +59,8 @@ class AskGateway:
         discord_turn_service_url: str | None = None,
     ) -> "AskGateway":
         cfg = Config(
-            ha_api_url=ha_base_url,
-            ha_api_token=ha_api_token,
+            api_url=ha_base_url,
+            token=ha_api_token,
             satellite_entity_id=satellite_entity_id,
             notify_action=notify_action,
             discord_turn_service_url=discord_turn_service_url,
@@ -86,7 +86,7 @@ class AskGateway:
         return str(self._client.config.satellite_entity_id or "")
 
     def normalized_ha_rest_url(self) -> str:
-        return normalize_ha_rest_url(str(self._client.config.ha_api_url or ""))
+        return normalize_ha_rest_url(str(self._client.config.api_url or ""))
 
     def turn_spec(
         self,

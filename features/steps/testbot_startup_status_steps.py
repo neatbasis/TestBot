@@ -17,7 +17,7 @@ def _make_snapshot(*, requested_mode: str, daemon_mode: bool, ha_error: str | No
         "ollama_base_url": "http://localhost:11434",
         "ollama_model": "llama3.1:latest",
         "ollama_embedding_model": "nomic-embed-text",
-        "ha_api_url": "http://localhost:8123",
+        "ha_base_url": "http://localhost:8123",
         "ha_api_token": "secret",
         "ha_satellite_entity_id": "assist_satellite.kitchen",
         "memory_store_backend": "in_memory",

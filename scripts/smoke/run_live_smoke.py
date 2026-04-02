@@ -16,7 +16,7 @@ from urllib.parse import urlparse
 from typing import Any
 
 REQUIRED_ENV_KEYS = (
-    "HA_API_URL",
+    "HA_BASE_URL",
     "HA_API_TOKEN",
     "HA_SATELLITE_ENTITY_ID",
     "OLLAMA_BASE_URL",
@@ -43,6 +43,11 @@ def _git_value(*args: str) -> str:
 
 def _load_required_env() -> dict[str, str]:
     env_values = {key: os.getenv(key, "") for key in REQUIRED_ENV_KEYS}
+    # Normalize base URLs so checks that append endpoint paths do not emit "//".
+    env_values["HA_BASE_URL"] = env_values["HA_BASE_URL"].rstrip("/")
+    env_values["OLLAMA_BASE_URL"] = env_values["OLLAMA_BASE_URL"].rstrip("/")
+    os.environ["HA_BASE_URL"] = env_values["HA_BASE_URL"]
+    os.environ["OLLAMA_BASE_URL"] = env_values["OLLAMA_BASE_URL"]
 
     missing = [key for key in REQUIRED_ENV_KEYS if not env_values.get(key, "").strip()]
     if missing:
@@ -51,10 +56,10 @@ def _load_required_env() -> dict[str, str]:
             f"process environment: {', '.join(missing)}."
         )
 
-    parsed_ha_url = urlparse(env_values["HA_API_URL"])
+    parsed_ha_url = urlparse(env_values["HA_BASE_URL"])
     if parsed_ha_url.scheme not in {"http", "https"} or not parsed_ha_url.netloc:
         raise ValueError(
-            "Invalid HA_API_URL in "
+            "Invalid HA_BASE_URL in "
             "process environment: must be a full http(s) URL."
         )
 

@@ -71,7 +71,7 @@ def test_config_reads_home_assistant_base_url_from_ha_base_url_env() -> None:
     assert completed.stdout.strip() == "http://ha-base-url:8123"
 
 
-def test_config_ignores_legacy_ha_api_url_env_and_uses_default_base_url() -> None:
+def test_config_uses_default_base_url_when_unset() -> None:
     command = [
         sys.executable,
         "-c",
@@ -87,7 +87,6 @@ def test_config_ignores_legacy_ha_api_url_env_and_uses_default_base_url() -> Non
         capture_output=True,
         text=True,
         env={
-            "HA_API_URL": "http://legacy-ha-api-url:8123",
             "PYTHONPATH": str(Path.cwd() / "src"),
             "PATH": os.environ.get("PATH", ""),
         },

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-import pytest
+import os
 
-from testbot.config import Config
+import pytest
 
 
 def require_live_smoke_config(*, suite_name: str, required_fields: tuple[str, ...]) -> None:
@@ -13,11 +13,12 @@ def require_live_smoke_config(*, suite_name: str, required_fields: tuple[str, ..
     provided.
     """
 
-    config = Config.from_env()
+    # Read raw process env directly so module-level skip behavior is not masked
+    # by runtime defaults (for example HA/Ollama default model/base-url values).
     missing_fields = [
         field_name
         for field_name in required_fields
-        if not str(getattr(config, field_name, "")).strip()
+        if not str(os.getenv(field_name, "")).strip()
     ]
     if missing_fields:
         formatted = ", ".join(missing_fields)

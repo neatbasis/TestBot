@@ -32,8 +32,8 @@ def test_ask_gateway_satellite_prompt_uses_stable_stop_decision_id() -> None:
         def __init__(self) -> None:
             super().__init__(
                 Config(
-                    ha_api_url="http://localhost:8123",
-                    ha_api_token="secret",
+                    api_url="http://localhost:8123",
+                    token="secret",
                     satellite_entity_id="assist_satellite.kitchen",
                 )
             )
@@ -68,8 +68,8 @@ def test_satellite_turn_interaction_requirements_shape_spec_details() -> None:
         def __init__(self) -> None:
             super().__init__(
                 Config(
-                    ha_api_url="http://localhost:8123",
-                    ha_api_token="secret",
+                    api_url="http://localhost:8123",
+                    token="secret",
                     satellite_entity_id="assist_satellite.kitchen",
                 )
             )
@@ -132,8 +132,8 @@ def test_request_turn_input_uses_supplied_channel_and_returns_stable_shape() -> 
         def __init__(self) -> None:
             super().__init__(
                 Config(
-                    ha_api_url="http://localhost:8123",
-                    ha_api_token="secret",
+                    api_url="http://localhost:8123",
+                    token="secret",
                     satellite_entity_id="assist_satellite.kitchen",
                 )
             )
@@ -163,8 +163,8 @@ def test_request_terminal_turn_input_delegates_to_terminal_channel() -> None:
         def __init__(self) -> None:
             super().__init__(
                 Config(
-                    ha_api_url="http://localhost:8123",
-                    ha_api_token="secret",
+                    api_url="http://localhost:8123",
+                    token="secret",
                     satellite_entity_id="assist_satellite.kitchen",
                 )
             )
@@ -192,8 +192,8 @@ def test_request_turn_input_for_policy_uses_policy_channel_and_requirements() ->
         def __init__(self) -> None:
             super().__init__(
                 Config(
-                    ha_api_url="http://localhost:8123",
-                    ha_api_token="secret",
+                    api_url="http://localhost:8123",
+                    token="secret",
                     satellite_entity_id="assist_satellite.kitchen",
                 )
             )
@@ -230,8 +230,8 @@ def test_request_turn_input_for_policy_uses_recent_successful_channel_before_nam
         def __init__(self) -> None:
             super().__init__(
                 Config(
-                    ha_api_url="http://localhost:8123",
-                    ha_api_token="secret",
+                    api_url="http://localhost:8123",
+                    token="secret",
                     satellite_entity_id="assist_satellite.kitchen",
                 )
             )

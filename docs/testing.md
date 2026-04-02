@@ -410,7 +410,7 @@ Run degraded-mode live smoke scenarios only (`tests/test_live_smoke_degraded_mod
 #
 # Required baseline live env vars:
 # - OLLAMA_BASE_URL / OLLAMA_MODEL / OLLAMA_EMBEDDING_MODEL / X_OLLAMA_KEY (for the "Ollama available" scenario)
-# - HA_API_URL / HA_API_TOKEN / HA_SATELLITE_ENTITY_ID (for the "HA available" scenario)
+# - HA_BASE_URL / HA_API_TOKEN / HA_SATELLITE_ENTITY_ID (for the "HA available" scenario)
 #
 # Failure injection for degraded scenarios is environment-driven only. The test module
 # swaps endpoints to unreachable localhost ports (HA: 127.0.0.1:9, Ollama: 127.0.0.1:1)
@@ -419,7 +419,7 @@ OLLAMA_BASE_URL=http://localhost:11434 \
 OLLAMA_MODEL=llama3.1:latest \
 OLLAMA_EMBEDDING_MODEL=nomic-embed-text \
 X_OLLAMA_KEY=<ollama-api-key> \
-HA_API_URL=http://localhost:8123 \
+HA_BASE_URL=http://localhost:8123 \
 HA_API_TOKEN=<token> \
 HA_SATELLITE_ENTITY_ID=assist_satellite.kitchen \
 python -m pytest tests/test_live_smoke_degraded_modes.py -m live_smoke -vv

@@ -174,7 +174,7 @@ Fix: unpack as `(Document, score)` tuples before metadata access.
 
 Checklist:
 
-- [ ] `HA_API_URL` includes scheme and correct host/port.
+- [ ] `HA_BASE_URL` includes scheme and correct host/port.
 - [ ] `HA_API_TOKEN` is a valid long-lived token.
 - [ ] `HA_SATELLITE_ENTITY_ID` exists and is available.
 
