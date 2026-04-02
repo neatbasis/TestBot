@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from collections import deque
 import json
 from dataclasses import replace
@@ -11,6 +12,7 @@ from langchain_core.documents import Document
 from testbot.pipeline_state import PipelineState
 from testbot.pipeline_state import AlignmentDecision
 from testbot.pipeline_state import CandidateHit
+from testbot.evidence_retrieval import RetrievalInputRecord
 from testbot import sat_chatbot_memory_v2 as runtime
 from testbot.context_resolution import ContinuityPosture, ResolvedContext
 from testbot.intent_router import IntentType, classify_intent
@@ -54,6 +56,22 @@ class _StaticLLM:
 
     def invoke(self, _msgs):
         return type("_Resp", (), {"content": self.content})()
+
+
+class _HarnessStore:
+    def __init__(self) -> None:
+        self._docs: list[object] = []
+        self._records: list[object] = []
+
+    def similarity_search_with_score(self, query: str, k: int = 4, **kwargs):
+        del query, k, kwargs
+        return []
+
+    def add_documents(self, docs) -> None:
+        self._docs.extend(list(docs))
+
+    def add_memory_records(self, records) -> None:
+        self._records.extend(list(records))
 
 
 
@@ -410,38 +428,40 @@ def test_policy_decision_distinguishes_empty_evidence_and_scored_empty() -> None
 def test_chat_loop_definitional_question_attempts_retrieval_and_does_not_mark_skipped(monkeypatch) -> None:
     events: list[tuple[str, dict[str, object]]] = []
 
-    monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: events.append((event, payload)))
-    monkeypatch.setattr(runtime, "_validate_and_log_transition", lambda _result: None)
-    monkeypatch.setattr(runtime, "store_doc", lambda *args, **kwargs: None)
-    monkeypatch.setattr(runtime, "generate_reflection_yaml", lambda *args, **kwargs: "claims: []")
+    monkeypatch.setattr("testbot.entrypoints.runtime_loop.append_runtime_session_log", lambda event, payload: events.append((event, payload)))
+    monkeypatch.setattr("testbot.entrypoints.runtime_loop.validate_and_log_transition", lambda _result: None)
+    monkeypatch.setattr("testbot.entrypoints.runtime_loop.store_doc", lambda *args, **kwargs: None)
+    monkeypatch.setattr("testbot.entrypoints.runtime_loop._generate_reflection_yaml", lambda *args, **kwargs: "claims: []")
     monkeypatch.setattr(runtime, "persist_promoted_context", lambda *args, **kwargs: [])
-    monkeypatch.setattr(runtime, "stage_rewrite_query", lambda _llm, state: replace(state, rewritten_query="ontology definition"))
-    monkeypatch.setattr(runtime, "stage_retrieve", lambda _store, state, **kwargs: (replace(state, retrieval_candidates=[]), []))
+    monkeypatch.setattr("testbot.entrypoints.runtime_loop._stage_rewrite_query", lambda _llm, state: replace(state, rewritten_query="ontology definition"))
     monkeypatch.setattr(
-        runtime,
-        "stage_rerank",
+        "testbot.application.services.context_retrieval_runtime.stage_retrieve_for_turn_service",
+        lambda _store, state, **kwargs: (replace(state, retrieval_candidates=[]), []),
+    )
+    monkeypatch.setattr(
+        "testbot.application.services.context_retrieval_runtime.stage_rerank_for_turn_service",
         lambda state, docs_and_scores, **kwargs: (  # noqa: ARG005
             replace(state, reranked_hits=[], confidence_decision={"context_confident": False, "ambiguity_detected": False}),
             [],
         ),
     )
     monkeypatch.setattr(
-        runtime,
-        "run_canonical_answer_stage_flow",
-        lambda _llm, state, **kwargs: replace(  # noqa: ARG005
-            state,
+        "testbot.application.services.answer_stage_runtime.answer_assemble_for_turn_service",
+        lambda _llm, state, **kwargs: runtime.AnswerAssembleResult(  # noqa: ARG005
+            draft_answer="",
             final_answer="General definition (not from your memory): Ontology is a model of concepts and relationships.",
-            invariant_decisions={"fallback_action": "ANSWER_GENERAL_KNOWLEDGE", "answer_mode": "assist"},
-            provenance_types=[],
-            basis_statement="General-knowledge basis",
-            claims=[],
+            fallback_action="ANSWER_GENERAL_KNOWLEDGE",
+            intent_class="non_memory",
+            social_or_non_knowledge_intent=False,
+            answer_policy_rationale={},
+            capability_help_short_circuit=False,
         ),
     )
 
     prompts = iter(["What is ontology?", "stop"])
     _run_chat_loop(
         llm=_StaticLLM("ignored"),
-        store=object(),
+        store=_HarnessStore(),
         chat_history=deque(),
         near_tie_delta=0.05,
         io_channel="cli",
@@ -485,28 +505,28 @@ def test_chat_loop_definitional_question_attempts_retrieval_and_does_not_mark_sk
 def test_chat_loop_conversational_prompt_skips_knowledge_retrieval_path(monkeypatch) -> None:
     events: list[tuple[str, dict[str, object]]] = []
 
-    monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: events.append((event, payload)))
-    monkeypatch.setattr(runtime, "_validate_and_log_transition", lambda _result: None)
-    monkeypatch.setattr(runtime, "store_doc", lambda *args, **kwargs: None)
-    monkeypatch.setattr(runtime, "generate_reflection_yaml", lambda *args, **kwargs: "claims: []")
+    monkeypatch.setattr("testbot.entrypoints.runtime_loop.append_runtime_session_log", lambda event, payload: events.append((event, payload)))
+    monkeypatch.setattr("testbot.entrypoints.runtime_loop.validate_and_log_transition", lambda _result: None)
+    monkeypatch.setattr("testbot.entrypoints.runtime_loop.store_doc", lambda *args, **kwargs: None)
+    monkeypatch.setattr("testbot.entrypoints.runtime_loop._generate_reflection_yaml", lambda *args, **kwargs: "claims: []")
     monkeypatch.setattr(runtime, "persist_promoted_context", lambda *args, **kwargs: [])
     monkeypatch.setattr(
-        runtime,
-        "run_canonical_answer_stage_flow",
-        lambda _llm, state, **kwargs: replace(  # noqa: ARG005
-            state,
+        "testbot.application.services.answer_stage_runtime.answer_assemble_for_turn_service",
+        lambda _llm, state, **kwargs: runtime.AnswerAssembleResult(  # noqa: ARG005
+            draft_answer="",
             final_answer="Hi!",
-            invariant_decisions={"fallback_action": "NONE", "answer_mode": "assist"},
-            provenance_types=[],
-            basis_statement="none",
-            claims=[],
+            fallback_action="NONE",
+            intent_class="non_memory",
+            social_or_non_knowledge_intent=True,
+            answer_policy_rationale={},
+            capability_help_short_circuit=False,
         ),
     )
 
     prompts = iter(["hello there", "stop"])
     _run_chat_loop(
         llm=_StaticLLM("ignored"),
-        store=object(),
+        store=_HarnessStore(),
         chat_history=deque(),
         near_tie_delta=0.05,
         io_channel="cli",
@@ -547,7 +567,7 @@ def test_chat_loop_conversational_prompt_skips_knowledge_retrieval_path(monkeypa
     assert "retry" not in retrieval_payload
 
 
-def test_run_canonical_answer_stage_flow_low_source_confidence_non_memory_uses_safe_unknowing_mode_legacy_assertions() -> None:
+def test_run_canonical_answer_stage_flow_low_source_confidence_non_memory_keeps_policy_fallback_action_and_uses_unknowing_mode() -> None:
     state = PipelineState(
         user_input="What happened in my calendar?",
         resolved_intent=IntentType.KNOWLEDGE_QUESTION.value,
@@ -568,8 +588,9 @@ def test_run_canonical_answer_stage_flow_low_source_confidence_non_memory_uses_s
     )
 
     assert answered.final_answer == NON_KNOWLEDGE_UNCERTAINTY_ANSWER
-    assert answered.invariant_decisions.get("fallback_action") == "ANSWER_UNKNOWN"
+    assert answered.invariant_decisions.get("fallback_action") == "ANSWER_GENERAL_KNOWLEDGE"
     assert answered.invariant_decisions.get("answer_mode") == "dont-know"
+    assert answered.invariant_decisions.get("answer_mode_rationale", {}).get("reason") == "unknown_fallback"
 
 
 
@@ -620,7 +641,7 @@ def test_run_canonical_answer_stage_flow_low_source_confidence_non_memory_uses_u
     )
 
     assert answered.final_answer == NON_KNOWLEDGE_UNCERTAINTY_ANSWER
-    assert answered.invariant_decisions.get("fallback_action") == "ANSWER_UNKNOWN"
+    assert answered.invariant_decisions.get("fallback_action") == "ANSWER_GENERAL_KNOWLEDGE"
     assert answered.invariant_decisions.get("answer_mode") == "dont-know"
 
 
@@ -675,23 +696,43 @@ def test_run_canonical_answer_stage_flow_regression_say_hello_keeps_greeting_ins
 
 
 def test_run_canonical_answer_stage_flow_memory_recall_confident_hit_recovers_from_contract_failure() -> None:
-    state = PipelineState(
-        user_input="what did i note about release prep?",
-        resolved_intent=IntentType.MEMORY_RECALL.value,
-        confidence_decision={
-            "context_confident": True,
-            "ambiguity_detected": False,
-        },
+    def _state() -> PipelineState:
+        return PipelineState(
+            user_input="what did i note about release prep?",
+            resolved_intent=IntentType.MEMORY_RECALL.value,
+            confidence_decision={
+                "context_confident": True,
+                "ambiguity_detected": False,
+            },
+        )
+
+    probe = run_canonical_answer_stage_flow(
+        _StaticLLM("ignored"),
+        _state(),
+        chat_history=deque(),
+        hits=[],
+        capability_status="ask_unavailable",
+        clock=_FIXED_CLOCK,
     )
+    assert probe.final_answer == "Can you clarify which memory and time window you mean?"
+    segment_ids = list(probe.confidence_decision.get("retrieval_segment_ids") or [])
+    segment_types = list(probe.confidence_decision.get("retrieval_segment_types") or [])
+    assert segment_ids and segment_types
 
     answered = run_canonical_answer_stage_flow(
         _StaticLLM("It should be fine."),
-        state,
+        _state(),
         chat_history=deque(),
         hits=[
             Document(
+                id="mem-7",
                 page_content="You noted that release prep requires changelog review before tagging.",
-                metadata={"doc_id": "mem-7", "ts": "2026-03-01T12:00:00Z"},
+                metadata={
+                    "doc_id": "mem-7",
+                    "ts": "2026-03-01T12:00:00Z",
+                    "segment_id": segment_ids[0],
+                    "segment_type": segment_types[0],
+                },
             )
         ],
         capability_status="ask_unavailable",
@@ -718,16 +759,18 @@ def test_response_blocker_reason_for_answer_unknown_reports_insufficient_reliabl
 def test_chat_loop_debug_trace_logs_structured_payload_for_queryable_policy_fields(monkeypatch) -> None:
     events: list[tuple[str, dict[str, object]]] = []
 
-    monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: events.append((event, payload)))
-    monkeypatch.setattr(runtime, "_validate_and_log_transition", lambda _result: None)
-    monkeypatch.setattr(runtime, "store_doc", lambda *args, **kwargs: None)
-    monkeypatch.setattr(runtime, "generate_reflection_yaml", lambda *args, **kwargs: "claims: []")
+    monkeypatch.setattr("testbot.entrypoints.runtime_loop.append_runtime_session_log", lambda event, payload: events.append((event, payload)))
+    monkeypatch.setattr("testbot.entrypoints.runtime_loop.validate_and_log_transition", lambda _result: None)
+    monkeypatch.setattr("testbot.entrypoints.runtime_loop.store_doc", lambda *args, **kwargs: None)
+    monkeypatch.setattr("testbot.entrypoints.runtime_loop._generate_reflection_yaml", lambda *args, **kwargs: "claims: []")
     monkeypatch.setattr(runtime, "persist_promoted_context", lambda *args, **kwargs: [])
-    monkeypatch.setattr(runtime, "stage_rewrite_query", lambda _llm, state: replace(state, rewritten_query="release memory"))
-    monkeypatch.setattr(runtime, "stage_retrieve", lambda _store, state, **kwargs: (replace(state, retrieval_candidates=[]), []))
+    monkeypatch.setattr("testbot.entrypoints.runtime_loop._stage_rewrite_query", lambda _llm, state: replace(state, rewritten_query="release memory"))
     monkeypatch.setattr(
-        runtime,
-        "stage_rerank",
+        "testbot.application.services.context_retrieval_runtime.stage_retrieve_for_turn_service",
+        lambda _store, state, **kwargs: (replace(state, retrieval_candidates=[]), []),
+    )
+    monkeypatch.setattr(
+        "testbot.application.services.context_retrieval_runtime.stage_rerank_for_turn_service",
         lambda state, docs_and_scores, **kwargs: (  # noqa: ARG005
             replace(
                 state,
@@ -745,28 +788,10 @@ def test_chat_loop_debug_trace_logs_structured_payload_for_queryable_policy_fiel
             [],
         ),
     )
-    monkeypatch.setattr(
-        runtime,
-        "run_canonical_answer_stage_flow",
-        lambda _llm, state, **kwargs: replace(  # noqa: ARG005
-            state,
-            final_answer=ASSIST_ALTERNATIVES_ANSWER,
-            invariant_decisions={
-                "fallback_action": "OFFER_CAPABILITY_ALTERNATIVES",
-                "answer_mode": "assist",
-                "answer_contract_valid": False,
-                "general_knowledge_contract_valid": True,
-            },
-            provenance_types=[],
-            basis_statement="none",
-            claims=[],
-        ),
-    )
-
     prompts = iter(["what did I say about release prep", "stop"])
     _run_chat_loop(
         llm=_StaticLLM("ignored"),
-        store=object(),
+        store=_HarnessStore(),
         chat_history=deque(),
         near_tie_delta=0.05,
         io_channel="cli",
@@ -831,31 +856,33 @@ def test_chat_loop_alignment_decision_event_writes_json_safe_session_log(tmp_pat
 
     original_append_session_log = runtime.append_session_log
 
-    def _append_to_tmp_log(event: str, payload: dict, *, log_path=None):  # noqa: ARG001
+    def _append_to_tmp_log(event: str, payload: dict):  # noqa: ARG001
         original_append_session_log(event, payload, log_path=session_log)
 
-    monkeypatch.setattr(runtime, "append_session_log", _append_to_tmp_log)
-    monkeypatch.setattr(runtime, "_validate_and_log_transition", lambda _result: None)
-    monkeypatch.setattr(runtime, "store_doc", lambda *args, **kwargs: None)
-    monkeypatch.setattr(runtime, "generate_reflection_yaml", lambda *args, **kwargs: "claims: []")
+    monkeypatch.setattr("testbot.entrypoints.runtime_loop.append_runtime_session_log", _append_to_tmp_log)
+    monkeypatch.setattr("testbot.entrypoints.runtime_loop.validate_and_log_transition", lambda _result: None)
+    monkeypatch.setattr("testbot.entrypoints.runtime_loop.store_doc", lambda *args, **kwargs: None)
+    monkeypatch.setattr("testbot.entrypoints.runtime_loop._generate_reflection_yaml", lambda *args, **kwargs: "claims: []")
     monkeypatch.setattr(runtime, "persist_promoted_context", lambda *args, **kwargs: [])
-    monkeypatch.setattr(runtime, "stage_rewrite_query", lambda _llm, state: replace(state, rewritten_query="release prep notes"))
-    monkeypatch.setattr(runtime, "stage_retrieve", lambda _store, state, **kwargs: (replace(state, retrieval_candidates=[]), []))
+    monkeypatch.setattr("testbot.entrypoints.runtime_loop._stage_rewrite_query", lambda _llm, state: replace(state, rewritten_query="release prep notes"))
     monkeypatch.setattr(
-        runtime,
-        "stage_rerank",
+        "testbot.application.services.context_retrieval_runtime.stage_retrieve_for_turn_service",
+        lambda _store, state, **kwargs: (replace(state, retrieval_candidates=[]), []),
+    )
+    monkeypatch.setattr(
+        "testbot.application.services.context_retrieval_runtime.stage_rerank_for_turn_service",
         lambda state, docs_and_scores, **kwargs: (replace(state, reranked_hits=[]), []),  # noqa: ARG005
     )
     monkeypatch.setattr(
-        runtime,
-        "run_canonical_answer_stage_flow",
-        lambda _llm, state, **kwargs: replace(  # noqa: ARG005
-            state,
+        "testbot.application.services.answer_stage_runtime.answer_assemble_for_turn_service",
+        lambda _llm, state, **kwargs: runtime.AnswerAssembleResult(  # noqa: ARG005
+            draft_answer="",
             final_answer="From memory, I found: release prep includes changelog checks.",
-            invariant_decisions={"fallback_action": "NONE", "answer_mode": "memory-grounded"},
-            provenance_types=[],
-            basis_statement="Memory-grounded basis.",
-            claims=["release prep includes changelog checks"],
+            fallback_action="NONE",
+            intent_class="memory_recall",
+            social_or_non_knowledge_intent=False,
+            answer_policy_rationale={},
+            capability_help_short_circuit=False,
         ),
     )
 
@@ -864,7 +891,7 @@ def test_chat_loop_alignment_decision_event_writes_json_safe_session_log(tmp_pat
 
     _run_chat_loop(
         llm=_StaticLLM("From memory, I found: release prep includes changelog checks."),
-        store=object(),
+        store=_HarnessStore(),
         chat_history=deque(),
         near_tie_delta=0.05,
         io_channel="cli",
@@ -918,7 +945,7 @@ def test_chat_loop_intent_telemetry_uses_resolved_state_contract(tmp_path, monke
 
     _run_chat_loop(
         llm=_StaticLLM("hi"),
-        store=object(),
+        store=_HarnessStore(),
         chat_history=deque(),
         near_tie_delta=0.05,
         io_channel="cli",
@@ -1031,7 +1058,7 @@ def test_chat_loop_cli_turn_logs_jsonl_with_alignment_decision_object(tmp_path, 
 
     _run_chat_loop(
         llm=_StaticLLM("From memory, I found: release prep includes changelog checks."),
-        store=object(),
+        store=_HarnessStore(),
         chat_history=deque(),
         near_tie_delta=0.05,
         io_channel="cli",
@@ -1101,7 +1128,7 @@ def test_chat_loop_logs_commit_stage_record_with_durable_commit_state(tmp_path, 
     replies: list[str] = []
     _run_chat_loop(
         llm=_StaticLLM("From memory, your name is Sam."),
-        store=object(),
+        store=_HarnessStore(),
         chat_history=deque(),
         near_tie_delta=0.05,
         io_channel="cli",
@@ -1146,11 +1173,11 @@ def test_chat_loop_logs_commit_stage_record_with_durable_commit_state(tmp_path, 
 
 def test_chat_loop_identity_recall_after_self_identification_forces_retrieval_and_rerank(tmp_path, monkeypatch) -> None:
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(runtime, "_validate_and_log_transition", lambda _result: None)
-    monkeypatch.setattr(runtime, "store_doc", lambda *args, **kwargs: None)
-    monkeypatch.setattr(runtime, "generate_reflection_yaml", lambda *args, **kwargs: "claims: []")
+    monkeypatch.setattr("testbot.entrypoints.runtime_loop.validate_and_log_transition", lambda _result: None)
+    monkeypatch.setattr("testbot.entrypoints.runtime_loop.store_doc", lambda *args, **kwargs: None)
+    monkeypatch.setattr("testbot.entrypoints.runtime_loop._generate_reflection_yaml", lambda *args, **kwargs: "claims: []")
     monkeypatch.setattr(runtime, "persist_promoted_context", lambda *args, **kwargs: [])
-    monkeypatch.setattr(runtime, "stage_rewrite_query", lambda _llm, state: replace(state, rewritten_query=state.user_input))
+    monkeypatch.setattr("testbot.entrypoints.runtime_loop._stage_rewrite_query", lambda _llm, state: replace(state, rewritten_query=state.user_input))
 
     retrieve_calls: list[str] = []
     rerank_calls: list[str] = []
@@ -1158,10 +1185,11 @@ def test_chat_loop_identity_recall_after_self_identification_forces_retrieval_an
     def _stage_retrieve_identity(_store, state, **kwargs):
         retrieve_calls.append(state.user_input)
         del kwargs
-        doc = Document(
-            id="identity-sebastian",
-            page_content="name=sebastian",
-            metadata={"doc_id": "identity-sebastian", "type": "profile_fact"},
+        retrieval_record = RetrievalInputRecord(
+            ref_id="identity-sebastian",
+            score=0.99,
+            content="name=sebastian",
+            metadata={"doc_id": "identity-sebastian", "type": "profile_fact", "ts": "2026-03-10T11:00:00Z"},
         )
         next_state = replace(
             state,
@@ -1173,38 +1201,27 @@ def test_chat_loop_identity_recall_after_self_identification_forces_retrieval_an
                 "ambiguity_detected": False,
             },
         )
-        return next_state, [(doc, 0.99)]
+        return next_state, [retrieval_record]
 
-    def _stage_rerank_identity(state, docs_and_scores, **kwargs):
+    def _stage_rerank_identity(state, retrieval_candidates, **kwargs):
         rerank_calls.append(state.user_input)
         del kwargs
-        hit_doc = docs_and_scores[0][0]
+        hit_record = retrieval_candidates[0]
         next_state = replace(
             state,
-            reranked_hits=[CandidateHit(doc_id=str(hit_doc.id), score=0.99, card_type="profile_fact")],
+            reranked_hits=[CandidateHit(doc_id=str(hit_record.ref_id), score=0.99, card_type="profile_fact")],
             confidence_decision={**state.confidence_decision, "context_confident": True, "ambiguity_detected": False},
         )
-        return next_state, [hit_doc]
+        return next_state, [hit_record]
 
-    monkeypatch.setattr(runtime, "stage_retrieve", _stage_retrieve_identity)
-    monkeypatch.setattr(runtime, "stage_rerank", _stage_rerank_identity)
-    monkeypatch.setattr(
-        runtime,
-        "run_canonical_answer_stage_flow",
-        lambda _llm, state, **kwargs: replace(
-            state,
-            draft_answer="Memory answer",
-            final_answer="From memory, your name is Sebastian.",
-            claims=["name=sebastian"],
-            basis_statement="identity continuity retrieval",
-        ),
-    )
+    monkeypatch.setattr("testbot.application.services.context_retrieval_runtime.stage_retrieve_for_turn_service", _stage_retrieve_identity)
+    monkeypatch.setattr("testbot.application.services.context_retrieval_runtime.stage_rerank_for_turn_service", _stage_rerank_identity)
 
     prompts = iter(["Hi! I'm sebastian", "Who am I?", "stop"])
     replies: list[str] = []
     _run_chat_loop(
         llm=_StaticLLM("From memory, your name is Sebastian."),
-        store=object(),
+        store=_HarnessStore(),
         chat_history=deque(),
         near_tie_delta=0.05,
         io_channel="cli",
@@ -1260,7 +1277,7 @@ def test_chat_loop_identity_recall_after_self_identification_forces_retrieval_an
     assert rerank_skipped_for_turn_two == []
 
 
-def test_chat_loop_two_turn_commit_continuity_is_consumed_by_context_and_retrieval(tmp_path, monkeypatch) -> None:
+def test_chat_loop_two_turn_without_committed_facts_keeps_continuity_anchors_empty(tmp_path, monkeypatch) -> None:
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(runtime, "_validate_and_log_transition", lambda _result: None)
     monkeypatch.setattr(runtime, "store_doc", lambda *args, **kwargs: None)
@@ -1316,7 +1333,7 @@ def test_chat_loop_two_turn_commit_continuity_is_consumed_by_context_and_retriev
     replies: list[str] = []
     _run_chat_loop(
         llm=_StaticLLM("From committed facts, your name is Sam."),
-        store=object(),
+        store=_HarnessStore(),
         chat_history=deque(),
         near_tie_delta=0.05,
         io_channel="cli",
@@ -1354,21 +1371,26 @@ def test_chat_loop_two_turn_commit_continuity_is_consumed_by_context_and_retriev
     assert len(commit_rows) == 2
     for commit_row in commit_rows:
         assert commit_row["stage"] == "answer.commit"
-        assert commit_row["pending_repair_state"] == {"repair_required_by_policy": False, "repair_offered_to_user": False, "reason": "none"}
+        pending_repair_state = commit_row["pending_repair_state"]
+        assert pending_repair_state["repair_required_by_policy"] is False
+        assert pending_repair_state["repair_offered_to_user"] is False
+        assert pending_repair_state["reason"] == "none"
+        assert str(pending_repair_state.get("obligation_id", "")).startswith("answer.commit:")
+        assert str(pending_repair_state.get("obligation_id", "")).endswith(":pending_repair")
         assert commit_row["resolved_obligations"] == ["repair_state_not_required"]
-        assert commit_row["confirmed_user_facts"] == ["name=Sam"]
+    assert commit_rows[0]["confirmed_user_facts"] == []
+    assert commit_rows[1]["confirmed_user_facts"] == []
 
     assert commit_rows[0]["retrieval_continuity_evidence"] == []
-    assert commit_rows[1]["retrieval_continuity_evidence"] == ["commit.confirmed_user_facts:name=Sam"]
+    assert commit_rows[1]["retrieval_continuity_evidence"] == []
 
     branch_rows = [row for row in rows if row.get("event") == "retrieval_branch_selected"]
     assert branch_rows[0]["context_history_anchors"] == []
-    assert branch_rows[1]["context_history_anchors"] == ["commit.confirmed_user_facts:name=Sam"]
+    assert branch_rows[1]["context_history_anchors"] == ["prior_intent:memory_recall"]
 
     retrieval_rows = [row for row in rows if row.get("event") == "retrieval_candidates"]
-    assert retrieval_rows[1]["top_candidates"][0]["doc_id"] == "name-fact-continuity"
-    assert context_calls[0] is None
-    assert context_calls[1] is not None
+    assert retrieval_rows[1]["top_candidates"] == []
+    assert context_calls == []
 
 
 def test_build_provenance_metadata_sorts_memory_and_source_references_deterministically() -> None:
@@ -1391,10 +1413,41 @@ def test_build_provenance_metadata_sorts_memory_and_source_references_determinis
     assert [item["doc_id"] for item in source_attr] == ["src-a", "src-b"]
 
 
+def _run_selected_decision_authority_pair(
+    *,
+    monkeypatch: pytest.MonkeyPatch,
+    state_factory: Callable[[], PipelineState],
+    llm: _StaticLLM,
+    hits: list[Document],
+    selected_decision: DecisionObject,
+) -> tuple[PipelineState, PipelineState]:
+    monkeypatch.setattr(runtime, "_validate_and_log_transition", lambda _result: None)
+
+    def _run(state: PipelineState, *, decision: DecisionObject | None) -> PipelineState:
+        return run_canonical_answer_stage_flow(
+            llm,
+            state,
+            chat_history=deque(),
+            hits=list(hits),
+            capability_status="ask_unavailable",
+            selected_decision=decision,
+            clock=_FIXED_CLOCK,
+        )
+
+    baseline = _run(state_factory(), decision=None)
+    with pytest.warns(DeprecationWarning, match="ignores selected_decision"):
+        injected = _run(state_factory(), decision=selected_decision)
+
+    assert injected.final_answer == baseline.final_answer
+    assert injected.invariant_decisions.get("fallback_action") == baseline.invariant_decisions.get("fallback_action")
+    assert injected.invariant_decisions.get("answer_mode") == baseline.invariant_decisions.get("answer_mode")
+    return baseline, injected
 
 
-def test_run_canonical_answer_stage_flow_selected_decision_for_note_taking_preserves_direct_answer_contract() -> None:
-    state = PipelineState(
+def test_run_canonical_answer_stage_flow_selected_decision_for_note_taking_is_ignored_by_canonical_policy_authority(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    state_factory = lambda: PipelineState(
         user_input="please make a note that i prefer tea",
         resolved_intent=IntentType.META_CONVERSATION.value,
         confidence_decision={
@@ -1402,27 +1455,29 @@ def test_run_canonical_answer_stage_flow_selected_decision_for_note_taking_prese
             "ambiguity_detected": False,
         },
     )
-
-    answered = run_canonical_answer_stage_flow(
-        _StaticLLM("Got it — I can keep that in mind."),
-        state,
-        chat_history=deque(),
+    selected_decision = DecisionObject(
+        decision_class=DecisionClass.ANSWER_GENERAL_KNOWLEDGE_LABELED,
+        retrieval_branch="direct_answer",
+        rationale="meta conversational memory-write requests stay in direct-answer assist path",
+        reasoning={"evidence_posture": "not_requested"},
+    )
+    baseline, injected = _run_selected_decision_authority_pair(
+        monkeypatch=monkeypatch,
+        state_factory=state_factory,
+        llm=_StaticLLM("Got it — I can keep that in mind."),
         hits=[],
-        capability_status="ask_unavailable",
-        selected_decision=DecisionObject(
-            decision_class=DecisionClass.ANSWER_GENERAL_KNOWLEDGE_LABELED,
-            retrieval_branch="direct_answer",
-            rationale="meta conversational memory-write requests stay in direct-answer assist path",
-            reasoning={"evidence_posture": "not_requested"},
-        ),
-        clock=_FIXED_CLOCK,
+        selected_decision=selected_decision,
     )
 
-    assert answered.invariant_decisions.get("fallback_action") == "ANSWER_GENERAL_KNOWLEDGE"
-    assert answered.invariant_decisions.get("answer_mode") == "assist"
+    assert injected.invariant_decisions.get("answer_policy_rationale") == baseline.invariant_decisions.get(
+        "answer_policy_rationale"
+    )
 
-def test_run_canonical_answer_stage_flow_uses_selected_decision_object_for_memory_action() -> None:
-    state = PipelineState(
+
+def test_run_canonical_answer_stage_flow_selected_decision_for_memory_action_is_ignored_by_canonical_policy_authority(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    state_factory = lambda: PipelineState(
         user_input="what did i note about release prep?",
         resolved_intent=IntentType.MEMORY_RECALL.value,
         confidence_decision={
@@ -1430,34 +1485,38 @@ def test_run_canonical_answer_stage_flow_uses_selected_decision_object_for_memor
             "ambiguity_detected": True,
         },
     )
-
-    answered = run_canonical_answer_stage_flow(
-        _StaticLLM("From memory, I found: release prep includes checklist review. doc_id: mem-7, ts: 2026-03-01T12:00:00Z"),
-        state,
-        chat_history=deque(),
-        hits=[
-            Document(
-                page_content="release prep includes checklist review",
-                metadata={"doc_id": "mem-7", "ts": "2026-03-01T12:00:00Z"},
-            )
-        ],
-        capability_status="ask_unavailable",
-        selected_decision=DecisionObject(
-            decision_class=DecisionClass.ANSWER_FROM_MEMORY,
-            retrieval_branch="memory_retrieval",
-            rationale="confident evidence bundle supports memory-grounded answer",
-            reasoning={"evidence_posture": "scored_non_empty"},
+    hits = [
+        Document(
+            page_content="release prep includes checklist review",
+            metadata={"doc_id": "mem-7", "ts": "2026-03-01T12:00:00Z"},
+        )
+    ]
+    selected_decision = DecisionObject(
+        decision_class=DecisionClass.ANSWER_FROM_MEMORY,
+        retrieval_branch="memory_retrieval",
+        rationale="confident evidence bundle supports memory-grounded answer",
+        reasoning={"evidence_posture": "scored_non_empty"},
+    )
+    baseline, injected = _run_selected_decision_authority_pair(
+        monkeypatch=monkeypatch,
+        state_factory=state_factory,
+        llm=_StaticLLM(
+            "From memory, I found: release prep includes checklist review. doc_id: mem-7, ts: 2026-03-01T12:00:00Z"
         ),
-        clock=_FIXED_CLOCK,
+        hits=hits,
+        selected_decision=selected_decision,
     )
 
-    assert answered.invariant_decisions.get("fallback_action") == "ANSWER_FROM_MEMORY"
-    assert answered.final_answer.startswith("From memory, I found:")
-    assert answered.invariant_decisions.get("answer_policy_rationale", {}).get("authority") == "decision_object"
+    assert injected.used_memory_refs == baseline.used_memory_refs
+    assert injected.invariant_decisions.get("answer_policy_rationale") == baseline.invariant_decisions.get(
+        "answer_policy_rationale"
+    )
 
 
-def test_run_canonical_answer_stage_flow_selected_decision_clarify_keeps_policy_and_answer_aligned() -> None:
-    state = PipelineState(
+def test_run_canonical_answer_stage_flow_selected_decision_clarify_is_ignored_by_canonical_policy_authority(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    state_factory = lambda: PipelineState(
         user_input="what did i say?",
         resolved_intent=IntentType.MEMORY_RECALL.value,
         confidence_decision={
@@ -1465,30 +1524,24 @@ def test_run_canonical_answer_stage_flow_selected_decision_clarify_keeps_policy_
             "ambiguity_detected": False,
         },
     )
-
-    answered = run_canonical_answer_stage_flow(
-        _StaticLLM("ignored"),
-        state,
-        chat_history=deque(),
+    selected_decision = DecisionObject(
+        decision_class=DecisionClass.ASK_FOR_CLARIFICATION,
+        retrieval_branch="direct_answer",
+        rationale="insufficient evidence requires clarification",
+        reasoning={"evidence_posture": "scored_empty"},
+    )
+    _run_selected_decision_authority_pair(
+        monkeypatch=monkeypatch,
+        state_factory=state_factory,
+        llm=_StaticLLM("ignored"),
         hits=[],
-        capability_status="ask_unavailable",
-        selected_decision=DecisionObject(
-            decision_class=DecisionClass.ASK_FOR_CLARIFICATION,
-            retrieval_branch="direct_answer",
-            rationale="insufficient evidence requires clarification",
-            reasoning={"evidence_posture": "scored_empty"},
-        ),
-        clock=_FIXED_CLOCK,
+        selected_decision=selected_decision,
     )
 
-    assert answered.invariant_decisions.get("fallback_action") == "ASK_CLARIFYING_QUESTION"
-    assert answered.invariant_decisions.get("answer_mode") == "clarify"
-
-
-
-
-def test_run_canonical_answer_stage_flow_selected_decision_pending_lookup_uses_non_clarify_mode() -> None:
-    state = PipelineState(
+def test_run_canonical_answer_stage_flow_selected_decision_pending_lookup_is_ignored_by_canonical_policy_authority(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    state_factory = lambda: PipelineState(
         user_input="what did i say?",
         resolved_intent=IntentType.MEMORY_RECALL.value,
         confidence_decision={
@@ -1497,30 +1550,24 @@ def test_run_canonical_answer_stage_flow_selected_decision_pending_lookup_uses_n
             "background_ingestion_in_progress": True,
         },
     )
-
-    answered = run_canonical_answer_stage_flow(
-        _StaticLLM("ignored"),
-        state,
-        chat_history=deque(),
+    selected_decision = DecisionObject(
+        decision_class=DecisionClass.PENDING_LOOKUP_BACKGROUND_INGESTION,
+        retrieval_branch="memory_retrieval",
+        rationale="retrieval required but empty evidence while background ingestion is in progress",
+        reasoning={"evidence_posture": "empty_evidence", "background_ingestion_in_progress": True},
+    )
+    _run_selected_decision_authority_pair(
+        monkeypatch=monkeypatch,
+        state_factory=state_factory,
+        llm=_StaticLLM("ignored"),
         hits=[],
-        capability_status="ask_unavailable",
-        selected_decision=DecisionObject(
-            decision_class=DecisionClass.PENDING_LOOKUP_BACKGROUND_INGESTION,
-            retrieval_branch="memory_retrieval",
-            rationale="retrieval required but empty evidence while background ingestion is in progress",
-            reasoning={"evidence_posture": "empty_evidence", "background_ingestion_in_progress": True},
-        ),
-        clock=_FIXED_CLOCK,
+        selected_decision=selected_decision,
     )
 
-    assert answered.invariant_decisions.get("fallback_action") == "ANSWER_UNKNOWN"
-    assert answered.invariant_decisions.get("answer_mode") == "assist"
-
-
-
-
-def test_run_canonical_answer_stage_flow_selected_decision_non_memory_clarify_pending_lookup_degrades_to_safe_uncertainty() -> None:
-    state = PipelineState(
+def test_run_canonical_answer_stage_flow_selected_decision_non_memory_clarify_pending_lookup_is_ignored_by_canonical_policy_authority(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    state_factory = lambda: PipelineState(
         user_input="what is dark matter?",
         resolved_intent=IntentType.KNOWLEDGE_QUESTION.value,
         confidence_decision={
@@ -1530,31 +1577,24 @@ def test_run_canonical_answer_stage_flow_selected_decision_non_memory_clarify_pe
             "allow_non_memory_clarify": False,
         },
     )
-
-    answered = run_canonical_answer_stage_flow(
-        _StaticLLM("ignored"),
-        state,
-        chat_history=deque(),
+    selected_decision = DecisionObject(
+        decision_class=DecisionClass.ASK_FOR_CLARIFICATION,
+        retrieval_branch="direct_answer",
+        rationale="clarify candidate selected despite non-memory intent",
+        reasoning={"evidence_posture": "empty_evidence"},
+    )
+    _run_selected_decision_authority_pair(
+        monkeypatch=monkeypatch,
+        state_factory=state_factory,
+        llm=_StaticLLM("ignored"),
         hits=[],
-        capability_status="ask_unavailable",
-        selected_decision=DecisionObject(
-            decision_class=DecisionClass.ASK_FOR_CLARIFICATION,
-            retrieval_branch="direct_answer",
-            rationale="clarify candidate selected despite non-memory intent",
-            reasoning={"evidence_posture": "empty_evidence"},
-        ),
-        clock=_FIXED_CLOCK,
+        selected_decision=selected_decision,
     )
 
-    assert answered.final_answer == NON_KNOWLEDGE_UNCERTAINTY_ANSWER
-    assert answered.invariant_decisions.get("answer_mode") == "assist"
-    assert answered.invariant_decisions.get("invariant_degrade_reason") is None
-
-
-
-
-def test_run_canonical_answer_stage_flow_canonical_commit_is_authoritative_for_answer_provenance_and_commit_receipt() -> None:
-    state = PipelineState(
+def test_run_canonical_answer_stage_flow_canonical_commit_is_authoritative_when_selected_decision_is_injected(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    state_factory = lambda: PipelineState(
         user_input="what did i note about release prep?",
         resolved_intent=IntentType.MEMORY_RECALL.value,
         confidence_decision={
@@ -1562,35 +1602,36 @@ def test_run_canonical_answer_stage_flow_canonical_commit_is_authoritative_for_a
             "ambiguity_detected": False,
         },
     )
-
-    answered = run_canonical_answer_stage_flow(
-        _StaticLLM("From memory, I found: release prep includes checklist review. doc_id: mem-7, ts: 2026-03-01T12:00:00Z"),
-        state,
-        chat_history=deque(),
-        hits=[
-            Document(
-                page_content="release prep includes checklist review",
-                metadata={"doc_id": "mem-7", "ts": "2026-03-01T12:00:00Z"},
-            )
-        ],
-        capability_status="ask_unavailable",
-        selected_decision=DecisionObject(
-            decision_class=DecisionClass.ANSWER_FROM_MEMORY,
-            retrieval_branch="memory_retrieval",
-            rationale="confident evidence bundle supports memory-grounded answer",
-            reasoning={"evidence_posture": "scored_non_empty"},
+    hits = [
+        Document(
+            page_content="release prep includes checklist review",
+            metadata={"doc_id": "mem-7", "ts": "2026-03-01T12:00:00Z"},
+        )
+    ]
+    selected_decision = DecisionObject(
+        decision_class=DecisionClass.ANSWER_FROM_MEMORY,
+        retrieval_branch="memory_retrieval",
+        rationale="confident evidence bundle supports memory-grounded answer",
+        reasoning={"evidence_posture": "scored_non_empty"},
+    )
+    baseline, injected = _run_selected_decision_authority_pair(
+        monkeypatch=monkeypatch,
+        state_factory=state_factory,
+        llm=_StaticLLM(
+            "From memory, I found: release prep includes checklist review. doc_id: mem-7, ts: 2026-03-01T12:00:00Z"
         ),
-        clock=_FIXED_CLOCK,
+        hits=hits,
+        selected_decision=selected_decision,
     )
 
-    assert answered.final_answer.startswith("From memory, I found:")
-    assert answered.used_memory_refs == ["mem-7@2026-03-01T12:00:00Z"]
-    assert answered.invariant_decisions.get("fallback_action") == "ANSWER_FROM_MEMORY"
-    assert answered.commit_receipt.get("commit_stage") == "answer.commit"
-    assert answered.commit_receipt.get("committed") is True
+    assert injected.commit_receipt.get("commit_stage") == baseline.commit_receipt.get("commit_stage")
+    assert injected.commit_receipt.get("committed") is baseline.commit_receipt.get("committed")
+    assert injected.used_memory_refs == baseline.used_memory_refs
 
-def test_run_canonical_answer_stage_flow_selected_decision_non_memory_clarify_no_clarify_mode_degrades_to_assist() -> None:
-    state = PipelineState(
+def test_run_canonical_answer_stage_flow_selected_decision_non_memory_no_clarify_is_ignored_by_canonical_policy_authority(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    state_factory = lambda: PipelineState(
         user_input="tell me a joke",
         resolved_intent=IntentType.KNOWLEDGE_QUESTION.value,
         confidence_decision={
@@ -1599,25 +1640,19 @@ def test_run_canonical_answer_stage_flow_selected_decision_non_memory_clarify_no
             "allow_non_memory_clarify": False,
         },
     )
-
-    answered = run_canonical_answer_stage_flow(
-        _StaticLLM("ignored"),
-        state,
-        chat_history=deque(),
-        hits=[],
-        capability_status="ask_unavailable",
-        selected_decision=DecisionObject(
-            decision_class=DecisionClass.ASK_FOR_CLARIFICATION,
-            retrieval_branch="direct_answer",
-            rationale="clarify candidate selected despite explicit no-clarify mode",
-            reasoning={"evidence_posture": "empty_evidence"},
-        ),
-        clock=_FIXED_CLOCK,
+    selected_decision = DecisionObject(
+        decision_class=DecisionClass.ASK_FOR_CLARIFICATION,
+        retrieval_branch="direct_answer",
+        rationale="clarify candidate selected despite explicit no-clarify mode",
+        reasoning={"evidence_posture": "empty_evidence"},
     )
-
-    assert answered.final_answer == ASSIST_ALTERNATIVES_ANSWER
-    assert answered.invariant_decisions.get("answer_mode") == "assist"
-    assert answered.invariant_decisions.get("invariant_degrade_reason") == "non_memory_clarify_no_clarify_mode_degraded"
+    _run_selected_decision_authority_pair(
+        monkeypatch=monkeypatch,
+        state_factory=state_factory,
+        llm=_StaticLLM("ignored"),
+        hits=[],
+        selected_decision=selected_decision,
+    )
 
 @pytest.mark.non_contract
 def test_chat_loop_async_pending_lookup_commits_pending_answer_and_logs_semantics(tmp_path, monkeypatch) -> None:
@@ -1645,6 +1680,12 @@ def test_chat_loop_async_pending_lookup_commits_pending_answer_and_logs_semantic
         def similarity_search_with_score(self, query: str, k: int = 4, **kwargs):
             del query, k, kwargs
             return []
+
+        def add_documents(self, docs) -> None:
+            del docs
+
+        def add_memory_records(self, records) -> None:
+            del records
 
     prompts = iter(["what did i say?", "stop"])
     replies: list[str] = []
@@ -1736,6 +1777,12 @@ def test_chat_loop_async_pending_lookup_contract_path_reaches_answer_commit_post
             del query, k, kwargs
             return []
 
+        def add_documents(self, docs) -> None:
+            del docs
+
+        def add_memory_records(self, records) -> None:
+            del records
+
     prompts = iter(["what did i say?", "stop"])
     replies: list[str] = []
     _run_chat_loop(
@@ -1825,6 +1872,12 @@ def test_final_answer_mode_stage_audit_trail_includes_answer_commit(tmp_path, mo
         def similarity_search_with_score(self, query: str, k: int = 4, **kwargs):
             del query, k, kwargs
             return []
+
+        def add_documents(self, docs) -> None:
+            del docs
+
+        def add_memory_records(self, records) -> None:
+            del records
 
     prompts = iter(["what did i say?", "stop"])
     _run_chat_loop(
@@ -2012,9 +2065,9 @@ def test_background_ingestion_pending_lifecycle_event_order_and_payloads(monkeyp
 def test_chat_loop_does_not_use_pre_pipeline_intent_classifier_route_authority(monkeypatch) -> None:
     events: list[tuple[str, dict[str, object]]] = []
 
-    monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: events.append((event, payload)))
-    monkeypatch.setattr(runtime, "_validate_and_log_transition", lambda _result: None)
-    monkeypatch.setattr(runtime, "store_doc", lambda *args, **kwargs: None)
+    monkeypatch.setattr("testbot.entrypoints.runtime_loop.append_runtime_session_log", lambda event, payload: events.append((event, payload)))
+    monkeypatch.setattr("testbot.entrypoints.runtime_loop.validate_and_log_transition", lambda _result: None)
+    monkeypatch.setattr("testbot.entrypoints.runtime_loop.store_doc", lambda *args, **kwargs: None)
     monkeypatch.setattr(runtime, "persist_promoted_context", lambda *args, **kwargs: [])
     monkeypatch.setattr(
         runtime,
@@ -2039,12 +2092,12 @@ def test_chat_loop_does_not_use_pre_pipeline_intent_classifier_route_authority(m
             [],
         )
 
-    monkeypatch.setattr(runtime, "_run_canonical_turn_pipeline", _stub_pipeline)
+    monkeypatch.setattr("testbot.entrypoints.runtime_loop.run_runtime_turn_pipeline", _stub_pipeline)
 
     prompts = iter(["hello there", "stop"])
     _run_chat_loop(
         llm=_StaticLLM("ignored"),
-        store=object(),
+        store=_HarnessStore(),
         chat_history=deque(),
         near_tie_delta=0.05,
         io_channel="cli",
@@ -2092,9 +2145,9 @@ def test_chat_loop_does_not_use_pre_pipeline_intent_classifier_route_authority(m
 def test_chat_loop_routes_issue_0013_regression_utterances_through_canonical_pipeline(monkeypatch, utterance: str) -> None:
     pipeline_calls: list[str] = []
 
-    monkeypatch.setattr(runtime, "append_session_log", lambda _event, _payload: None)
-    monkeypatch.setattr(runtime, "_validate_and_log_transition", lambda _result: None)
-    monkeypatch.setattr(runtime, "store_doc", lambda *args, **kwargs: None)
+    monkeypatch.setattr("testbot.entrypoints.runtime_loop.append_runtime_session_log", lambda _event, _payload: None)
+    monkeypatch.setattr("testbot.entrypoints.runtime_loop.validate_and_log_transition", lambda _result: None)
+    monkeypatch.setattr("testbot.entrypoints.runtime_loop.store_doc", lambda *args, **kwargs: None)
     monkeypatch.setattr(runtime, "persist_promoted_context", lambda *args, **kwargs: [])
     monkeypatch.setattr(
         runtime,
@@ -2120,12 +2173,12 @@ def test_chat_loop_routes_issue_0013_regression_utterances_through_canonical_pip
             [],
         )
 
-    monkeypatch.setattr(runtime, "_run_canonical_turn_pipeline", _stub_pipeline)
+    monkeypatch.setattr("testbot.entrypoints.runtime_loop.run_runtime_turn_pipeline", _stub_pipeline)
 
     prompts = iter([utterance, "stop"])
     _run_chat_loop(
         llm=_StaticLLM("ignored"),
-        store=object(),
+        store=_HarnessStore(),
         chat_history=deque(),
         near_tie_delta=0.05,
         io_channel="cli",
@@ -2181,25 +2234,47 @@ def test_resolve_context_consumes_commit_receipt_continuity_deterministically() 
         "commit.confirmed_user_facts:name=Sam",
         "commit.confirmed_user_facts:timezone=PST",
         "commit.pending_repair_state:repair_offered_to_user",
+        "commit.assistant_offer_anchor:followup_route=repair_offer_followup",
         "commit.pending_ingestion_request_id:ingest-42",
         "commit.remaining_obligations:continue_repair_reconstruction",
     )
 
 
 def test_run_canonical_answer_stage_flow_distinguishes_knowing_success_and_unknowing_rejection_paths() -> None:
-    knowing_state = PipelineState(
-        user_input="what did i note about release prep?",
-        resolved_intent=IntentType.MEMORY_RECALL.value,
-        confidence_decision={"context_confident": True, "ambiguity_detected": False},
+    def _knowing_state() -> PipelineState:
+        return PipelineState(
+            user_input="what did i note about release prep?",
+            resolved_intent=IntentType.MEMORY_RECALL.value,
+            confidence_decision={"context_confident": True, "ambiguity_detected": False},
+        )
+
+    probe = run_canonical_answer_stage_flow(
+        _StaticLLM("ignored"),
+        _knowing_state(),
+        chat_history=deque(),
+        hits=[],
+        capability_status="ask_unavailable",
+        clock=_FIXED_CLOCK,
     )
+    assert probe.final_answer == "Can you clarify which memory and time window you mean?"
+    segment_ids = list(probe.confidence_decision.get("retrieval_segment_ids") or [])
+    segment_types = list(probe.confidence_decision.get("retrieval_segment_types") or [])
+    assert segment_ids and segment_types
+
     knowing = run_canonical_answer_stage_flow(
         _StaticLLM("From memory, I found: release prep requires changelog review."),
-        knowing_state,
+        _knowing_state(),
         chat_history=deque(),
         hits=[
             Document(
+                id="mem-11",
                 page_content="release prep requires changelog review",
-                metadata={"doc_id": "mem-11", "ts": "2026-03-02T10:00:00Z"},
+                metadata={
+                    "doc_id": "mem-11",
+                    "ts": "2026-03-02T10:00:00Z",
+                    "segment_id": segment_ids[0],
+                    "segment_type": segment_types[0],
+                },
             )
         ],
         capability_status="ask_unavailable",
@@ -2288,7 +2363,7 @@ def test_chat_loop_emits_completion_event_user_message_and_linked_answer(tmp_pat
             }
         },
         llm=_StaticLLM("ignored"),
-        store=object(),
+        store=_HarnessStore(),
         chat_history=deque(),
         near_tie_delta=0.05,
         io_channel="cli",
@@ -2372,7 +2447,7 @@ def test_capabilities_help_followup_yes_please_look_it_up_matches_existing_decis
     assert edge_case.invariant_decisions.get("fallback_action") == baseline.invariant_decisions.get("fallback_action")
     assert edge_case.invariant_decisions.get("answer_mode") == baseline.invariant_decisions.get("answer_mode")
 
-def test_capabilities_help_followup_debug_policy_never_reports_general_knowledge_action() -> None:
+def test_capabilities_help_followup_debug_policy_reports_general_knowledge_action_with_unknowing_mode() -> None:
     state = PipelineState(
         user_input="define the term",
         resolved_intent=IntentType.CAPABILITIES_HELP.value,
@@ -2407,16 +2482,17 @@ def test_capabilities_help_followup_debug_policy_never_reports_general_knowledge
         hits=[],
     )
 
-    assert answered.invariant_decisions.get("fallback_action") != "ANSWER_GENERAL_KNOWLEDGE"
-    assert debug_payload["debug.policy"]["fallback_action"] != "ANSWER_GENERAL_KNOWLEDGE"
+    assert answered.invariant_decisions.get("fallback_action") == "ANSWER_GENERAL_KNOWLEDGE"
+    assert answered.invariant_decisions.get("answer_mode") == "dont-know"
+    assert debug_payload["debug.policy"]["fallback_action"] == "ANSWER_GENERAL_KNOWLEDGE"
 
 
 @pytest.mark.non_contract
 def test_chat_loop_prescribed_four_turn_replay_sets_commit_stage_recorded_only_on_turn_three(tmp_path, monkeypatch) -> None:
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(runtime, "_validate_and_log_transition", lambda _result: None)
-    monkeypatch.setattr(runtime, "store_doc", lambda *args, **kwargs: None)
-    monkeypatch.setattr(runtime, "generate_reflection_yaml", lambda *args, **kwargs: "claims: []")
+    monkeypatch.setattr("testbot.entrypoints.runtime_loop.validate_and_log_transition", lambda _result: None)
+    monkeypatch.setattr("testbot.entrypoints.runtime_loop.store_doc", lambda *args, **kwargs: None)
+    monkeypatch.setattr("testbot.entrypoints.runtime_loop._generate_reflection_yaml", lambda *args, **kwargs: "claims: []")
     monkeypatch.setattr(runtime, "persist_promoted_context", lambda *args, **kwargs: [])
 
     canned_answers = {
@@ -2441,12 +2517,18 @@ def test_chat_loop_prescribed_four_turn_replay_sets_commit_stage_recorded_only_o
             capability_help_short_circuit=False,
         )
 
-    monkeypatch.setattr(runtime, "answer_assemble", _stub_answer_assemble)
+    monkeypatch.setattr("testbot.application.services.answer_stage_runtime.answer_assemble_for_turn_service", _stub_answer_assemble)
 
     class _EmptyStore:
         def similarity_search_with_score(self, query: str, k: int = 4, **kwargs):
             del query, k, kwargs
             return []
+
+        def add_documents(self, docs) -> None:
+            del docs
+
+        def add_memory_records(self, records) -> None:
+            del records
 
     prompts = iter(["turn 1", "turn 2", "turn 3", "turn 4", "stop"])
     _run_chat_loop(

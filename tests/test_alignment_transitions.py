@@ -1,6 +1,7 @@
 from collections import deque
 from dataclasses import replace
 
+import arrow
 from langchain_core.documents import Document
 
 from testbot.pipeline_state import PipelineState, ProvenanceType
@@ -506,24 +507,47 @@ def test_validate_answer_commit_post_rejects_non_fallback_factual_answer_when_gk
 
 
 def test_run_canonical_answer_stage_flow_memory_hit_without_ambiguity_uses_contract_safe_recovery_answer() -> None:
-    state = PipelineState(
-        user_input="what did i say yesterday",
-        confidence_decision={"context_confident": True, "ambiguity_detected": False},
-    )
-    hits = [
-        Document(
-            page_content="You mentioned discussing topology during lunch.",
-            metadata={"doc_id": "d-1", "ts": "2025-01-01T00:00:00Z"},
+    def _state() -> PipelineState:
+        return PipelineState(
+            user_input="what did i say yesterday",
+            confidence_decision={"context_confident": True, "ambiguity_detected": False},
         )
-    ]
+
+    class _FixedClock:
+        def now(self) -> arrow.Arrow:
+            return arrow.get("2026-04-02T12:00:00+00:00")
+
+    probe = run_canonical_answer_stage_flow(
+        _InvalidContractLLM(),
+        _state(),
+        chat_history=deque(),
+        hits=[],
+        capability_status="ask_unavailable",
+        clock=_FixedClock(),
+    )
+    assert probe.final_answer == "Can you clarify which memory and time window you mean?"
+    segment_ids = list(probe.confidence_decision.get("retrieval_segment_ids") or [])
+    segment_types = list(probe.confidence_decision.get("retrieval_segment_types") or [])
+    assert segment_ids and segment_types
 
     answered = run_canonical_answer_stage_flow(
         _InvalidContractLLM(),
-        state,
+        _state(),
         chat_history=deque(),
-        hits=hits,
+        hits=[
+            Document(
+                id="d-1",
+                page_content="You mentioned discussing topology during lunch.",
+                metadata={
+                    "doc_id": "d-1",
+                    "ts": "2026-04-01T09:00:00Z",
+                    "segment_id": segment_ids[0],
+                    "segment_type": segment_types[0],
+                },
+            )
+        ],
         capability_status="ask_unavailable",
-        clock=None,
+        clock=_FixedClock(),
     )
 
     assert answered.final_answer.startswith("From memory, I found:")

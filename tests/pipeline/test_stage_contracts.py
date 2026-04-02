@@ -113,7 +113,7 @@ def test_answer_render_invalid_validation_routes_to_explicit_degraded_contract_w
     assert "Sensitive semantic text" not in rendered.rendered_text
 
 
-def test_answer_commit_merges_stabilized_facts_once_per_fact_without_duplicate_commit_effects() -> None:
+def test_answer_commit_uses_assembly_confirmed_facts_without_implicit_candidate_fact_promotion() -> None:
     state = PipelineState(
         user_input="My name is Ava",
         candidate_facts={
@@ -144,9 +144,11 @@ def test_answer_commit_merges_stabilized_facts_once_per_fact_without_duplicate_c
 
     assert committed.turn_id == "turn-003"
     assert committed_state.commit_receipt["commit_stage"] == "answer.commit"
-    assert committed.confirmed_user_facts == ["timezone=UTC", "name=Ava"]
+    assert committed.confirmed_user_facts == ["timezone=UTC"]
     assert committed.confirmed_user_facts.count("timezone=UTC") == 1
-    assert committed.confirmed_user_facts.count("name=Ava") == 1
+    assert "name=Ava" not in committed.confirmed_user_facts
+    assert committed_state.commit_receipt.confirmed_user_facts == ["timezone=UTC"]
+    assert committed_state.candidate_facts.get("facts") == [{"key": "user_name", "value": "Ava"}]
 
 
 def test_answer_render_invalid_validation_uses_deny_fallback_only_for_explicit_deny_safety() -> None:

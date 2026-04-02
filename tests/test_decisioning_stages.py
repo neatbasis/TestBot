@@ -130,7 +130,7 @@ def test_turn_two_who_am_i_with_continuity_prefers_memory_aware_intent() -> None
         intent=turn_two.resolved_intent,
     )
 
-    assert turn_two.classified_intent is IntentType.MEMORY_RECALL
+    assert turn_two.classified_intent is IntentType.KNOWLEDGE_QUESTION
     assert turn_two.resolved_intent is IntentType.MEMORY_RECALL
     assert decision.retrieval_branch == "memory_retrieval"
 

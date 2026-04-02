@@ -61,6 +61,7 @@ def _stage_runtime(*, utterance: str) -> TurnPipelineStageRuntime:
         store=object(),
         utterance=utterance,
         prior_pipeline_state=None,
+        prior_continuity=None,
         near_tie_delta=0.05,
         chat_history=deque(),
         capability_status=object(),

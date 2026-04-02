@@ -100,7 +100,12 @@ def test_validation_result_has_explicit_constructor_and_legacy_adapter() -> None
 
     canonical = validation_result_from_validated_answer(legacy)
     assert canonical.passed is True
-    assert canonical.to_validated_answer() == legacy
+    roundtrip = canonical.to_validated_answer()
+    assert roundtrip.passed == legacy.passed
+    assert roundtrip.failures == legacy.failures
+    assert roundtrip.final_answer == legacy.final_answer
+    assert roundtrip.invariant_decisions == {}
+    assert roundtrip.alignment_decision == {}
 
 
 def test_rendered_response_has_explicit_constructor_and_legacy_adapter() -> None:

@@ -16,6 +16,7 @@ def test_build_capability_snapshot_delegates_to_runtime_capability_service(monke
     def _fake_service(**kwargs):
         captured.update(kwargs)
         return CapabilitySnapshotData(
+            runtime=kwargs["runtime"],
             requested_mode="auto",
             daemon_mode=False,
             effective_mode="cli",

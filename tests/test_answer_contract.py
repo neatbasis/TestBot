@@ -4,6 +4,7 @@ from collections import deque
 
 from langchain_core.documents import Document
 
+from testbot.application.services import answer_stage_runtime as answer_stage_runtime_service
 from testbot.answer_policy import AnswerPolicyInput, resolve_answer_mode, resolve_answer_routing
 from testbot.pipeline_state import PipelineState, ProvenanceType
 from testbot.history_packer import pack_chat_history
@@ -19,7 +20,6 @@ from testbot.sat_chatbot_memory_v2 import (
     raw_claim_like_text_detected,
     render_context,
     response_contains_claims,
-    run_canonical_answer_stage_flow,
     validate_answer_contract,
     _decision_object_from_assembled,
     AnswerAssembleResult,
@@ -47,6 +47,17 @@ def _runtime_status() -> RuntimeCapabilityStatus:
         debug_verbose=False,
         text_clarification_available=True,
         satellite_ask_available=False,
+    )
+
+
+def run_canonical_answer_stage_flow(llm, state, **kwargs):
+    kwargs.setdefault("selected_decision", None)
+    kwargs.setdefault("timezone", "Europe/Helsinki")
+    return answer_stage_runtime_service.run_canonical_answer_stage_flow(
+        llm,
+        state,
+        run_canonical_turn_pipeline=runtime._run_canonical_turn_pipeline,
+        **kwargs,
     )
 
 
@@ -109,26 +120,46 @@ def test_non_memory_general_knowledge_contract_failure_degrades_to_knowledge_saf
 
 
 def test_memory_recall_confident_contract_failure_uses_deterministic_recovery_hit() -> None:
-    state = PipelineState(
-        user_input="what did i decide about training schedule?",
-        confidence_decision={
-            "context_confident": True,
-            "ambiguity_detected": False,
-        },
-        resolved_intent="memory_recall",
-    )
-    hits = [
-        Document(
-            page_content="You decided to move strength training to Tuesday mornings after the team standup.",
-            metadata={"doc_id": "mem-42", "ts": "2026-03-06T08:15:00Z"},
+    def _state() -> PipelineState:
+        return PipelineState(
+            user_input="what did i decide about training schedule?",
+            confidence_decision={
+                "context_confident": True,
+                "ambiguity_detected": False,
+            },
+            resolved_intent="memory_recall",
         )
-    ]
+
+    probe_state = run_canonical_answer_stage_flow(
+        _UnlabeledGeneralKnowledgeLLM(),
+        _state(),
+        chat_history=deque(),
+        hits=[],
+        capability_status="ask_unavailable",
+        runtime_capability_status=_runtime_status(),
+        clock=None,
+    )
+    assert probe_state.final_answer == "Can you clarify which memory and time window you mean?"
+    segment_ids = list(probe_state.confidence_decision.get("retrieval_segment_ids") or [])
+    segment_types = list(probe_state.confidence_decision.get("retrieval_segment_types") or [])
+    assert segment_ids and segment_types
 
     answer_state = run_canonical_answer_stage_flow(
         _UnlabeledGeneralKnowledgeLLM(),
-        state,
+        _state(),
         chat_history=deque(),
-        hits=hits,
+        hits=[
+            Document(
+                id="mem-42",
+                page_content="You decided to move strength training to Tuesday mornings after the team standup.",
+                metadata={
+                    "doc_id": "mem-42",
+                    "ts": "2026-03-06T08:15:00Z",
+                    "segment_id": segment_ids[0],
+                    "segment_type": segment_types[0],
+                },
+            )
+        ],
         capability_status="ask_unavailable",
         runtime_capability_status=_runtime_status(),
         clock=None,
@@ -139,6 +170,7 @@ def test_memory_recall_confident_contract_failure_uses_deterministic_recovery_hi
     assert "doc_id: mem-42" in answer_state.final_answer
     assert "ts: 2026-03-06T08:15:00Z" in answer_state.final_answer
     assert answer_state.invariant_decisions["answer_mode"] == "memory-grounded"
+    assert answer_state.invariant_decisions["fallback_action"] == "ANSWER_FROM_MEMORY"
 
 
 
@@ -261,7 +293,7 @@ def test_rendered_context_supports_synthetic_citation_valid_draft_path() -> None
     assert validate_answer_contract(synthetic_draft) is True
 
 
-def test_non_memory_low_source_confidence_uses_unknown_fallback_without_source_citation() -> None:
+def test_non_memory_low_source_confidence_preserves_policy_fallback_action_and_uses_safe_non_memory_output_without_source_citation() -> None:
     state = PipelineState(
         user_input="what happened in my source records?",
         confidence_decision={
@@ -282,11 +314,11 @@ def test_non_memory_low_source_confidence_uses_unknown_fallback_without_source_c
         clock=None,
     )
 
-    lowered = answer_state.final_answer.lower()
-    assert "not fully confident" in lowered
+    assert answer_state.final_answer == ASSIST_ALTERNATIVES_ANSWER
     assert "source_uri:" not in answer_state.final_answer
-    assert answer_state.invariant_decisions["fallback_action"] == "ANSWER_UNKNOWN"
-    assert ProvenanceType.GENERAL_KNOWLEDGE in answer_state.provenance_types
+    assert answer_state.invariant_decisions["fallback_action"] == "ANSWER_GENERAL_KNOWLEDGE"
+    assert answer_state.invariant_decisions["answer_mode"] == "assist"
+    assert ProvenanceType.UNKNOWN in answer_state.provenance_types
 
 
 def test_ambiguous_memory_recall_routes_to_ask_token_when_available() -> None:
@@ -324,7 +356,7 @@ def test_memory_recall_no_hit_routes_to_assist_alternatives_token() -> None:
     assert decision.canonical_response_token == "ASSIST_ALTERNATIVES_ANSWER"
 
 
-def test_run_canonical_answer_stage_flow_invariant_records_policy_rationale_for_low_confidence_non_memory() -> None:
+def test_run_canonical_answer_stage_flow_invariant_records_policy_authority_for_low_confidence_non_memory() -> None:
     state = PipelineState(
         user_input="what happened in my source records?",
         confidence_decision={
@@ -345,9 +377,10 @@ def test_run_canonical_answer_stage_flow_invariant_records_policy_rationale_for_
         clock=None,
     )
 
-    assert answer_state.invariant_decisions["fallback_action"] == "ANSWER_UNKNOWN"
-    assert answer_state.invariant_decisions["answer_policy_rationale"]["source_confidence"] == 0.2
-    assert answer_state.invariant_decisions["answer_mode_rationale"]["reason"] == "unknown_fallback"
+    assert answer_state.invariant_decisions["fallback_action"] == "ANSWER_GENERAL_KNOWLEDGE"
+    assert answer_state.invariant_decisions["answer_policy_rationale"]["authority"] == "decision_object"
+    assert answer_state.invariant_decisions["answer_policy_rationale"]["decision_class"] == "answer_general_knowledge_labeled"
+    assert answer_state.invariant_decisions["answer_mode_rationale"]["reason"] == "assist_or_social"
 
 
 def test_noisy_heuristic_history_does_not_force_constraints_into_final_answer() -> None:
@@ -378,7 +411,8 @@ def test_noisy_heuristic_history_does_not_force_constraints_into_final_answer() 
     )
 
     assert "garage door is broken" not in answer_state.final_answer.lower()
-    assert answer_state.invariant_decisions["fallback_action"] in {"ANSWER_UNKNOWN", "OFFER_CAPABILITY_ALTERNATIVES"}
+    assert answer_state.invariant_decisions["fallback_action"] == "ANSWER_GENERAL_KNOWLEDGE"
+    assert answer_state.invariant_decisions["answer_mode"] == "assist"
 
 
 def test_seeded_retrieval_exclusions_prevent_answer_mode_and_fallback_drift_from_synthetic_evidence(monkeypatch) -> None:
