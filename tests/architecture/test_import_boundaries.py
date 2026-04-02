@@ -77,6 +77,31 @@ DEPRECATED_IMPORT_COMPAT_TEST_ALLOWLIST: tuple[Path, ...] = (
     REPO_ROOT / "tests" / "test_answer_stage_flow_delegation.py",
 )
 
+SAT_COMPAT_TEST_IMPORT_ALLOWLIST: tuple[Path, ...] = (
+    REPO_ROOT / "tests" / "test_answer_contract_constants_compatibility.py",
+    REPO_ROOT / "tests" / "test_answer_stage_flow_delegation.py",
+    REPO_ROOT / "tests" / "test_answer_stage_runtime_compat_wrappers.py",
+    REPO_ROOT / "tests" / "test_canonical_orchestrator_compatibility_exports.py",
+    REPO_ROOT / "tests" / "test_context_retrieval_runtime_compat_wrappers.py",
+    REPO_ROOT / "tests" / "test_runtime_modes_compatibility.py",
+    REPO_ROOT / "tests" / "test_runtime_transition_validation_compatibility.py",
+    REPO_ROOT / "tests" / "test_sat_runtime_compat_facade.py",
+    REPO_ROOT / "tests" / "test_session_log_compatibility.py",
+)
+
+SAT_CANONICAL_TEST_IMPORT_GRANDFATHER_ALLOWLIST: tuple[Path, ...] = (
+    REPO_ROOT / "tests" / "integration" / "ports_contract" / "test_port_contracts.py",
+    REPO_ROOT / "tests" / "test_alignment_transitions.py",
+    REPO_ROOT / "tests" / "test_answer_contract.py",
+    REPO_ROOT / "tests" / "test_eval_runtime_parity.py",
+    REPO_ROOT / "tests" / "test_runtime_capability_extraction.py",
+    REPO_ROOT / "tests" / "test_runtime_capability_ownership.py",
+    REPO_ROOT / "tests" / "test_runtime_logging_events.py",
+    REPO_ROOT / "tests" / "test_runtime_modes.py",
+    REPO_ROOT / "tests" / "test_time_reasoning.py",
+    REPO_ROOT / "tests" / "test_turn_service_delegation.py",
+)
+
 DEPRECATED_EXPORT_SCAN_ROOTS: tuple[Path, ...] = (
     REPO_ROOT / "src",
     REPO_ROOT / "tests",
@@ -116,6 +141,22 @@ def _module_imports(path: Path) -> set[str]:
 
 def _contains_pattern(import_name: str, pattern: str) -> bool:
     return import_name == pattern or import_name.startswith(f"{pattern}.")
+
+
+def _imports_sat_compat_facade(path: Path) -> bool:
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                if _contains_pattern(alias.name, "testbot.sat_chatbot_memory_v2"):
+                    return True
+        elif isinstance(node, ast.ImportFrom):
+            if node.module and _contains_pattern(node.module, "testbot.sat_chatbot_memory_v2"):
+                return True
+            if node.module == "testbot":
+                if any(alias.name == "sat_chatbot_memory_v2" for alias in node.names):
+                    return True
+    return False
 
 
 def test_stage_modules_do_not_import_infrastructure_adapters_directly() -> None:
@@ -235,6 +276,33 @@ def test_deprecated_sat_runtime_exports_are_only_imported_by_approved_compatibil
     assert not violations, (
         "Deprecated sat_chatbot_memory_v2 compatibility exports are restricted to approved compatibility tests:\n"
         + "\n".join(violations)
+    )
+
+
+def test_sat_compatibility_facade_imports_are_frozen_to_allowlisted_tests() -> None:
+    sat_importing_tests = {
+        path
+        for path in (REPO_ROOT / "tests").rglob("*.py")
+        if _imports_sat_compat_facade(path)
+    }
+
+    compatibility_allowlist = set(SAT_COMPAT_TEST_IMPORT_ALLOWLIST)
+    grandfather_allowlist = set(SAT_CANONICAL_TEST_IMPORT_GRANDFATHER_ALLOWLIST)
+    allowed = compatibility_allowlist.union(grandfather_allowlist)
+
+    unexpected = sorted(path.relative_to(REPO_ROOT) for path in sat_importing_tests - allowed)
+    assert not unexpected, (
+        "SAT compatibility facade imports are only allowed in explicit compatibility tests "
+        "or the frozen canonical grandfather list:\n"
+        + "\n".join(str(path) for path in unexpected)
+    )
+
+    unexpected_canonical = sorted(
+        path.relative_to(REPO_ROOT) for path in (sat_importing_tests - compatibility_allowlist) - grandfather_allowlist
+    )
+    assert not unexpected_canonical, (
+        "No new canonical tests may import testbot.sat_chatbot_memory_v2 outside the frozen grandfather list:\n"
+        + "\n".join(str(path) for path in unexpected_canonical)
     )
 
 

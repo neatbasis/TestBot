@@ -9,7 +9,6 @@ from testbot.observability.transition_validation import (
     TRANSITION_VALIDATION_SCHEMA_VERSION,
     build_transition_validation_log_row,
 )
-from testbot import sat_chatbot_memory_v2 as legacy_runtime
 
 
 @dataclass(frozen=True)
@@ -62,16 +61,3 @@ def test_runtime_transition_validation_entrypoint_logs_then_asserts(monkeypatch:
 
     assert observed["result"] is result
 
-
-def test_legacy_transition_validator_is_compatibility_delegator(monkeypatch: pytest.MonkeyPatch) -> None:
-    observed: dict[str, object] = {}
-    result = _FakeTransitionResult()
-
-    monkeypatch.setattr(
-        legacy_runtime,
-        "validate_and_log_runtime_transition",
-        lambda candidate: observed.setdefault("result", candidate),
-    )
-
-    legacy_runtime._validate_and_log_transition(result)
-    assert observed["result"] is result

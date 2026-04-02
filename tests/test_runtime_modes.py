@@ -12,8 +12,7 @@ from urllib.error import HTTPError
 
 import pytest
 
-from testbot.entrypoints import cli, sat_cli
-from testbot.entrypoints.runtime_legacy_bridge import read_runtime_env
+from testbot.entrypoints import cli
 from testbot.adapters.ask_gateway import AskTurnInput, STOP_DECISION_ID
 from testbot.interaction_policy import InteractionPolicyRequest
 from testbot.interaction_standards import InteractionRequirements
@@ -35,21 +34,9 @@ def test_sat_runtime_modes_does_not_import_monolith_runtime_for_profile_selectio
     assert "from testbot.sat_chatbot_memory_v2" not in source
 
 
-def test_entrypoints_package_exposes_lazy_main_wrapper_without_eager_sat_cli_import() -> None:
-    source = Path("src/testbot/entrypoints/__init__.py").read_text()
-    assert "from .sat_cli import main\n" not in source
-    assert "def main(" in source
-    assert "from .cli import main as cli_main" in source
-
-
 def test_sat_runtime_modes_does_not_depend_on_runtime_legacy_bridge_symbols() -> None:
     source = Path(sat_runtime_modes.__file__).read_text()
     assert "from testbot.entrypoints.runtime_legacy_bridge import" not in source
-
-
-def test_runtime_legacy_bridge_warns_on_monolith_compat_usage() -> None:
-    with pytest.deprecated_call(match="runtime_legacy_bridge depends on testbot.sat_chatbot_memory_v2"):
-        read_runtime_env()
 
 
 def test_runtime_loop_owner_handles_none_input_as_immediate_return(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -148,61 +135,6 @@ def test_runtime_loop_sat_say_delegates_to_ha_satellite_output_adapter(monkeypat
     }
 
 
-def test_runtime_legacy_bridge_run_chat_loop_delegates_to_runtime_loop(monkeypatch: pytest.MonkeyPatch) -> None:
-    from testbot.entrypoints import runtime_legacy_bridge
-
-    runtime_legacy_bridge._LEGACY_RUNTIME_WARNING_EMITTED = False
-    captured: dict[str, object] = {}
-
-    def _fake_runtime_loop(**kwargs):
-        captured.update(kwargs)
-
-    monkeypatch.setattr("testbot.entrypoints.runtime_loop.run_chat_loop", _fake_runtime_loop)
-    with pytest.deprecated_call(match="runtime_legacy_bridge depends on testbot.sat_chatbot_memory_v2"):
-        runtime_legacy_bridge.run_chat_loop(
-            runtime={},
-            llm=object(),
-            store=object(),
-            chat_history=deque(),
-            near_tie_delta=0.3,
-            io_channel="satellite",
-            capability_status="ok",
-            capability_snapshot=object(),
-            read_user_utterance=lambda: None,
-            send_assistant_text=lambda _text: None,
-            clock=object(),
-        )
-
-    assert captured["io_channel"] == "satellite"
-    assert captured["near_tie_delta"] == 0.3
-
-
-def test_monolith_run_chat_loop_delegates_to_runtime_loop_owner(monkeypatch: pytest.MonkeyPatch) -> None:
-    captured: dict[str, object] = {}
-
-    def _fake_runtime_loop(**kwargs):
-        captured.update(kwargs)
-
-    monkeypatch.setattr("testbot.entrypoints.runtime_loop.run_chat_loop", _fake_runtime_loop)
-
-    runtime.run_chat_loop(
-        runtime={},
-        llm=object(),
-        store=object(),
-        chat_history=deque(),
-        near_tie_delta=0.3,
-        io_channel="cli",
-        capability_status="ok",
-        capability_snapshot=object(),
-        read_user_utterance=lambda: None,
-        send_assistant_text=lambda _text: None,
-        clock=object(),
-    )
-
-    assert captured["io_channel"] == "cli"
-    assert captured["near_tie_delta"] == 0.3
-
-
 def test_canonical_retrieve_policy_path_is_independent_from_legacy_monolith_helper(monkeypatch: pytest.MonkeyPatch) -> None:
     def _legacy_sabotage(*_args, **_kwargs):
         raise AssertionError("legacy helper must not be required for canonical retrieve-policy path")
@@ -267,24 +199,6 @@ def test_canonical_stage_rerank_path_is_independent_from_legacy_monolith_helper(
     assert isinstance(hits, list)
 
 
-def test_legacy_runtime_main_warns_once_and_delegates_to_cli(monkeypatch: pytest.MonkeyPatch) -> None:
-    forwarded: list[list[str] | None] = []
-
-    def _fake_cli_main(argv: list[str] | None = None) -> None:
-        forwarded.append(argv)
-
-    monkeypatch.setattr("testbot.entrypoints.cli.main", _fake_cli_main)
-    runtime._LEGACY_MAIN_WARNING_EMITTED = False
-
-    with pytest.warns(DeprecationWarning, match=r"testbot\.sat_chatbot_memory_v2\.main\(\.\.\.\)"):
-        runtime.main(["--mode", "cli"])
-    runtime.main(["--mode", "satellite"])
-
-    assert len(forwarded) == 2
-    assert forwarded[0] == ["--mode", "cli"]
-    assert forwarded[1] == ["--mode", "satellite"]
-
-
 def test_cli_uses_runtime_bootstrap_owner_and_limits_legacy_bridge_imports() -> None:
     source = Path(cli.__file__).read_text()
     assert "from testbot.entrypoints.runtime_bootstrap import build_runtime_memory_store, read_runtime_env" in source
@@ -299,19 +213,6 @@ def test_cli_uses_runtime_bootstrap_owner_and_limits_legacy_bridge_imports() -> 
     assert "def _apply_source_ingestion_selection" not in source
     assert "from testbot.sat_chatbot_memory_v2 import" not in source
 
-
-
-
-def test_legacy_capabilities_help_answer_helper_delegates_to_canonical_continuity_owner() -> None:
-    from testbot.application.services import continuity_runtime
-
-    samples = [
-        "Runtime mode: cli\nMemory recall: available\nHome Assistant: unavailable",
-        "not a capabilities payload",
-    ]
-
-    for text in samples:
-        assert runtime._is_capabilities_help_answer(text) is continuity_runtime.is_capabilities_help_answer(text)
 
 def test_runtime_loop_owner_uses_canonical_turn_pipeline_helper_not_monolith_turn_pipeline_helper() -> None:
     from testbot.entrypoints import runtime_loop
@@ -1308,12 +1209,6 @@ def test_runtime_loop_canonical_stage_rerank_path_consumes_runtime_decision_poli
     assert observed["state"].confidence_decision["min_margin_to_second"] == 0.08
     assert observed["state"].confidence_decision["allow_ambiguity_override"] is True
     assert observed["state"].confidence_decision["ambiguity_override_top_final_score_min"] == 0.9
-
-
-def test_sat_cli_is_transitional_wrapper_to_canonical_cli() -> None:
-    source = Path(sat_cli.__file__).read_text()
-    assert "compatibility-only" in source
-    assert "from .cli import main as cli_main" in source
 
 
 def test_run_satellite_mode_uses_gateway_with_stable_stop_id(monkeypatch) -> None:
