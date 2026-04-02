@@ -633,39 +633,8 @@ def stage_retrieve(
     ]
 
 
-def _retrieval_input_from_document(doc: Document, *, score: float) -> RetrievalInputRecord:
-    return context_retrieval_runtime_service.retrieval_input_from_document(doc, score=score)
-
-
-def _document_from_retrieval_input(record: RetrievalInputRecord) -> Document:
-    return context_retrieval_runtime_service.document_from_retrieval_input(record)
-
-
 def _assemble_rerank_threshold_profile_policy():
     return context_retrieval_runtime_service.assemble_rerank_threshold_profile_policy()
-
-
-def _stage_retrieve_for_turn_service(
-    store: MemoryStorePort,
-    state: PipelineState,
-    *,
-    exclude_doc_ids: set[str] | None = None,
-    exclude_source_ids: set[str] | None = None,
-    exclude_turn_scoped_ids: set[str] | None = None,
-    segment_ids: set[str] | None = None,
-    segment_types: set[str] | None = None,
-) -> tuple[PipelineState, list[RetrievalInputRecord]]:
-    return context_retrieval_runtime_service.stage_retrieve_for_turn_service(
-        store,
-        state,
-        stage_retrieve_fn=stage_retrieve,
-        exclude_doc_ids=exclude_doc_ids,
-        exclude_source_ids=exclude_source_ids,
-        exclude_turn_scoped_ids=exclude_turn_scoped_ids,
-        segment_ids=segment_ids,
-        segment_types=segment_types,
-    )
-
 
 def stage_rerank(
     state: PipelineState,
@@ -680,7 +649,7 @@ def stage_rerank(
 ) -> tuple[PipelineState, list[Document]]:
     updated_state, reranked_records = context_retrieval_runtime_service.stage_rerank_for_turn_service(
         state,
-        [_retrieval_input_from_document(doc, score=score) for doc, score in docs_and_scores],
+        [context_retrieval_runtime_service.retrieval_input_from_document(doc, score=score) for doc, score in docs_and_scores],
         utterance=utterance,
         user_doc_id=user_doc_id,
         user_reflection_doc_id=user_reflection_doc_id,
@@ -688,52 +657,7 @@ def stage_rerank(
         clock=clock,
         io_channel=io_channel,
     )
-    return updated_state, [_document_from_retrieval_input(record) for record in reranked_records]
-
-
-def _answer_assemble_for_turn_service(
-    llm: ChatOllama,
-    state: PipelineState,
-    *,
-    chat_history: deque[ChatMsg],
-    hits: list[RetrievalInputRecord],
-    capability_status: CapabilityStatus,
-    answer_routing: AnswerRoutingDecision | None = None,
-    runtime_capability_status: CapabilityStatus | None = None,
-    clock: Clock | None = None,
-):
-    return answer_stage_runtime_service.answer_assemble_for_turn_service(
-        llm,
-        state,
-        chat_history=chat_history,
-        hits=hits,
-        capability_status=capability_status,
-        answer_routing=answer_routing,
-        runtime_capability_status=runtime_capability_status,
-        clock=clock,
-        document_from_retrieval_input=_document_from_retrieval_input,
-        render_context=render_context,
-        answer_prompt=ANSWER_PROMPT,
-        append_session_log=append_session_log,
-    )
-
-
-def _answer_validate_for_turn_service(
-    state: PipelineState,
-    *,
-    assembled: AssembledAnswer,
-    hits: list[RetrievalInputRecord],
-    chat_history: deque[ChatMsg],
-    pending_lookup_override: bool = False,
-):
-    return answer_stage_runtime_service.answer_validate_for_turn_service(
-        state,
-        assembled=assembled,
-        hits=hits,
-        chat_history=chat_history,
-        pending_lookup_override=pending_lookup_override,
-        document_from_retrieval_input=_document_from_retrieval_input,
-    )
+    return updated_state, [context_retrieval_runtime_service.document_from_retrieval_input(record) for record in reranked_records]
 
 
 
@@ -785,10 +709,6 @@ def _is_capabilities_help_request(intent: IntentType) -> bool:
 
 def _is_capabilities_help_answer(text: str) -> bool:
     return continuity_runtime_service.is_capabilities_help_answer(text)
-
-
-def _detect_capability_offer(text: str) -> str:
-    return answer_stage_runtime_service.detect_capability_offer(text)
 
 
 def _intent_label(intent: IntentType) -> str:
@@ -1183,6 +1103,56 @@ def _run_canonical_turn_pipeline(
     clock: Clock,
     io_channel: str = "cli",
 ) -> tuple[PipelineState, list[Document]]:
+    def _stage_retrieve_hook(*args, **kwargs):
+        return context_retrieval_runtime_service.stage_retrieve_for_turn_service(
+            *args,
+            stage_retrieve_fn=stage_retrieve,
+            **kwargs,
+        )
+
+    def _answer_assemble_hook(
+        llm: ChatOllama,
+        state: PipelineState,
+        *,
+        chat_history: deque[ChatMsg],
+        hits: list[RetrievalInputRecord],
+        capability_status: CapabilityStatus,
+        answer_routing: AnswerRoutingDecision | None = None,
+        runtime_capability_status: CapabilityStatus | None = None,
+        clock: Clock | None = None,
+    ):
+        return answer_stage_runtime_service.answer_assemble_for_turn_service(
+            llm,
+            state,
+            chat_history=chat_history,
+            hits=hits,
+            capability_status=capability_status,
+            answer_routing=answer_routing,
+            runtime_capability_status=runtime_capability_status,
+            clock=clock,
+            document_from_retrieval_input=context_retrieval_runtime_service.document_from_retrieval_input,
+            render_context=render_context,
+            answer_prompt=ANSWER_PROMPT,
+            append_session_log=append_session_log,
+        )
+
+    def _answer_validate_hook(
+        state: PipelineState,
+        *,
+        assembled,
+        hits: list[RetrievalInputRecord],
+        chat_history: deque[ChatMsg],
+        pending_lookup_override: bool = False,
+    ):
+        return answer_stage_runtime_service.answer_validate_for_turn_service(
+            state,
+            assembled=assembled,
+            hits=hits,
+            chat_history=chat_history,
+            pending_lookup_override=pending_lookup_override,
+            document_from_retrieval_input=context_retrieval_runtime_service.document_from_retrieval_input,
+        )
+
     return run_runtime_turn_pipeline(
         runtime=runtime,
         llm=llm,
@@ -1209,7 +1179,7 @@ def _run_canonical_turn_pipeline(
             intent_telemetry_payload=_intent_telemetry_payload,
             poll_background_source_ingestion=_poll_background_source_ingestion,
             start_background_source_ingestion=_start_background_source_ingestion,
-            stage_retrieve=_stage_retrieve_for_turn_service,
+            stage_retrieve=_stage_retrieve_hook,
             stage_rerank=lambda *args, **kwargs: context_retrieval_runtime_service.stage_rerank_for_turn_service(
                 *args,
                 stage_rerank_fn=stage_rerank,
@@ -1218,13 +1188,13 @@ def _run_canonical_turn_pipeline(
             selected_decision_from_confidence=_selected_decision_from_confidence,
             minimal_confidence_decision_for_direct_answer=_minimal_confidence_decision_for_direct_answer,
             resolve_answer_routing_for_stage=_resolve_answer_routing_for_stage,
-            answer_assemble=_answer_assemble_for_turn_service,
-            answer_validate=_answer_validate_for_turn_service,
-            detect_capability_offer=_detect_capability_offer,
+            answer_assemble=_answer_assemble_hook,
+            answer_validate=_answer_validate_hook,
+            detect_capability_offer=answer_stage_runtime_service.detect_capability_offer,
             ambiguity_score=_ambiguity_score,
             store_doc_fn=store_doc,
             intent_classifier_confidence_threshold=INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD,
-            document_from_retrieval_input=_document_from_retrieval_input,
+            document_from_retrieval_input=context_retrieval_runtime_service.document_from_retrieval_input,
         ),
     )
 
