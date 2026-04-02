@@ -452,7 +452,7 @@ def test_resolve_turn_intent_matches_canonical_intent_resolution_for_identity_fo
     from testbot.context_resolution import resolve as resolve_context
     from testbot.intent_resolution import IntentResolutionInput, resolve as resolve_intent
     from testbot.intent_router import IntentType
-    from testbot.sat_chatbot_memory_v2 import resolve_turn_intent
+    from testbot.application.services.intent_routing_diagnostics import resolve_turn_intent
 
     utterance = "Who am I?"
     prior_state = PipelineState(

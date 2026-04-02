@@ -1,5 +1,6 @@
 from testbot.pipeline_state import PipelineState
-from testbot.sat_chatbot_memory_v2 import CLARIFY_ANSWER, ROUTE_TO_ASK_ANSWER, resolve_turn_intent
+from testbot.sat_chatbot_memory_v2 import CLARIFY_ANSWER, ROUTE_TO_ASK_ANSWER
+from testbot.application.services.intent_routing_diagnostics import resolve_turn_intent
 from testbot.intent_router import IntentType, classify_intent, extract_intent_facets, planning_pathway_for_intent
 from testbot.evidence_retrieval import EvidenceBundle, EvidenceRecord, retrieval_result
 from testbot.policy_decision import DecisionClass, decide_from_evidence

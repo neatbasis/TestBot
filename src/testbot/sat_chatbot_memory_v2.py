@@ -180,6 +180,7 @@ from testbot.policies import turn_policy as turn_policy_policies
 from testbot.application.services import background_ingestion_runtime as background_ingestion_runtime_service
 from testbot.application.services import answer_stage_runtime as answer_stage_runtime_service
 from testbot.application.services import continuity_runtime as continuity_runtime_service
+from testbot.application.services import intent_routing_diagnostics as intent_routing_diagnostics_service
 from testbot.answer_contract_constants import (
     ASSIST_ALTERNATIVES_ANSWER,
     CLARIFY_ANSWER,
@@ -775,72 +776,18 @@ def _is_clarification_or_capability_confirmation_answer(text: str) -> bool:
     return is_clarification_answer(normalized) or _is_capabilities_help_answer(normalized)
 
 
-# ---------------------------------------------------------------------------
-# Diagnostics-only helpers (non-authoritative; never use for production routing)
-# ---------------------------------------------------------------------------
-
-
-def _enforce_diagnostics_only_guard(*, diagnostic_only: bool, helper_name: str) -> None:
-    if diagnostic_only:
-        return
-    raise RuntimeError(
-        f"{helper_name} is diagnostic-only and non-authoritative; "
-        "production routing must use canonical orchestrator artifacts"
-    )
-
-
 def resolve_turn_intent(
     *,
     utterance: str,
     prior_pipeline_state: PipelineState | None,
     diagnostic_only: bool = True,
 ) -> tuple[IntentType, IntentType]:
-    """Resolve intent for diagnostics-only parity checks.
-
-    This helper intentionally runs outside the canonical turn pipeline and must
-    not be used for authoritative production routing decisions.
-    """
-    _enforce_diagnostics_only_guard(diagnostic_only=diagnostic_only, helper_name="resolve_turn_intent")
-
-    _LOGGER.warning(
-        "resolve_turn_intent invoked in diagnostic-only mode; output is non-authoritative",
-        extra={"authority": "non_authoritative", "helper": "resolve_turn_intent"},
-    )
-    seed_state = PipelineState(user_input=utterance)
-    observation = observe_turn(
-        seed_state,
-        turn_id="offline-resolve-turn-intent",
-        observed_at=utc_now_iso(),
-        speaker="user",
-        channel="offline",
-    )
-    encoded = encode_turn_candidates(seed_state, observation=observation, rewritten_query=utterance)
-    segment = derive_segment_descriptor(
-        utterance=observation.utterance,
-        has_dialogue_state=bool(encoded.dialogue_state),
-    )
-    _, stabilized_turn_state = stabilize_pre_route(
-        store=None,  # type: ignore[arg-type]
-        state=seed_state,
-        observation=observation,
-        encoded=encoded,
-        response_plan={"pathway": "offline_intent_resolution"},
-        reflection_yaml="offline: true",
-        segment=segment,
-        store_doc_fn=lambda *args, **kwargs: None,
-    )
-    context_resolution = resolve_context(
-        utterance=observation.utterance,
+    """Compatibility wrapper; canonical owner is intent_routing_diagnostics."""
+    return intent_routing_diagnostics_service.resolve_turn_intent(
+        utterance=utterance,
         prior_pipeline_state=prior_pipeline_state,
+        diagnostic_only=diagnostic_only,
     )
-    intent_resolution = resolve_intent(
-        resolution_input=IntentResolutionInput(
-            stabilized_turn_state=stabilized_turn_state,
-            context=context_resolution,
-            fallback_utterance=observation.utterance,
-        )
-    )
-    return intent_resolution.classified_intent, intent_resolution.resolved_intent
 
 
 
