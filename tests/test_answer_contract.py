@@ -4,26 +4,27 @@ from collections import deque
 
 from langchain_core.documents import Document
 
-from testbot.application.services import answer_stage_runtime as answer_stage_runtime_service
+from testbot import behave_support
+from testbot.answer_contract_constants import ASSIST_ALTERNATIVES_ANSWER, FALLBACK_ANSWER
 from testbot.answer_policy import AnswerPolicyInput, resolve_answer_mode, resolve_answer_routing
-from testbot.pipeline_state import PipelineState, ProvenanceType
+from testbot.application.services.answer_stage_presentation import render_context
+from testbot.application.services.answer_stage_runtime import (
+    AnswerAssembleResult,
+    decision_object_from_assembled as _decision_object_from_assembled,
+)
+from testbot.behave_support import run_answer_stage_flow as run_canonical_answer_stage_flow
 from testbot.history_packer import pack_chat_history
-from testbot.stage_transitions import validate_answer_commit_post
-from testbot.logic.alignment import evaluate_alignment_decision
-from testbot import sat_chatbot_memory_v2 as runtime
-from testbot.sat_chatbot_memory_v2 import (
-    ASSIST_ALTERNATIVES_ANSWER,
-    FALLBACK_ANSWER,
-    RuntimeCapabilityStatus,
-    build_provenance_metadata,
+from testbot.logic.alignment import (
+    evaluate_alignment_decision,
     has_required_memory_citation,
     raw_claim_like_text_detected,
-    render_context,
     response_contains_claims,
     validate_answer_contract,
-    _decision_object_from_assembled,
-    AnswerAssembleResult,
 )
+from testbot.logic.provenance import build_provenance_metadata
+from testbot.pipeline_state import PipelineState, ProvenanceType
+from testbot.runtime_capability_service import RuntimeCapabilityStatusData as RuntimeCapabilityStatus
+from testbot.stage_transitions import validate_answer_commit_post
 
 
 class _UnlabeledGeneralKnowledgeLLM:
@@ -48,20 +49,6 @@ def _runtime_status() -> RuntimeCapabilityStatus:
         text_clarification_available=True,
         satellite_ask_available=False,
     )
-
-
-def run_canonical_answer_stage_flow(llm, state, **kwargs):
-    kwargs.setdefault("selected_decision", None)
-    kwargs.setdefault("timezone", "Europe/Helsinki")
-    return answer_stage_runtime_service.run_canonical_answer_stage_flow(
-        llm,
-        state,
-        run_canonical_turn_pipeline=runtime._run_canonical_turn_pipeline,
-        **kwargs,
-    )
-
-
-
 
 def test_decision_object_from_assembled_uses_canonical_retrieval_branches() -> None:
     memory = _decision_object_from_assembled(
@@ -429,7 +416,7 @@ def test_seeded_retrieval_exclusions_prevent_answer_mode_and_fallback_drift_from
         captured_doc_ids.extend(str(doc.id or "") for doc, _score in docs_and_scores)
         return kwargs["state"], []
 
-    monkeypatch.setattr(runtime, "_run_canonical_turn_pipeline", _stub_pipeline)
+    monkeypatch.setattr(behave_support, "_run_canonical_turn_pipeline_for_behave", _stub_pipeline)
     state = PipelineState(
         user_input="what did i decide?",
         confidence_decision={"context_confident": True, "ambiguity_detected": False},
