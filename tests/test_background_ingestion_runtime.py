@@ -7,6 +7,7 @@ from dataclasses import dataclass
 import arrow
 
 from testbot.application.services import background_ingestion_runtime as runtime
+from testbot.continuity_read_model import CommittedTurnContinuity, ContinuityReadModel
 
 
 @dataclass
@@ -82,11 +83,19 @@ def test_process_background_ingestion_completion_regenerates_answer() -> None:
     events: list[tuple[str, dict[str, object]]] = []
     sent_text: list[str] = []
     persisted: list[str] = []
+    prior_continuity = ContinuityReadModel(
+        committed_turn=CommittedTurnContinuity(
+            turn_id="turn-123",
+            commit_stage="answer.commit",
+            pending_ingestion_request_id="req-1",
+        )
+    )
     rt = {
         "pending_ingestion_registry": {
             "req-1": {
                 "utterance": "What changed?",
                 "prior_pipeline_state": None,
+                "prior_continuity": prior_continuity,
                 "attempt_count": 2,
                 "created_at": "2026-03-10T10:00:00+00:00",
                 "deadline_at": "2026-03-10T10:30:00+00:00",
@@ -141,6 +150,7 @@ def test_process_background_ingestion_completion_regenerates_answer() -> None:
     assert sent_text == ["Background done", "Grounded answer."]
     assert persisted == ["yes"]
     assert replay_requests and replay_requests[0].utterance == "What changed?"
+    assert replay_requests[0].prior_continuity is prior_continuity
     assert any(event == "transition" and payload["status"] == "resolved" for event, payload in events)
 
 

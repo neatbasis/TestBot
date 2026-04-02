@@ -180,3 +180,9 @@ def continuity_prior_intent_hint(read_model: ContinuityReadModel | None) -> str:
     if read_model is None:
         return ""
     return read_model.interpretation.prior_intent_hint()
+
+
+def continuity_pending_ingestion_request_id(read_model: ContinuityReadModel | None) -> str:
+    if read_model is None or read_model.committed_turn is None:
+        return ""
+    return read_model.committed_turn.pending_ingestion_request_id
