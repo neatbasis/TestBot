@@ -192,7 +192,8 @@ def test_debug_flag_does_not_change_non_capabilities_fallback_answer() -> None:
     )
 
     assert disabled_answer.final_answer == enabled_answer.final_answer
-    assert enabled_answer.final_answer.startswith("I found related memory fragments (")
+    assert enabled_answer.invariant_decisions.get("fallback_action") == "ASK_CLARIFYING_QUESTION"
+    assert enabled_answer.invariant_decisions.get("answer_mode") == "clarify"
 
 
 class _GeneralKnowledgeLLM:
