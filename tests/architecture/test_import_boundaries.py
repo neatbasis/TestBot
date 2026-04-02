@@ -95,8 +95,6 @@ SAT_COMPAT_TEST_IMPORT_ALLOWLIST: tuple[Path, ...] = (
     REPO_ROOT / "tests" / "test_turn_service_delegation_compatibility.py",
 )
 
-SAT_CANONICAL_TEST_IMPORT_GRANDFATHER_ALLOWLIST: tuple[Path, ...] = ()
-
 DEPRECATED_EXPORT_SCAN_ROOTS: tuple[Path, ...] = (
     REPO_ROOT / "src",
     REPO_ROOT / "tests",
@@ -282,22 +280,10 @@ def test_sat_compatibility_facade_imports_are_frozen_to_allowlisted_tests() -> N
     }
 
     compatibility_allowlist = set(SAT_COMPAT_TEST_IMPORT_ALLOWLIST)
-    grandfather_allowlist = set(SAT_CANONICAL_TEST_IMPORT_GRANDFATHER_ALLOWLIST)
-    allowed = compatibility_allowlist.union(grandfather_allowlist)
-
-    unexpected = sorted(path.relative_to(REPO_ROOT) for path in sat_importing_tests - allowed)
+    unexpected = sorted(path.relative_to(REPO_ROOT) for path in sat_importing_tests - compatibility_allowlist)
     assert not unexpected, (
-        "SAT compatibility facade imports are only allowed in explicit compatibility tests "
-        "or the frozen canonical grandfather list:\n"
+        "SAT compatibility facade imports are only allowed in explicit compatibility tests:\n"
         + "\n".join(str(path) for path in unexpected)
-    )
-
-    unexpected_canonical = sorted(
-        path.relative_to(REPO_ROOT) for path in (sat_importing_tests - compatibility_allowlist) - grandfather_allowlist
-    )
-    assert not unexpected_canonical, (
-        "No new canonical tests may import testbot.sat_chatbot_memory_v2 outside the frozen grandfather list:\n"
-        + "\n".join(str(path) for path in unexpected_canonical)
     )
 
 
