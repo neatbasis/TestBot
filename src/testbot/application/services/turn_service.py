@@ -520,8 +520,7 @@ def policy_decide_stage(ctx: CanonicalTurnContext, stage: TurnPipelineStageRunti
             retrieval_candidates_considered=considered,
             hit_count=len(hits),
         )
-        selected_decision = stage.deps.selected_decision_from_confidence(ctx.state.confidence_decision)
-        ctx.artifacts["decision_object"] = selected_decision or decide_from_evidence(
+        ctx.artifacts["decision_object"] = decide_from_evidence(
             intent=resolved_intent,
             retrieval=ctx.artifacts["retrieval_result"],
             repair_required=repair_required,
@@ -533,8 +532,7 @@ def policy_decide_stage(ctx: CanonicalTurnContext, stage: TurnPipelineStageRunti
             guard_forced_memory_retrieval=bool(ctx.artifacts.get("guard_forced_memory_retrieval", False)),
         )
         ctx.artifacts["policy_decision"] = policy_decision
-        selected_decision = stage.deps.selected_decision_from_confidence(ctx.state.confidence_decision)
-        ctx.artifacts["decision_object"] = selected_decision or decide_from_evidence(
+        ctx.artifacts["decision_object"] = decide_from_evidence(
             intent=resolved_intent,
             retrieval=ctx.artifacts["retrieval_result"],
             repair_required=repair_required,
