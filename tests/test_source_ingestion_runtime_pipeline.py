@@ -62,7 +62,7 @@ def test_fixture_source_ingestion_pipeline_emits_completion_and_provenance(monke
     def _capture_session_log(event: str, payload: dict, *, log_path=None) -> None:  # noqa: ARG001
         events.append({"event": event, "payload": payload})
 
-    monkeypatch.setattr("testbot.sat_chatbot_memory_v2.append_session_log", _capture_session_log)
+    monkeypatch.setattr("testbot.entrypoints.runtime_loop.append_runtime_session_log", _capture_session_log)
 
     run_source_ingestion(runtime=runtime, store=store, append_session_log=_capture_session_log)
 

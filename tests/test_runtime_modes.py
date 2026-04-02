@@ -359,14 +359,7 @@ def test_runtime_loop_monolith_touchpoints_are_allowlisted_for_deliberate_shrink
 
     source = Path(runtime_loop.__file__).read_text()
     observed_symbols = set(re.findall(r"_legacy_runtime\.([A-Za-z_][A-Za-z0-9_]*)", source))
-    allowed_symbols = {
-        "BACKGROUND_INGESTION_OBLIGATION_TIMEOUT_SECONDS",
-        "append_pipeline_snapshot",
-        "generate_reflection_yaml",
-        "stage_rewrite_query",
-        "store_doc",
-    }
-    assert observed_symbols == allowed_symbols
+    assert observed_symbols == set()
 
 
 def test_runtime_loop_turn_policy_logic_hooks_use_canonical_logic_owner_not_monolith(
@@ -714,7 +707,7 @@ def test_runtime_loop_ingest_snapshot_time_provider_is_canonical_not_legacy(monk
         "_ClockBackedSnapshotTimeProvider",
         lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("legacy snapshot provider should not be used")),
     )
-    monkeypatch.setattr(runtime, "append_pipeline_snapshot", _capture_snapshot)
+    monkeypatch.setattr(runtime_loop, "append_pipeline_snapshot", _capture_snapshot)
     monkeypatch.setattr(runtime_loop, "poll_pending_ingestion_obligations", lambda **_kwargs: None)
     monkeypatch.setattr(runtime_loop, "process_background_ingestion_completion", lambda **_kwargs: ("", None, False))
     monkeypatch.setattr(runtime_loop, "emit_runtime_turn_telemetry", lambda **_kwargs: None)
@@ -890,33 +883,6 @@ def test_runtime_loop_background_completion_replay_dependency_is_canonical_runti
         "run_runtime_turn_pipeline",
         lambda **kwargs: (fake_pipeline_state, []),
     )
-    monkeypatch.setattr(
-        runtime_loop,
-        "_legacy_runtime",
-        SimpleNamespace(
-            append_session_log=lambda *_args, **_kwargs: None,
-            _validate_and_log_transition=lambda *_args, **_kwargs: None,
-            stage_rewrite_query=lambda *_args, **_kwargs: "",
-            generate_reflection_yaml=lambda *_args, **_kwargs: "",
-            _intent_classifier_confidence=lambda *_args, **_kwargs: {},
-            _optional_string=lambda value: value if isinstance(value, str) else "",
-            stage_retrieve=lambda *_args, **_kwargs: [],
-            stage_rerank=lambda *_args, **_kwargs: [],
-            _selected_decision_from_confidence=lambda *_args, **_kwargs: {},
-            _minimal_confidence_decision_for_direct_answer=lambda *_args, **_kwargs: {},
-            _ambiguity_score=lambda *_args, **_kwargs: 0.0,
-            store_doc=lambda *_args, **_kwargs: None,
-            INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD=0.75,
-            append_pipeline_snapshot=lambda *_args, **_kwargs: None,
-            is_clarification_answer=lambda _answer: False,
-            _is_capabilities_help_answer=lambda _answer: False,
-            replace=lambda state, **_kwargs: state,
-            arrow=runtime.arrow,
-            _utc_now_iso=lambda: "2026-01-01T00:00:00+00:00",
-            BACKGROUND_INGESTION_OBLIGATION_TIMEOUT_SECONDS=900,
-        ),
-    )
-
     runtime_loop.run_chat_loop(
         runtime=expected_runtime,
         llm=object(),

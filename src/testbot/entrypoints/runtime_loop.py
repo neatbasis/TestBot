@@ -14,14 +14,20 @@ Ownership:
 from __future__ import annotations
 
 from collections import deque
+from dataclasses import replace
 from functools import partial
+import os
+import re
 import uuid
 
 from homeassistant_api import Client
+from langchain_core.prompts import ChatPromptTemplate
 from langchain_ollama import ChatOllama
 
 from testbot.adapters.ha_satellite_output import send_satellite_output
+from testbot.memory_cards import store_doc
 from testbot.entrypoints.runtime_background_ingestion import (
+    BACKGROUND_INGESTION_OBLIGATION_TIMEOUT_SECONDS as _DEFAULT_BACKGROUND_INGESTION_OBLIGATION_TIMEOUT_SECONDS,
     RuntimeBackgroundIngestionDependencies,
     poll_pending_ingestion_obligations,
     process_background_ingestion_completion,
@@ -49,10 +55,9 @@ from testbot.application.services.background_ingestion_runtime import Background
 from testbot.application.services import continuity_runtime as continuity_runtime_service
 from testbot.continuity_read_model import continuity_prior_intent_hint, continuity_read_model_from_pipeline_state
 from testbot.intent_router import IntentType
-from testbot.pipeline_state import PipelineState
+from testbot.pipeline_state import PipelineState, append_pipeline_snapshot
 from testbot.source_ingest import SourceIngestor
 from testbot.source_ingestion_startup import build_source_connector
-from testbot import sat_chatbot_memory_v2 as _legacy_runtime
 from testbot.domain import Clock
 from testbot.ports import MemoryStorePort
 from testbot.observability.turn_debug_payload import build_debug_turn_payload, format_debug_turn_trace_payload
@@ -68,6 +73,91 @@ from testbot.policies.turn_policy import (
 )
 
 ChatMsg = dict[str, str]
+BACKGROUND_INGESTION_OBLIGATION_TIMEOUT_SECONDS = int(
+    os.getenv(
+        "SOURCE_INGEST_OBLIGATION_TIMEOUT_SECONDS",
+        str(_DEFAULT_BACKGROUND_INGESTION_OBLIGATION_TIMEOUT_SECONDS),
+    )
+)
+
+_SELF_IDENTITY_DECLARATION_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"^\s*i\s*(?:am|'m|’m)\s+[\w'-]+(?:\s+[\w'-]+)*\s*[.!?]*\s*$", re.IGNORECASE),
+    re.compile(r"^\s*my\s+name\s+is\s+[\w'-]+(?:\s+[\w'-]+)*\s*[.!?]*\s*$", re.IGNORECASE),
+)
+
+_QUERY_REWRITE_PROMPT = ChatPromptTemplate.from_messages(
+    [
+        (
+            "system",
+            "Rewrite the user's message into a short search query for retrieving relevant memory.\n"
+            "Return ONLY the query text.",
+        ),
+        ("human", "{input}"),
+    ]
+)
+
+_REFLECTION_PROMPT = ChatPromptTemplate.from_messages(
+    [
+        (
+            "system",
+            "You are a metacognitive reflection extractor.\n"
+            "Given an observed statement, produce compact YAML with ONLY these keys:\n"
+            "claims: [..]\n"
+            "commitments: [..]\n"
+            "preferences: [..]\n"
+            "uncertainties: [..]\n"
+            "followups: [..]\n"
+            "confidence: <0..1>\n"
+            "Rules:\n"
+            "- Keep each list item short.\n"
+            "- If none, use empty list [].\n"
+            "- Do NOT invent facts.\n"
+            "- If uncertain, put it under uncertainties.\n"
+            "- Output YAML only (no prose).\n",
+        ),
+        ("human", "speaker: {speaker}\ntext: {text}\n"),
+    ]
+)
+
+
+def _is_self_identity_declaration(utterance: str) -> bool:
+    return any(pattern.match(utterance or "") is not None for pattern in _SELF_IDENTITY_DECLARATION_PATTERNS)
+
+
+def _stage_rewrite_query(llm: ChatOllama, state: PipelineState) -> PipelineState:
+    if _is_self_identity_declaration(state.user_input):
+        return replace(state, rewritten_query=state.user_input)
+
+    try:
+        rewritten_query = llm.invoke(_QUERY_REWRITE_PROMPT.format_messages(input=state.user_input)).content.strip() or state.user_input
+    except Exception as exc:
+        append_runtime_session_log(
+            "query_rewrite_failed",
+            {
+                "error_class": type(exc).__name__,
+                "error_message": str(exc),
+            },
+        )
+        rewritten_query = state.user_input
+    return replace(state, rewritten_query=rewritten_query)
+
+
+def _generate_reflection_yaml(llm: ChatOllama, *, speaker: str, text: str) -> str:
+    msgs = _REFLECTION_PROMPT.format_messages(speaker=speaker, text=text)
+    try:
+        out = llm.invoke(msgs).content
+    except Exception as exc:
+        append_runtime_session_log(
+            "reflection_generation_failed",
+            {
+                "error_class": type(exc).__name__,
+                "error_message": str(exc),
+            },
+        )
+        out = ""
+    return (out or "").strip() or (
+        "claims: []\ncommitments: []\npreferences: []\nuncertainties: []\nfollowups: []\nconfidence: 0.2"
+    )
 
 
 def _replay_background_completion_turn(
@@ -129,7 +219,7 @@ def run_chat_loop(
     prior_pipeline_state = None
     commit_persistence_deps = RuntimeCommitPersistenceDependencies(
         append_session_log=append_runtime_session_log,
-        generate_reflection_yaml=_legacy_runtime.generate_reflection_yaml,
+        generate_reflection_yaml=_generate_reflection_yaml,
     )
 
     background_ingestion_deps_holder: dict[str, RuntimeBackgroundIngestionDependencies] = {}
@@ -149,8 +239,8 @@ def run_chat_loop(
     runtime_turn_hooks = RuntimeTurnPipelineHooks(
         append_session_log=append_runtime_session_log,
         validate_and_log_transition=validate_and_log_transition,
-        stage_rewrite_query=_legacy_runtime.stage_rewrite_query,
-        generate_reflection_yaml=_legacy_runtime.generate_reflection_yaml,
+        stage_rewrite_query=_stage_rewrite_query,
+        generate_reflection_yaml=_generate_reflection_yaml,
         intent_classifier_confidence=partial(
             compute_intent_classifier_confidence,
             confidence_threshold=INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD,
@@ -191,7 +281,7 @@ def run_chat_loop(
         ),
         detect_capability_offer=answer_stage_runtime_service.detect_capability_offer,
         ambiguity_score=compute_turn_policy_ambiguity_score,
-        store_doc_fn=_legacy_runtime.store_doc,
+        store_doc_fn=store_doc,
         intent_classifier_confidence_threshold=INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD,
         document_from_retrieval_input=context_retrieval_runtime_service.document_from_retrieval_input,
     )
@@ -267,7 +357,7 @@ def run_chat_loop(
             prior_unresolved_intent=continuity_prior_intent_hint(prior_continuity),
             confidence_decision={},
         )
-        _legacy_runtime.append_pipeline_snapshot(
+        append_pipeline_snapshot(
             "ingest",
             state,
             time_provider=runtime_clock_snapshot_time_provider(clock=clock),
@@ -328,7 +418,7 @@ def run_chat_loop(
                 prior_pipeline_state=prior_pipeline_state,
                 prior_continuity=prior_continuity,
                 deps=background_ingestion_deps,
-                obligation_timeout_seconds=_legacy_runtime.BACKGROUND_INGESTION_OBLIGATION_TIMEOUT_SECONDS,
+                obligation_timeout_seconds=BACKGROUND_INGESTION_OBLIGATION_TIMEOUT_SECONDS,
             )
 
         last_user_message_ts = clock.now().isoformat()
