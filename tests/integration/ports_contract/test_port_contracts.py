@@ -4,9 +4,12 @@ from dataclasses import asdict
 
 from langchain_core.documents import Document
 
+from testbot.application.services.context_retrieval_runtime import (
+    normalize_retrieval_filter_scope,
+    search_memory_documents_for_retrieval,
+)
 from testbot.pipeline_state import PipelineState
 from testbot.ports import MemorySearchQuery, PortDocument, ScoredPortDocument
-from testbot.sat_chatbot_memory_v2 import stage_retrieve
 from testbot.source_connectors import FixtureSourceConnector, LocalMarkdownSourceConnector, SourceItem
 from testbot.vector_store import InMemoryMemoryStore, PromotingMemoryStore
 
@@ -96,7 +99,12 @@ def test_stage_retrieve_uses_port_query_and_dto_boundary() -> None:
     store = _SearchOnlyPortStore()
     state = PipelineState(user_input="hello", rewritten_query="hello")
 
-    _, docs_and_scores = stage_retrieve(store, state)
+    docs_and_scores = search_memory_documents_for_retrieval(
+        store,
+        rewritten_query=state.rewritten_query,
+        filter_scope=normalize_retrieval_filter_scope(),
+        k=18,
+    )
 
     assert store.last_query == MemorySearchQuery(query="hello", k=18)
     assert docs_and_scores[0][0].id == "mem-1"

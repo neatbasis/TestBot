@@ -89,17 +89,17 @@ SAT_COMPAT_TEST_IMPORT_ALLOWLIST: tuple[Path, ...] = (
     REPO_ROOT / "tests" / "test_runtime_transition_validation_compatibility.py",
     REPO_ROOT / "tests" / "test_sat_runtime_compat_facade.py",
     REPO_ROOT / "tests" / "test_session_log_compatibility.py",
+    REPO_ROOT / "tests" / "integration" / "ports_contract" / "test_port_contracts_compatibility.py",
+    REPO_ROOT / "tests" / "test_turn_service_delegation_compatibility.py",
 )
 
 SAT_CANONICAL_TEST_IMPORT_GRANDFATHER_ALLOWLIST: tuple[Path, ...] = (
-    REPO_ROOT / "tests" / "integration" / "ports_contract" / "test_port_contracts.py",
     REPO_ROOT / "tests" / "test_alignment_transitions.py",
     REPO_ROOT / "tests" / "test_answer_contract.py",
     REPO_ROOT / "tests" / "test_eval_runtime_parity.py",
     REPO_ROOT / "tests" / "test_runtime_logging_events.py",
     REPO_ROOT / "tests" / "test_runtime_modes.py",
     REPO_ROOT / "tests" / "test_time_reasoning.py",
-    REPO_ROOT / "tests" / "test_turn_service_delegation.py",
 )
 
 DEPRECATED_EXPORT_SCAN_ROOTS: tuple[Path, ...] = (
