@@ -2,9 +2,21 @@ from __future__ import annotations
 
 from collections import deque
 
+from testbot.application.services import answer_stage_runtime as answer_stage_runtime_service
 from testbot.pipeline_state import PipelineState
 from testbot.runtime_capability_service import build_capability_snapshot
-from testbot.sat_chatbot_memory_v2 import _print_startup_status, run_canonical_answer_stage_flow
+from testbot.sat_chatbot_memory_v2 import _print_startup_status, _run_canonical_turn_pipeline
+
+
+def run_canonical_answer_stage_flow(llm, state, **kwargs):
+    kwargs.setdefault("selected_decision", None)
+    kwargs.setdefault("timezone", "Europe/Helsinki")
+    return answer_stage_runtime_service.run_canonical_answer_stage_flow(
+        llm,
+        state,
+        run_canonical_turn_pipeline=_run_canonical_turn_pipeline,
+        **kwargs,
+    )
 
 
 class _FailIfInvokedLLM:
