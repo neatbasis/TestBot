@@ -205,6 +205,8 @@ def test_run_canonical_answer_stage_flow_time_query_uses_fake_clock_and_helsinki
 
     assert updated.final_answer == "Tomorrow is 2026-03-12 in Europe/Helsinki."
     assert updated.invariant_decisions["fallback_action"] == "ANSWER_TIME"
+    assert updated.invariant_decisions["answer_mode"] == "assist"
+    assert updated.invariant_decisions["answer_mode_rationale"]["reason"] == "time_answer"
 
 
 def test_run_canonical_answer_stage_flow_time_query_ignores_seeded_same_turn_and_synthetic_hits(monkeypatch) -> None:

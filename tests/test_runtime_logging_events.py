@@ -595,7 +595,7 @@ def test_run_canonical_answer_stage_flow_low_source_confidence_non_memory_keeps_
 
 
 
-def test_run_canonical_answer_stage_flow_greeting_command_preserves_social_draft_answer() -> None:
+def test_run_canonical_answer_stage_flow_greeting_command_low_confidence_degrades_to_uncertainty_fallback() -> None:
     state = PipelineState(
         user_input="say hello",
         resolved_intent=IntentType.CONTROL.value,
@@ -616,7 +616,8 @@ def test_run_canonical_answer_stage_flow_greeting_command_preserves_social_draft
         clock=_FIXED_CLOCK,
     )
 
-    assert answered.final_answer == "Hello! Nice to meet you."
+    assert answered.final_answer == ASSIST_ALTERNATIVES_ANSWER
+    assert answered.invariant_decisions.get("fallback_action") == "ASK_CLARIFYING_QUESTION"
     assert answered.invariant_decisions.get("answer_mode") == "assist"
 
 
@@ -645,7 +646,7 @@ def test_run_canonical_answer_stage_flow_low_source_confidence_non_memory_uses_u
     assert answered.invariant_decisions.get("answer_mode") == "dont-know"
 
 
-def test_run_canonical_answer_stage_flow_self_introduction_preserves_acknowledgement_draft() -> None:
+def test_run_canonical_answer_stage_flow_self_introduction_low_confidence_degrades_to_uncertainty_fallback() -> None:
     state = PipelineState(
         user_input="my name is taylor",
         resolved_intent=IntentType.META_CONVERSATION.value,
@@ -666,11 +667,12 @@ def test_run_canonical_answer_stage_flow_self_introduction_preserves_acknowledge
         clock=_FIXED_CLOCK,
     )
 
-    assert answered.final_answer == "Thanks, Taylor — I'll remember that for this conversation."
-    assert answered.invariant_decisions.get("answer_mode") == "assist"
+    assert answered.final_answer == NON_KNOWLEDGE_UNCERTAINTY_ANSWER
+    assert answered.invariant_decisions.get("fallback_action") == "ANSWER_GENERAL_KNOWLEDGE"
+    assert answered.invariant_decisions.get("answer_mode") == "dont-know"
 
 
-def test_run_canonical_answer_stage_flow_regression_say_hello_keeps_greeting_instead_of_memory_fallback() -> None:
+def test_run_canonical_answer_stage_flow_regression_say_hello_low_confidence_uses_uncertainty_fallback() -> None:
     state = PipelineState(
         user_input="say hello",
         resolved_intent=IntentType.CONTROL.value,
@@ -691,8 +693,9 @@ def test_run_canonical_answer_stage_flow_regression_say_hello_keeps_greeting_ins
         clock=_FIXED_CLOCK,
     )
 
-    assert answered.final_answer == "hello"
-    assert "reliable memory" not in answered.final_answer.lower()
+    assert answered.final_answer == ASSIST_ALTERNATIVES_ANSWER
+    assert answered.invariant_decisions.get("fallback_action") == "ASK_CLARIFYING_QUESTION"
+    assert answered.invariant_decisions.get("answer_mode") == "assist"
 
 
 def test_run_canonical_answer_stage_flow_memory_recall_confident_hit_recovers_from_contract_failure() -> None:

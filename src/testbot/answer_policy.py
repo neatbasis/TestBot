@@ -201,6 +201,12 @@ def resolve_answer_mode(
             rationale={"reason": "pending_lookup", "fallback_action": fallback_action},
         )
 
+    if fallback_action == "ANSWER_TIME":
+        return AnswerModeDecision(
+            answer_mode="assist",
+            rationale={"reason": "time_answer", "fallback_action": fallback_action},
+        )
+
     if fallback_action == "ANSWER_UNKNOWN" or is_fallback_answer or is_non_knowledge_uncertainty_answer:
         return AnswerModeDecision(
             answer_mode="dont-know",

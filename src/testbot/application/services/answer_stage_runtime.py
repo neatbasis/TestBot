@@ -600,11 +600,6 @@ def answer_validate(
     if assembled.final_answer != fallback_answer and not pre_valid and not (
         assembled.intent_class == "time_query"
         or assembled.fallback_action == "ANSWER_TIME"
-        or (
-            assembled.social_or_non_knowledge_intent
-            and bool(assembled.draft_answer)
-            and assembled.final_answer == assembled.draft_answer
-        )
     ):
         safe_final = non_knowledge_uncertainty_answer
         provenance_types, claims, basis_statement, used_memory_refs, used_source_evidence_refs, source_evidence_attribution = build_provenance_metadata(
