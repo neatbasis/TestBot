@@ -17,7 +17,6 @@ from testbot.eval_fixtures import cases_by_id
 from tests.helpers.eval_case_builders import build_eval_case_candidate_sets_by_id
 from tests.helpers.eval_runtime_parity_scenarios import runtime_parity_scenarios
 from testbot.context_resolution import ContinuityPosture, resolve as resolve_context
-from testbot import sat_chatbot_memory_v2 as runtime
 from testbot.candidate_encoding import FactCandidate
 from testbot.intent_resolution import IntentResolutionInput, resolve as resolve_intent
 from testbot.intent_router import IntentType
@@ -25,6 +24,7 @@ from testbot.pipeline_state import PipelineState
 from testbot.evidence_retrieval import continuity_evidence_from_prior_state
 from testbot.rerank import adaptive_sigma_fractional, rerank_docs_with_time_and_type_outcome
 from testbot.rerank import has_sufficient_context_confidence_from_objective
+from testbot.stabilization import StabilizedTurnState
 
 FIXED_NOW = arrow.get("2026-03-10T11:00:00+00:00")
 NEAR_TIE_DELTA = 0.02
@@ -299,7 +299,7 @@ def test_canonical_continuity_parity_consumes_prior_commit_artifacts_across_turn
     )
 
     context = resolve_context(utterance="yes", prior_pipeline_state=turn_one_state)
-    runtime_stabilized = runtime.StabilizedTurnState(
+    runtime_stabilized = StabilizedTurnState(
         turn_id="turn-2",
         utterance_card="UTTERANCE CARD",
         utterance_doc_id="u2",
