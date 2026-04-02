@@ -7,13 +7,11 @@ import pytest
 
 from tests.live_smoke_support import require_live_smoke_config
 
+from testbot.behave_support import run_answer_stage_flow as run_canonical_answer_stage_flow
+from testbot.runtime_capability_service import build_capability_snapshot
+from testbot.entrypoints.runtime_bootstrap import read_runtime_env
+from testbot.startup_status_presenter import print_startup_status
 from testbot.pipeline_state import PipelineState
-from testbot.sat_chatbot_memory_v2 import (
-    _print_startup_status,
-    _read_runtime_env,
-    build_capability_snapshot,
-    run_canonical_answer_stage_flow,
-)
 
 
 pytestmark = pytest.mark.live_smoke
@@ -136,10 +134,10 @@ def test_live_smoke_degraded_modes_runtime_contracts(
     monkeypatch.setenv("OLLAMA_BASE_URL", ollama_endpoint)
     monkeypatch.setenv("MEMORY_STORE_MODE", "in_memory")
 
-    runtime = _read_runtime_env()
+    runtime = read_runtime_env()
     snapshot = build_capability_snapshot(requested_mode="auto", daemon_mode=False, runtime=runtime)
 
-    _print_startup_status(snapshot=snapshot)
+    print_startup_status(snapshot=snapshot)
     startup_output = capsys.readouterr().out
     help_answer = _capabilities_help_answer(snapshot)
 

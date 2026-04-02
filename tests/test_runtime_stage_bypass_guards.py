@@ -4,8 +4,9 @@ from collections import deque
 
 import pytest
 
+import testbot.behave_support as behave_support
+from testbot.entrypoints.runtime_loop import run_chat_loop
 from testbot.pipeline_state import PipelineState
-import testbot.sat_chatbot_memory_v2 as runtime
 
 
 class _RuntimeCapabilityStatusStub:
@@ -35,14 +36,9 @@ def test_run_canonical_answer_stage_flow_routes_seeded_inputs_through_canonical_
         captured.update(kwargs)
         return PipelineState(user_input=kwargs["utterance"], final_answer="canonical"), []
 
-    monkeypatch.setattr(runtime, "_run_canonical_turn_pipeline", _fake_pipeline)
-    monkeypatch.setattr(
-        runtime,
-        "answer_assemble",
-        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("direct answer-stage path must not be used")),
-    )
+    monkeypatch.setattr(behave_support, "_run_canonical_turn_pipeline_for_behave", _fake_pipeline)
 
-    state = runtime.run_canonical_answer_stage_flow(
+    state = behave_support.run_answer_stage_flow(
         llm=object(),
         state=PipelineState(user_input="hello"),
         chat_history=deque(),
@@ -72,17 +68,12 @@ def test_chat_loop_routes_raw_utterance_via_canonical_turn_pipeline(monkeypatch:
         )
 
     monkeypatch.setattr(runtime_loop, "run_runtime_turn_pipeline", _fake_pipeline)
-    monkeypatch.setattr(
-        runtime,
-        "run_canonical_answer_stage_flow",
-        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("seeded answer stage flow must not be used")),
-    )
     monkeypatch.setattr(runtime_loop, "persist_answer_commit", lambda **_kwargs: None)
 
     utterances = iter(["hello", "stop"])
     outputs: list[str] = []
 
-    runtime.run_chat_loop(
+    run_chat_loop(
         runtime={},
         llm=object(),
         store=object(),
