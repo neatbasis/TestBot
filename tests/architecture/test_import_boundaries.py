@@ -96,7 +96,6 @@ SAT_COMPAT_TEST_IMPORT_ALLOWLIST: tuple[Path, ...] = (
 )
 
 SAT_CANONICAL_TEST_IMPORT_GRANDFATHER_ALLOWLIST: tuple[Path, ...] = (
-    REPO_ROOT / "tests" / "test_runtime_logging_events.py",
     REPO_ROOT / "tests" / "test_runtime_modes.py",
 )
 

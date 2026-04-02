@@ -4,34 +4,44 @@ from collections.abc import Callable
 from collections import deque
 import json
 from dataclasses import replace
+from types import SimpleNamespace
 
 import arrow
 import pytest
 from langchain_core.documents import Document
 
-from testbot.pipeline_state import PipelineState
+import testbot.behave_support as behave_support
+from testbot.answer_contract_constants import ASSIST_ALTERNATIVES_ANSWER, NON_KNOWLEDGE_UNCERTAINTY_ANSWER
+from testbot.application.services.answer_stage_runtime import AnswerAssembleResult
+from testbot.application.services.context_retrieval_runtime import resolve_context
+from testbot.behave_support import run_answer_stage_flow as run_canonical_answer_stage_flow
+from testbot.canonical_turn_orchestrator import CanonicalTurnOrchestrator
+from testbot.context_resolution import ContinuityPosture, ResolvedContext
+from testbot.entrypoints.runtime_loop import (
+    _generate_reflection_yaml as generate_reflection_yaml,
+    _stage_rewrite_query as stage_rewrite_query,
+    run_chat_loop as _run_chat_loop_canonical,
+)
+from testbot.entrypoints.runtime_transition_validation import validate_and_log_transition
+from testbot.evidence_retrieval import RetrievalInputRecord
+from testbot.history_packer import pack_chat_history
+from testbot.intent_router import IntentType, classify_intent
+from testbot.logic.provenance import build_provenance_metadata
+from testbot.logic.turn_policy import ambiguity_score as _canonical_ambiguity_score
+from testbot.memory_cards import store_doc
+from testbot.observability.session_log import append_session_log
+from testbot.observability.turn_debug_payload import build_debug_turn_payload
 from testbot.pipeline_state import AlignmentDecision
 from testbot.pipeline_state import CandidateHit
-from testbot.evidence_retrieval import RetrievalInputRecord
-from testbot import sat_chatbot_memory_v2 as runtime
-from testbot.context_resolution import ContinuityPosture, ResolvedContext
-from testbot.intent_router import IntentType, classify_intent
+from testbot.pipeline_state import PipelineState
 from testbot.policy_decision import DecisionClass, DecisionObject, EvidencePosture, decide
-from testbot.sat_chatbot_memory_v2 import (
-    ASSIST_ALTERNATIVES_ANSWER,
-    NON_KNOWLEDGE_UNCERTAINTY_ANSWER,
-    CapabilitySnapshot,
-    RuntimeCapabilityStatus,
-    _derive_response_blocker_reason,
-    _ambiguity_score,
-    _intent_label,
-    _run_chat_loop,
-    _user_followup_signal_proxy,
-    build_provenance_metadata,
-    generate_reflection_yaml,
-    run_canonical_answer_stage_flow,
-    stage_rewrite_query,
+from testbot.promotion_policy import persist_promoted_context
+from testbot.reject_taxonomy import derive_reject_signal
+from testbot.runtime_capability_service import (
+    CapabilitySnapshotData as CapabilitySnapshot,
+    RuntimeCapabilityStatusData as RuntimeCapabilityStatus,
 )
+from testbot.entrypoints.runtime_turn_telemetry import user_followup_signal_proxy as _canonical_user_followup_signal_proxy
 
 
 class _FixedClock:
@@ -72,6 +82,95 @@ class _HarnessStore:
 
     def add_memory_records(self, records) -> None:
         self._records.extend(list(records))
+
+
+def _intent_label(intent: IntentType) -> str:
+    return intent.value
+
+
+def _ambiguity_score(confidence_decision: dict[str, object]) -> float:
+    return _canonical_ambiguity_score(confidence_decision)
+
+
+def _user_followup_signal_proxy(*, final_answer: str, fallback_action: str, ambiguity_score: float) -> float:
+    return _canonical_user_followup_signal_proxy(
+        final_answer=final_answer,
+        fallback_action=fallback_action,
+        ambiguity_score=ambiguity_score,
+    )
+
+
+def _derive_response_blocker_reason(
+    *,
+    answer_mode: str,
+    fallback_action: str,
+    context_confident: bool,
+    hit_count: int,
+    ambiguity_detected: bool,
+    answer_contract_valid: bool,
+    general_knowledge_contract_valid: bool,
+    general_knowledge_contract_applicability: str = "applicable",
+) -> str:
+    return derive_reject_signal(
+        intent_label="non_memory",
+        answer_mode=answer_mode,
+        fallback_action=fallback_action,
+        context_confident=context_confident,
+        context_score=0.0,
+        hit_count=hit_count,
+        ambiguity_detected=ambiguity_detected,
+        answer_contract_valid=answer_contract_valid,
+        general_knowledge_contract_valid=general_knowledge_contract_valid,
+        general_knowledge_contract_applicability=general_knowledge_contract_applicability,
+    ).reason
+
+
+def _run_chat_loop(
+    *,
+    runtime: dict[str, object] | None = None,
+    llm,
+    store,
+    chat_history,
+    near_tie_delta: float,
+    io_channel: str,
+    capability_status: str,
+    capability_snapshot,
+    read_user_utterance,
+    send_assistant_text,
+    clock,
+) -> None:
+    _run_chat_loop_canonical(
+        runtime=runtime or {},
+        llm=llm,
+        store=store,
+        chat_history=chat_history,
+        near_tie_delta=near_tie_delta,
+        io_channel=io_channel,
+        capability_status=capability_status,
+        capability_snapshot=capability_snapshot,
+        read_user_utterance=read_user_utterance,
+        send_assistant_text=send_assistant_text,
+        clock=clock,
+    )
+
+
+runtime = SimpleNamespace(
+    pack_chat_history=pack_chat_history,
+    AnswerAssembleResult=AnswerAssembleResult,
+    append_session_log=append_session_log,
+    CanonicalTurnOrchestrator=CanonicalTurnOrchestrator,
+    resolve_context=resolve_context,
+    _build_debug_turn_payload=build_debug_turn_payload,
+    _validate_and_log_transition=validate_and_log_transition,
+    persist_promoted_context=persist_promoted_context,
+    store_doc=store_doc,
+    generate_reflection_yaml=generate_reflection_yaml,
+    stage_rewrite_query=stage_rewrite_query,
+    stage_retrieve=lambda *args, **kwargs: None,
+    stage_rerank=lambda *args, **kwargs: None,
+    run_canonical_answer_stage_flow=run_canonical_answer_stage_flow,
+    classify_intent=classify_intent,
+)
 
 
 
@@ -119,8 +218,15 @@ def test_stage_rewrite_query_self_identification_guard_skips_llm_invoke() -> Non
 
 def test_run_canonical_answer_stage_flow_invoke_failure_uses_canonical_policy_fallback_and_logs(monkeypatch) -> None:
     events: list[tuple[str, dict]] = []
-    monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: events.append((event, payload)))
-    monkeypatch.setattr(runtime, "_validate_and_log_transition", lambda _result: None)
+    monkeypatch.setattr(behave_support, "append_session_log", lambda event, payload: events.append((event, payload)))
+    monkeypatch.setattr(
+        behave_support,
+        "_BEHAVE_RUNTIME_TURN_HOOKS",
+        replace(
+            behave_support._BEHAVE_RUNTIME_TURN_HOOKS,
+            validate_and_log_transition=lambda _result: None,
+        ),
+    )
 
     state = PipelineState(
         user_input="What is ontology?",
@@ -1338,7 +1444,14 @@ def _run_selected_decision_authority_pair(
     hits: list[Document],
     selected_decision: DecisionObject,
 ) -> tuple[PipelineState, PipelineState]:
-    monkeypatch.setattr(runtime, "_validate_and_log_transition", lambda _result: None)
+    monkeypatch.setattr(
+        behave_support,
+        "_BEHAVE_RUNTIME_TURN_HOOKS",
+        replace(
+            behave_support._BEHAVE_RUNTIME_TURN_HOOKS,
+            validate_and_log_transition=lambda _result: None,
+        ),
+    )
 
     def _run(state: PipelineState, *, decision: DecisionObject | None) -> PipelineState:
         return run_canonical_answer_stage_flow(
