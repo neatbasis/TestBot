@@ -4,12 +4,10 @@ from dataclasses import replace
 import arrow
 from langchain_core.documents import Document
 
+from testbot.answer_contract_constants import ASSIST_ALTERNATIVES_ANSWER
+from testbot.behave_support import run_answer_stage_flow as run_canonical_answer_stage_flow
 from testbot.pipeline_state import PipelineState, ProvenanceType
 from testbot.logic.alignment import evaluate_alignment_decision
-from testbot.sat_chatbot_memory_v2 import (
-    ASSIST_ALTERNATIVES_ANSWER,
-    run_canonical_answer_stage_flow,
-)
 from testbot.stage_transitions import (
     BACKGROUND_INGESTION_PROGRESS_ANSWER,
     DENY_ANSWER,
