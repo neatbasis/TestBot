@@ -217,7 +217,7 @@ def test_run_canonical_answer_stage_flow_seeded_store_honors_retrieval_exclusion
 
 def test_generate_reflection_yaml_invoke_failure_returns_minimal_yaml_and_logs(monkeypatch) -> None:
     events: list[tuple[str, dict]] = []
-    monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: events.append((event, payload)))
+    monkeypatch.setattr("testbot.entrypoints.runtime_loop.append_runtime_session_log", lambda event, payload: events.append((event, payload)))
 
     reflection = generate_reflection_yaml(_ExplodingLLM("reflect down"), speaker="user", text="i might be wrong")
 

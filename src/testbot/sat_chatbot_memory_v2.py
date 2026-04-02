@@ -191,7 +191,6 @@ from testbot.answer_contract_constants import (
 )
 
 from langchain_core.documents import Document
-from langchain_core.prompts import ChatPromptTemplate
 from testbot.ports import MemoryStorePort
 from langchain_ollama import ChatOllama, OllamaEmbeddings
 
@@ -1085,49 +1084,11 @@ def _validate_and_log_transition(result) -> None:
     validate_and_log_runtime_transition(result)
 
 
-# ---------------------------
-# Reflection extraction (metacognition)
-# ---------------------------
-REFLECTION_PROMPT = ChatPromptTemplate.from_messages(
-    [
-        (
-            "system",
-            "You are a metacognitive reflection extractor.\n"
-            "Given an observed statement, produce compact YAML with ONLY these keys:\n"
-            "claims: [..]\n"
-            "commitments: [..]\n"
-            "preferences: [..]\n"
-            "uncertainties: [..]\n"
-            "followups: [..]\n"
-            "confidence: <0..1>\n"
-            "Rules:\n"
-            "- Keep each list item short.\n"
-            "- If none, use empty list [].\n"
-            "- Do NOT invent facts.\n"
-            "- If uncertain, put it under uncertainties.\n"
-            "- Output YAML only (no prose).\n",
-        ),
-        ("human", "speaker: {speaker}\ntext: {text}\n"),
-    ]
-)
-
-
 def generate_reflection_yaml(llm: ChatOllama, *, speaker: str, text: str) -> str:
-    msgs = REFLECTION_PROMPT.format_messages(speaker=speaker, text=text)
-    try:
-        out = llm.invoke(msgs).content
-    except Exception as exc:
-        append_session_log(
-            "reflection_generation_failed",
-            {
-                "error_class": type(exc).__name__,
-                "error_message": str(exc),
-            },
-        )
-        out = ""
-    return (out or "").strip() or (
-        "claims: []\ncommitments: []\npreferences: []\nuncertainties: []\nfollowups: []\nconfidence: 0.2"
-    )
+    """Compatibility wrapper; canonical owner is ``testbot.entrypoints.runtime_loop``."""
+    from testbot.entrypoints.runtime_loop import _generate_reflection_yaml as _canonical_generate_reflection_yaml
+
+    return _canonical_generate_reflection_yaml(llm, speaker=speaker, text=text)
 
 
 # ---------------------------
