@@ -85,6 +85,7 @@ SAT_COMPAT_TEST_IMPORT_ALLOWLIST: tuple[Path, ...] = (
     REPO_ROOT / "tests" / "test_context_retrieval_runtime_compat_wrappers.py",
     REPO_ROOT / "tests" / "test_runtime_capability_extraction_compatibility.py",
     REPO_ROOT / "tests" / "test_runtime_capability_ownership_compatibility.py",
+    REPO_ROOT / "tests" / "test_runtime_logging_events_compatibility.py",
     REPO_ROOT / "tests" / "test_runtime_modes_compatibility.py",
     REPO_ROOT / "tests" / "test_time_reasoning_compatibility.py",
     REPO_ROOT / "tests" / "test_runtime_transition_validation_compatibility.py",
