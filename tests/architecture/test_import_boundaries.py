@@ -95,9 +95,7 @@ SAT_COMPAT_TEST_IMPORT_ALLOWLIST: tuple[Path, ...] = (
     REPO_ROOT / "tests" / "test_turn_service_delegation_compatibility.py",
 )
 
-SAT_CANONICAL_TEST_IMPORT_GRANDFATHER_ALLOWLIST: tuple[Path, ...] = (
-    REPO_ROOT / "tests" / "test_runtime_modes.py",
-)
+SAT_CANONICAL_TEST_IMPORT_GRANDFATHER_ALLOWLIST: tuple[Path, ...] = ()
 
 DEPRECATED_EXPORT_SCAN_ROOTS: tuple[Path, ...] = (
     REPO_ROOT / "src",
