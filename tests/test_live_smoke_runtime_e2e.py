@@ -9,12 +9,10 @@ from tests.live_smoke_support import require_live_smoke_config
 from langchain_ollama import ChatOllama, OllamaEmbeddings
 
 from testbot.clock import SystemClock
-from testbot.sat_chatbot_memory_v2 import (
-    _read_runtime_env,
-    _run_source_ingestion,
-    _run_chat_loop,
-    build_capability_snapshot,
-)
+from testbot.entrypoints.runtime_bootstrap import read_runtime_env
+from testbot.entrypoints.runtime_loop import run_chat_loop
+from testbot.runtime_capability_service import build_capability_snapshot
+from testbot.source_ingestion_startup import run_source_ingestion
 from testbot.vector_store import build_memory_store
 
 pytestmark = pytest.mark.live_smoke
@@ -74,7 +72,7 @@ def _ollama_client_kwargs(runtime: dict[str, object]) -> dict[str, object]:
 def test_live_smoke_runtime_e2e_turn_pipeline(monkeypatch: pytest.MonkeyPatch) -> None:
     _require_live_runtime_env()
 
-    runtime = _read_runtime_env()
+    runtime = read_runtime_env()
     capability_snapshot = build_capability_snapshot(
         requested_mode="auto",
         daemon_mode=False,
@@ -112,7 +110,7 @@ def test_live_smoke_runtime_e2e_turn_pipeline(monkeypatch: pytest.MonkeyPatch) -
     def _capture_session_log(event: str, payload: dict, *, log_path=None) -> None:  # noqa: ARG001
         events.append({"event": event, "payload": payload})
 
-    monkeypatch.setattr("testbot.sat_chatbot_memory_v2.append_session_log", _capture_session_log)
+    monkeypatch.setattr("testbot.entrypoints.runtime_loop.append_runtime_session_log", _capture_session_log)
 
     prompts = iter(
         [
@@ -129,7 +127,8 @@ def test_live_smoke_runtime_e2e_turn_pipeline(monkeypatch: pytest.MonkeyPatch) -
         replies.append(text)
 
     try:
-        _run_chat_loop(
+        run_chat_loop(
+            runtime=runtime,
             llm=llm,
             store=store,
             chat_history=deque(maxlen=10),
@@ -181,7 +180,7 @@ def test_live_smoke_runtime_e2e_wikipedia_source_ingest_one_cli_turn(monkeypatch
     monkeypatch.setenv("SOURCE_CONNECTOR_TYPE", "wikipedia")
     monkeypatch.setenv("SOURCE_WIKIPEDIA_TOPIC", "Hilbert space")
 
-    runtime = _read_runtime_env()
+    runtime = read_runtime_env()
     capability_snapshot = build_capability_snapshot(
         requested_mode="cli",
         daemon_mode=False,
@@ -214,14 +213,14 @@ def test_live_smoke_runtime_e2e_wikipedia_source_ingest_one_cli_turn(monkeypatch
     def _capture_session_log(event: str, payload: dict, *, log_path=None) -> None:  # noqa: ARG001
         events.append({"event": event, "payload": payload})
 
-    monkeypatch.setattr("testbot.sat_chatbot_memory_v2.append_session_log", _capture_session_log)
+    monkeypatch.setattr("testbot.entrypoints.runtime_loop.append_runtime_session_log", _capture_session_log)
 
-    _run_source_ingestion(runtime=runtime, store=store)
+    run_source_ingestion(runtime=runtime, store=store, append_session_log=_capture_session_log)
 
     prompts = iter(["Define Hilbert space in one paragraph.", "stop"])
     replies: list[str] = []
 
-    _run_chat_loop(
+    run_chat_loop(
         runtime=runtime,
         llm=llm,
         store=store,

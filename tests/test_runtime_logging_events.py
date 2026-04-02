@@ -155,15 +155,21 @@ def test_stage_rewrite_query_self_identification_guard_skips_llm_invoke() -> Non
 
     assert rewritten.rewritten_query == "My name is Jordan"
 
-def test_run_canonical_answer_stage_flow_invoke_failure_uses_deterministic_fallback_and_logs(monkeypatch) -> None:
+def test_run_canonical_answer_stage_flow_invoke_failure_uses_canonical_policy_fallback_and_logs(monkeypatch) -> None:
     events: list[tuple[str, dict]] = []
     monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: events.append((event, payload)))
     monkeypatch.setattr(runtime, "_validate_and_log_transition", lambda _result: None)
-    monkeypatch.setattr(runtime, "decide_fallback_action", lambda **_: "ANSWER_GENERAL_KNOWLEDGE")
 
     state = PipelineState(
-        user_input="what happened yesterday?",
-        confidence_decision={"context_confident": True, "ambiguity_detected": False},
+        user_input="What is ontology?",
+        resolved_intent=IntentType.KNOWLEDGE_QUESTION.value,
+        confidence_decision={
+            "context_confident": False,
+            "ambiguity_detected": False,
+            "general_knowledge_confidence": 0.95,
+            "general_knowledge_support": 3,
+            "retrieval_branch": "direct_answer",
+        },
     )
 
     answered = run_canonical_answer_stage_flow(
@@ -177,10 +183,11 @@ def test_run_canonical_answer_stage_flow_invoke_failure_uses_deterministic_fallb
 
     assert answered.draft_answer == ""
     assert answered.final_answer == ASSIST_ALTERNATIVES_ANSWER
-    assert events
-    assert events[0][0] == "answer_generation_failed"
-    assert events[0][1]["error_class"] == "RuntimeError"
-    assert events[0][1]["fallback_action"] == "ANSWER_GENERAL_KNOWLEDGE"
+    assert answered.invariant_decisions.get("fallback_action") == "ANSWER_GENERAL_KNOWLEDGE"
+    assert answered.invariant_decisions.get("answer_policy_rationale", {}).get("authority") == "decision_object"
+    failure_payload = next(payload for event, payload in events if event == "answer_generation_failed")
+    assert failure_payload["error_class"] == "RuntimeError"
+    assert failure_payload["fallback_action"] == "ANSWER_GENERAL_KNOWLEDGE"
 
 
 def test_run_canonical_answer_stage_flow_seeded_store_honors_retrieval_exclusions_for_same_turn_and_synthetic_hits(monkeypatch) -> None:
@@ -364,9 +371,7 @@ def test_build_provenance_metadata_mixed_memory_and_source_mentions_both_in_basi
     assert any(p.value == "MEMORY" for p in provenance_types)
     assert "memory context and source evidence documents" in basis_statement.lower()
 
-def test_run_canonical_answer_stage_flow_non_memory_without_ambiguity_does_not_emit_memory_fragment_clarifier(monkeypatch) -> None:
-    monkeypatch.setattr(runtime, "decide_fallback_action", lambda **_: "ANSWER_GENERAL_KNOWLEDGE")
-
+def test_run_canonical_answer_stage_flow_non_memory_low_confidence_direct_answer_fails_progressive_fallback_invariant() -> None:
     state = PipelineState(
         user_input="What is ontology?",
         resolved_intent=IntentType.KNOWLEDGE_QUESTION.value,
@@ -379,18 +384,15 @@ def test_run_canonical_answer_stage_flow_non_memory_without_ambiguity_does_not_e
         },
     )
 
-    answered = run_canonical_answer_stage_flow(
-        _StaticLLM("General definition (not from your memory): Ontology is a model of concepts and relations (doc_id: gk-1, ts: 2026-01-01T00:00:00Z)."),
-        state,
-        chat_history=deque(),
-        hits=[],
-        capability_status="ask_unavailable",
-        clock=_FIXED_CLOCK,
-    )
-
-    assert answered.final_answer.startswith("General definition (not from your memory):")
-    assert not answered.final_answer.startswith("I found related memory fragments (")
-    assert answered.confidence_decision.get("ambiguity_detected") is False
+    with pytest.raises(AssertionError, match="inv_002_progressive_fallback_enforced"):
+        run_canonical_answer_stage_flow(
+            _StaticLLM("General definition (not from your memory): Ontology is a model of concepts and relations (doc_id: gk-1, ts: 2026-01-01T00:00:00Z)."),
+            state,
+            chat_history=deque(),
+            hits=[],
+            capability_status="ask_unavailable",
+            clock=_FIXED_CLOCK,
+        )
 
 
 def test_policy_decision_routes_definitional_knowledge_question_to_memory_retrieval() -> None:

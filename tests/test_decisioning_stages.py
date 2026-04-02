@@ -5,7 +5,7 @@ from testbot.intent_router import IntentType
 from testbot.candidate_encoding import FactCandidate
 from testbot.pipeline_state import PipelineState
 from testbot.policy_decision import DecisionClass, EvidencePosture, decide, decide_from_evidence
-from testbot.sat_chatbot_memory_v2 import ROUTE_TO_ASK_ANSWER
+from testbot.answer_contract_constants import ROUTE_TO_ASK_ANSWER
 from testbot.stabilization import StabilizedTurnState
 
 

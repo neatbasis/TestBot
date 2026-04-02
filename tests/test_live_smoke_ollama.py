@@ -6,7 +6,7 @@ import pytest
 
 from tests.live_smoke_support import require_live_smoke_config
 
-from testbot.sat_chatbot_memory_v2 import read_runtime_env
+from testbot.entrypoints.runtime_bootstrap import read_runtime_env
 
 langchain_ollama = pytest.importorskip(
     "langchain_ollama",

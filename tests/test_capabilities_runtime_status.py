@@ -2,21 +2,10 @@ from __future__ import annotations
 
 from collections import deque
 
-from testbot.application.services import answer_stage_runtime as answer_stage_runtime_service
+from testbot.behave_support import run_answer_stage_flow as run_canonical_answer_stage_flow
 from testbot.pipeline_state import PipelineState
 from testbot.runtime_capability_service import build_capability_snapshot
-from testbot.sat_chatbot_memory_v2 import _print_startup_status, _run_canonical_turn_pipeline
-
-
-def run_canonical_answer_stage_flow(llm, state, **kwargs):
-    kwargs.setdefault("selected_decision", None)
-    kwargs.setdefault("timezone", "Europe/Helsinki")
-    return answer_stage_runtime_service.run_canonical_answer_stage_flow(
-        llm,
-        state,
-        run_canonical_turn_pipeline=_run_canonical_turn_pipeline,
-        **kwargs,
-    )
+from testbot.startup_status_presenter import print_startup_status
 
 
 class _FailIfInvokedLLM:
@@ -62,7 +51,7 @@ def test_shared_snapshot_keeps_cli_fallback_truth_consistent(monkeypatch, capsys
         ha_connection_error_fn=lambda *_args: "Missing HA_API_TOKEN",
         ollama_connection_error_fn=lambda *_args, **_kwargs: None,
     )
-    _print_startup_status(snapshot=snapshot)
+    print_startup_status(snapshot=snapshot)
 
     startup_output = capsys.readouterr().out
     help_answer = _capabilities_help_answer(snapshot)
@@ -90,7 +79,7 @@ def test_shared_snapshot_keeps_satellite_truth_consistent(monkeypatch, capsys) -
         ha_connection_error_fn=lambda *_args: None,
         ollama_connection_error_fn=lambda *_args, **_kwargs: None,
     )
-    _print_startup_status(snapshot=snapshot)
+    print_startup_status(snapshot=snapshot)
 
     startup_output = capsys.readouterr().out
     help_answer = _capabilities_help_answer(snapshot)

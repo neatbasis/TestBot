@@ -9,9 +9,9 @@ from testbot.evidence_retrieval import (
     build_evidence_bundle_from_input_records,
     retrieval_result,
 )
+from testbot.application.services.context_retrieval_runtime import retrieval_input_from_document
 from testbot.intent_router import IntentType
 from testbot.policy_decision import DecisionClass, DecisionObject, DecisionReasoning, decide_from_evidence
-from testbot.sat_chatbot_memory_v2 import _retrieval_input_from_document
 
 
 def test_build_evidence_bundle_from_docs_and_scores_keeps_class_separation() -> None:
@@ -104,7 +104,7 @@ def test_adapter_edge_document_to_input_record_mapping_preserves_bundle_parity()
 
     bundle_from_docs = build_evidence_bundle_from_docs_and_scores(docs_and_scores)
     bundle_from_inputs = build_evidence_bundle_from_input_records(
-        [_retrieval_input_from_document(doc, score=score) for doc, score in docs_and_scores]
+        [retrieval_input_from_document(doc, score=score) for doc, score in docs_and_scores]
     )
 
     assert bundle_from_inputs == bundle_from_docs

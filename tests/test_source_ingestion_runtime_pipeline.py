@@ -4,10 +4,10 @@ from collections import deque
 import json
 
 from testbot.clock import SystemClock
+from testbot.entrypoints.runtime_loop import run_chat_loop
 from testbot.ports import MemorySearchQuery, PortDocument, ScoredPortDocument
 from testbot.runtime_capability_service import CapabilitySnapshotData as CapabilitySnapshot
 from testbot.runtime_capability_service import RuntimeCapabilityStatusData as RuntimeCapabilityStatus
-from testbot.sat_chatbot_memory_v2 import run_chat_loop
 from testbot.source_ingestion_startup import run_source_ingestion
 
 

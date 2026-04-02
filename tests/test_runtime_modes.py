@@ -21,7 +21,8 @@ from testbot.entrypoints import sat_runtime_modes
 from testbot.runtime_capability_service import resolve_mode
 from testbot.runtime_cli_args import parse_args
 from testbot.application.services import context_retrieval_runtime
-from testbot.sat_chatbot_memory_v2 import CLARIFY_ANSWER, resolve_turn_intent
+from testbot.answer_contract_constants import CLARIFY_ANSWER
+from testbot.application.services.intent_routing_diagnostics import resolve_turn_intent
 from testbot import sat_chatbot_memory_v2 as runtime
 import testbot.runtime_capability_service as runtime_capability_service
 
