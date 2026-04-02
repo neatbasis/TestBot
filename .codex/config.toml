@@ -41,6 +41,9 @@ approval_mode = "approve"
 [mcp_servers.gitnexus.tools.detect_changes]
 approval_mode = "approve"
 
+[mcp_servers.gitnexus.tools.context]
+approval_mode = "approve"
+
 [mcp_servers.sentry]
 type = "http"
 url = "https://mcp.sentry.dev/mcp"

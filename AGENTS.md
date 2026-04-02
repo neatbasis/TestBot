@@ -101,6 +101,38 @@ A change is done when all are true:
 ## MCP Operating Guidance (Infrastructure Scope)
 TestBot uses a project-scoped MCP stack. Use these tools to keep agent work evidence-backed and bounded.
 
+### Primary orchestration baseline (GitNexus + Context7 + Sentry)
+Use this as the smallest effective default for current TestBot work. Supabase remains secondary for now.
+
+| Task type | Start with | Why |
+|------|------|------|
+| Architecture/refactor | `gitnexus_query` then `gitnexus_context` | Establish repo-native authority and call graph before proposing cuts |
+| Integration/API work | `context7 resolve-library-id` then `context7 query-docs` | Lock external API/version behavior before touching integration code |
+| Runtime debugging | `sentry search_issues` or `sentry search_events` | Prefer runtime evidence over speculation when events exist |
+| Mixed task (internal + external + runtime) | `gitnexus_query` first, then branch to Context7 or Sentry | Establish the local impact surface first (symbols, call paths, authority boundaries, blast radius), then verify external contract and runtime signal |
+
+Fallback rules:
+- If GitNexus cannot disambiguate a symbol/process, use `gitnexus_context` or `gitnexus_cypher`, then read source directly.
+- If Context7 results are ambiguous, resolve a better library ID and re-query before implementing.
+- If Sentry has no issues/events, state that explicitly and switch to GitNexus + deterministic local repro; do not claim runtime impact patterns.
+- For mixed tasks, do not start with Sentry or Context7 before mapping the local impact surface via GitNexus (relevant symbols, call paths, authority boundaries, blast radius).
+
+Expected tool outputs for decisions:
+- GitNexus: impacted symbols, callers/importers, process participation, and blast radius risk (`LOW`/`MEDIUM`/`HIGH`/`CRITICAL`).
+- Context7: authoritative external API signatures, config defaults, migration/version notes, and endpoint/request-response contracts.
+- Sentry: issue/event counts, stack traces, affected environments/releases/users, and evidence of whether a failure is currently observable.
+
+Minimal execution loop:
+1. Pick task type and run the designated first tool.
+2. Produce a short evidence block (tool, query, key finding, concrete file/API/issue IDs).
+3. Only then propose or implement changes.
+
+Example prompts/workflows:
+- "Refactor route authority assignment safely" -> `gitnexus_query("route authority")` -> `gitnexus_context("CanonicalStage")` -> `gitnexus_impact(target=...)`.
+- "Update Home Assistant service-call behavior" -> Context7 Home Assistant docs first -> then GitNexus on `AskGateway` call sites.
+- "Investigate current production failures" -> Sentry issues/events first; if empty, state no runtime signal and switch to local reproduction.
+- "Fix integration regression with external API drift" -> GitNexus for affected symbols + Context7 for current API contract; reconcile both before edits.
+
 ### GitNexus (repo archaeology, impact, bounded cuts)
 - Use `query` and `context` first when code ownership or execution flow is unclear.
 - Use graph evidence to trace decision/routing authority before changing stage boundaries or policy wiring.
