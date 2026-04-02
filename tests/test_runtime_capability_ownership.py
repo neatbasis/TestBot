@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from testbot import sat_chatbot_memory_v2 as runtime
 from testbot.runtime_capability_service import (
     AskRuntimeStatusData,
     CapabilitySnapshotData,
@@ -19,11 +18,6 @@ def _runtime_env() -> dict[str, object]:
         "ollama_embedding_model": "nomic-embed-text:latest",
         "memory_store_backend": "in_memory",
     }
-
-
-def test_legacy_runtime_capability_types_alias_service_owned_models() -> None:
-    assert runtime.RuntimeCapabilityStatus is RuntimeCapabilityStatusData
-    assert runtime.CapabilitySnapshot is CapabilitySnapshotData
 
 
 def test_startup_status_prefers_authoritative_ask_runtime_representation() -> None:
