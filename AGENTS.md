@@ -98,6 +98,39 @@ A change is done when all are true:
 3. Related docs/tests are updated.
 4. No contradictions remain between runtime behavior, tests, and directives.
 
+## MCP Operating Guidance (Infrastructure Scope)
+TestBot uses a project-scoped MCP stack. Use these tools to keep agent work evidence-backed and bounded.
+
+### GitNexus (repo archaeology, impact, bounded cuts)
+- Use `query` and `context` first when code ownership or execution flow is unclear.
+- Use graph evidence to trace decision/routing authority before changing stage boundaries or policy wiring.
+- Run `impact` before editing runtime symbols and use blast radius to choose the smallest safe cut.
+- Run `detect_changes` before commit to confirm changed symbols/processes match the intended scope.
+- Prefer graph-backed traces over grep-only archaeology for non-trivial behavior changes.
+
+### Context7 (version-sensitive external API truth)
+- For external libraries, frameworks, SDKs, and cloud APIs, resolve the library ID and query current docs before changing behavior.
+- Use Context7 output to confirm API signatures, configuration flags, migration notes, and default behavior.
+- Do not rely on memory for version-sensitive APIs.
+
+### Supabase MCP (schema/state inspection before DB proposals)
+- Current configuration is read-only and feature-scoped (`database,docs,debugging`).
+- Use Supabase MCP to inspect schemas, tables, extensions, advisors, and logs before proposing DB changes.
+- Treat Supabase output as environment evidence; document missing schema/state rather than assuming it exists.
+- Read-only mode intentionally disables mutating workflows; this process PR does not activate broad DDL/data mutation rollout.
+
+### Sentry MCP (evidence-backed debugging once events exist)
+- Use Sentry MCP to list issues, inspect event context, and prioritize fixes by observed impact.
+- If Sentry returns no issues/events, state that runtime evidence is not yet available.
+- Do not infer production failure patterns without Sentry data.
+- Sentry MCP does not replace SDK instrumentation or release metadata wiring.
+- Connectivity alone is not observability value; actionable triage requires emitted runtime events and release context.
+
+### Non-Goals For Infrastructure/Process PRs
+- Do not combine MCP process updates with broad application schema rollout.
+- Do not combine MCP process updates with broad observability instrumentation rollout.
+- Keep these PRs focused on configuration, guidance, and safe workflow guardrails.
+
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
 
