@@ -98,7 +98,7 @@ def test_stage_retrieve_passes_hygiene_exclusions_and_blocks_same_turn_candidate
 
 def test_stage_rewrite_query_invoke_failure_falls_back_and_logs(monkeypatch) -> None:
     events: list[tuple[str, dict]] = []
-    monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: events.append((event, payload)))
+    monkeypatch.setattr("testbot.entrypoints.runtime_loop.append_runtime_session_log", lambda event, payload: events.append((event, payload)))
     monkeypatch.setattr(runtime, "_validate_and_log_transition", lambda _result: None)
 
     state = PipelineState(user_input="what did i say last week?")

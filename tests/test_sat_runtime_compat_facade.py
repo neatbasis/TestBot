@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 
 from testbot import sat_chatbot_memory_v2 as runtime
+from testbot.pipeline_state import PipelineState
 
 
 def test_build_source_connector_wrapper_delegates_to_startup_owner(monkeypatch) -> None:
@@ -51,3 +52,25 @@ def test_turn_policy_logic_wrappers_delegate_to_canonical_logic_owner(monkeypatc
 
     assert runtime._optional_string("x") == "canonical:x"
     assert runtime._ambiguity_score({"scored_candidates": []}) == 0.1234
+
+
+def test_stage_rewrite_query_wrapper_delegates_to_runtime_loop_owner(monkeypatch: pytest.MonkeyPatch) -> None:
+    observed: dict[str, object] = {}
+    expected = PipelineState(user_input="who am i?", rewritten_query="who am i?")
+
+    def _fake_stage_rewrite_query(llm, state):
+        observed["llm"] = llm
+        observed["state"] = state
+        return expected
+
+    from testbot.entrypoints import runtime_loop as runtime_loop_owner
+
+    monkeypatch.setattr(runtime_loop_owner, "_stage_rewrite_query", _fake_stage_rewrite_query)
+
+    llm = object()
+    state = PipelineState(user_input="who am i?")
+    actual = runtime.stage_rewrite_query(llm, state)
+
+    assert actual is expected
+    assert observed["llm"] is llm
+    assert observed["state"] is state

@@ -564,15 +564,6 @@ def doc_to_candidate_hit(doc: Document, score: float) -> CandidateHit:
     )
 
 
-_SELF_IDENTITY_DECLARATION_PATTERNS: tuple[re.Pattern[str], ...] = (
-    re.compile(r"^\s*i\s*(?:am|'m|’m)\s+[\w'-]+(?:\s+[\w'-]+)*\s*[.!?]*\s*$", re.IGNORECASE),
-    re.compile(r"^\s*my\s+name\s+is\s+[\w'-]+(?:\s+[\w'-]+)*\s*[.!?]*\s*$", re.IGNORECASE),
-)
-
-def _is_self_identity_declaration(utterance: str) -> bool:
-    return any(pattern.match(utterance or "") is not None for pattern in _SELF_IDENTITY_DECLARATION_PATTERNS)
-
-
 def _should_force_memory_retrieval_for_identity_recall(
     *,
     utterance: str,
@@ -593,21 +584,10 @@ def resolve_context(*args, **kwargs):
 
 
 def stage_rewrite_query(llm: ChatOllama, state: PipelineState) -> PipelineState:
-    if _is_self_identity_declaration(state.user_input):
-        return replace(state, rewritten_query=state.user_input)
+    """Compatibility wrapper; canonical owner is ``testbot.entrypoints.runtime_loop``."""
+    from testbot.entrypoints.runtime_loop import _stage_rewrite_query as _canonical_stage_rewrite_query
 
-    try:
-        rewritten_query = llm.invoke(QUERY_REWRITE_PROMPT.format_messages(input=state.user_input)).content.strip() or state.user_input
-    except Exception as exc:
-        append_session_log(
-            "query_rewrite_failed",
-            {
-                "error_class": type(exc).__name__,
-                "error_message": str(exc),
-            },
-        )
-        rewritten_query = state.user_input
-    return replace(state, rewritten_query=rewritten_query)
+    return _canonical_stage_rewrite_query(llm, state)
 
 
 def observe_stage(state: PipelineState) -> PipelineState:
@@ -1156,14 +1136,6 @@ def generate_reflection_yaml(llm: ChatOllama, *, speaker: str, text: str) -> str
 # Compatibility re-export; canonical owner is
 # testbot.application.services.answer_stage_presentation.
 ANSWER_PROMPT = CANONICAL_ANSWER_PROMPT
-
-QUERY_REWRITE_PROMPT = ChatPromptTemplate.from_messages(
-    [
-        ("system", "Rewrite the user's message into a short search query for retrieving relevant memory.\nReturn ONLY the query text."),
-        ("human", "{input}"),
-    ]
-)
-
 
 def render_context(docs: list[Document], *, limit_chars: int = 5000) -> str:
     """Compatibility wrapper; canonical owner is answer_stage_presentation."""
