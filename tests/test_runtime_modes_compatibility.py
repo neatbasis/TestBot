@@ -1411,11 +1411,8 @@ def test_runtime_loop_owner_handles_stop_command_without_turn_pipeline(monkeypat
     assert run_pipeline_called is False
 
 
-def test_canonical_retrieve_policy_path_is_independent_from_legacy_monolith_helper(monkeypatch: pytest.MonkeyPatch) -> None:
-    def _legacy_sabotage(*_args, **_kwargs):
-        raise AssertionError("legacy helper must not be required for canonical retrieve-policy path")
-
-    monkeypatch.setattr(runtime, "_should_force_memory_retrieval_for_identity_recall", _legacy_sabotage)
+def test_canonical_retrieve_policy_path_is_independent_from_legacy_monolith_helper() -> None:
+    assert not hasattr(runtime, "_should_force_memory_retrieval_for_identity_recall")
 
     assert context_retrieval_runtime.should_force_memory_retrieval_for_identity_recall(
         utterance="who am i?",
@@ -1426,12 +1423,8 @@ def test_canonical_retrieve_policy_path_is_independent_from_legacy_monolith_help
 
 
 def test_canonical_rerank_threshold_policy_path_is_independent_from_legacy_monolith_helper(
-    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    def _legacy_sabotage(*_args, **_kwargs):
-        raise AssertionError("legacy helper must not be required for canonical rerank-threshold policy path")
-
-    monkeypatch.setattr(runtime, "_assemble_rerank_threshold_profile_policy", _legacy_sabotage)
+    assert not hasattr(runtime, "_assemble_rerank_threshold_profile_policy")
 
     policy = context_retrieval_runtime.assemble_rerank_threshold_profile_policy()
 

@@ -225,43 +225,42 @@ def _utc_now_iso() -> str:
 
 
 def _runtime_background_ingestion_deps() -> RuntimeBackgroundIngestionDependencies:
+    def _replay_background_completion_turn(request: BackgroundIngestionReplayRequest) -> PipelineState:
+        replay_state, _hits = _run_canonical_turn_pipeline(
+            runtime=request.runtime,
+            llm=request.llm,
+            store=request.store,
+            state=PipelineState(
+                user_input=request.utterance,
+                last_user_message_ts=request.last_user_message_ts,
+                classified_intent=IntentType.KNOWLEDGE_QUESTION.value,
+                resolved_intent="",
+                prior_unresolved_intent=(
+                    request.prior_pipeline_state.prior_unresolved_intent
+                    if isinstance(request.prior_pipeline_state, PipelineState)
+                    else ""
+                ),
+                confidence_decision={},
+            ),
+            utterance=request.utterance,
+            prior_pipeline_state=request.prior_pipeline_state,
+            turn_id=request.turn_id,
+            near_tie_delta=request.near_tie_delta,
+            chat_history=request.chat_history,
+            capability_status=request.capability_status,
+            capability_snapshot=request.capability_snapshot,
+            clock=request.clock,
+            io_channel=request.io_channel,
+        )
+        return replay_state
+
     return RuntimeBackgroundIngestionDependencies(
         append_session_log=append_session_log,
         build_source_connector=_build_source_connector,
         source_ingestor_cls=SourceIngestor,
         answer_commit_persistence=answer_commit_persistence,
-        replay_background_completion_turn=_replay_background_completion_turn_compat,
+        replay_background_completion_turn=_replay_background_completion_turn,
     )
-
-
-def _replay_background_completion_turn_compat(request: BackgroundIngestionReplayRequest) -> PipelineState:
-    replay_state, _hits = _run_canonical_turn_pipeline(
-        runtime=request.runtime,
-        llm=request.llm,
-        store=request.store,
-        state=PipelineState(
-            user_input=request.utterance,
-            last_user_message_ts=request.last_user_message_ts,
-            classified_intent=IntentType.KNOWLEDGE_QUESTION.value,
-            resolved_intent="",
-            prior_unresolved_intent=(
-                request.prior_pipeline_state.prior_unresolved_intent
-                if isinstance(request.prior_pipeline_state, PipelineState)
-                else ""
-            ),
-            confidence_decision={},
-        ),
-        utterance=request.utterance,
-        prior_pipeline_state=request.prior_pipeline_state,
-        turn_id=request.turn_id,
-        near_tie_delta=request.near_tie_delta,
-        chat_history=request.chat_history,
-        capability_status=request.capability_status,
-        capability_snapshot=request.capability_snapshot,
-        clock=request.clock,
-        io_channel=request.io_channel,
-    )
-    return replay_state
 
 
 def _emit_obligation_transition(
@@ -563,21 +562,6 @@ def doc_to_candidate_hit(doc: Document, score: float) -> CandidateHit:
     )
 
 
-def _should_force_memory_retrieval_for_identity_recall(
-    *,
-    utterance: str,
-    prior_state: PipelineState | None,
-    continuity_evidence: tuple[str, ...],
-    context_history_anchors: tuple[str, ...],
-) -> bool:
-    return context_retrieval_runtime_service.should_force_memory_retrieval_for_identity_recall(
-        utterance=utterance,
-        prior_state=prior_state,
-        continuity_evidence=continuity_evidence,
-        context_history_anchors=context_history_anchors,
-    )
-
-
 def resolve_context(*args, **kwargs):
     return context_retrieval_runtime_service.resolve_context(*args, resolve_context_fn=_resolve_context_from_domain, **kwargs)
 
@@ -632,9 +616,6 @@ def stage_retrieve(
         for record in retrieval_candidates
     ]
 
-
-def _assemble_rerank_threshold_profile_policy():
-    return context_retrieval_runtime_service.assemble_rerank_threshold_profile_policy()
 
 def stage_rerank(
     state: PipelineState,
@@ -1174,7 +1155,7 @@ def _run_canonical_turn_pipeline(
             generate_reflection_yaml=generate_reflection_yaml,
             intent_classifier_confidence=_intent_classifier_confidence,
             optional_string=_optional_string,
-            should_force_memory_retrieval_for_identity_recall=_should_force_memory_retrieval_for_identity_recall,
+            should_force_memory_retrieval_for_identity_recall=context_retrieval_runtime_service.should_force_memory_retrieval_for_identity_recall,
             resolve_context_fn=resolve_context,
             intent_telemetry_payload=_intent_telemetry_payload,
             poll_background_source_ingestion=_poll_background_source_ingestion,
@@ -1228,7 +1209,7 @@ def _run_chat_loop(
         read_user_utterance=read_user_utterance,
         send_assistant_text=send_assistant_text,
         clock=clock,
-        replay_background_completion_turn=_replay_background_completion_turn_compat,
+        replay_background_completion_turn=_runtime_background_ingestion_deps().replay_background_completion_turn,
     )
 
 
