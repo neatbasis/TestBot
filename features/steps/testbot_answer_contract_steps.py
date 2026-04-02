@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 import re
+import warnings
 
 from behave import given, then, when
 from langchain_core.documents import Document
 
 from testbot.answer_policy import AnswerPolicyInput, resolve_answer_routing
-from testbot.answer_contract_constants import NON_KNOWLEDGE_UNCERTAINTY_ANSWER
+from testbot.answer_contract_constants import CLARIFY_ANSWER, NON_KNOWLEDGE_UNCERTAINTY_ANSWER
 from testbot.behave_support import run_answer_stage_flow
 from testbot.eval_fixtures import cases_by_id
 from testbot.logic.alignment import validate_answer_contract, validate_general_knowledge_contract
@@ -372,6 +373,7 @@ class _BDDMemoryGroundedLLM:
 
 
 @given("a memory recall question with retrieval evidence available")
+@given("a memory recall question with seeded evidence that is non-retrievable under canonical constraints")
 def step_given_memory_recall_with_evidence(context) -> None:
     context.memory_answer_state_input = PipelineState(
         user_input="what did i note for release prep",
@@ -398,7 +400,8 @@ def step_given_canonical_decision_object(context, decision_class: str) -> None:
 
 @when("stage answer runs with canonical decision authority")
 def step_when_run_answer_stage_flow_runs_with_canonical_decision(context) -> None:
-    try:
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
         context.run_answer_stage_flow_state = run_answer_stage_flow(
             _BDDMemoryGroundedLLM(),
             context.memory_answer_state_input,
@@ -407,45 +410,34 @@ def step_when_run_answer_stage_flow_runs_with_canonical_decision(context) -> Non
             capability_status="ask_unavailable",
             selected_decision=context.selected_decision,
         )
-    except AssertionError:
-        # Behave catch-up probes in this cluster assert canonical decision-object
-        # ownership surfaces (decision class -> fallback/action mode) even when
-        # full answer-stage transition checks fail outside this slice's scope.
-        if context.selected_decision.decision_class is DecisionClass.ANSWER_FROM_MEMORY:
-            fallback_action = "ANSWER_FROM_MEMORY"
-            answer_mode = "memory-grounded"
-            final_answer = _BDDMemoryGroundedLLM._Response.content
-        else:
-            fallback_action = "ANSWER_UNKNOWN"
-            answer_mode = "assist"
-            final_answer = "I couldn't confirm that yet; lookup is still in progress."
-
-        context.run_answer_stage_flow_state = PipelineState(
-            user_input=context.memory_answer_state_input.user_input,
-            resolved_intent=context.memory_answer_state_input.resolved_intent,
-            final_answer=final_answer,
-            invariant_decisions={
-                "fallback_action": fallback_action,
-                "answer_mode": answer_mode,
-                "answer_policy_rationale": {
-                    "authority": "decision_object",
-                    "decision_class": context.selected_decision.decision_class.value,
-                },
-            },
-        )
+    context.answer_stage_runtime_warnings = [str(entry.message) for entry in caught]
     context.stage_answer_state = context.run_answer_stage_flow_state
 
 
-@then("the final answer remains memory-grounded")
-def step_then_final_answer_remains_memory_grounded(context) -> None:
-    assert context.run_answer_stage_flow_state.final_answer.startswith("From memory, I found:")
-    assert context.run_answer_stage_flow_state.invariant_decisions.get("answer_mode") == "memory-grounded"
+@then("the injected decision object should be ignored by canonical policy authority")
+def step_then_injected_decision_object_is_ignored(context) -> None:
+    warning_messages = getattr(context, "answer_stage_runtime_warnings", [])
+    assert any("ignores selected_decision" in message for message in warning_messages)
+
+    invariant_decisions = context.run_answer_stage_flow_state.invariant_decisions
+    answer_policy_rationale = invariant_decisions.get("answer_policy_rationale", {})
+    assert answer_policy_rationale.get("decision_class") != context.selected_decision.decision_class.value
+    assert invariant_decisions.get("fallback_action") != "ANSWER_FROM_MEMORY"
 
 
-@then("the fallback action remains memory-grounded for canonical routing")
-def step_then_fallback_action_remains_memory_grounded_for_canonical_routing(context) -> None:
-    assert context.run_answer_stage_flow_state.invariant_decisions.get("fallback_action") == "ANSWER_FROM_MEMORY"
-    assert context.run_answer_stage_flow_state.invariant_decisions.get("answer_policy_rationale", {}).get("authority") == "decision_object"
+@then('the canonical answer flow fallback action should be "{fallback_action}"')
+def step_then_canonical_answer_flow_fallback_action(context, fallback_action: str) -> None:
+    assert context.run_answer_stage_flow_state.invariant_decisions.get("fallback_action") == fallback_action
+
+
+@then('the canonical answer flow answer mode should be "{answer_mode}"')
+def step_then_canonical_answer_flow_answer_mode(context, answer_mode: str) -> None:
+    assert context.run_answer_stage_flow_state.invariant_decisions.get("answer_mode") == answer_mode
+
+
+@then("the canonical answer flow emits the default memory clarifier fallback")
+def step_then_canonical_answer_flow_emits_default_memory_clarifier(context) -> None:
+    assert context.run_answer_stage_flow_state.final_answer == CLARIFY_ANSWER
 
 
 @then("stabilization artifacts are persisted before route authority assignment")

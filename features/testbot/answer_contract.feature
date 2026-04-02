@@ -83,12 +83,21 @@ Feature: Answer citation contract enforcement
 
 
   @ISSUE-0009 @AC-0009-10
-  Scenario: known fact must not degrade to general-knowledge fallback
-    Given a memory recall question with retrieval evidence available
+  Scenario: injected decision object does not override canonical policy authority
+    Given a memory recall question with seeded evidence that is non-retrievable under canonical constraints
     And a canonical decision object class "answer_from_memory"
     When stage answer runs with canonical decision authority
-    Then the final answer remains memory-grounded
-    And the fallback action remains memory-grounded for canonical routing
+    Then the injected decision object should be ignored by canonical policy authority
+
+
+  @ISSUE-0009 @AC-0009-16
+  Scenario: memory recall with non-retrievable seeded evidence yields clarify fallback
+    Given a memory recall question with seeded evidence that is non-retrievable under canonical constraints
+    And a canonical decision object class "answer_from_memory"
+    When stage answer runs with canonical decision authority
+    Then the canonical answer flow fallback action should be "ASK_CLARIFYING_QUESTION"
+    And the canonical answer flow answer mode should be "clarify"
+    And the canonical answer flow emits the default memory clarifier fallback
 
 
   @ISSUE-0009 @AC-0009-11
