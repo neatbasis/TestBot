@@ -2,16 +2,21 @@ from __future__ import annotations
 
 from collections import deque
 from dataclasses import dataclass, replace
+import re
 
 from behave import given, then, when
 from langchain_core.documents import Document
 
+from testbot.answer_contract_constants import ROUTE_TO_ASK_ANSWER
+from testbot.behave_support import run_answer_stage_flow
 from testbot.history_packer import PackedHistory
-from testbot import sat_chatbot_memory_v2 as runtime
+from testbot.application.services import context_retrieval_runtime as context_retrieval_runtime_service
 from testbot.evidence_retrieval import EvidenceBundle, EvidenceRecord, retrieval_result
 from testbot.context_resolution import ContinuityPosture, resolve as resolve_context
 from testbot.intent_resolution import IntentResolutionInput, resolve as resolve_intent
 from testbot.intent_router import IntentFacets, IntentType, classify_intent, extract_intent_facets, planning_pathway_for_intent
+from testbot.logic.alignment import validate_general_knowledge_contract
+from testbot.logic.provenance import build_provenance_metadata
 from testbot.policy_decision import DecisionClass, EvidencePosture, decide, decide_from_evidence
 from testbot.pipeline_state import CandidateHit, PipelineState, ProvenanceType
 from testbot.candidate_encoding import FactCandidate
@@ -20,17 +25,13 @@ from testbot.memory_strata import SegmentDescriptor, SegmentType
 from testbot.stabilization import StabilizedTurnState
 from testbot.stabilization import build_stabilization_plan
 from testbot.turn_observation import TurnObservation
-from testbot.sat_chatbot_memory_v2 import (
-    ROUTE_TO_ASK_ANSWER,
-    build_provenance_metadata,
-    resolve_turn_intent,
-    run_answer_stage_flow,
-    stage_rewrite_query,
-    validate_general_knowledge_contract,
-)
 from testbot.stage_transitions import validate_answer_post, validate_answer_pre
 
 GENERAL_MARKER = "General definition (not from your memory):"
+_SELF_IDENTITY_DECLARATION_PATTERNS: tuple[re.Pattern[str], ...] = (
+    re.compile(r"^\s*i\s*(?:am|'m|’m)\s+[\w'-]+(?:\s+[\w'-]+)*\s*[.!?]*\s*$", re.IGNORECASE),
+    re.compile(r"^\s*my\s+name\s+is\s+[\w'-]+(?:\s+[\w'-]+)*\s*[.!?]*\s*$", re.IGNORECASE),
+)
 
 
 @dataclass(frozen=True)
@@ -38,6 +39,57 @@ class BDDTypedIntent:
     intent_class: IntentType
     facets: object
     pathway: str
+
+
+def _is_self_identity_declaration(utterance: str) -> bool:
+    return any(pattern.match(utterance or "") is not None for pattern in _SELF_IDENTITY_DECLARATION_PATTERNS)
+
+
+def stage_rewrite_query(llm, state: PipelineState) -> PipelineState:
+    if _is_self_identity_declaration(state.user_input):
+        return replace(state, rewritten_query=state.user_input)
+
+    try:
+        rewritten_query = llm.invoke(
+            [
+                (
+                    "system",
+                    "Rewrite the user's message into a short search query for retrieving relevant memory.\n"
+                    "Return ONLY the query text.",
+                ),
+                ("human", state.user_input),
+            ]
+        ).content.strip() or state.user_input
+    except Exception:
+        rewritten_query = state.user_input
+    return replace(state, rewritten_query=rewritten_query)
+
+
+def resolve_turn_intent(
+    *,
+    utterance: str,
+    prior_pipeline_state: PipelineState | None,
+    diagnostic_only: bool = True,
+) -> tuple[IntentType, IntentType]:
+    if not diagnostic_only:
+        raise RuntimeError(
+            "resolve_turn_intent is diagnostic-only and non-authoritative; "
+            "production routing must use canonical orchestrator artifacts"
+        )
+
+    classified_intent = classify_intent(utterance)
+    context_resolution = resolve_context(
+        utterance=utterance,
+        prior_pipeline_state=prior_pipeline_state,
+    )
+    intent_resolution = resolve_intent(
+        resolution_input=IntentResolutionInput(
+            stabilized_turn_state=_stabilized_turn_state_for_bdd(utterance),
+            context=context_resolution,
+            fallback_utterance=utterance,
+        )
+    )
+    return classified_intent, intent_resolution.resolved_intent
 
 
 def _parse_bool(raw: str) -> bool:
@@ -574,11 +626,13 @@ def step_when_identity_recall_followup_pair(context) -> None:
             ]
         },
     )
-    context.identity_recall_force_retrieval = runtime._should_force_memory_retrieval_for_identity_recall(
-        utterance="Who am I?",
-        prior_state=context.identity_prior_state,
-        continuity_evidence=(),
-        context_history_anchors=(),
+    context.identity_recall_force_retrieval = (
+        context_retrieval_runtime_service.should_force_memory_retrieval_for_identity_recall(
+            utterance="Who am I?",
+            prior_state=context.identity_prior_state,
+            continuity_evidence=(),
+            context_history_anchors=(),
+        )
     )
 
 

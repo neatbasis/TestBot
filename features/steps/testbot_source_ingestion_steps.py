@@ -6,8 +6,8 @@ from behave import given, then, when
 from langchain_core.documents import Document
 
 from testbot.history_packer import PackedHistory
+from testbot.logic.provenance import build_provenance_metadata
 from testbot.pipeline_state import ProvenanceType
-from testbot.sat_chatbot_memory_v2 import build_provenance_metadata
 
 TRUST_TIER_FALLBACK = "I don't know from memory."
 

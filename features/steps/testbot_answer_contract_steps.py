@@ -6,17 +6,14 @@ from behave import given, then, when
 from langchain_core.documents import Document
 
 from testbot.answer_policy import AnswerPolicyInput, resolve_answer_routing
+from testbot.answer_contract_constants import NON_KNOWLEDGE_UNCERTAINTY_ANSWER
+from testbot.behave_support import run_answer_stage_flow
 from testbot.eval_fixtures import cases_by_id
+from testbot.logic.alignment import validate_answer_contract, validate_general_knowledge_contract
+from testbot.observability.turn_debug_payload import build_debug_turn_payload as _build_debug_turn_payload
 from testbot.pipeline_state import CandidateHit, PipelineState, ProvenanceType
 from testbot.policy_decision import DecisionClass, DecisionObject
-from testbot.sat_chatbot_memory_v2 import (
-    NON_KNOWLEDGE_UNCERTAINTY_ANSWER,
-    RuntimeCapabilityStatus,
-    run_answer_stage_flow,
-    validate_answer_contract,
-    validate_general_knowledge_contract,
-)
-from testbot.sat_chatbot_memory_v2 import _build_debug_turn_payload
+from testbot.runtime_capability_service import RuntimeCapabilityStatusData as RuntimeCapabilityStatus
 from testbot.stage_transitions import validate_answer_post, validate_answer_pre
 
 

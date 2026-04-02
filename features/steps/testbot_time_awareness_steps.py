@@ -5,9 +5,9 @@ from dataclasses import dataclass
 import arrow
 from behave import given, then, when
 
+from testbot.behave_support import run_answer_stage_flow
 from testbot.intent_router import IntentType, classify_intent
 from testbot.pipeline_state import PipelineState
-from testbot.sat_chatbot_memory_v2 import run_answer_stage_flow
 
 
 @dataclass(frozen=True)

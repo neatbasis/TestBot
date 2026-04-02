@@ -10,7 +10,11 @@ from langchain_core.documents import Document
 
 from testbot.eval_fixtures import best_candidate_doc_id, cases_by_id
 from testbot.pipeline_state import CandidateHit, PipelineState, ProvenanceType
-from testbot.rerank import adaptive_sigma_fractional, rerank_docs_with_time_and_type_outcome
+from testbot.rerank import (
+    adaptive_sigma_fractional,
+    has_sufficient_context_confidence_from_objective as has_sufficient_context_confidence,
+    rerank_docs_with_time_and_type_outcome,
+)
 from testbot.turn_observation import observe_turn
 from testbot.candidate_encoding import FactCandidate, encode_turn_candidates
 from testbot.canonical_turn_orchestrator import CanonicalStage, CanonicalTurnContext, CanonicalTurnOrchestrator
@@ -26,8 +30,7 @@ from testbot.evidence_retrieval import (
     build_evidence_bundle_from_docs_and_scores,
     retrieval_result,
 )
-
-from testbot.sat_chatbot_memory_v2 import has_sufficient_context_confidence, stage_rerank
+from testbot.application.services import context_retrieval_runtime as context_retrieval_runtime_service
 from testbot.stage_transitions import (
     validate_answer_post,
     validate_answer_pre,
@@ -48,6 +51,36 @@ FALLBACK = "I don't know from memory."
 ASSIST_FALLBACK = "I don't have enough reliable memory to answer directly. I can either help you reconstruct the timeline from what you remember, or suggest where to check next for the missing detail."
 BRIDGING_CLARIFIER = "I found related memory fragments (fragment A; fragment B), but not enough to answer precisely. Which person, event, or time window should I focus on?"
 CITATION_PATTERN = re.compile(r"doc_id\s*[:=]\s*[^,\]\)\n]+.*?ts\s*[:=]\s*[^,\]\)\n]+", re.IGNORECASE)
+
+
+def stage_rerank(
+    state: PipelineState,
+    docs_and_scores: list[tuple[Document, float]],
+    *,
+    utterance: str,
+    user_doc_id: str,
+    user_reflection_doc_id: str,
+    near_tie_delta: float,
+    clock,
+    io_channel: str = "cli",
+) -> tuple[PipelineState, list[Document]]:
+    updated_state, reranked_records = context_retrieval_runtime_service.stage_rerank_for_turn_service(
+        state,
+        [
+            context_retrieval_runtime_service.retrieval_input_from_document(doc, score=score)
+            for doc, score in docs_and_scores
+        ],
+        utterance=utterance,
+        user_doc_id=user_doc_id,
+        user_reflection_doc_id=user_reflection_doc_id,
+        near_tie_delta=near_tie_delta,
+        clock=clock,
+        io_channel=io_channel,
+    )
+    return updated_state, [
+        context_retrieval_runtime_service.document_from_retrieval_input(record)
+        for record in reranked_records
+    ]
 
 
 def _assert_evidence_state_fields(
@@ -159,7 +192,7 @@ def _runtime_memory_signals(utterance: str, candidates: list[dict[str, str | flo
         near_tie_delta=NEAR_TIE_DELTA,
     )
     context_confident = has_sufficient_context_confidence(
-        outcome.scored_candidates,
+        scored_candidates=outcome.scored_candidates,
         ambiguity_detected=outcome.ambiguity_detected,
     )
     return {

@@ -3,7 +3,11 @@ from __future__ import annotations
 from contextlib import redirect_stdout
 from io import StringIO
 
-from testbot.sat_chatbot_memory_v2 import CapabilitySnapshot, RuntimeCapabilityStatus, _print_startup_status
+from testbot.runtime_capability_service import (
+    CapabilitySnapshotData as CapabilitySnapshot,
+    RuntimeCapabilityStatusData as RuntimeCapabilityStatus,
+)
+from testbot.startup_status_presenter import print_startup_status as _print_startup_status
 
 
 def _make_snapshot(*, requested_mode: str, daemon_mode: bool, ha_error: str | None, ollama_error: str | None) -> CapabilitySnapshot:

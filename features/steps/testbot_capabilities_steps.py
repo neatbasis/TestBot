@@ -5,9 +5,10 @@ from collections import deque
 from behave import given, then, when
 from langchain_core.documents import Document
 
+from testbot.behave_support import run_answer_stage_flow
 from testbot.intent_router import IntentType, classify_intent
 from testbot.pipeline_state import PipelineState
-from testbot.sat_chatbot_memory_v2 import RuntimeCapabilityStatus, run_answer_stage_flow
+from testbot.runtime_capability_service import RuntimeCapabilityStatusData as RuntimeCapabilityStatus
 
 
 class _FailIfInvokedLLM:
