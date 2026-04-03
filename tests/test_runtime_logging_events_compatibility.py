@@ -9,13 +9,13 @@ import pytest
 from langchain_core.documents import Document
 
 from testbot import sat_chatbot_memory_v2 as runtime
+from testbot.entrypoints import runtime_background_ingestion, runtime_loop
 from testbot.intent_router import IntentType
 from testbot.pipeline_state import AlignmentDecision, PipelineState
 from testbot.sat_chatbot_memory_v2 import (
     CapabilitySnapshot,
     NON_KNOWLEDGE_UNCERTAINTY_ANSWER,
     RuntimeCapabilityStatus,
-    _run_chat_loop,
     run_canonical_answer_stage_flow,
 )
 
@@ -50,6 +50,49 @@ class _HarnessStore:
 
     def add_memory_records(self, records) -> None:
         self._records.extend(list(records))
+
+
+def _compat_runtime_replay_deps(
+    *,
+    append_session_log,
+    answer_commit_persistence,
+) -> runtime_background_ingestion.RuntimeBackgroundIngestionDependencies:
+    def _replay(request):
+        replay_state, _hits = runtime._run_canonical_turn_pipeline(
+            runtime=request.runtime,
+            llm=request.llm,
+            store=request.store,
+            state=PipelineState(
+                user_input=request.utterance,
+                last_user_message_ts=request.last_user_message_ts,
+                classified_intent=IntentType.KNOWLEDGE_QUESTION.value,
+                resolved_intent="",
+                prior_unresolved_intent=(
+                    request.prior_pipeline_state.prior_unresolved_intent
+                    if isinstance(request.prior_pipeline_state, PipelineState)
+                    else ""
+                ),
+                confidence_decision={},
+            ),
+            utterance=request.utterance,
+            prior_pipeline_state=request.prior_pipeline_state,
+            turn_id=request.turn_id,
+            near_tie_delta=request.near_tie_delta,
+            chat_history=request.chat_history,
+            capability_status=request.capability_status,
+            capability_snapshot=request.capability_snapshot,
+            clock=request.clock,
+            io_channel=request.io_channel,
+        )
+        return replay_state
+
+    return runtime_background_ingestion.RuntimeBackgroundIngestionDependencies(
+        append_session_log=append_session_log,
+        build_source_connector=lambda _runtime: None,
+        source_ingestor_cls=object,
+        answer_commit_persistence=answer_commit_persistence,
+        replay_background_completion_turn=_replay,
+    )
 
 
 def test_stage_retrieve_passes_hygiene_exclusions_and_blocks_same_turn_candidates() -> None:
@@ -149,7 +192,13 @@ def test_chat_loop_async_pending_lookup_commits_pending_answer_and_logs_semantic
     monkeypatch.setattr(runtime, "generate_reflection_yaml", lambda *args, **kwargs: "claims: []")
     monkeypatch.setattr(runtime, "persist_promoted_context", lambda *args, **kwargs: [])
 
-    def _start_background_ingest(*, runtime: dict[str, object], store: object, ingestion_request_id: str = "") -> dict[str, object]:
+    def _start_background_ingest(
+        *,
+        runtime: dict[str, object],
+        store: object,
+        deps,
+        ingestion_request_id: str = "",
+    ) -> dict[str, object]:
         del store
         runtime["source_ingest_background_in_progress"] = True
         runtime["source_ingest_background_future"] = None
@@ -159,7 +208,7 @@ def test_chat_loop_async_pending_lookup_commits_pending_answer_and_logs_semantic
         runtime.append_session_log("source_ingest_background_started", {"background": True, "ingestion_request_id": request_id})
         return {"started": True, "already_running": False, "ingestion_request_id": request_id}
 
-    monkeypatch.setattr(runtime, "_start_background_source_ingestion", _start_background_ingest)
+    monkeypatch.setattr(runtime_background_ingestion, "start_background_source_ingestion", _start_background_ingest)
 
     class _EmptyStore:
         def similarity_search_with_score(self, query: str, k: int = 4, **kwargs):
@@ -174,7 +223,7 @@ def test_chat_loop_async_pending_lookup_commits_pending_answer_and_logs_semantic
 
     prompts = iter(["what did i say?", "stop"])
     replies: list[str] = []
-    _run_chat_loop(
+    runtime_loop.run_chat_loop(
         runtime={"source_ingest_async_continuation": True},
         llm=_StaticLLM("ignored"),
         store=_EmptyStore(),
@@ -208,6 +257,10 @@ def test_chat_loop_async_pending_lookup_commits_pending_answer_and_logs_semantic
         read_user_utterance=lambda: next(prompts, None),
         send_assistant_text=lambda text: replies.append(text),
         clock=_FIXED_CLOCK,
+        replay_background_completion_turn=_compat_runtime_replay_deps(
+            append_session_log=runtime_loop.append_runtime_session_log,
+            answer_commit_persistence=runtime_loop.persist_answer_commit,
+        ).replay_background_completion_turn,
     )
 
     assert replies[0] == NON_KNOWLEDGE_UNCERTAINTY_ANSWER
@@ -240,7 +293,13 @@ def test_chat_loop_async_pending_lookup_contract_path_reaches_answer_commit_post
     monkeypatch.setattr(runtime, "generate_reflection_yaml", lambda *args, **kwargs: "claims: []")
     monkeypatch.setattr(runtime, "persist_promoted_context", lambda *args, **kwargs: [])
 
-    def _start_background_ingest(*, runtime: dict[str, object], store: object, ingestion_request_id: str = "") -> dict[str, object]:
+    def _start_background_ingest(
+        *,
+        runtime: dict[str, object],
+        store: object,
+        deps,
+        ingestion_request_id: str = "",
+    ) -> dict[str, object]:
         del store
         runtime["source_ingest_background_in_progress"] = True
         runtime["source_ingest_background_future"] = None
@@ -250,7 +309,7 @@ def test_chat_loop_async_pending_lookup_contract_path_reaches_answer_commit_post
         runtime.append_session_log("source_ingest_background_started", {"background": True, "ingestion_request_id": request_id})
         return {"started": True, "already_running": False, "ingestion_request_id": request_id}
 
-    monkeypatch.setattr(runtime, "_start_background_source_ingestion", _start_background_ingest)
+    monkeypatch.setattr(runtime_background_ingestion, "start_background_source_ingestion", _start_background_ingest)
 
     class _EmptyStore:
         def similarity_search_with_score(self, query: str, k: int = 4, **kwargs):
@@ -265,7 +324,7 @@ def test_chat_loop_async_pending_lookup_contract_path_reaches_answer_commit_post
 
     prompts = iter(["what did i say?", "stop"])
     replies: list[str] = []
-    _run_chat_loop(
+    runtime_loop.run_chat_loop(
         runtime={"source_ingest_async_continuation": True},
         llm=_StaticLLM("ignored"),
         store=_EmptyStore(),
@@ -299,6 +358,10 @@ def test_chat_loop_async_pending_lookup_contract_path_reaches_answer_commit_post
         read_user_utterance=lambda: next(prompts, None),
         send_assistant_text=lambda text: replies.append(text),
         clock=_FIXED_CLOCK,
+        replay_background_completion_turn=_compat_runtime_replay_deps(
+            append_session_log=runtime_loop.append_runtime_session_log,
+            answer_commit_persistence=runtime_loop.persist_answer_commit,
+        ).replay_background_completion_turn,
     )
 
     assert replies[0] == NON_KNOWLEDGE_UNCERTAINTY_ANSWER
@@ -325,7 +388,13 @@ def test_final_answer_mode_stage_audit_trail_includes_answer_commit(tmp_path, mo
     monkeypatch.setattr(runtime, "generate_reflection_yaml", lambda *args, **kwargs: "claims: []")
     monkeypatch.setattr(runtime, "persist_promoted_context", lambda *args, **kwargs: [])
 
-    def _start_background_ingest(*, runtime: dict[str, object], store: object, ingestion_request_id: str = "") -> dict[str, object]:
+    def _start_background_ingest(
+        *,
+        runtime: dict[str, object],
+        store: object,
+        deps,
+        ingestion_request_id: str = "",
+    ) -> dict[str, object]:
         del store
         runtime["source_ingest_background_in_progress"] = True
         runtime["source_ingest_background_future"] = None
@@ -335,7 +404,7 @@ def test_final_answer_mode_stage_audit_trail_includes_answer_commit(tmp_path, mo
         runtime.append_session_log("source_ingest_background_started", {"background": True, "ingestion_request_id": request_id})
         return {"started": True, "already_running": False, "ingestion_request_id": request_id}
 
-    monkeypatch.setattr(runtime, "_start_background_source_ingestion", _start_background_ingest)
+    monkeypatch.setattr(runtime_background_ingestion, "start_background_source_ingestion", _start_background_ingest)
 
     class _EmptyStore:
         def similarity_search_with_score(self, query: str, k: int = 4, **kwargs):
@@ -349,7 +418,7 @@ def test_final_answer_mode_stage_audit_trail_includes_answer_commit(tmp_path, mo
             del records
 
     prompts = iter(["what did i say?", "stop"])
-    _run_chat_loop(
+    runtime_loop.run_chat_loop(
         runtime={"source_ingest_async_continuation": True},
         llm=_StaticLLM("ignored"),
         store=_EmptyStore(),
@@ -383,6 +452,10 @@ def test_final_answer_mode_stage_audit_trail_includes_answer_commit(tmp_path, mo
         read_user_utterance=lambda: next(prompts, None),
         send_assistant_text=lambda _text: None,
         clock=_FIXED_CLOCK,
+        replay_background_completion_turn=_compat_runtime_replay_deps(
+            append_session_log=runtime_loop.append_runtime_session_log,
+            answer_commit_persistence=runtime_loop.persist_answer_commit,
+        ).replay_background_completion_turn,
     )
 
     rows = [json.loads(line) for line in (tmp_path / "logs" / "session.jsonl").read_text(encoding="utf-8").splitlines() if line.strip()]
@@ -439,7 +512,7 @@ def test_background_ingestion_pending_lifecycle_event_order_and_payloads(monkeyp
         },
     }
 
-    last_ts, prior_state, processed = runtime._process_background_ingestion_completion(
+    last_ts, prior_state, processed = runtime_background_ingestion.process_background_ingestion_completion(
         runtime=runtime_state,
         llm=_StaticLLM("ignored"),
         store=object(),
@@ -474,6 +547,10 @@ def test_background_ingestion_pending_lifecycle_event_order_and_payloads(monkeyp
         send_assistant_text=lambda text: assistant_messages.append(text),
         last_user_message_ts="",
         prior_pipeline_state=None,
+        deps=_compat_runtime_replay_deps(
+            append_session_log=lambda event, payload: events.append((event, payload)),
+            answer_commit_persistence=lambda **kwargs: None,
+        ),
     )
 
     assert processed is True
@@ -573,7 +650,7 @@ def test_chat_loop_emits_completion_event_user_message_and_linked_answer(tmp_pat
     monkeypatch.setattr(runtime, "_run_canonical_turn_pipeline", _pipeline)
 
     prompts = iter(["stop"])
-    runtime._run_chat_loop(
+    runtime_loop.run_chat_loop(
         runtime={"pending_ingestion_registry": {"turn-123": {"utterance": "What is due Friday?", "prior_pipeline_state": None}}},
         llm=_StaticLLM("ignored"),
         store=_HarnessStore(),
@@ -607,6 +684,10 @@ def test_chat_loop_emits_completion_event_user_message_and_linked_answer(tmp_pat
         read_user_utterance=lambda: next(prompts, None),
         send_assistant_text=lambda _text: None,
         clock=_FIXED_CLOCK,
+        replay_background_completion_turn=_compat_runtime_replay_deps(
+            append_session_log=runtime_loop.append_runtime_session_log,
+            answer_commit_persistence=runtime_loop.persist_answer_commit,
+        ).replay_background_completion_turn,
     )
 
     rows = [json.loads(line) for line in (tmp_path / "logs" / "session.jsonl").read_text(encoding="utf-8").splitlines() if line.strip()]

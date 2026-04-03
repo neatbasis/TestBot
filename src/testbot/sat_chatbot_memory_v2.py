@@ -152,8 +152,6 @@ from testbot.entrypoints.runtime_background_ingestion import (
     emit_obligation_transition as emit_runtime_obligation_transition,
     format_background_ingestion_completion_message as format_runtime_background_ingestion_completion_message,
     poll_background_source_ingestion as poll_runtime_background_source_ingestion,
-    poll_pending_ingestion_obligations as poll_runtime_pending_ingestion_obligations,
-    process_background_ingestion_completion as process_runtime_background_ingestion_completion,
     start_background_source_ingestion as start_runtime_background_source_ingestion,
 )
 from testbot.entrypoints.runtime_commit_persistence import (
@@ -177,7 +175,6 @@ from testbot.logic.turn_policy import ambiguity_score as compute_turn_policy_amb
 from testbot.logic.turn_policy import optional_string as coerce_optional_string
 from testbot.logic.turn_policy import selected_decision_from_confidence as project_selected_decision_from_confidence
 from testbot.policies import turn_policy as turn_policy_policies
-from testbot.application.services import background_ingestion_runtime as background_ingestion_runtime_service
 from testbot.application.services import answer_stage_runtime as answer_stage_runtime_service
 from testbot.application.services import continuity_runtime as continuity_runtime_service
 from testbot.application.services import intent_routing_diagnostics as intent_routing_diagnostics_service
@@ -286,12 +283,6 @@ def _emit_obligation_transition(
     )
 
 
-def _poll_pending_ingestion_obligations(*, runtime: dict[str, object]) -> None:
-    poll_runtime_pending_ingestion_obligations(
-        runtime=runtime,
-        deps=_runtime_background_ingestion_deps(),
-        obligation_timeout_seconds=BACKGROUND_INGESTION_OBLIGATION_TIMEOUT_SECONDS,
-    )
 _LOGGER = logging.getLogger(__name__)
 
 CanonicalTurnOrchestrator = _CanonicalTurnOrchestrator
@@ -378,62 +369,10 @@ def _emit_deprecated_alias_warning(name: str) -> None:
         stacklevel=2,
     )
 
-
-def _start_background_source_ingestion(
-    *,
-    runtime: dict[str, object],
-    store: MemoryStorePort,
-    ingestion_request_id: str = "",
-) -> dict[str, object]:
-    return start_runtime_background_source_ingestion(
-        runtime=runtime,
-        store=store,
-        deps=_runtime_background_ingestion_deps(),
-        ingestion_request_id=ingestion_request_id,
-    )
-
-
-def _poll_background_source_ingestion(*, runtime: dict[str, object]) -> dict[str, object] | None:
-    return poll_runtime_background_source_ingestion(
-        runtime=runtime,
-        deps=_runtime_background_ingestion_deps(),
-    )
-
-
 def _format_background_ingestion_completion_message(*, correlation_id: str) -> str:
     return format_runtime_background_ingestion_completion_message(correlation_id=correlation_id)
 
 
-def _process_background_ingestion_completion(
-    *,
-    runtime: dict[str, object],
-    llm: ChatOllama,
-    store: MemoryStorePort,
-    chat_history: deque[ChatMsg],
-    near_tie_delta: float,
-    capability_status: CapabilityStatus,
-    capability_snapshot: CapabilitySnapshot,
-    clock: Clock,
-    io_channel: str,
-    send_assistant_text,
-    last_user_message_ts: str,
-    prior_pipeline_state: PipelineState | None,
-) -> tuple[str, PipelineState | None, bool]:
-    return process_runtime_background_ingestion_completion(
-        runtime=runtime,
-        llm=llm,
-        store=store,
-        chat_history=chat_history,
-        near_tie_delta=near_tie_delta,
-        capability_status=capability_status,
-        capability_snapshot=capability_snapshot,
-        clock=clock,
-        io_channel=io_channel,
-        send_assistant_text=send_assistant_text,
-        last_user_message_ts=last_user_message_ts,
-        prior_pipeline_state=prior_pipeline_state,
-        deps=_runtime_background_ingestion_deps(),
-    )
 INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD = turn_policy_policies.INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD
 RETRIEVAL_SCORE_THRESHOLD = turn_policy_policies.RETRIEVAL_SCORE_THRESHOLD
 
@@ -1131,8 +1070,14 @@ def _run_canonical_turn_pipeline(
             should_force_memory_retrieval_for_identity_recall=context_retrieval_runtime_service.should_force_memory_retrieval_for_identity_recall,
             resolve_context_fn=resolve_context,
             intent_telemetry_payload=_intent_telemetry_payload,
-            poll_background_source_ingestion=_poll_background_source_ingestion,
-            start_background_source_ingestion=_start_background_source_ingestion,
+            poll_background_source_ingestion=lambda **kwargs: poll_runtime_background_source_ingestion(
+                deps=_runtime_background_ingestion_deps(),
+                **kwargs,
+            ),
+            start_background_source_ingestion=lambda **kwargs: start_runtime_background_source_ingestion(
+                deps=_runtime_background_ingestion_deps(),
+                **kwargs,
+            ),
             stage_retrieve=_stage_retrieve_hook,
             stage_rerank=lambda *args, **kwargs: context_retrieval_runtime_service.stage_rerank_for_turn_service(
                 *args,
@@ -1152,39 +1097,6 @@ def _run_canonical_turn_pipeline(
         ),
     )
 
-def _run_chat_loop(
-    *,
-    runtime: dict[str, object] | None = None,
-    llm: ChatOllama,
-    store: MemoryStorePort,
-    chat_history: deque[ChatMsg],
-    near_tie_delta: float,
-    io_channel: str,
-    capability_status: CapabilityStatus,
-    capability_snapshot: CapabilitySnapshot,
-    read_user_utterance,
-    send_assistant_text,
-    clock: Clock,
-) -> None:
-    """Compatibility wrapper; canonical runtime-loop control flow lives in entrypoints.runtime_loop."""
-
-    from testbot.entrypoints.runtime_loop import run_chat_loop as _canonical_run_chat_loop
-
-    _canonical_run_chat_loop(
-        runtime=runtime or {},
-        llm=llm,
-        store=store,
-        chat_history=chat_history,
-        near_tie_delta=near_tie_delta,
-        io_channel=io_channel,
-        capability_status=capability_status,
-        capability_snapshot=capability_snapshot,
-        read_user_utterance=read_user_utterance,
-        send_assistant_text=send_assistant_text,
-        clock=clock,
-        replay_background_completion_turn=_runtime_background_ingestion_deps().replay_background_completion_turn,
-    )
-
 
 
 def _run_cli_mode(*, runtime: dict[str, object], llm: ChatOllama, store: MemoryStore, chat_history: deque[ChatMsg], near_tie_delta: float, capability_snapshot: CapabilitySnapshot, clock: Clock) -> None:
@@ -1199,7 +1111,7 @@ def _run_cli_mode(*, runtime: dict[str, object], llm: ChatOllama, store: MemoryS
         capability_snapshot=capability_snapshot,
         clock=clock,
         ask_gateway=AskGateway.from_runtime(runtime),
-        run_chat_loop=_run_chat_loop,
+        run_chat_loop=run_chat_loop,
     )
 
 
@@ -1224,7 +1136,7 @@ def _run_satellite_mode(
         capability_snapshot=capability_snapshot,
         clock=clock,
         ask_gateway=AskGateway.from_runtime(runtime),
-        run_chat_loop=_run_chat_loop,
+        run_chat_loop=run_chat_loop,
         satellite_say=sat_say,
     )
 
@@ -1335,7 +1247,9 @@ def run_chat_loop(
     send_assistant_text,
     clock: Clock,
 ) -> None:
-    _run_chat_loop(
+    from testbot.entrypoints.runtime_loop import run_chat_loop as _canonical_run_chat_loop
+
+    _canonical_run_chat_loop(
         runtime=runtime,
         llm=llm,
         store=store,
@@ -1347,6 +1261,7 @@ def run_chat_loop(
         read_user_utterance=read_user_utterance,
         send_assistant_text=send_assistant_text,
         clock=clock,
+        replay_background_completion_turn=_runtime_background_ingestion_deps().replay_background_completion_turn,
     )
 
 
