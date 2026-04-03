@@ -36,6 +36,10 @@ from testbot.entrypoints.runtime_background_ingestion import (
     poll_background_source_ingestion,
 )
 from testbot.entrypoints.runtime_turn_pipeline import RuntimeTurnPipelineHooks, run_runtime_turn_pipeline
+from testbot.entrypoints.turn_pipeline_execution_profile import (
+    TurnPipelineExecutionProfile,
+    build_runtime_turn_pipeline_hooks_for_profile,
+)
 from testbot.entrypoints.runtime_transition_validation import validate_and_log_transition
 from testbot.entrypoints.runtime_turn_telemetry import (
     RuntimeTurnTelemetryDependencies,
@@ -188,7 +192,8 @@ def build_runtime_turn_pipeline_hooks(
 ) -> RuntimeTurnPipelineHooks:
     """Assemble runtime-turn pipeline hooks at the canonical entrypoint boundary."""
 
-    return RuntimeTurnPipelineHooks(
+    return build_runtime_turn_pipeline_hooks_for_profile(
+        profile=TurnPipelineExecutionProfile.RUNTIME_LIVE,
         append_session_log=append_session_log,
         validate_and_log_transition=validate_and_log_transition,
         stage_rewrite_query=stage_rewrite_query,

@@ -19,8 +19,12 @@ from testbot.context_resolution import resolve as _resolve_context_from_domain
 from testbot.domain import Clock
 from testbot.evidence_retrieval import RetrievalInputRecord
 from testbot.entrypoints.runtime_loop import _generate_reflection_yaml, _stage_rewrite_query
+from testbot.entrypoints.turn_pipeline_execution_profile import (
+    TurnPipelineExecutionProfile,
+    build_runtime_turn_pipeline_hooks_for_profile,
+)
 from testbot.entrypoints.runtime_transition_validation import validate_and_log_transition
-from testbot.entrypoints.runtime_turn_pipeline import RuntimeTurnPipelineHooks, run_runtime_turn_pipeline
+from testbot.entrypoints.runtime_turn_pipeline import run_runtime_turn_pipeline
 from testbot.entrypoints.runtime_turn_telemetry import intent_telemetry_payload
 from testbot.logic.turn_policy import ambiguity_score as compute_turn_policy_ambiguity_score
 from testbot.logic.turn_policy import optional_string as coerce_optional_string
@@ -134,7 +138,8 @@ def _stage_rerank_documents_for_answer_stage(
     return updated_state, [_document_from_retrieval_input(record) for record in reranked_records]
 
 
-_BEHAVE_RUNTIME_TURN_HOOKS = RuntimeTurnPipelineHooks(
+_BEHAVE_RUNTIME_TURN_HOOKS = build_runtime_turn_pipeline_hooks_for_profile(
+    profile=TurnPipelineExecutionProfile.SEEDED_PROBE,
     append_session_log=append_session_log,
     validate_and_log_transition=validate_and_log_transition,
     stage_rewrite_query=_stage_rewrite_query,
