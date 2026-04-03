@@ -19,7 +19,6 @@ from testbot.entrypoints import runtime_background_ingestion
 from testbot.entrypoints import runtime_bootstrap
 from testbot.entrypoints import runtime_loop
 from testbot.entrypoints import runtime_turn_pipeline
-from testbot.entrypoints.runtime_legacy_bridge import read_runtime_env
 from testbot.interaction_policy import InteractionPolicyRequest
 from testbot.interaction_standards import InteractionRequirements
 from testbot.runtime_capability_service import resolve_mode
@@ -42,38 +41,9 @@ def test_entrypoints_package_exposes_lazy_main_wrapper_without_eager_sat_cli_imp
     assert "from .cli import main as cli_main" in source
 
 
-def test_runtime_legacy_bridge_warns_on_monolith_compat_usage() -> None:
-    with pytest.deprecated_call(match="runtime_legacy_bridge depends on testbot.sat_chatbot_memory_v2"):
-        read_runtime_env()
-
-
-def test_runtime_legacy_bridge_run_chat_loop_delegates_to_runtime_loop(monkeypatch: pytest.MonkeyPatch) -> None:
-    from testbot.entrypoints import runtime_legacy_bridge
-
-    runtime_legacy_bridge._LEGACY_RUNTIME_WARNING_EMITTED = False
-    captured: dict[str, object] = {}
-
-    def _fake_runtime_loop(**kwargs):
-        captured.update(kwargs)
-
-    monkeypatch.setattr("testbot.entrypoints.runtime_loop.run_chat_loop", _fake_runtime_loop)
-    with pytest.deprecated_call(match="runtime_legacy_bridge depends on testbot.sat_chatbot_memory_v2"):
-        runtime_legacy_bridge.run_chat_loop(
-            runtime={},
-            llm=object(),
-            store=object(),
-            chat_history=deque(),
-            near_tie_delta=0.3,
-            io_channel="satellite",
-            capability_status="ok",
-            capability_snapshot=object(),
-            read_user_utterance=lambda: None,
-            send_assistant_text=lambda _text: None,
-            clock=object(),
-        )
-
-    assert captured["io_channel"] == "satellite"
-    assert captured["near_tie_delta"] == 0.3
+def test_runtime_bootstrap_read_runtime_env_remains_canonical_owner() -> None:
+    runtime_env = runtime_bootstrap.read_runtime_env()
+    assert isinstance(runtime_env, dict)
 
 
 def test_monolith_run_chat_loop_delegates_to_runtime_loop_owner(monkeypatch: pytest.MonkeyPatch) -> None:
