@@ -225,7 +225,6 @@ def _utc_now_iso() -> str:
 
 def _build_sat_compat_runtime_turn_pipeline_hooks(
     *,
-    stage_retrieve_hook,
     answer_assemble_hook,
     answer_validate_hook,
 ):
@@ -260,10 +259,13 @@ def _build_sat_compat_runtime_turn_pipeline_hooks(
             deps=_runtime_background_ingestion_deps(),
             **kwargs,
         ),
-        stage_retrieve=stage_retrieve_hook,
+        stage_retrieve=lambda *args, **kwargs: context_retrieval_runtime_service.stage_retrieve_for_turn_service(
+            *args,
+            retrieval_score_threshold=RETRIEVAL_SCORE_THRESHOLD,
+            **kwargs,
+        ),
         stage_rerank=lambda *args, **kwargs: context_retrieval_runtime_service.stage_rerank_for_turn_service(
             *args,
-            stage_rerank_fn=stage_rerank,
             **kwargs,
         ),
         selected_decision_from_confidence=project_selected_decision_from_confidence,
@@ -287,13 +289,6 @@ def _build_sat_compat_runtime_turn_pipeline_hooks(
 
 def _runtime_background_ingestion_deps() -> RuntimeBackgroundIngestionDependencies:
     def _replay_background_completion_turn(request: BackgroundIngestionReplayRequest) -> PipelineState:
-        def _stage_retrieve_hook(*args, **kwargs):
-            return context_retrieval_runtime_service.stage_retrieve_for_turn_service(
-                *args,
-                stage_retrieve_fn=stage_retrieve,
-                **kwargs,
-            )
-
         def _answer_assemble_hook(
             llm: ChatOllama,
             state: PipelineState,
@@ -315,8 +310,8 @@ def _runtime_background_ingestion_deps() -> RuntimeBackgroundIngestionDependenci
                 runtime_capability_status=runtime_capability_status,
                 clock=clock,
                 document_from_retrieval_input=context_retrieval_runtime_service.document_from_retrieval_input,
-                render_context=render_context,
-                answer_prompt=ANSWER_PROMPT,
+                render_context=canonical_render_context,
+                answer_prompt=CANONICAL_ANSWER_PROMPT,
                 append_session_log=append_session_log,
             )
 
@@ -363,7 +358,6 @@ def _runtime_background_ingestion_deps() -> RuntimeBackgroundIngestionDependenci
             clock=request.clock,
             io_channel=request.io_channel,
             hooks=_build_sat_compat_runtime_turn_pipeline_hooks(
-                stage_retrieve_hook=_stage_retrieve_hook,
                 answer_assemble_hook=_answer_assemble_hook,
                 answer_validate_hook=_answer_validate_hook,
             ),
@@ -947,13 +941,6 @@ def run_canonical_answer_stage_flow(
     clock: Clock | None = None,
     timezone: str = "Europe/Helsinki",
 ) -> PipelineState:
-    def _stage_retrieve_hook(*args, **kwargs):
-        return context_retrieval_runtime_service.stage_retrieve_for_turn_service(
-            *args,
-            stage_retrieve_fn=stage_retrieve,
-            **kwargs,
-        )
-
     def _answer_assemble_hook(
         llm: ChatOllama,
         state: PipelineState,
@@ -975,8 +962,8 @@ def run_canonical_answer_stage_flow(
             runtime_capability_status=runtime_capability_status,
             clock=clock,
             document_from_retrieval_input=context_retrieval_runtime_service.document_from_retrieval_input,
-            render_context=render_context,
-            answer_prompt=ANSWER_PROMPT,
+            render_context=canonical_render_context,
+            answer_prompt=CANONICAL_ANSWER_PROMPT,
             append_session_log=append_session_log,
         )
 
@@ -1001,7 +988,6 @@ def run_canonical_answer_stage_flow(
         return runtime_turn_pipeline_entrypoint.run_runtime_turn_pipeline(
             **kwargs,
             hooks=_build_sat_compat_runtime_turn_pipeline_hooks(
-                stage_retrieve_hook=_stage_retrieve_hook,
                 answer_assemble_hook=_answer_assemble_hook,
                 answer_validate_hook=_answer_validate_hook,
             ),
