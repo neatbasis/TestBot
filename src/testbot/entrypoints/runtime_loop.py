@@ -160,6 +160,61 @@ def _generate_reflection_yaml(llm: ChatOllama, *, speaker: str, text: str) -> st
     )
 
 
+def build_runtime_turn_pipeline_hooks(
+    *,
+    append_session_log,
+    validate_and_log_transition,
+    stage_rewrite_query,
+    generate_reflection_yaml,
+    intent_classifier_confidence,
+    optional_string,
+    should_force_memory_retrieval_for_identity_recall,
+    resolve_context_fn,
+    intent_telemetry_payload,
+    poll_background_source_ingestion,
+    start_background_source_ingestion,
+    stage_retrieve,
+    stage_rerank,
+    selected_decision_from_confidence,
+    minimal_confidence_decision_for_direct_answer,
+    resolve_answer_routing_for_stage,
+    answer_assemble,
+    answer_validate,
+    detect_capability_offer,
+    ambiguity_score,
+    store_doc_fn,
+    intent_classifier_confidence_threshold: float,
+    document_from_retrieval_input,
+) -> RuntimeTurnPipelineHooks:
+    """Assemble runtime-turn pipeline hooks at the canonical entrypoint boundary."""
+
+    return RuntimeTurnPipelineHooks(
+        append_session_log=append_session_log,
+        validate_and_log_transition=validate_and_log_transition,
+        stage_rewrite_query=stage_rewrite_query,
+        generate_reflection_yaml=generate_reflection_yaml,
+        intent_classifier_confidence=intent_classifier_confidence,
+        optional_string=optional_string,
+        should_force_memory_retrieval_for_identity_recall=should_force_memory_retrieval_for_identity_recall,
+        resolve_context_fn=resolve_context_fn,
+        intent_telemetry_payload=intent_telemetry_payload,
+        poll_background_source_ingestion=poll_background_source_ingestion,
+        start_background_source_ingestion=start_background_source_ingestion,
+        stage_retrieve=stage_retrieve,
+        stage_rerank=stage_rerank,
+        selected_decision_from_confidence=selected_decision_from_confidence,
+        minimal_confidence_decision_for_direct_answer=minimal_confidence_decision_for_direct_answer,
+        resolve_answer_routing_for_stage=resolve_answer_routing_for_stage,
+        answer_assemble=answer_assemble,
+        answer_validate=answer_validate,
+        detect_capability_offer=detect_capability_offer,
+        ambiguity_score=ambiguity_score,
+        store_doc_fn=store_doc_fn,
+        intent_classifier_confidence_threshold=intent_classifier_confidence_threshold,
+        document_from_retrieval_input=document_from_retrieval_input,
+    )
+
+
 def _replay_background_completion_turn(
     *,
     request: BackgroundIngestionReplayRequest,
@@ -236,7 +291,7 @@ def run_chat_loop(
             **kwargs,
         )
 
-    runtime_turn_hooks = RuntimeTurnPipelineHooks(
+    runtime_turn_hooks = build_runtime_turn_pipeline_hooks(
         append_session_log=append_runtime_session_log,
         validate_and_log_transition=validate_and_log_transition,
         stage_rewrite_query=_stage_rewrite_query,
@@ -440,4 +495,4 @@ def sat_say(client: Client, entity_id: str, text: str) -> None:
     send_satellite_output(client, entity_id, text)
 
 
-__all__ = ["run_chat_loop", "sat_say"]
+__all__ = ["build_runtime_turn_pipeline_hooks", "run_chat_loop", "sat_say"]

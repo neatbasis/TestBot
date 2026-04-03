@@ -57,6 +57,100 @@ def _compat_runtime_replay_deps(
     append_session_log,
     answer_commit_persistence,
 ) -> runtime_background_ingestion.RuntimeBackgroundIngestionDependencies:
+    deps_holder: dict[str, runtime_background_ingestion.RuntimeBackgroundIngestionDependencies] = {}
+
+    def _poll_background_source_ingestion_for_turn_pipeline(**kwargs):
+        return runtime_background_ingestion.poll_background_source_ingestion(
+            deps=deps_holder["deps"],
+            **kwargs,
+        )
+
+    def _start_background_source_ingestion_for_turn_pipeline(**kwargs):
+        return runtime_background_ingestion.start_background_source_ingestion(
+            deps=deps_holder["deps"],
+            **kwargs,
+        )
+
+    def _stage_retrieve_hook(*args, **kwargs):
+        return runtime.context_retrieval_runtime_service.stage_retrieve_for_turn_service(
+            *args,
+            stage_retrieve_fn=runtime.stage_retrieve,
+            **kwargs,
+        )
+
+    def _answer_assemble_hook(
+        llm,
+        state,
+        *,
+        chat_history,
+        hits,
+        capability_status,
+        answer_routing=None,
+        runtime_capability_status=None,
+        clock=None,
+    ):
+        return runtime.answer_stage_runtime_service.answer_assemble_for_turn_service(
+            llm,
+            state,
+            chat_history=chat_history,
+            hits=hits,
+            capability_status=capability_status,
+            answer_routing=answer_routing,
+            runtime_capability_status=runtime_capability_status,
+            clock=clock,
+            document_from_retrieval_input=runtime.context_retrieval_runtime_service.document_from_retrieval_input,
+            render_context=runtime.render_context,
+            answer_prompt=runtime.ANSWER_PROMPT,
+            append_session_log=append_session_log,
+        )
+
+    def _answer_validate_hook(
+        state,
+        *,
+        assembled,
+        hits,
+        chat_history,
+        pending_lookup_override: bool = False,
+    ):
+        return runtime.answer_stage_runtime_service.answer_validate_for_turn_service(
+            state,
+            assembled=assembled,
+            hits=hits,
+            chat_history=chat_history,
+            pending_lookup_override=pending_lookup_override,
+            document_from_retrieval_input=runtime.context_retrieval_runtime_service.document_from_retrieval_input,
+        )
+
+    replay_hooks = runtime_loop.build_runtime_turn_pipeline_hooks(
+        append_session_log=append_session_log,
+        validate_and_log_transition=runtime._validate_and_log_transition,
+        stage_rewrite_query=runtime.stage_rewrite_query,
+        generate_reflection_yaml=runtime.generate_reflection_yaml,
+        intent_classifier_confidence=runtime._intent_classifier_confidence,
+        optional_string=runtime._optional_string,
+        should_force_memory_retrieval_for_identity_recall=runtime.context_retrieval_runtime_service.should_force_memory_retrieval_for_identity_recall,
+        resolve_context_fn=runtime.resolve_context,
+        intent_telemetry_payload=runtime._intent_telemetry_payload,
+        poll_background_source_ingestion=_poll_background_source_ingestion_for_turn_pipeline,
+        start_background_source_ingestion=_start_background_source_ingestion_for_turn_pipeline,
+        stage_retrieve=_stage_retrieve_hook,
+        stage_rerank=lambda *args, **kwargs: runtime.context_retrieval_runtime_service.stage_rerank_for_turn_service(
+            *args,
+            stage_rerank_fn=runtime.stage_rerank,
+            **kwargs,
+        ),
+        selected_decision_from_confidence=runtime._selected_decision_from_confidence,
+        minimal_confidence_decision_for_direct_answer=runtime._minimal_confidence_decision_for_direct_answer,
+        resolve_answer_routing_for_stage=runtime._resolve_answer_routing_for_stage,
+        answer_assemble=_answer_assemble_hook,
+        answer_validate=_answer_validate_hook,
+        detect_capability_offer=runtime.answer_stage_runtime_service.detect_capability_offer,
+        ambiguity_score=runtime._ambiguity_score,
+        store_doc_fn=runtime.store_doc,
+        intent_classifier_confidence_threshold=runtime.INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD,
+        document_from_retrieval_input=runtime.context_retrieval_runtime_service.document_from_retrieval_input,
+    )
+
     def _replay(request):
         replay_state, _hits = runtime_turn_pipeline.run_runtime_turn_pipeline(
             runtime=request.runtime,
@@ -83,17 +177,19 @@ def _compat_runtime_replay_deps(
             capability_snapshot=request.capability_snapshot,
             clock=request.clock,
             io_channel=request.io_channel,
-            hooks=runtime._build_sat_runtime_turn_pipeline_hooks(),
+            hooks=replay_hooks,
         )
         return replay_state
 
-    return runtime_background_ingestion.RuntimeBackgroundIngestionDependencies(
+    deps = runtime_background_ingestion.RuntimeBackgroundIngestionDependencies(
         append_session_log=append_session_log,
         build_source_connector=lambda _runtime: None,
         source_ingestor_cls=object,
         answer_commit_persistence=answer_commit_persistence,
         replay_background_completion_turn=_replay,
     )
+    deps_holder["deps"] = deps
+    return deps
 
 
 def test_stage_retrieve_passes_hygiene_exclusions_and_blocks_same_turn_candidates() -> None:
