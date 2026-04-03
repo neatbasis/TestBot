@@ -11,19 +11,18 @@ from __future__ import annotations
 from dataclasses import replace
 
 from testbot.answer_contract_constants import CLARIFY_ANSWER, ROUTE_TO_ASK_ANSWER
-from testbot.application.services import answer_stage_runtime as answer_stage_runtime_service
+from . import answer_response_type_classifier as answer_response_type_classifier_service
 from testbot.pipeline_state import PipelineState
 from testbot.intent_router import IntentType
 
 
 def is_capabilities_help_answer(text: str) -> bool:
-    normalized = (text or "").strip().lower()
-    return normalized.startswith("runtime mode:") and "memory recall:" in normalized and "home assistant" in normalized
+    return answer_response_type_classifier_service.is_capabilities_help_answer(text)
 
 
 def should_preserve_unresolved_intent(*, state: PipelineState) -> bool:
     normalized = (state.final_answer or "").strip()
-    if answer_stage_runtime_service.is_clarification_answer(
+    if answer_response_type_classifier_service.is_clarification_answer(
         normalized,
         clarify_answer=CLARIFY_ANSWER,
         route_to_ask_answer=ROUTE_TO_ASK_ANSWER,

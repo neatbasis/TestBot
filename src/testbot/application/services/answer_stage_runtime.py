@@ -36,6 +36,7 @@ from testbot.logic.alignment import (
     validate_answer_contract,
 )
 from testbot.logic.provenance import build_provenance_metadata as build_provenance_metadata_from_logic
+from . import answer_response_type_classifier as answer_response_type_classifier_service
 from testbot.pipeline_state import PipelineState, ProvenanceType
 from testbot.policy_decision import DecisionClass, DecisionObject
 from testbot.reflection_policy import CapabilityStatus
@@ -312,9 +313,11 @@ def build_memory_recall_recovery_answer(hit: Document) -> str:
 
 
 def is_clarification_answer(text: str, *, clarify_answer: str, route_to_ask_answer: str) -> bool:
-    normalized = (text or "").strip()
-    return normalized in {clarify_answer, route_to_ask_answer} or normalized.startswith(
-        "I found related memory fragments ("
+    """Compatibility shim; canonical predicate owner is answer_response_type_classifier."""
+    return answer_response_type_classifier_service.is_clarification_answer(
+        text,
+        clarify_answer=clarify_answer,
+        route_to_ask_answer=route_to_ask_answer,
     )
 
 
@@ -561,7 +564,7 @@ def answer_validate(
             claims=[],
             provenance_types=[],
             basis_statement="No factual claims.",
-            is_clarification_answer=lambda text: is_clarification_answer(
+            is_clarification_answer=lambda text: answer_response_type_classifier_service.is_clarification_answer(
                 text,
                 clarify_answer=clarify_answer,
                 route_to_ask_answer=route_to_ask_answer,
@@ -628,7 +631,7 @@ def answer_validate(
         claims=claims,
         provenance_types=provenance_types,
         basis_statement=basis_statement,
-        is_clarification_answer=lambda text: is_clarification_answer(
+        is_clarification_answer=lambda text: answer_response_type_classifier_service.is_clarification_answer(
             text,
             clarify_answer=clarify_answer,
             route_to_ask_answer=route_to_ask_answer,
@@ -641,7 +644,7 @@ def answer_validate(
         final_answer=assembled.final_answer,
         fallback_action=assembled.fallback_action,
         social_or_non_knowledge_intent=assembled.social_or_non_knowledge_intent,
-        is_clarification_answer=is_clarification_answer(
+        is_clarification_answer=answer_response_type_classifier_service.is_clarification_answer(
             assembled.final_answer,
             clarify_answer=clarify_answer,
             route_to_ask_answer=route_to_ask_answer,
@@ -673,7 +676,7 @@ def answer_validate(
                 final_answer=assembled.final_answer,
                 fallback_action=assembled.fallback_action,
                 social_or_non_knowledge_intent=assembled.social_or_non_knowledge_intent,
-                is_clarification_answer=is_clarification_answer(
+                is_clarification_answer=answer_response_type_classifier_service.is_clarification_answer(
                     assembled.final_answer,
                     clarify_answer=clarify_answer,
                     route_to_ask_answer=route_to_ask_answer,

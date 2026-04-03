@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 
+from testbot.answer_contract_constants import CLARIFY_ANSWER, ROUTE_TO_ASK_ANSWER
 from testbot.continuity_read_model import (
     ContinuityReadModel,
     continuity_context_anchors,
@@ -32,12 +33,15 @@ def _is_short_affirmation(user_input: str) -> bool:
 
 
 def _is_clarification_or_capability_confirmation_answer(text: str) -> bool:
-    normalized = (text or "").strip()
-    if not normalized:
-        return False
-    lowered = normalized.lower()
-    return lowered.startswith("can you clarify") or lowered.startswith("i can disambiguate this with a quick follow-up question") or (
-        lowered.startswith("runtime mode:") and "memory recall:" in lowered and "home assistant" in lowered
+    # Import lazily to avoid package-init import cycles in domain bootstrap paths.
+    from testbot.application.services.answer_response_type_classifier import (
+        is_clarification_or_capability_confirmation_answer,
+    )
+
+    return is_clarification_or_capability_confirmation_answer(
+        text,
+        clarify_answer=CLARIFY_ANSWER,
+        route_to_ask_answer=ROUTE_TO_ASK_ANSWER,
     )
 
 
