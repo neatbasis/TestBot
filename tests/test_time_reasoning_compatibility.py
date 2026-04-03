@@ -6,6 +6,7 @@ import arrow
 from langchain_core.documents import Document
 
 from testbot import sat_chatbot_memory_v2 as runtime
+from testbot.entrypoints import runtime_turn_pipeline
 from testbot.pipeline_state import PipelineState
 from testbot.sat_chatbot_memory_v2 import run_canonical_answer_stage_flow, stage_rerank
 
@@ -191,7 +192,7 @@ def test_run_canonical_answer_stage_flow_time_query_ignores_seeded_same_turn_and
         captured_doc_ids.extend(str(doc.id or "") for doc, _score in docs_and_scores)
         return kwargs["state"], []
 
-    monkeypatch.setattr(runtime, "_run_canonical_turn_pipeline", _stub_pipeline)
+    monkeypatch.setattr(runtime_turn_pipeline, "run_runtime_turn_pipeline", _stub_pipeline)
     frozen_now = arrow.get("2026-03-10T22:30:00+00:00")
     state = PipelineState(user_input="what is tomorrow?", last_user_message_ts="2026-03-10T22:00:00+00:00")
     hits = [

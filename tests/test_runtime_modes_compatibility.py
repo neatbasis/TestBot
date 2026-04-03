@@ -18,6 +18,7 @@ from testbot.entrypoints import sat_runtime_modes
 from testbot.entrypoints import runtime_background_ingestion
 from testbot.entrypoints import runtime_bootstrap
 from testbot.entrypoints import runtime_loop
+from testbot.entrypoints import runtime_turn_pipeline
 from testbot.entrypoints.runtime_legacy_bridge import read_runtime_env
 from testbot.interaction_policy import InteractionPolicyRequest
 from testbot.interaction_standards import InteractionRequirements
@@ -1424,7 +1425,7 @@ def test_runtime_loop_owner_handles_stop_command_without_turn_pipeline(monkeypat
         run_pipeline_called = True
         raise AssertionError("pipeline should not run for stop command")
 
-    monkeypatch.setattr(runtime, "_run_canonical_turn_pipeline", _unexpected_pipeline_call)
+    monkeypatch.setattr(runtime_turn_pipeline, "run_runtime_turn_pipeline", _unexpected_pipeline_call)
 
     runtime_loop.run_chat_loop(
         runtime={},

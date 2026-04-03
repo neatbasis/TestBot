@@ -159,7 +159,7 @@ from testbot.entrypoints.runtime_commit_persistence import (
     answer_commit_persistence as persist_runtime_answer_commit,
 )
 from testbot.entrypoints.runtime_snapshot_support import RuntimeClockBackedSnapshotTimeProvider
-from testbot.entrypoints.runtime_turn_pipeline import RuntimeTurnPipelineHooks, run_runtime_turn_pipeline
+from testbot.entrypoints import runtime_turn_pipeline as runtime_turn_pipeline_entrypoint
 from testbot.entrypoints.runtime_transition_validation import (
     validate_and_log_transition as validate_and_log_runtime_transition,
 )
@@ -221,9 +221,104 @@ def _utc_now_iso() -> str:
     return arrow.utcnow().isoformat()
 
 
+def _build_sat_runtime_turn_pipeline_hooks() -> runtime_turn_pipeline_entrypoint.RuntimeTurnPipelineHooks:
+    def _stage_retrieve_hook(*args, **kwargs):
+        return context_retrieval_runtime_service.stage_retrieve_for_turn_service(
+            *args,
+            stage_retrieve_fn=stage_retrieve,
+            **kwargs,
+        )
+
+    def _answer_assemble_hook(
+        llm: ChatOllama,
+        state: PipelineState,
+        *,
+        chat_history: deque[ChatMsg],
+        hits: list[RetrievalInputRecord],
+        capability_status: CapabilityStatus,
+        answer_routing: AnswerRoutingDecision | None = None,
+        runtime_capability_status: CapabilityStatus | None = None,
+        clock: Clock | None = None,
+    ):
+        return answer_stage_runtime_service.answer_assemble_for_turn_service(
+            llm,
+            state,
+            chat_history=chat_history,
+            hits=hits,
+            capability_status=capability_status,
+            answer_routing=answer_routing,
+            runtime_capability_status=runtime_capability_status,
+            clock=clock,
+            document_from_retrieval_input=context_retrieval_runtime_service.document_from_retrieval_input,
+            render_context=render_context,
+            answer_prompt=ANSWER_PROMPT,
+            append_session_log=append_session_log,
+        )
+
+    def _answer_validate_hook(
+        state: PipelineState,
+        *,
+        assembled,
+        hits: list[RetrievalInputRecord],
+        chat_history: deque[ChatMsg],
+        pending_lookup_override: bool = False,
+    ):
+        return answer_stage_runtime_service.answer_validate_for_turn_service(
+            state,
+            assembled=assembled,
+            hits=hits,
+            chat_history=chat_history,
+            pending_lookup_override=pending_lookup_override,
+            document_from_retrieval_input=context_retrieval_runtime_service.document_from_retrieval_input,
+        )
+
+    return runtime_turn_pipeline_entrypoint.RuntimeTurnPipelineHooks(
+        append_session_log=append_session_log,
+        validate_and_log_transition=_validate_and_log_transition,
+        stage_rewrite_query=stage_rewrite_query,
+        generate_reflection_yaml=generate_reflection_yaml,
+        intent_classifier_confidence=_intent_classifier_confidence,
+        optional_string=_optional_string,
+        should_force_memory_retrieval_for_identity_recall=context_retrieval_runtime_service.should_force_memory_retrieval_for_identity_recall,
+        resolve_context_fn=resolve_context,
+        intent_telemetry_payload=_intent_telemetry_payload,
+        poll_background_source_ingestion=lambda **kwargs: poll_runtime_background_source_ingestion(
+            deps=_runtime_background_ingestion_deps(),
+            **kwargs,
+        ),
+        start_background_source_ingestion=lambda **kwargs: start_runtime_background_source_ingestion(
+            deps=_runtime_background_ingestion_deps(),
+            **kwargs,
+        ),
+        stage_retrieve=_stage_retrieve_hook,
+        stage_rerank=lambda *args, **kwargs: context_retrieval_runtime_service.stage_rerank_for_turn_service(
+            *args,
+            stage_rerank_fn=stage_rerank,
+            **kwargs,
+        ),
+        selected_decision_from_confidence=_selected_decision_from_confidence,
+        minimal_confidence_decision_for_direct_answer=_minimal_confidence_decision_for_direct_answer,
+        resolve_answer_routing_for_stage=_resolve_answer_routing_for_stage,
+        answer_assemble=_answer_assemble_hook,
+        answer_validate=_answer_validate_hook,
+        detect_capability_offer=answer_stage_runtime_service.detect_capability_offer,
+        ambiguity_score=_ambiguity_score,
+        store_doc_fn=store_doc,
+        intent_classifier_confidence_threshold=INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD,
+        document_from_retrieval_input=context_retrieval_runtime_service.document_from_retrieval_input,
+    )
+
+
+def _run_runtime_turn_pipeline_with_sat_hooks(**kwargs):
+    return runtime_turn_pipeline_entrypoint.run_runtime_turn_pipeline(
+        **kwargs,
+        hooks=_build_sat_runtime_turn_pipeline_hooks(),
+    )
+
+
 def _runtime_background_ingestion_deps() -> RuntimeBackgroundIngestionDependencies:
     def _replay_background_completion_turn(request: BackgroundIngestionReplayRequest) -> PipelineState:
-        replay_state, _hits = _run_canonical_turn_pipeline(
+        replay_state, _hits = _run_runtime_turn_pipeline_with_sat_hooks(
             runtime=request.runtime,
             llm=request.llm,
             store=request.store,
@@ -487,7 +582,7 @@ def stage_rewrite_query(llm: ChatOllama, state: PipelineState) -> PipelineState:
 
 def observe_stage(state: PipelineState) -> PipelineState:
     warnings.warn(
-        "observe_stage is deprecated; use _run_canonical_turn_pipeline/_observe_turn instead.",
+        "observe_stage is deprecated; use testbot.entrypoints.runtime_turn_pipeline.run_runtime_turn_pipeline instead.",
         DeprecationWarning,
         stacklevel=2,
     )
@@ -496,7 +591,7 @@ def observe_stage(state: PipelineState) -> PipelineState:
 
 def encode_stage(llm: ChatOllama, state: PipelineState) -> PipelineState:
     warnings.warn(
-        "encode_stage is deprecated; use _run_canonical_turn_pipeline/_encode_candidates instead.",
+        "encode_stage is deprecated; use testbot.entrypoints.runtime_turn_pipeline.run_runtime_turn_pipeline instead.",
         DeprecationWarning,
         stacklevel=2,
     )
@@ -842,7 +937,7 @@ def run_canonical_answer_stage_flow(
         runtime_capability_status=runtime_capability_status,
         clock=clock,
         timezone=timezone,
-        run_canonical_turn_pipeline=_run_canonical_turn_pipeline,
+        run_canonical_turn_pipeline=_run_runtime_turn_pipeline_with_sat_hooks,
     )
 
 
@@ -975,126 +1070,6 @@ def evaluate_alignment_decision(
         basis_statement=basis_statement,
         is_clarification_answer=is_clarification_answer,
         is_capabilities_help_answer=_is_capabilities_help_answer,
-    )
-
-
-
-
-def _run_canonical_turn_pipeline(
-    *,
-    runtime: dict[str, object] | None = None,
-    llm: ChatOllama,
-    store: MemoryStorePort,
-    state: PipelineState,
-    utterance: str,
-    prior_pipeline_state: PipelineState | None,
-    turn_id: str,
-    near_tie_delta: float,
-    chat_history: deque[ChatMsg],
-    capability_status: CapabilityStatus,
-    capability_snapshot: CapabilitySnapshot,
-    clock: Clock,
-    io_channel: str = "cli",
-) -> tuple[PipelineState, list[Document]]:
-    def _stage_retrieve_hook(*args, **kwargs):
-        return context_retrieval_runtime_service.stage_retrieve_for_turn_service(
-            *args,
-            stage_retrieve_fn=stage_retrieve,
-            **kwargs,
-        )
-
-    def _answer_assemble_hook(
-        llm: ChatOllama,
-        state: PipelineState,
-        *,
-        chat_history: deque[ChatMsg],
-        hits: list[RetrievalInputRecord],
-        capability_status: CapabilityStatus,
-        answer_routing: AnswerRoutingDecision | None = None,
-        runtime_capability_status: CapabilityStatus | None = None,
-        clock: Clock | None = None,
-    ):
-        return answer_stage_runtime_service.answer_assemble_for_turn_service(
-            llm,
-            state,
-            chat_history=chat_history,
-            hits=hits,
-            capability_status=capability_status,
-            answer_routing=answer_routing,
-            runtime_capability_status=runtime_capability_status,
-            clock=clock,
-            document_from_retrieval_input=context_retrieval_runtime_service.document_from_retrieval_input,
-            render_context=render_context,
-            answer_prompt=ANSWER_PROMPT,
-            append_session_log=append_session_log,
-        )
-
-    def _answer_validate_hook(
-        state: PipelineState,
-        *,
-        assembled,
-        hits: list[RetrievalInputRecord],
-        chat_history: deque[ChatMsg],
-        pending_lookup_override: bool = False,
-    ):
-        return answer_stage_runtime_service.answer_validate_for_turn_service(
-            state,
-            assembled=assembled,
-            hits=hits,
-            chat_history=chat_history,
-            pending_lookup_override=pending_lookup_override,
-            document_from_retrieval_input=context_retrieval_runtime_service.document_from_retrieval_input,
-        )
-
-    return run_runtime_turn_pipeline(
-        runtime=runtime,
-        llm=llm,
-        store=store,
-        state=state,
-        utterance=utterance,
-        prior_pipeline_state=prior_pipeline_state,
-        turn_id=turn_id,
-        near_tie_delta=near_tie_delta,
-        chat_history=chat_history,
-        capability_status=capability_status,
-        capability_snapshot=capability_snapshot,
-        clock=clock,
-        io_channel=io_channel,
-        hooks=RuntimeTurnPipelineHooks(
-            append_session_log=append_session_log,
-            validate_and_log_transition=_validate_and_log_transition,
-            stage_rewrite_query=stage_rewrite_query,
-            generate_reflection_yaml=generate_reflection_yaml,
-            intent_classifier_confidence=_intent_classifier_confidence,
-            optional_string=_optional_string,
-            should_force_memory_retrieval_for_identity_recall=context_retrieval_runtime_service.should_force_memory_retrieval_for_identity_recall,
-            resolve_context_fn=resolve_context,
-            intent_telemetry_payload=_intent_telemetry_payload,
-            poll_background_source_ingestion=lambda **kwargs: poll_runtime_background_source_ingestion(
-                deps=_runtime_background_ingestion_deps(),
-                **kwargs,
-            ),
-            start_background_source_ingestion=lambda **kwargs: start_runtime_background_source_ingestion(
-                deps=_runtime_background_ingestion_deps(),
-                **kwargs,
-            ),
-            stage_retrieve=_stage_retrieve_hook,
-            stage_rerank=lambda *args, **kwargs: context_retrieval_runtime_service.stage_rerank_for_turn_service(
-                *args,
-                stage_rerank_fn=stage_rerank,
-                **kwargs,
-            ),
-            selected_decision_from_confidence=_selected_decision_from_confidence,
-            minimal_confidence_decision_for_direct_answer=_minimal_confidence_decision_for_direct_answer,
-            resolve_answer_routing_for_stage=_resolve_answer_routing_for_stage,
-            answer_assemble=_answer_assemble_hook,
-            answer_validate=_answer_validate_hook,
-            detect_capability_offer=answer_stage_runtime_service.detect_capability_offer,
-            ambiguity_score=_ambiguity_score,
-            store_doc_fn=store_doc,
-            intent_classifier_confidence_threshold=INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD,
-            document_from_retrieval_input=context_retrieval_runtime_service.document_from_retrieval_input,
-        ),
     )
 
 

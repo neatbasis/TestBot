@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 
 from testbot.pipeline_state import PipelineState
+from testbot.entrypoints import runtime_turn_pipeline
 import testbot.sat_chatbot_memory_v2 as runtime
 
 
@@ -54,7 +55,7 @@ def test_canonical_answer_stage_flow_is_retired_to_prevent_raw_utterance_bypass(
         return _state(), []
 
     monkeypatch = pytest.MonkeyPatch()
-    monkeypatch.setattr(runtime, "_run_canonical_turn_pipeline", _fake_pipeline)
+    monkeypatch.setattr(runtime_turn_pipeline, "run_runtime_turn_pipeline", _fake_pipeline)
     try:
         runtime.run_canonical_answer_stage_flow(
             llm=object(),
@@ -68,6 +69,7 @@ def test_canonical_answer_stage_flow_is_retired_to_prevent_raw_utterance_bypass(
 
     assert observed["utterance"] == "hello"
     assert observed["io_channel"] == "cli"
+    assert isinstance(observed["hooks"], runtime_turn_pipeline.RuntimeTurnPipelineHooks)
 
 
 def test_evaluate_alignment_decision_shim_warns_and_strictly_passthroughs_to_logic_owner() -> None:

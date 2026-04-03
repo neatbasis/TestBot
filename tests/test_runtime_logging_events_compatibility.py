@@ -9,7 +9,7 @@ import pytest
 from langchain_core.documents import Document
 
 from testbot import sat_chatbot_memory_v2 as runtime
-from testbot.entrypoints import runtime_background_ingestion, runtime_loop
+from testbot.entrypoints import runtime_background_ingestion, runtime_loop, runtime_turn_pipeline
 from testbot.intent_router import IntentType
 from testbot.pipeline_state import AlignmentDecision, PipelineState
 from testbot.sat_chatbot_memory_v2 import (
@@ -58,7 +58,7 @@ def _compat_runtime_replay_deps(
     answer_commit_persistence,
 ) -> runtime_background_ingestion.RuntimeBackgroundIngestionDependencies:
     def _replay(request):
-        replay_state, _hits = runtime._run_canonical_turn_pipeline(
+        replay_state, _hits = runtime_turn_pipeline.run_runtime_turn_pipeline(
             runtime=request.runtime,
             llm=request.llm,
             store=request.store,
@@ -83,6 +83,7 @@ def _compat_runtime_replay_deps(
             capability_snapshot=request.capability_snapshot,
             clock=request.clock,
             io_channel=request.io_channel,
+            hooks=runtime._build_sat_runtime_turn_pipeline_hooks(),
         )
         return replay_state
 
@@ -148,7 +149,7 @@ def test_run_canonical_answer_stage_flow_seeded_store_honors_retrieval_exclusion
         captured_doc_ids.extend(str(doc.id or "") for doc, _score in docs_and_scores)
         return kwargs["state"], []
 
-    monkeypatch.setattr(runtime, "_run_canonical_turn_pipeline", _stub_pipeline)
+    monkeypatch.setattr(runtime_turn_pipeline, "run_runtime_turn_pipeline", _stub_pipeline)
     state = PipelineState(
         user_input="what did i just say?",
         resolved_intent=IntentType.MEMORY_RECALL.value,
@@ -485,7 +486,7 @@ def test_background_ingestion_pending_lifecycle_event_order_and_payloads(monkeyp
         }
     )
 
-    monkeypatch.setattr(runtime, "_run_canonical_turn_pipeline", lambda **kwargs: (
+    monkeypatch.setattr(runtime_turn_pipeline, "run_runtime_turn_pipeline", lambda **kwargs: (
         replace(
             kwargs["state"],
             final_answer="Your utility bill is due Friday and confirmed by synced source evidence.",
@@ -647,7 +648,7 @@ def test_chat_loop_emits_completion_event_user_message_and_linked_answer(tmp_pat
             [],
         )
 
-    monkeypatch.setattr(runtime, "_run_canonical_turn_pipeline", _pipeline)
+    monkeypatch.setattr(runtime_turn_pipeline, "run_runtime_turn_pipeline", _pipeline)
 
     prompts = iter(["stop"])
     runtime_loop.run_chat_loop(
