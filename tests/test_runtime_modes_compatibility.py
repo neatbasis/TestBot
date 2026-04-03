@@ -1787,11 +1787,7 @@ def test_runtime_loop_pending_ingestion_created_transition_uses_canonical_runtim
         registrations.append(kwargs)
         return True
 
-    monkeypatch.setattr(
-        runtime,
-        "_emit_obligation_transition",
-        lambda **_kwargs: (_ for _ in ()).throw(AssertionError("legacy transition helper should not be called")),
-    )
+    assert not hasattr(runtime, "_emit_obligation_transition")
     monkeypatch.setattr(runtime_loop, "register_pending_ingestion_obligation", _register_pending)
     monkeypatch.setattr(runtime_loop, "poll_pending_ingestion_obligations", lambda **_kwargs: None)
     monkeypatch.setattr(runtime_loop, "process_background_ingestion_completion", lambda **_kwargs: ("", None, False))

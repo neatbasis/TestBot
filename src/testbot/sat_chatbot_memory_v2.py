@@ -149,11 +149,7 @@ from testbot.source_ingestion_startup import (
 )
 from testbot.entrypoints import runtime_bootstrap as runtime_bootstrap_entrypoint
 from testbot.entrypoints.runtime_background_ingestion import (
-    RuntimeBackgroundIngestionDependencies,
-    emit_obligation_transition as emit_runtime_obligation_transition,
     format_background_ingestion_completion_message as format_runtime_background_ingestion_completion_message,
-    poll_background_source_ingestion as poll_runtime_background_source_ingestion,
-    start_background_source_ingestion as start_runtime_background_source_ingestion,
 )
 from testbot.entrypoints.runtime_commit_persistence import (
     RuntimeCommitPersistenceDependencies,
@@ -166,6 +162,7 @@ from testbot.entrypoints.runtime_transition_validation import (
     validate_and_log_transition as validate_and_log_runtime_transition,
 )
 from testbot.application.services import context_retrieval_runtime as context_retrieval_runtime_service
+from testbot.application.services import background_ingestion_runtime as background_ingestion_runtime_service
 from testbot.application.services.background_ingestion_runtime import BackgroundIngestionReplayRequest
 from testbot.canonical_turn_orchestrator import CanonicalTurnOrchestrator as _CanonicalTurnOrchestrator
 from testbot.logic.decision_helpers import (
@@ -223,6 +220,44 @@ def _utc_now_iso() -> str:
     return arrow.utcnow().isoformat()
 
 
+def _sat_execute_source_ingestion(
+    *,
+    runtime: dict[str, object],
+    store: MemoryStorePort,
+    background: bool = False,
+    ingestion_request_id: str = "",
+) -> dict[str, object]:
+    return background_ingestion_runtime_service.execute_source_ingestion(
+        runtime=runtime,
+        store=store,
+        build_source_connector=lambda configured_runtime: build_startup_source_connector(
+            runtime=configured_runtime,
+            append_session_log=append_session_log,
+        ),
+        source_ingestor_cls=SourceIngestor,
+        append_session_log=append_session_log,
+        background=background,
+        ingestion_request_id=ingestion_request_id,
+    )
+
+
+def _sat_start_background_source_ingestion(*, runtime: dict[str, object], store: MemoryStorePort, ingestion_request_id: str = "") -> dict[str, object]:
+    return background_ingestion_runtime_service.start_background_source_ingestion(
+        runtime=runtime,
+        store=store,
+        execute_source_ingestion=_sat_execute_source_ingestion,
+        append_session_log=append_session_log,
+        ingestion_request_id=ingestion_request_id,
+    )
+
+
+def _sat_poll_background_source_ingestion(*, runtime: dict[str, object]) -> dict[str, object] | None:
+    return background_ingestion_runtime_service.poll_background_source_ingestion(
+        runtime=runtime,
+        append_session_log=append_session_log,
+    )
+
+
 def _build_sat_compat_runtime_turn_pipeline_hooks(
     *,
     answer_assemble_hook,
@@ -251,14 +286,8 @@ def _build_sat_compat_runtime_turn_pipeline_hooks(
             resolve_context_fn=_resolve_context_from_domain,
         ),
         intent_telemetry_payload=runtime_loop_entrypoint.intent_telemetry_payload,
-        poll_background_source_ingestion=lambda **kwargs: poll_runtime_background_source_ingestion(
-            deps=_runtime_background_ingestion_deps(),
-            **kwargs,
-        ),
-        start_background_source_ingestion=lambda **kwargs: start_runtime_background_source_ingestion(
-            deps=_runtime_background_ingestion_deps(),
-            **kwargs,
-        ),
+        poll_background_source_ingestion=_sat_poll_background_source_ingestion,
+        start_background_source_ingestion=_sat_start_background_source_ingestion,
         stage_retrieve=lambda *args, **kwargs: context_retrieval_runtime_service.stage_retrieve_for_turn_service(
             *args,
             retrieval_score_threshold=RETRIEVAL_SCORE_THRESHOLD,
@@ -287,112 +316,62 @@ def _build_sat_compat_runtime_turn_pipeline_hooks(
     )
 
 
-def _runtime_background_ingestion_deps() -> RuntimeBackgroundIngestionDependencies:
-    def _replay_background_completion_turn(request: BackgroundIngestionReplayRequest) -> PipelineState:
-        def _answer_assemble_hook(
-            llm: ChatOllama,
-            state: PipelineState,
-            *,
-            chat_history: deque[ChatMsg],
-            hits: list[RetrievalInputRecord],
-            capability_status: CapabilityStatus,
-            answer_routing: AnswerRoutingDecision | None = None,
-            runtime_capability_status: CapabilityStatus | None = None,
-            clock: Clock | None = None,
-        ):
-            return answer_stage_runtime_service.answer_assemble_for_turn_service(
-                llm,
-                state,
-                chat_history=chat_history,
-                hits=hits,
-                capability_status=capability_status,
-                answer_routing=answer_routing,
-                runtime_capability_status=runtime_capability_status,
-                clock=clock,
-                document_from_retrieval_input=context_retrieval_runtime_service.document_from_retrieval_input,
-                render_context=canonical_render_context,
-                answer_prompt=CANONICAL_ANSWER_PROMPT,
-                append_session_log=append_session_log,
-            )
+def _sat_replay_background_completion_turn(request: BackgroundIngestionReplayRequest) -> PipelineState:
+    """Temporary SAT replay bridge.
 
-        def _answer_validate_hook(
-            state: PipelineState,
-            *,
-            assembled,
-            hits: list[RetrievalInputRecord],
-            chat_history: deque[ChatMsg],
-            pending_lookup_override: bool = False,
-        ):
-            return answer_stage_runtime_service.answer_validate_for_turn_service(
-                state,
-                assembled=assembled,
-                hits=hits,
-                chat_history=chat_history,
-                pending_lookup_override=pending_lookup_override,
-                document_from_retrieval_input=context_retrieval_runtime_service.document_from_retrieval_input,
-            )
+    Compatibility-only seam: SAT delegates replay turn execution to canonical
+    runtime replay orchestration while still injecting the SAT hook bundle.
+    """
 
-        replay_state, _hits = runtime_turn_pipeline_entrypoint.run_runtime_turn_pipeline(
-            runtime=request.runtime,
-            llm=request.llm,
-            store=request.store,
-            state=PipelineState(
-                user_input=request.utterance,
-                last_user_message_ts=request.last_user_message_ts,
-                classified_intent=IntentType.KNOWLEDGE_QUESTION.value,
-                resolved_intent="",
-                prior_unresolved_intent=(
-                    request.prior_pipeline_state.prior_unresolved_intent
-                    if isinstance(request.prior_pipeline_state, PipelineState)
-                    else ""
-                ),
-                confidence_decision={},
-            ),
-            utterance=request.utterance,
-            prior_pipeline_state=request.prior_pipeline_state,
-            turn_id=request.turn_id,
-            near_tie_delta=request.near_tie_delta,
-            chat_history=request.chat_history,
-            capability_status=request.capability_status,
-            capability_snapshot=request.capability_snapshot,
-            clock=request.clock,
-            io_channel=request.io_channel,
-            hooks=_build_sat_compat_runtime_turn_pipeline_hooks(
-                answer_assemble_hook=_answer_assemble_hook,
-                answer_validate_hook=_answer_validate_hook,
-            ),
-        )
-        return replay_state
-
-    return RuntimeBackgroundIngestionDependencies(
-        append_session_log=append_session_log,
-        build_source_connector=lambda configured_runtime: build_startup_source_connector(
-            runtime=configured_runtime,
+    def _answer_assemble_hook(
+        llm: ChatOllama,
+        state: PipelineState,
+        *,
+        chat_history: deque[ChatMsg],
+        hits: list[RetrievalInputRecord],
+        capability_status: CapabilityStatus,
+        answer_routing: AnswerRoutingDecision | None = None,
+        runtime_capability_status: CapabilityStatus | None = None,
+        clock: Clock | None = None,
+    ):
+        return answer_stage_runtime_service.answer_assemble_for_turn_service(
+            llm,
+            state,
+            chat_history=chat_history,
+            hits=hits,
+            capability_status=capability_status,
+            answer_routing=answer_routing,
+            runtime_capability_status=runtime_capability_status,
+            clock=clock,
+            document_from_retrieval_input=context_retrieval_runtime_service.document_from_retrieval_input,
+            render_context=canonical_render_context,
+            answer_prompt=CANONICAL_ANSWER_PROMPT,
             append_session_log=append_session_log,
+        )
+
+    def _answer_validate_hook(
+        state: PipelineState,
+        *,
+        assembled,
+        hits: list[RetrievalInputRecord],
+        chat_history: deque[ChatMsg],
+        pending_lookup_override: bool = False,
+    ):
+        return answer_stage_runtime_service.answer_validate_for_turn_service(
+            state,
+            assembled=assembled,
+            hits=hits,
+            chat_history=chat_history,
+            pending_lookup_override=pending_lookup_override,
+            document_from_retrieval_input=context_retrieval_runtime_service.document_from_retrieval_input,
+        )
+
+    return runtime_loop_entrypoint._replay_background_completion_turn(
+        request=request,
+        hooks=_build_sat_compat_runtime_turn_pipeline_hooks(
+            answer_assemble_hook=_answer_assemble_hook,
+            answer_validate_hook=_answer_validate_hook,
         ),
-        source_ingestor_cls=SourceIngestor,
-        answer_commit_persistence=answer_commit_persistence,
-        replay_background_completion_turn=_replay_background_completion_turn,
-    )
-
-
-def _emit_obligation_transition(
-    *,
-    ingestion_request_id: str,
-    status: str,
-    created_at: str,
-    last_polled_at: str,
-    attempt_count: int,
-    deadline_at: str,
-) -> None:
-    emit_runtime_obligation_transition(
-        deps=_runtime_background_ingestion_deps(),
-        ingestion_request_id=ingestion_request_id,
-        status=status,
-        created_at=created_at,
-        last_polled_at=last_polled_at,
-        attempt_count=attempt_count,
-        deadline_at=deadline_at,
     )
 
 
@@ -1306,7 +1285,7 @@ def run_chat_loop(
         read_user_utterance=read_user_utterance,
         send_assistant_text=send_assistant_text,
         clock=clock,
-        replay_background_completion_turn=_runtime_background_ingestion_deps().replay_background_completion_turn,
+        replay_background_completion_turn=_sat_replay_background_completion_turn,
     )
 
 
