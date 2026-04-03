@@ -12,7 +12,7 @@ SOURCE_INGESTION_ARCH_DOC = Path("docs/architecture/source-ingestion-control-sur
 LEGACY_RUNTIME_COMMAND = "python src/testbot/sat_chatbot_memory_v2.py"
 LEGACY_SOURCE_INGEST_TOGGLE = "SOURCE_INGEST_ENABLED=1"
 CANONICAL_RUNTIME_COMMAND = "python -m testbot.entrypoints.cli"
-LEGACY_RUNTIME_ENTRYPOINT_MODULE_COMMAND = "python -m testbot.entrypoints.sat_cli"
+LEGACY_RUNTIME_ENTRYPOINT_MODULE_PATH = "testbot.entrypoints.sat_cli"
 
 
 def test_runtime_docs_do_not_use_legacy_monolith_entrypoint_command() -> None:
@@ -59,5 +59,5 @@ def test_runtime_docs_use_canonical_cli_entrypoint_module_path() -> None:
 
     assert CANONICAL_RUNTIME_COMMAND in quickstart_text
     assert CANONICAL_RUNTIME_COMMAND in ops_text
-    assert LEGACY_RUNTIME_ENTRYPOINT_MODULE_COMMAND not in quickstart_text
-    assert LEGACY_RUNTIME_ENTRYPOINT_MODULE_COMMAND not in ops_text
+    assert LEGACY_RUNTIME_ENTRYPOINT_MODULE_PATH not in quickstart_text
+    assert LEGACY_RUNTIME_ENTRYPOINT_MODULE_PATH not in ops_text

@@ -4,7 +4,7 @@ This document covers logs, troubleshooting, and environment notes for running Te
 
 Program anchor: [`issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md`](issues/ISSUE-0013-canonical-turn-pipeline-primary-bug-elimination-program.md).
 
-Entrypoint authority note: `testbot.entrypoints.cli` is canonical. Treat `testbot.entrypoints.sat_cli` as compatibility-only transitional surface (ISSUE-0021) and do not introduce it in new operational scripts/examples.
+Entrypoint authority note: `testbot.entrypoints.cli` is canonical.
 
 Ask-channel operational taxonomy (startup contract):
 - `terminal_only`: runtime Ask is usable via terminal channel only.

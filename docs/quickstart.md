@@ -109,8 +109,6 @@ Alternative module run (same canonical entrypoint):
 python -m testbot.entrypoints.cli
 ```
 
-Compatibility note: `testbot.entrypoints.sat_cli` is deprecated compatibility-only surface (ISSUE-0021) and must not be used in new authoritative docs, examples, or automation.
-
 Say `stop` to end the loop.
 
 Operational note for CLI mode:

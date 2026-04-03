@@ -13,7 +13,6 @@ import pytest
 
 from testbot.entrypoints import cli
 from testbot.adapters.ask_gateway import AskTurnInput, STOP_DECISION_ID
-from testbot.entrypoints import sat_cli
 from testbot.entrypoints import sat_runtime_modes
 from testbot.entrypoints import runtime_background_ingestion
 from testbot.entrypoints import runtime_bootstrap
@@ -101,11 +100,6 @@ def test_legacy_capabilities_help_answer_helper_delegates_to_canonical_continuit
     for text in samples:
         assert runtime._is_capabilities_help_answer(text) is continuity_runtime.is_capabilities_help_answer(text)
 
-
-def test_sat_cli_is_transitional_wrapper_to_canonical_cli() -> None:
-    source = Path(sat_cli.__file__).read_text()
-    assert "compatibility-only" in source
-    assert "from .cli import main as cli_main" in source
 
 # SAT compatibility tranche migrated from tests/test_runtime_modes.py
 
