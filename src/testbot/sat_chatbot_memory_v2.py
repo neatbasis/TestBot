@@ -655,7 +655,11 @@ def _is_clarification_or_capability_confirmation_answer(text: str) -> bool:
     normalized = (text or "").strip()
     if not normalized:
         return False
-    return is_clarification_answer(normalized) or _is_capabilities_help_answer(normalized)
+    return answer_stage_runtime_service.is_clarification_answer(
+        normalized,
+        clarify_answer=CLARIFY_ANSWER,
+        route_to_ask_answer=ROUTE_TO_ASK_ANSWER,
+    ) or _is_capabilities_help_answer(normalized)
 
 
 def resolve_turn_intent(
@@ -777,14 +781,6 @@ def _select_memory_recovery_hit(hits: list[Document]) -> Document | None:
 
 def _build_memory_recall_recovery_answer(hit: Document) -> str:
     return answer_stage_runtime_service.build_memory_recall_recovery_answer(hit)
-
-
-def is_clarification_answer(text: str) -> bool:
-    return answer_stage_runtime_service.is_clarification_answer(
-        text,
-        clarify_answer=CLARIFY_ANSWER,
-        route_to_ask_answer=ROUTE_TO_ASK_ANSWER,
-    )
 
 
 def _build_time_answer(*, user_input: str, now: arrow.Arrow, last_user_message_ts: str | None, timezone: str) -> str:
@@ -1149,7 +1145,11 @@ def evaluate_alignment_decision(
         claims=claims,
         provenance_types=provenance_types,
         basis_statement=basis_statement,
-        is_clarification_answer=is_clarification_answer,
+        is_clarification_answer=lambda text: answer_stage_runtime_service.is_clarification_answer(
+            text,
+            clarify_answer=CLARIFY_ANSWER,
+            route_to_ask_answer=ROUTE_TO_ASK_ANSWER,
+        ),
         is_capabilities_help_answer=_is_capabilities_help_answer,
     )
 

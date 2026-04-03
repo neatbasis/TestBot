@@ -107,7 +107,10 @@ def test_evaluate_alignment_decision_shim_warns_and_strictly_passthroughs_to_log
     assert observed["claims"] == ["claim"]
     assert observed["provenance_types"] == []
     assert observed["basis_statement"] == "basis"
-    assert observed["is_clarification_answer"] is runtime.is_clarification_answer
+    assert callable(observed["is_clarification_answer"])
+    assert observed["is_clarification_answer"](runtime.CLARIFY_ANSWER) is True
+    assert observed["is_clarification_answer"](runtime.ROUTE_TO_ASK_ANSWER) is True
+    assert observed["is_clarification_answer"]("definitely not a clarification") is False
     assert observed["is_capabilities_help_answer"] is runtime._is_capabilities_help_answer
     assert set(observed) == {
         "user_input",

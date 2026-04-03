@@ -362,7 +362,7 @@ def test_runtime_loop_turn_pipeline_logging_residual_monolith_touchpoints_are_re
     from testbot.entrypoints import runtime_loop
 
     source = Path(runtime_loop.__file__).read_text()
-    assert "RuntimeTurnPipelineHooks(\n        append_session_log=append_runtime_session_log," in source
+    assert "build_runtime_turn_pipeline_hooks(\n        append_session_log=append_runtime_session_log," in source
     assert "append_session_log=_legacy_runtime.append_session_log" not in source
     assert "validate_and_log_transition=_legacy_runtime._validate_and_log_transition" not in source
 
