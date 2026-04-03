@@ -148,9 +148,6 @@ from testbot.source_ingestion_startup import (
     run_source_ingestion as run_startup_source_ingestion,
 )
 from testbot.entrypoints import runtime_bootstrap as runtime_bootstrap_entrypoint
-from testbot.entrypoints.runtime_background_ingestion import (
-    format_background_ingestion_completion_message as format_runtime_background_ingestion_completion_message,
-)
 from testbot.entrypoints.runtime_commit_persistence import (
     RuntimeCommitPersistenceDependencies,
     answer_commit_persistence as persist_runtime_answer_commit,
@@ -214,10 +211,6 @@ BACKGROUND_INGESTION_OBLIGATION_TIMEOUT_SECONDS = int(os.getenv("SOURCE_INGEST_O
 @dataclass(frozen=True)
 class _ClockBackedSnapshotTimeProvider(RuntimeClockBackedSnapshotTimeProvider):
     """Compatibility alias; canonical owner is runtime_snapshot_support."""
-
-
-def _utc_now_iso() -> str:
-    return arrow.utcnow().isoformat()
 
 
 def _sat_execute_source_ingestion(
@@ -460,10 +453,6 @@ def _emit_deprecated_alias_warning(name: str) -> None:
         DeprecationWarning,
         stacklevel=2,
     )
-
-def _format_background_ingestion_completion_message(*, correlation_id: str) -> str:
-    return format_runtime_background_ingestion_completion_message(correlation_id=correlation_id)
-
 
 INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD = turn_policy_policies.INTENT_CLASSIFIER_CONFIDENCE_THRESHOLD
 RETRIEVAL_SCORE_THRESHOLD = turn_policy_policies.RETRIEVAL_SCORE_THRESHOLD
