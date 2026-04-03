@@ -15,6 +15,9 @@ from testbot.entrypoints import cli
 from testbot.adapters.ask_gateway import AskTurnInput, STOP_DECISION_ID
 from testbot.entrypoints import sat_cli
 from testbot.entrypoints import sat_runtime_modes
+from testbot.entrypoints import runtime_background_ingestion
+from testbot.entrypoints import runtime_bootstrap
+from testbot.entrypoints import runtime_loop
 from testbot.entrypoints.runtime_legacy_bridge import read_runtime_env
 from testbot.interaction_policy import InteractionPolicyRequest
 from testbot.interaction_standards import InteractionRequirements
@@ -23,6 +26,10 @@ from testbot.runtime_cli_args import parse_args
 from testbot.application.services import context_retrieval_runtime
 from testbot.answer_contract_constants import CLARIFY_ANSWER
 from testbot.application.services.intent_routing_diagnostics import resolve_turn_intent
+from testbot.source_ingestion_startup import (
+    build_source_connector as build_startup_source_connector,
+    run_source_ingestion as run_startup_source_ingestion,
+)
 from testbot import sat_chatbot_memory_v2 as runtime
 import testbot.runtime_capability_service as runtime_capability_service
 
@@ -142,7 +149,6 @@ def test_run_satellite_mode_uses_gateway_with_stable_stop_id(monkeypatch) -> Non
             return False
 
     monkeypatch.setattr(sat_runtime_modes, "Client", lambda *_args, **_kwargs: _FakeClient())
-    monkeypatch.setattr(runtime, "sat_say", lambda _client, _entity_id, text: spoken.append(text))
 
     class _FakeGateway:
         ha_api_token = "token"
@@ -171,10 +177,7 @@ def test_run_satellite_mode_uses_gateway_with_stable_stop_id(monkeypatch) -> Non
         assert read_user_utterance() == "stop"
         send_assistant_text("ack")
 
-    monkeypatch.setattr(runtime, "_run_chat_loop", _fake_run_chat_loop)
-    monkeypatch.setattr(runtime, "AskGateway", SimpleNamespace(from_runtime=lambda _runtime: _FakeGateway()))
-
-    runtime._run_satellite_mode(
+    sat_runtime_modes.run_satellite_mode(
         runtime={
             "ha_base_url": "http://localhost:8123",
             "ha_api_token": "token",
@@ -186,6 +189,9 @@ def test_run_satellite_mode_uses_gateway_with_stable_stop_id(monkeypatch) -> Non
         near_tie_delta=0.05,
         capability_snapshot=SimpleNamespace(),
         clock=SimpleNamespace(),
+        ask_gateway=_FakeGateway(),
+        run_chat_loop=_fake_run_chat_loop,
+        satellite_say=lambda _client, _entity_id, text: spoken.append(text),
     )
 
     assert spoken == [
@@ -250,7 +256,7 @@ def test_runtime_env_loads_ollama_values_from_process_env(monkeypatch) -> None:
     monkeypatch.setenv("OLLAMA_EMBEDDING_MODEL", "nomic-embed-text:v1")
     monkeypatch.setenv("X_OLLAMA_KEY", "x-ollama-test-key")
 
-    runtime_env = runtime._read_runtime_env()
+    runtime_env = runtime_bootstrap.read_runtime_env()
 
     assert runtime_env["ollama_base_url"] == "http://127.0.0.1:21143"
     assert runtime_env["ollama_model"] == "llama3.2:latest"
@@ -271,7 +277,7 @@ def test_runtime_and_live_smoke_resolve_ollama_env_from_same_process_env(monkeyp
 
     smoke_module = _load_live_smoke_module()
     smoke_env = smoke_module._load_required_env()
-    runtime_env = runtime._read_runtime_env()
+    runtime_env = runtime_bootstrap.read_runtime_env()
 
     assert runtime_env["ollama_base_url"] == smoke_env["OLLAMA_BASE_URL"]
     assert runtime_env["ollama_model"] == smoke_env["OLLAMA_MODEL"]
@@ -281,13 +287,13 @@ def test_runtime_and_live_smoke_resolve_ollama_env_from_same_process_env(monkeyp
 
 def test_read_runtime_env_debug_verbose_defaults_false(monkeypatch) -> None:
     monkeypatch.delenv("TESTBOT_DEBUG_VERBOSE", raising=False)
-    runtime_env = runtime._read_runtime_env()
+    runtime_env = runtime_bootstrap.read_runtime_env()
     assert runtime_env["debug_verbose"] is False
 
 
 def test_read_runtime_env_debug_verbose_opt_in(monkeypatch) -> None:
     monkeypatch.setenv("TESTBOT_DEBUG_VERBOSE", "1")
-    runtime_env = runtime._read_runtime_env()
+    runtime_env = runtime_bootstrap.read_runtime_env()
     assert runtime_env["debug_verbose"] is True
 
 
@@ -366,9 +372,6 @@ def _patch_main_dependencies(
 
     monkeypatch.setattr(cli, "parse_args", lambda _argv=None: args)
     monkeypatch.setattr(cli, "read_runtime_env", lambda: runtime_env)
-    monkeypatch.setattr(runtime, "_ha_connection_error", lambda *_args, **_kwargs: ha_error)
-    monkeypatch.setattr(runtime, "_ollama_connection_error", lambda *_args, **_kwargs: ollama_error)
-
     def _fake_build_capability_snapshot(*, requested_mode: str, daemon_mode: bool, runtime: dict[str, object]):
         if ollama_error is not None:
             effective_mode = None
@@ -671,9 +674,8 @@ def test_run_source_ingestion_stores_fixture_docs_and_logs(monkeypatch, tmp_path
             self.docs.extend(records)
 
     logs = []
-    monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: logs.append((event, payload)))
 
-    runtime._run_source_ingestion(
+    run_startup_source_ingestion(
         runtime={
             "source_ingest_enabled": True,
             "source_connector_type": "fixture",
@@ -682,6 +684,7 @@ def test_run_source_ingestion_stores_fixture_docs_and_logs(monkeypatch, tmp_path
             "source_ingest_cursor": None,
         },
         store=_Store(),
+        append_session_log=lambda event, payload: logs.append((event, payload)),
     )
 
     assert logs
@@ -691,11 +694,11 @@ def test_run_source_ingestion_stores_fixture_docs_and_logs(monkeypatch, tmp_path
 
 def test_run_source_ingestion_skips_unsupported_connector(monkeypatch) -> None:
     logs = []
-    monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: logs.append((event, payload)))
 
-    runtime._run_source_ingestion(
+    run_startup_source_ingestion(
         runtime={"source_ingest_enabled": True, "source_connector_type": "unknown", "source_fixture_path": ""},
         store=object(),
+        append_session_log=lambda event, payload: logs.append((event, payload)),
     )
 
     assert logs[-1][0] == "source_ingest_skipped"
@@ -704,14 +707,14 @@ def test_run_source_ingestion_skips_unsupported_connector(monkeypatch) -> None:
 
 def test_build_source_connector_supports_local_markdown(monkeypatch, tmp_path) -> None:
     logs = []
-    monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: logs.append((event, payload)))
 
-    connector = runtime._build_source_connector(
-        {
+    connector = build_startup_source_connector(
+        runtime={
             "source_ingest_enabled": True,
             "source_connector_type": "local_markdown",
             "source_markdown_path": str(tmp_path),
-        }
+        },
+        append_session_log=lambda event, payload: logs.append((event, payload)),
     )
 
     assert connector is not None
@@ -721,15 +724,15 @@ def test_build_source_connector_supports_local_markdown(monkeypatch, tmp_path) -
 
 def test_build_source_connector_supports_wikipedia(monkeypatch) -> None:
     logs = []
-    monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: logs.append((event, payload)))
 
-    connector = runtime._build_source_connector(
-        {
+    connector = build_startup_source_connector(
+        runtime={
             "source_ingest_enabled": True,
             "source_connector_type": "wikipedia",
             "source_wikipedia_topic": "OpenAI",
             "source_wikipedia_language": "en",
-        }
+        },
+        append_session_log=lambda event, payload: logs.append((event, payload)),
     )
 
     assert connector is not None
@@ -739,14 +742,14 @@ def test_build_source_connector_supports_wikipedia(monkeypatch) -> None:
 
 def test_build_source_connector_supports_arxiv(monkeypatch) -> None:
     logs = []
-    monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: logs.append((event, payload)))
 
-    connector = runtime._build_source_connector(
-        {
+    connector = build_startup_source_connector(
+        runtime={
             "source_ingest_enabled": True,
             "source_connector_type": "arxiv",
             "source_arxiv_query": "cat:cs.AI",
-        }
+        },
+        append_session_log=lambda event, payload: logs.append((event, payload)),
     )
 
     assert connector is not None
@@ -759,7 +762,7 @@ def test_read_runtime_env_invalid_numerics_fallback(monkeypatch, caplog) -> None
     monkeypatch.setenv("SOURCE_INGEST_LIMIT", "not-an-int")
 
     with caplog.at_level("WARNING"):
-        runtime_env = runtime._read_runtime_env()
+        runtime_env = runtime_bootstrap.read_runtime_env()
 
     assert runtime_env["memory_near_tie_delta"] == 0.02
     assert runtime_env["source_ingest_limit"] == 50
@@ -788,9 +791,8 @@ def test_run_source_ingestion_invalid_cursor_logs_and_falls_back(monkeypatch, tm
             del records
 
     logs = []
-    monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: logs.append((event, payload)))
 
-    runtime._run_source_ingestion(
+    run_startup_source_ingestion(
         runtime={
             "source_ingest_enabled": True,
             "source_connector_type": "fixture",
@@ -799,6 +801,7 @@ def test_run_source_ingestion_invalid_cursor_logs_and_falls_back(monkeypatch, tm
             "source_ingest_cursor": "bad-cursor",
         },
         store=_Store(),
+        append_session_log=lambda event, payload: logs.append((event, payload)),
     )
 
     assert logs[0][0] == "source_ingest_cursor_invalid"
@@ -832,9 +835,8 @@ def test_run_source_ingestion_failure_logs_and_does_not_raise(monkeypatch, capsy
 
     logs = []
     monkeypatch.setattr("testbot.source_ingestion_startup.SourceIngestor", _FailingIngestor)
-    monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: logs.append((event, payload)))
 
-    runtime._run_source_ingestion(
+    run_startup_source_ingestion(
         runtime={
             "source_ingest_enabled": True,
             "source_connector_type": "fixture",
@@ -843,6 +845,7 @@ def test_run_source_ingestion_failure_logs_and_does_not_raise(monkeypatch, capsy
             "source_ingest_cursor": "12",
         },
         store=object(),
+        append_session_log=lambda event, payload: logs.append((event, payload)),
     )
 
     captured = capsys.readouterr()
@@ -996,10 +999,15 @@ def test_execute_source_ingestion_returns_failed_payload(monkeypatch) -> None:
             del cursor, limit
             raise RuntimeError("boom")
 
-    monkeypatch.setattr(runtime, "SourceIngestor", _FailingIngestor)
-    monkeypatch.setattr(runtime, "_build_source_connector", lambda _runtime: SimpleNamespace(source_type="fixture"))
+    deps = runtime_background_ingestion.RuntimeBackgroundIngestionDependencies(
+        append_session_log=lambda _event, _payload: None,
+        build_source_connector=lambda _runtime: SimpleNamespace(source_type="fixture"),
+        source_ingestor_cls=_FailingIngestor,
+        answer_commit_persistence=lambda **_kwargs: None,
+        replay_background_completion_turn=lambda _request: runtime_loop.PipelineState(user_input=""),
+    )
 
-    result = runtime._execute_source_ingestion(
+    result = runtime_background_ingestion.execute_source_ingestion(
         runtime={
             "source_ingest_enabled": True,
             "source_connector_type": "fixture",
@@ -1007,6 +1015,7 @@ def test_execute_source_ingestion_returns_failed_payload(monkeypatch) -> None:
             "source_ingest_cursor": "12",
         },
         store=object(),
+        deps=deps,
     )
 
     assert result["ok"] is False
@@ -1021,8 +1030,24 @@ def test_background_source_ingestion_start_generates_namespaced_request_id(monke
         del runtime, store
         return {"ok": True, "status": "completed", "payload": {"background": background, "stored_count": 1, "ingestion_request_id": ingestion_request_id}}
 
-    monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: logs.append((event, payload)))
-    monkeypatch.setattr(runtime, "_execute_source_ingestion", _fake_execute)
+    monkeypatch.setattr(
+        runtime_background_ingestion,
+        "execute_source_ingestion",
+        lambda *, runtime, store, deps, background=False, ingestion_request_id="": _fake_execute(
+            runtime=runtime,
+            store=store,
+            background=background,
+            ingestion_request_id=ingestion_request_id,
+        ),
+    )
+
+    deps = runtime_background_ingestion.RuntimeBackgroundIngestionDependencies(
+        append_session_log=lambda event, payload: logs.append((event, payload)),
+        build_source_connector=lambda _runtime: None,
+        source_ingestor_cls=object,
+        answer_commit_persistence=lambda **_kwargs: None,
+        replay_background_completion_turn=lambda _request: runtime_loop.PipelineState(user_input=""),
+    )
 
     rt = {
         "source_ingest_background_future": None,
@@ -1030,7 +1055,11 @@ def test_background_source_ingestion_start_generates_namespaced_request_id(monke
         "source_ingest_background_request_id": "",
         "active_ingestion_request_id": "turn-doc-legacy",
     }
-    started = runtime._start_background_source_ingestion(runtime=rt, store=object())
+    started = runtime_background_ingestion.start_background_source_ingestion(
+        runtime=rt,
+        store=object(),
+        deps=deps,
+    )
 
     assert started["started"] is True
     assert str(started["ingestion_request_id"]).startswith("ingest-req-")
@@ -1040,19 +1069,9 @@ def test_background_source_ingestion_start_generates_namespaced_request_id(monke
 
 
 def test_chat_loop_registers_pending_ingestion_context_by_request_id(monkeypatch) -> None:
-    from testbot.entrypoints import runtime_loop
-
     events: list[tuple[str, dict[str, object]]] = []
     monkeypatch.setattr(runtime_loop, "append_runtime_session_log", lambda event, payload: events.append((event, payload)))
-    monkeypatch.setattr(runtime, "store_doc", lambda *args, **kwargs: None)
-    monkeypatch.setattr(runtime, "generate_reflection_yaml", lambda *args, **kwargs: "claims: []")
-    monkeypatch.setattr(runtime, "persist_promoted_context", lambda *args, **kwargs: [])
     monkeypatch.setattr(runtime_loop, "persist_answer_commit", lambda **kwargs: None)
-    monkeypatch.setattr(
-        runtime,
-        "_utc_now_iso",
-        lambda: (_ for _ in ()).throw(AssertionError("legacy _utc_now_iso should not be used for pending obligations")),
-    )
 
     def _pipeline(**kwargs):
         state = kwargs["state"]
@@ -1081,11 +1100,11 @@ def test_chat_loop_registers_pending_ingestion_context_by_request_id(monkeypatch
 
     rt: dict[str, object] = {"seed": True}
     prompts = iter(["What changed?", "stop"])
-    runtime._run_chat_loop(
+    runtime_loop.run_chat_loop(
         runtime=rt,
         llm=object(),
         store=object(),
-        chat_history=runtime.deque(),
+        chat_history=deque(),
         near_tie_delta=0.05,
         io_channel="cli",
         capability_status="ask_unavailable",
@@ -1138,7 +1157,13 @@ def test_chat_loop_registers_pending_ingestion_context_by_request_id(monkeypatch
 
 def test_poll_pending_ingestion_obligations_times_out_and_dead_letters(monkeypatch) -> None:
     events: list[tuple[str, dict[str, object]]] = []
-    monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: events.append((event, payload)))
+    deps = runtime_background_ingestion.RuntimeBackgroundIngestionDependencies(
+        append_session_log=lambda event, payload: events.append((event, payload)),
+        build_source_connector=lambda _runtime: None,
+        source_ingestor_cls=object,
+        answer_commit_persistence=lambda **_kwargs: None,
+        replay_background_completion_turn=lambda _request: runtime_loop.PipelineState(user_input=""),
+    )
 
     rt: dict[str, object] = {
         "pending_ingestion_registry": {
@@ -1155,9 +1180,13 @@ def test_poll_pending_ingestion_obligations_times_out_and_dead_letters(monkeypat
         "dead_letter_ingestion_registry": {},
     }
 
-    monkeypatch.setattr(runtime.arrow, "utcnow", lambda: runtime.arrow.get("2026-03-10T11:00:00+00:00"))
+    monkeypatch.setattr(
+        runtime_background_ingestion.arrow,
+        "utcnow",
+        lambda: runtime_background_ingestion.arrow.get("2026-03-10T11:00:00+00:00"),
+    )
 
-    runtime._poll_pending_ingestion_obligations(runtime=rt)
+    runtime_background_ingestion.poll_pending_ingestion_obligations(runtime=rt, deps=deps)
 
     assert rt["pending_ingestion_registry"] == {}
     assert "ingest-1" in rt["dead_letter_ingestion_registry"]
@@ -1170,13 +1199,11 @@ def test_poll_pending_ingestion_obligations_times_out_and_dead_letters(monkeypat
 
 
 def test_chat_loop_polls_pending_ingestion_obligation_each_turn(monkeypatch) -> None:
-    from testbot.entrypoints import runtime_loop
-
     events: list[tuple[str, dict[str, object]]] = []
     monkeypatch.setattr(runtime_loop, "append_runtime_session_log", lambda event, payload: events.append((event, payload)))
-    monkeypatch.setattr(runtime, "_process_background_ingestion_completion", lambda **kwargs: ("", None, False))
+    monkeypatch.setattr(runtime_loop, "process_background_ingestion_completion", lambda **kwargs: ("", None, False))
 
-    runtime._run_chat_loop(
+    runtime_loop.run_chat_loop(
         runtime={
             "pending_ingestion_registry": {
                 "ingest-2": {
@@ -1192,7 +1219,7 @@ def test_chat_loop_polls_pending_ingestion_obligation_each_turn(monkeypatch) -> 
         },
         llm=object(),
         store=object(),
-        chat_history=runtime.deque(),
+        chat_history=deque(),
         near_tie_delta=0.05,
         io_channel="cli",
         capability_status="ask_unavailable",
@@ -1233,13 +1260,18 @@ def test_chat_loop_polls_pending_ingestion_obligation_each_turn(monkeypatch) -> 
 
 def test_background_source_ingestion_start_and_poll_completion(monkeypatch) -> None:
     logs: list[tuple[str, dict[str, object]]] = []
-    from testbot.entrypoints import runtime_background_ingestion
 
     def _fake_execute(*, runtime: dict[str, object], store, background: bool = False, ingestion_request_id: str = ""):
         del runtime, store
         return {"ok": True, "status": "completed", "payload": {"background": background, "stored_count": 2, "ingestion_request_id": ingestion_request_id}}
 
-    monkeypatch.setattr(runtime, "append_session_log", lambda event, payload: logs.append((event, payload)))
+    deps = runtime_background_ingestion.RuntimeBackgroundIngestionDependencies(
+        append_session_log=lambda event, payload: logs.append((event, payload)),
+        build_source_connector=lambda _runtime: None,
+        source_ingestor_cls=object,
+        answer_commit_persistence=lambda **_kwargs: None,
+        replay_background_completion_turn=lambda _request: runtime_loop.PipelineState(user_input=""),
+    )
     monkeypatch.setattr(
         runtime_background_ingestion,
         "execute_source_ingestion",
@@ -1252,7 +1284,12 @@ def test_background_source_ingestion_start_and_poll_completion(monkeypatch) -> N
     )
 
     rt = {"source_ingest_background_future": None, "source_ingest_background_in_progress": False, "source_ingest_background_request_id": ""}
-    started = runtime._start_background_source_ingestion(runtime=rt, store=object(), ingestion_request_id="turn-abc")
+    started = runtime_background_ingestion.start_background_source_ingestion(
+        runtime=rt,
+        store=object(),
+        deps=deps,
+        ingestion_request_id="turn-abc",
+    )
 
     assert started["started"] is True
     assert started["ingestion_request_id"] == "turn-abc"
@@ -1260,7 +1297,7 @@ def test_background_source_ingestion_start_and_poll_completion(monkeypatch) -> N
     assert logs[0][1]["ingestion_request_id"] == "turn-abc"
 
     while True:
-        polled = runtime._poll_background_source_ingestion(runtime=rt)
+        polled = runtime_background_ingestion.poll_background_source_ingestion(runtime=rt, deps=deps)
         if polled and polled.get("status") != "running":
             break
 
@@ -1273,8 +1310,6 @@ def test_background_source_ingestion_start_and_poll_completion(monkeypatch) -> N
 
 
 def test_cli_mode_proactively_emits_completion_without_extra_prompt(monkeypatch) -> None:
-    from testbot.entrypoints import runtime_background_ingestion, runtime_loop
-
     monkeypatch.setattr(runtime, "store_doc", lambda *args, **kwargs: None)
     monkeypatch.setattr(runtime, "generate_reflection_yaml", lambda *args, **kwargs: "claims: []")
     monkeypatch.setattr(runtime, "persist_promoted_context", lambda *args, **kwargs: [])
@@ -1325,11 +1360,11 @@ def test_cli_mode_proactively_emits_completion_without_extra_prompt(monkeypatch)
             [],
         )
 
-    monkeypatch.setattr(runtime, "_run_canonical_turn_pipeline", _pipeline)
+    monkeypatch.setattr(runtime_loop, "run_runtime_turn_pipeline", _pipeline)
 
     replies: list[str] = []
     prompts = iter(["stop"])
-    runtime._run_chat_loop(
+    runtime_loop.run_chat_loop(
         runtime={
             "pending_ingestion_registry": {
                 "turn-123": {"utterance": "What is due Friday?", "prior_pipeline_state": None}
@@ -1337,7 +1372,7 @@ def test_cli_mode_proactively_emits_completion_without_extra_prompt(monkeypatch)
         },
         llm=object(),
         store=object(),
-        chat_history=runtime.deque(),
+        chat_history=deque(),
         near_tie_delta=0.05,
         io_channel="cli",
         capability_status="ask_unavailable",
@@ -1818,14 +1853,10 @@ def test_runtime_loop_background_ingestion_connector_ingestor_dependencies_are_b
         def __init__(self, **kwargs) -> None:
             captured.update(kwargs)
 
-    def _legacy_connector_should_not_be_used(_runtime):
-        raise AssertionError("legacy background-ingestion connector should not be used")
-
     class _LegacyIngestorShouldNotBeUsed:
         def __init__(self, **_kwargs) -> None:
             raise AssertionError("legacy background-ingestion ingestor class should not be used")
 
-    monkeypatch.setattr(runtime, "_build_source_connector", _legacy_connector_should_not_be_used)
     monkeypatch.setattr(runtime, "SourceIngestor", _LegacyIngestorShouldNotBeUsed)
     monkeypatch.setattr(runtime_loop, "RuntimeBackgroundIngestionDependencies", _CapturingDeps)
     monkeypatch.setattr(runtime_loop, "poll_pending_ingestion_obligations", lambda **_kwargs: None)

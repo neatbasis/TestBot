@@ -256,7 +256,10 @@ def _runtime_background_ingestion_deps() -> RuntimeBackgroundIngestionDependenci
 
     return RuntimeBackgroundIngestionDependencies(
         append_session_log=append_session_log,
-        build_source_connector=_build_source_connector,
+        build_source_connector=lambda configured_runtime: build_startup_source_connector(
+            runtime=configured_runtime,
+            append_session_log=append_session_log,
+        ),
         source_ingestor_cls=SourceIngestor,
         answer_commit_persistence=answer_commit_persistence,
         replay_background_completion_turn=_replay_background_completion_turn,
@@ -376,24 +379,6 @@ def _emit_deprecated_alias_warning(name: str) -> None:
     )
 
 
-def _execute_source_ingestion(
-    *,
-    runtime: dict[str, object],
-    store: MemoryStorePort,
-    background: bool = False,
-    ingestion_request_id: str = "",
-) -> dict[str, object]:
-    return background_ingestion_runtime_service.execute_source_ingestion(
-        runtime=runtime,
-        store=store,
-        build_source_connector=_build_source_connector,
-        source_ingestor_cls=SourceIngestor,
-        append_session_log=append_session_log,
-        background=background,
-        ingestion_request_id=ingestion_request_id,
-    )
-
-
 def _start_background_source_ingestion(
     *,
     runtime: dict[str, object],
@@ -471,10 +456,6 @@ def _parse_args(argv: list[str] | None = None) -> Namespace:
     return parse_runtime_cli_args(argv)
 
 
-def _read_runtime_env() -> dict[str, object]:
-    return runtime_bootstrap_entrypoint.read_runtime_env()
-
-
 def _build_runtime_memory_store(*, runtime: dict[str, object], embeddings: Embeddings) -> MemoryStorePort:
     return runtime_bootstrap_entrypoint.build_runtime_memory_store(runtime=runtime, embeddings=embeddings)
 
@@ -521,14 +502,6 @@ def _resolve_effective_mode(
     )
 
 
-
-def _build_source_connector(runtime: dict[str, object]):
-    """Compatibility wrapper; canonical owner is testbot.source_ingestion_startup.build_source_connector."""
-    return build_startup_source_connector(runtime=runtime, append_session_log=append_session_log)
-
-
-def _run_source_ingestion(*, runtime: dict[str, object], store: MemoryStorePort) -> None:
-    run_startup_source_ingestion(runtime=runtime, store=store, append_session_log=append_session_log)
 
 def _print_startup_status(*, snapshot: CapabilitySnapshot) -> None:
     print_startup_status_from_presenter(snapshot=snapshot)
@@ -1271,7 +1244,7 @@ def parse_args(argv: list[str] | None = None) -> Namespace:
 
 
 def read_runtime_env() -> dict[str, object]:
-    return _read_runtime_env()
+    return runtime_bootstrap_entrypoint.read_runtime_env()
 
 
 def build_runtime_memory_store(*, runtime: dict[str, object], embeddings: Embeddings) -> MemoryStorePort:
@@ -1283,7 +1256,7 @@ def resolve_mode(requested_mode: str, ha_error: str | None) -> str:
 
 
 def run_source_ingestion(*, runtime: dict[str, object], store: MemoryStorePort) -> None:
-    _run_source_ingestion(runtime=runtime, store=store)
+    run_startup_source_ingestion(runtime=runtime, store=store, append_session_log=append_session_log)
 
 
 def print_startup_status(*, snapshot: CapabilitySnapshot) -> None:
