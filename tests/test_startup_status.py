@@ -25,6 +25,7 @@ def _snapshot(
     source_bootstrap_attempted: bool = False,
     source_bootstrap_succeeded: bool = False,
     source_bootstrap_stored_count: int = 0,
+    source_turn_triggered_enabled: bool = False,
     source_turn_triggered_supported: bool = False,
 ) -> CapabilitySnapshot:
     runtime = {
@@ -45,6 +46,7 @@ def _snapshot(
         "source_bootstrap_attempted": source_bootstrap_attempted,
         "source_bootstrap_succeeded": source_bootstrap_succeeded,
         "source_bootstrap_stored_count": source_bootstrap_stored_count,
+        "source_turn_triggered_enabled": source_turn_triggered_enabled,
         "source_turn_triggered_supported": source_turn_triggered_supported,
     }
     return CapabilitySnapshot(
@@ -236,7 +238,7 @@ def test_startup_status_reports_source_ingestion_selection_state(capsys) -> None
     output = capsys.readouterr().out
     assert "Source mode: bootstrap_preload" in output
     assert "Bootstrap preload: attempted=True, stored_docs=2, succeeded=True." in output
-    assert "Turn-triggered acquisition: unavailable" in output
+    assert "Turn-triggered acquisition: disabled (set SOURCE_TURN_TRIGGERED_ENABLED=1 to enable)." in output
 
 
 def test_startup_status_reports_disabled_source_mode(capsys) -> None:
@@ -251,7 +253,26 @@ def test_startup_status_reports_disabled_source_mode(capsys) -> None:
     output = capsys.readouterr().out
     assert "Source mode: disabled" in output
     assert "Source acquisition disabled; enable SOURCE_INGEST_ENABLED" in output
-    assert "Turn-triggered acquisition: unavailable." in output
+
+
+def test_startup_status_reports_turn_triggered_enabled_message(capsys) -> None:
+    print_startup_status(
+        snapshot=_snapshot(
+            effective_mode="cli",
+            ha_error=None,
+            ollama_error=None,
+            source_ingest_enabled=True,
+            source_bootstrap_attempted=True,
+            source_bootstrap_succeeded=False,
+            source_bootstrap_stored_count=0,
+            source_mode=SourceMode.BOOTSTRAP_PRELOAD.value,
+            source_turn_triggered_enabled=True,
+        )
+    )
+
+    output = capsys.readouterr().out
+    assert "Source mode: bootstrap_preload" in output
+    assert "Turn-triggered acquisition: enabled but pending first run" in output
 
 
 def test_startup_status_reports_satellite_only_ask_channel_when_daemon_mode(capsys) -> None:

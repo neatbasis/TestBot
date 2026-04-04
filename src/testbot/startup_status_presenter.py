@@ -73,6 +73,7 @@ def render_startup_status_lines(*, snapshot: CapabilitySnapshotView) -> list[str
         )
 
     lines.append(f"Memory backend: {runtime['memory_store_backend']}")
+    turn_triggered_enabled = bool(runtime.get("source_turn_triggered_enabled", False))
     source_mode = normalize_source_mode(runtime.get("source_mode"))
     lines.append(f"Source mode: {source_mode.value}")
     if source_mode == SourceMode.DISABLED:
@@ -85,9 +86,14 @@ def render_startup_status_lines(*, snapshot: CapabilitySnapshotView) -> list[str
         lines.append(
             f"  Bootstrap preload: attempted={attempted}, stored_docs={stored_count}, succeeded={succeeded}."
         )
-        lines.append(
-            "  Turn-triggered acquisition: unavailable (knowledge answers rely on bootstrap preload only)."
-        )
+        if turn_triggered_enabled:
+            lines.append(
+                "  Turn-triggered acquisition: enabled but pending first run; knowledge answers rely on bootstrap preload."
+            )
+        else:
+            lines.append(
+                "  Turn-triggered acquisition: disabled (set SOURCE_TURN_TRIGGERED_ENABLED=1 to enable)."
+            )
     else:
         supported = bool(runtime.get("source_turn_triggered_supported", False))
         if supported:

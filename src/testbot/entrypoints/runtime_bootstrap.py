@@ -54,6 +54,7 @@ def read_runtime_env() -> dict[str, object]:
         "source_bootstrap_attempted": False,
         "source_bootstrap_succeeded": False,
         "source_bootstrap_stored_count": 0,
+        "source_turn_triggered_enabled": config.SOURCE_TURN_TRIGGERED_ENABLED,
         "source_turn_triggered_supported": False,
         "debug_verbose": debug_verbose,
     }

@@ -63,6 +63,7 @@ class Config:
     SOURCE_WIKIPEDIA_TOPIC: str
     SOURCE_WIKIPEDIA_LANGUAGE: str
     SOURCE_ARXIV_QUERY: str
+    SOURCE_TURN_TRIGGERED_ENABLED: bool
 
     @classmethod
     def from_env(cls) -> "Config":
@@ -85,4 +86,5 @@ class Config:
             SOURCE_WIKIPEDIA_TOPIC=os.getenv("SOURCE_WIKIPEDIA_TOPIC", ""),
             SOURCE_WIKIPEDIA_LANGUAGE=os.getenv("SOURCE_WIKIPEDIA_LANGUAGE", "en"),
             SOURCE_ARXIV_QUERY=os.getenv("SOURCE_ARXIV_QUERY", ""),
+            SOURCE_TURN_TRIGGERED_ENABLED=(os.getenv("SOURCE_TURN_TRIGGERED_ENABLED", "0") == "1"),
         )

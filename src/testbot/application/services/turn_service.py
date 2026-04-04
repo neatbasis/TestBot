@@ -67,6 +67,7 @@ from testbot.logic import StageArtifacts
 from testbot.pipeline_state import PipelineState, append_pipeline_snapshot
 from testbot.response_planner import build_response_plan, plan_to_dict
 from testbot.ports import LanguageModel, MemoryStorePort
+from testbot.source_mode import SourceMode
 
 
 CANONICAL_STAGE_SEQUENCE: tuple[str, ...] = (
@@ -476,8 +477,80 @@ def retrieve_evidence_stage(ctx: CanonicalTurnContext, stage: TurnPipelineStageR
             "retrieval_candidates",
             {"query": ctx.state.rewritten_query, "candidate_count": 0, "top_candidates": [], "skipped": True},
         )
+    _maybe_schedule_turn_triggered_ingestion(ctx=ctx, stage=stage)
     append_pipeline_snapshot("retrieve", ctx.state, time_provider=stage.snapshot_time_provider)
     return ctx
+
+
+def _has_usable_evidence(ctx: CanonicalTurnContext) -> bool:
+    bundle = ctx.artifacts.get("pre_rerank_evidence_bundle")
+    if isinstance(bundle, EvidenceBundle):
+        return bool(bundle.records_for_policy())
+    return False
+
+
+def _derive_turn_triggered_request(*, utterance: str, rewritten_query: str) -> dict[str, object]:
+    return {
+        "source_intent": "knowledge_question",
+        "utterance": utterance,
+        "rewritten_query": rewritten_query,
+    }
+
+
+def _should_schedule_turn_triggered_ingestion(ctx: CanonicalTurnContext, stage: TurnPipelineStageRuntime) -> bool:
+    runtime = stage.runtime
+    if not bool(runtime.get("source_turn_triggered_enabled", False)):
+        return False
+    artifacts = StageArtifacts(ctx.artifacts)
+    if artifacts.pending_ingestion_request_id:
+        return False
+    if artifacts.get_bool("background_ingestion_in_progress"):
+        return False
+    if ctx.artifacts.get("docs_and_scores"):
+        return False
+    retrieval_result = ctx.artifacts.get("retrieval_result")
+    if retrieval_result is not None and getattr(retrieval_result, "hit_count", 0) > 0:
+        return False
+    intent_str = str(ctx.state.resolved_intent or "")
+    try:
+        intent = IntentType(intent_str)
+    except ValueError:
+        return False
+    if intent != IntentType.KNOWLEDGE_QUESTION:
+        return False
+    if _has_usable_evidence(ctx):
+        return False
+    return True
+
+
+def _maybe_schedule_turn_triggered_ingestion(ctx: CanonicalTurnContext, stage: TurnPipelineStageRuntime) -> None:
+    if not _should_schedule_turn_triggered_ingestion(ctx, stage):
+        return
+    start_result = stage.deps.start_background_source_ingestion(runtime=stage.runtime, store=stage.store)
+    request_id = str(start_result.get("ingestion_request_id") or "")
+    if not request_id:
+        return
+    artifacts = StageArtifacts(ctx.artifacts)
+    artifacts.pending_ingestion_request_id = request_id
+    ctx.artifacts["background_ingestion_in_progress"] = bool(stage.runtime.get("source_ingest_background_in_progress", False))
+    stage.runtime["source_mode"] = SourceMode.TURN_TRIGGERED_ACQUISITION.value
+    stage.runtime["source_turn_triggered_supported"] = True
+    request_history = stage.runtime.setdefault("source_turn_triggered_requests", [])
+    request_history.append(
+        _derive_turn_triggered_request(
+            utterance=stage.utterance,
+            rewritten_query=str(ctx.state.rewritten_query or ""),
+        )
+    )
+    stage.deps.append_session_log(
+        "turn_triggered_source_request",
+        {
+            "ingestion_request_id": request_id,
+            "turn_id": artifacts.turn_id,
+            "intent": ctx.state.resolved_intent,
+            "utterance": stage.utterance,
+        },
+    )
 
 
 def policy_decide_stage(ctx: CanonicalTurnContext, stage: TurnPipelineStageRuntime) -> CanonicalTurnContext:
