@@ -25,6 +25,7 @@ from testbot.runtime_capability_service import build_capability_snapshot
 from testbot.runtime_cli_args import parse_args
 from testbot.source_ingestion_entry import apply_source_ingestion_entry
 from testbot.source_ingestion_startup import run_source_ingestion
+from testbot.source_mode import SourceMode
 from testbot.startup_status_presenter import print_startup_status
 
 
@@ -94,7 +95,11 @@ def main(argv: list[str] | None = None) -> None:
     store = build_runtime_memory_store(runtime=runtime, embeddings=embeddings)
     chat_history = deque(maxlen=10)
     clock = build_system_clock()
-    run_source_ingestion(runtime=runtime, store=store)
+    source_ingest_result = run_source_ingestion(runtime=runtime, store=store)
+    runtime["source_bootstrap_attempted"] = bool(source_ingest_result)
+    runtime["source_bootstrap_stored_count"] = int(source_ingest_result.stored_count if source_ingest_result else 0)
+    runtime["source_bootstrap_succeeded"] = bool(source_ingest_result and source_ingest_result.stored_count > 0)
+    _refresh_runtime_source_mode(runtime=runtime)
 
     if capability_snapshot.effective_mode == "satellite":
         run_satellite_mode(
@@ -122,3 +127,13 @@ def main(argv: list[str] | None = None) -> None:
         ask_gateway=AskGateway.from_runtime(runtime),
         run_chat_loop=run_chat_loop,
     )
+
+
+def _refresh_runtime_source_mode(*, runtime: dict[str, object]) -> None:
+    if bool(runtime.get("source_turn_triggered_supported", False)):
+        runtime["source_mode"] = SourceMode.TURN_TRIGGERED_ACQUISITION.value
+        return
+    if bool(runtime.get("source_ingest_enabled", False)):
+        runtime["source_mode"] = SourceMode.BOOTSTRAP_PRELOAD.value
+        return
+    runtime["source_mode"] = SourceMode.DISABLED.value

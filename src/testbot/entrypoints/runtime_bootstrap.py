@@ -16,12 +16,14 @@ from langchain_core.embeddings import Embeddings
 from testbot.adapters.memory_store_factory import build_memory_store, normalize_memory_store_mode
 from testbot.config import Config
 from testbot.ports import MemoryStorePort
+from testbot.source_mode import SourceMode
 
 
 def read_runtime_env() -> dict[str, object]:
     config = Config.from_env()
     memory_store_mode = os.getenv("MEMORY_STORE_MODE", "in_memory")
     debug_verbose = os.getenv("TESTBOT_DEBUG_VERBOSE", "0") == "1"
+    source_mode = SourceMode.BOOTSTRAP_PRELOAD if config.SOURCE_INGEST_ENABLED else SourceMode.DISABLED
     return {
         "ha_base_url": config.HA_BASE_URL,
         "ha_api_token": config.HA_API_TOKEN,
@@ -48,6 +50,11 @@ def read_runtime_env() -> dict[str, object]:
         "source_ingest_background_future": None,
         "source_ingest_background_in_progress": False,
         "source_ingest_background_request_id": "",
+        "source_mode": source_mode.value,
+        "source_bootstrap_attempted": False,
+        "source_bootstrap_succeeded": False,
+        "source_bootstrap_stored_count": 0,
+        "source_turn_triggered_supported": False,
         "debug_verbose": debug_verbose,
     }
 

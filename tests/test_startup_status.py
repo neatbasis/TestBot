@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from testbot.runtime_capability_service import CapabilitySnapshotData as CapabilitySnapshot
 from testbot.runtime_capability_service import RuntimeCapabilityStatusData as RuntimeCapabilityStatus
+from testbot.source_mode import SourceMode
 from testbot.startup_status_presenter import print_startup_status
 
 
@@ -20,6 +21,11 @@ def _snapshot(
     source_ingest_selection_mode: str = "env",
     source_ingest_reference_key: str = "",
     source_ingest_freeform_request: str = "",
+    source_mode: str = SourceMode.DISABLED.value,
+    source_bootstrap_attempted: bool = False,
+    source_bootstrap_succeeded: bool = False,
+    source_bootstrap_stored_count: int = 0,
+    source_turn_triggered_supported: bool = False,
 ) -> CapabilitySnapshot:
     runtime = {
         "ollama_base_url": "http://localhost:11434",
@@ -35,6 +41,11 @@ def _snapshot(
         "source_ingest_selection_mode": source_ingest_selection_mode,
         "source_ingest_reference_key": source_ingest_reference_key,
         "source_ingest_freeform_request": source_ingest_freeform_request,
+        "source_mode": source_mode,
+        "source_bootstrap_attempted": source_bootstrap_attempted,
+        "source_bootstrap_succeeded": source_bootstrap_succeeded,
+        "source_bootstrap_stored_count": source_bootstrap_stored_count,
+        "source_turn_triggered_supported": source_turn_triggered_supported,
     }
     return CapabilitySnapshot(
         runtime=runtime,
@@ -215,11 +226,32 @@ def test_startup_status_reports_source_ingestion_selection_state(capsys) -> None
             source_ingest_selection_source="cli",
             source_ingest_selection_mode="reference",
             source_ingest_reference_key="wikipedia_hilbert",
+            source_mode=SourceMode.BOOTSTRAP_PRELOAD.value,
+            source_bootstrap_attempted=True,
+            source_bootstrap_succeeded=True,
+            source_bootstrap_stored_count=2,
         )
     )
 
     output = capsys.readouterr().out
-    assert "Source ingestion: enabled (connector=wikipedia, mode=reference, selected_via=cli, reference=wikipedia_hilbert)" in output
+    assert "Source mode: bootstrap_preload" in output
+    assert "Bootstrap preload: attempted=True, stored_docs=2, succeeded=True." in output
+    assert "Turn-triggered acquisition: unavailable" in output
+
+
+def test_startup_status_reports_disabled_source_mode(capsys) -> None:
+    print_startup_status(
+        snapshot=_snapshot(
+            effective_mode="cli",
+            ha_error=None,
+            ollama_error=None,
+        )
+    )
+
+    output = capsys.readouterr().out
+    assert "Source mode: disabled" in output
+    assert "Source acquisition disabled; enable SOURCE_INGEST_ENABLED" in output
+    assert "Turn-triggered acquisition: unavailable." in output
 
 
 def test_startup_status_reports_satellite_only_ask_channel_when_daemon_mode(capsys) -> None:

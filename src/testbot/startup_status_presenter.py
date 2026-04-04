@@ -7,6 +7,8 @@ from __future__ import annotations
 
 from typing import Protocol, TypedDict
 
+from testbot.source_mode import SourceMode, normalize_source_mode
+
 
 class StartupRuntimeView(TypedDict):
     ollama_base_url: str
@@ -71,26 +73,31 @@ def render_startup_status_lines(*, snapshot: CapabilitySnapshotView) -> list[str
         )
 
     lines.append(f"Memory backend: {runtime['memory_store_backend']}")
-    source_ingest_enabled = bool(runtime.get("source_ingest_enabled", False))
-    source_connector = str(runtime.get("source_connector_type") or "none").strip().lower() or "none"
-    source_selection_source = str(runtime.get("source_ingest_selection_source") or "environment").strip().lower()
-    source_selection_mode = str(runtime.get("source_ingest_selection_mode") or source_selection_source).strip().lower()
-    source_reference_key = str(runtime.get("source_ingest_reference_key") or "").strip()
-    source_freeform_request = str(runtime.get("source_ingest_freeform_request") or "").strip()
-    selection_details = [f"mode={source_selection_mode}", f"selected_via={source_selection_source}"]
-    if source_reference_key:
-        selection_details.append(f"reference={source_reference_key}")
-    if source_freeform_request:
-        selection_details.append(f"freeform='{source_freeform_request}'")
-    selection_detail_text = ", ".join(selection_details)
-    if source_ingest_enabled:
+    source_mode = normalize_source_mode(runtime.get("source_mode"))
+    lines.append(f"Source mode: {source_mode.value}")
+    if source_mode == SourceMode.DISABLED:
+        lines.append("  Source acquisition disabled; enable SOURCE_INGEST_ENABLED plus a connector to preload.")
+        lines.append("  Turn-triggered acquisition: unavailable.")
+    elif source_mode == SourceMode.BOOTSTRAP_PRELOAD:
+        attempted = bool(runtime.get("source_bootstrap_attempted", False))
+        stored_count = int(runtime.get("source_bootstrap_stored_count", 0))
+        succeeded = bool(runtime.get("source_bootstrap_succeeded", False))
         lines.append(
-            f"Source ingestion: enabled (connector={source_connector}, {selection_detail_text})"
+            f"  Bootstrap preload: attempted={attempted}, stored_docs={stored_count}, succeeded={succeeded}."
+        )
+        lines.append(
+            "  Turn-triggered acquisition: unavailable (knowledge answers rely on bootstrap preload only)."
         )
     else:
-        lines.append(
-            f"Source ingestion: disabled ({selection_detail_text})"
-        )
+        supported = bool(runtime.get("source_turn_triggered_supported", False))
+        if supported:
+            lines.append(
+                "  Turn-triggered acquisition: available (knowledge answers can request on-demand pulls)."
+            )
+        else:
+            lines.append(
+                "  Turn-triggered acquisition: planned; bootstrap preload remains the current source path."
+            )
     ask_runtime = getattr(snapshot.runtime_capability_status, "ask_runtime", snapshot.runtime_capability_status)
     ask_runtime_state = getattr(ask_runtime, "ask_runtime_state", "terminal_only")
     ask_channels = getattr(ask_runtime, "available_ask_channels", ("terminal",))

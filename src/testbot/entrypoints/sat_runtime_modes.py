@@ -20,6 +20,7 @@ from testbot.domain import Clock
 from testbot.interaction_planner import COLLECT_TURN_INPUT_INTENT, select_interaction_policy_request
 from testbot.interaction_policy import ChannelContext
 from testbot.ports import MemoryStorePort
+from testbot.source_mode import SourceMode, normalize_source_mode
 
 _TERMINAL_STOP_DECISION_IDS = frozenset(
     {
@@ -112,6 +113,23 @@ def _persist_recent_successful_channel_context(*, runtime: dict[str, object], as
     if channel_context is None:
         return
     runtime[_LAST_SUCCESSFUL_ASK_CHANNEL_CONTEXT_KEY] = channel_context
+
+
+def _describe_cli_source_mode(*, runtime: dict[str, object]) -> str:
+    mode = normalize_source_mode(runtime.get("source_mode"))
+    if mode == SourceMode.DISABLED:
+        return "Source acquisition disabled."
+    if mode == SourceMode.BOOTSTRAP_PRELOAD:
+        attempted = bool(runtime.get("source_bootstrap_attempted", False))
+        stored_docs = int(runtime.get("source_bootstrap_stored_count", 0))
+        return (
+            f"Source acquisition relies on bootstrap preload (attempted={attempted}, "
+            f"stored_docs={stored_docs}); turn-triggered support is pending."
+        )
+    supported = bool(runtime.get("source_turn_triggered_supported", False))
+    if supported:
+        return "Source acquisition supports turn-triggered on-demand pulls."
+    return "Source acquisition: turn-triggered capability planned; bootstrap preload remains active."
 
 
 def _is_terminal_stop_signal(*, decision_id: str | None, sentence: str) -> bool:
@@ -223,6 +241,7 @@ def run_cli_mode(
     run_chat_loop: Callable[..., None],
 ) -> None:
     print("CLI chat ready. Ask memory-grounded questions; type 'stop' to exit.")
+    print(_describe_cli_source_mode(runtime=runtime))
     # Input collection is Ask-backed in CLI mode; output remains direct print() for now.
     # This split is intentional until output-channel unification is explicitly scheduled.
 

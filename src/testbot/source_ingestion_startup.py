@@ -19,7 +19,7 @@ from testbot.source_connectors import (
     SourceConnector,
     WikipediaSummarySourceConnector,
 )
-from testbot.source_ingest import SourceIngestor
+from testbot.source_ingest import SourceIngestResult, SourceIngestor
 
 
 SessionLogger = Callable[[str, dict[str, object]], None]
@@ -68,10 +68,10 @@ def run_source_ingestion(
     runtime: dict[str, object],
     store: MemoryStorePort,
     append_session_log: SessionLogger = _append_session_log,
-) -> None:
+) -> SourceIngestResult | None:
     connector = build_source_connector(runtime=runtime, append_session_log=append_session_log)
     if connector is None:
-        return
+        return None
 
     cursor = str(runtime.get("source_ingest_cursor")) if runtime.get("source_ingest_cursor") is not None else None
     limit = int(runtime.get("source_ingest_limit", 50))
@@ -100,7 +100,7 @@ def run_source_ingestion(
             "Warning: source ingestion failed at startup; continuing without ingested source documents.",
             file=sys.stderr,
         )
-        return
+        return None
 
     append_session_log(
         "source_ingest_completed",
@@ -115,6 +115,7 @@ def run_source_ingestion(
             "ingestion_request_id": "",
         },
     )
+    return result
 
 
 __all__ = ["build_source_connector", "run_source_ingestion"]

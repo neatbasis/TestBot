@@ -146,6 +146,7 @@ from testbot.runtime_cli_args import parse_args as parse_runtime_cli_args
 from testbot.source_ingestion_startup import (
     build_source_connector as build_startup_source_connector,
     run_source_ingestion as run_startup_source_ingestion,
+    SourceIngestResult,
 )
 from testbot.entrypoints import runtime_bootstrap as runtime_bootstrap_entrypoint
 from testbot.entrypoints.runtime_commit_persistence import (
@@ -1180,8 +1181,8 @@ def resolve_mode(requested_mode: str, ha_error: str | None) -> str:
     return _resolve_mode(requested_mode, ha_error)
 
 
-def run_source_ingestion(*, runtime: dict[str, object], store: MemoryStorePort) -> None:
-    run_startup_source_ingestion(runtime=runtime, store=store, append_session_log=append_session_log)
+def run_source_ingestion(*, runtime: dict[str, object], store: MemoryStorePort) -> SourceIngestResult | None:
+    return run_startup_source_ingestion(runtime=runtime, store=store, append_session_log=append_session_log)
 
 
 def print_startup_status(*, snapshot: CapabilitySnapshot) -> None:
