@@ -1,5 +1,13 @@
 # Memory recall root-cause review: feedback relevance, accuracy, and application map (2026-03-06)
 
+> [!WARNING]
+> **Evidence governance status:** `historical` (non-canonical companion evidence).
+> **Canonical authority:** **No** — this feedback analysis cannot define current policy or merge criteria by itself.
+> **Canonical owners for current truth:** `docs/invariants.md`; `docs/testing.md`; `docs/issues.md`; runtime/test/gate artifacts in `src/testbot/`, `features/`, `tests/`, `scripts/`, and `.github/workflows/`.
+> **Recommendation handling rule:** archival snapshot only unless specific items are re-adopted and encoded through canonical owners.
+> **Re-audit trigger:** re-audit this file before merge if an active issue, implementation plan, or PR/review path cites it to justify current changes or approval decisions.
+> **Sunset / hand-off condition:** companion context for the 2026-03-06 RCA; use canonical artifacts for all active implementation/governance decisions.
+
 ## Purpose
 This follow-up review assesses how relevant and accurate the external feedback is relative to the existing root-cause report in `docs/issues/evidence/memory-recall-root-cause-review-2026-03-06.md`, and identifies where in this repository the feedback should be applied.
 

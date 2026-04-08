@@ -158,6 +158,32 @@ Use one or more tags:
 - `ontology-aware`
 - `user-centric`
 
+## Evidence documents: non-canonical banner contract and re-audit trigger
+
+Historical/transitional evidence documents in `docs/issues/evidence/` can influence implementation and review even when they are not canonical. To prevent authority leakage, evidence documents that include diagnosis, recommendations, baselines, or decision guidance MUST carry an explicit banner/header contract.
+
+Required banner/header fields:
+
+1. `Evidence governance status`: `historical` or `transitional`.
+2. `Canonical authority`: explicit `No` statement.
+3. `Canonical owners for current truth`: concrete owner paths (docs/tests/scripts/workflows/issues as applicable).
+4. `Recommendation handling rule`: one of:
+   - `candidate until encoded`
+   - `superseded when encoded`
+   - `archival snapshot only`
+5. `Re-audit trigger`: concrete event that reopens governance-role review.
+6. Optional `Sunset / hand-off condition`: when executable artifacts replace narrative guidance.
+
+Canonical interpretation rule:
+- Evidence files are context records, not standing policy.
+- If any statement in an evidence file conflicts with a canonical owner, the canonical owner wins.
+
+Mandatory re-audit trigger rule:
+- If a historical/transitional evidence file is linked (or relinked) from an active issue (`Status: open|in_progress|blocked`), execution plan, PR checklist/body, or review path in a way that could influence current implementation choices or merge/readiness decisions, that file MUST be re-evaluated for governance role before merge.
+- Re-audit outcome MUST either:
+  1. reaffirm non-canonical status with current canonical-owner links, or
+  2. promote needed guidance into canonical owners (docs/tests/scripts/workflows/issues) and downgrade the evidence file back to non-authoritative context.
+
 ## Pull request requirements
 
 PRs that address an issue must include:
