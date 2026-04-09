@@ -4,18 +4,8 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from enum import Enum
 
-
-class IntentType(str, Enum):
-    """Top-level intent classes used by the pipeline router."""
-
-    KNOWLEDGE_QUESTION = "knowledge_question"
-    META_CONVERSATION = "meta_conversation"
-    CAPABILITIES_HELP = "capabilities_help"
-    MEMORY_RECALL = "memory_recall"
-    TIME_QUERY = "time_query"
-    CONTROL = "control"
+from testbot.domain_contracts import IntentType
 
 
 @dataclass(frozen=True)

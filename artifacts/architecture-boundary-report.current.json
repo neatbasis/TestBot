@@ -924,11 +924,22 @@
     },
     {
       "classification": "allowed",
+      "imported": "testbot.domain_contracts",
+      "imported_area": null,
+      "importer": "testbot.domain.canonical_dtos",
+      "importer_area": "domain",
+      "line": 13,
+      "metadata": {},
+      "reason": "module_outside_governed_areas",
+      "source_file": "src/testbot/domain/canonical_dtos.py"
+    },
+    {
+      "classification": "allowed",
       "imported": "testbot.evidence_retrieval",
       "imported_area": "domain",
       "importer": "testbot.domain.canonical_dtos",
       "importer_area": "domain",
-      "line": 13,
+      "line": 14,
       "metadata": {},
       "reason": "same_area_dependency",
       "source_file": "src/testbot/domain/canonical_dtos.py"
@@ -939,24 +950,9 @@
       "imported_area": "domain",
       "importer": "testbot.domain.canonical_dtos",
       "importer_area": "domain",
-      "line": 14,
+      "line": 15,
       "metadata": {},
       "reason": "same_area_dependency",
-      "source_file": "src/testbot/domain/canonical_dtos.py"
-    },
-    {
-      "classification": "violation",
-      "imported": "testbot.intent_router",
-      "imported_area": "logic",
-      "importer": "testbot.domain.canonical_dtos",
-      "importer_area": "domain",
-      "line": 15,
-      "metadata": {
-        "allowed_dependencies": [
-          "domain"
-        ]
-      },
-      "reason": "forbidden_dependency_direction",
       "source_file": "src/testbot/domain/canonical_dtos.py"
     },
     {
@@ -971,27 +967,12 @@
       "source_file": "src/testbot/domain/canonical_dtos.py"
     },
     {
-      "classification": "violation",
-      "imported": "testbot.policy_decision",
-      "imported_area": "logic",
-      "importer": "testbot.domain.canonical_dtos",
-      "importer_area": "domain",
-      "line": 17,
-      "metadata": {
-        "allowed_dependencies": [
-          "domain"
-        ]
-      },
-      "reason": "forbidden_dependency_direction",
-      "source_file": "src/testbot/domain/canonical_dtos.py"
-    },
-    {
       "classification": "allowed",
       "imported": "testbot.stabilization",
       "imported_area": "domain",
       "importer": "testbot.domain.canonical_dtos",
       "importer_area": "domain",
-      "line": 18,
+      "line": 17,
       "metadata": {},
       "reason": "same_area_dependency",
       "source_file": "src/testbot/domain/canonical_dtos.py"
@@ -1002,7 +983,7 @@
       "imported_area": "domain",
       "importer": "testbot.domain.canonical_dtos",
       "importer_area": "domain",
-      "line": 19,
+      "line": 18,
       "metadata": {},
       "reason": "same_area_dependency",
       "source_file": "src/testbot/domain/canonical_dtos.py"
@@ -1195,6 +1176,17 @@
     },
     {
       "classification": "allowed",
+      "imported": "testbot.domain_contracts",
+      "imported_area": null,
+      "importer": "testbot.intent_router",
+      "importer_area": "logic",
+      "line": 8,
+      "metadata": {},
+      "reason": "module_outside_governed_areas",
+      "source_file": "src/testbot/intent_router.py"
+    },
+    {
+      "classification": "allowed",
       "imported": "testbot.logic.alignment",
       "imported_area": "logic",
       "importer": "testbot.logic",
@@ -1377,6 +1369,17 @@
       "source_file": "src/testbot/pipeline/metrics.py"
     },
     {
+      "classification": "allowed",
+      "imported": "testbot.domain_contracts",
+      "imported_area": null,
+      "importer": "testbot.policy_decision",
+      "importer_area": "logic",
+      "line": 6,
+      "metadata": {},
+      "reason": "module_outside_governed_areas",
+      "source_file": "src/testbot/policy_decision.py"
+    },
+    {
       "classification": "violation",
       "imported": "testbot.evidence_retrieval",
       "imported_area": "domain",
@@ -1399,22 +1402,11 @@
     },
     {
       "classification": "allowed",
-      "imported": "testbot.intent_router",
-      "imported_area": "logic",
-      "importer": "testbot.policy_decision",
-      "importer_area": "logic",
-      "line": 8,
-      "metadata": {},
-      "reason": "same_area_dependency",
-      "source_file": "src/testbot/policy_decision.py"
-    },
-    {
-      "classification": "allowed",
       "imported": "testbot.retrieval_routing",
       "imported_area": "logic",
       "importer": "testbot.policy_decision",
       "importer_area": "logic",
-      "line": 9,
+      "line": 8,
       "metadata": {},
       "reason": "same_area_dependency",
       "source_file": "src/testbot/policy_decision.py"
@@ -2304,12 +2296,12 @@
   "schema_version": "1",
   "summary": {
     "counts_by_classification": {
-      "allowed": 88,
+      "allowed": 90,
       "deprecated_compatibility": 2,
       "temporary_exception": 1,
-      "violation": 61
+      "violation": 59
     },
     "import_edge_count": 152,
-    "module_count": 58
+    "module_count": 59
   }
 }
